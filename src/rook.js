@@ -46,5 +46,3 @@ module.exports.grid = [
   ['311 E 23rd St', '580 9th Ave', '2704 Broadway', '5 St. James Pl'],
   ['10 Union Sq. East', '225 W. 57th St', '609 Columbus Ave', '2217 7th Ave']
 ]
-
-console.log(enumerateWaypointSets(grid))

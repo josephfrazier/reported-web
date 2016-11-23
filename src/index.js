@@ -18,7 +18,7 @@ function getBestWaypoints ({origin, destination, waypointGrid, key}) {
   const googleMapsClient = googleMaps.createClient({key, Promise, rate: {limit: 50}})
 
   // TODO don't slice. This is only to avoid hitting the API quota
-  const routePromises = waypointsSets.slice(0, 2).map(function (waypoints) {
+  const routePromises = waypointsSets.slice(0, 10).map(function (waypoints) {
     const args = {origin, destination, waypoints, googleMapsClient}
     return getOptimizedRoute(args)
   })
@@ -33,7 +33,7 @@ function getOptimizedRoute ({origin, destination, waypoints, googleMapsClient}) 
     origin,
     destination,
     waypoints: 'optimize:true|' + waypoints.join('|'),
-    // mode: 'bicycling' // TODO figure out why this sometimes causes errors
+    mode: 'bicycling'
   }).asPromise().then(function (response) {
     const route = response.json.routes[0]
     return {

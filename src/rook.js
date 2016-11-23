@@ -41,8 +41,8 @@ function removeColumn ({grid, index}) {
 
 // https://farm3.static.flickr.com/2778/4134507221_d0c9ec1b7c_o.jpg
 module.exports.grid = [
-  ['221-225 8th Ave, 10011', '907 8th Ave', '289 Columbus Ave', '25 University Pl'],
-  ['512 2nd Ave', '452 W 43rd St.', '1407 Lexington Ave', '316 Greenwich St'],
-  ['311 E 23rd St', '580 9th Ave', '2704 Broadway', '5 St. James Pl'],
-  ['10 Union Sq. East', '225 W. 57th St', '609 Columbus Ave', '2217 7th Ave']
+  ['221-225 8th Ave, 10011', '907 8th Ave, NYC', '289 Columbus Ave, NYC', '25 University Pl, NYC'],
+  ['512 2nd Ave, NYC', '452 W 43rd St., NYC', '1407 Lexington Ave, NYC', '316 Greenwich St, NYC'],
+  ['311 E 23rd St, NYC', '580 9th Ave, NYC', '2704 Broadway, NYC', '5 St. James Pl, NYC'],
+  ['10 Union Sq. East, NYC', '225 W. 57th St, NYC', '609 Columbus Ave, NYC', '2217 7th Ave, NYC']
 ]

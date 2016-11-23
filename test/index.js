@@ -29,7 +29,7 @@ test('Cranksgiving 11 NYC (no baby food)', function (t) {
       '5 St. James Pl, NYC'
     ])
     t.comment(getBestWaypoints.getMapsLink({origin, destination, waypoints}))
-  }).catch(() => t.fail)
+  }).catch(t.end)
 })
 
 test('Cranksgiving 11 NYC (w/ baby food)', function (t) {
@@ -53,5 +53,5 @@ test('Cranksgiving 11 NYC (w/ baby food)', function (t) {
       '5 St. James Pl, NYC'
     ])
     t.comment(getBestWaypoints.getMapsLink({origin, destination, waypoints}))
-  }).catch(() => t.fail)
+  }).catch(t.end)
 })

@@ -1,3 +1,5 @@
+require('dotenv').config()
+
 const test = require('tape')
 const getBestWaypoints = require('../')
 

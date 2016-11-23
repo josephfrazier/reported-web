@@ -18,7 +18,8 @@
   "homepage": "https://github.com/josephfrazier/alley-cheetah#readme",
   "private": true,
   "dependencies": {
-    "@google/maps": "^0.3.0"
+    "@google/maps": "^0.3.0",
+    "sort-on": "^1.3.0"
   },
   "devDependencies": {
     "standard": "^8.5.0",

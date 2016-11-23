@@ -2,20 +2,45 @@
 
 const googleMaps = require('@google/maps')
 const querystring = require('querystring')
+const sortOn = require('sort-on')
 
-module.exports = getOptimizedRoute
+const enumerateWaypointSets = require('./rook.js')
 
-function getOptimizedRoute ({origin, destination, waypoints, key}) {
+module.exports = getBestWaypoints
+
+function getBestWaypoints ({origin, destination, waypointGrid, key}) {
   key = key || process.env.GOOGLE_MAPS_API_KEY
 
-  const googleMapsClient = googleMaps.createClient({ key, Promise })
+  const waypointsSets = enumerateWaypointSets(waypointGrid)
+  // 50 is the max free rate limit, according to
+  // https://developers.google.com/maps/documentation/directions/usage-limits
+  // https://googlemaps.github.io/google-maps-services-js/docs/module-@google_maps.html#.createClient
+  const googleMapsClient = googleMaps.createClient({key, Promise, rate: {limit: 50}})
 
+  // TODO don't slice. This is only to avoid hitting the API quota
+  const routePromises = waypointsSets.slice(0, 2).map(function (waypoints) {
+    const args = {origin, destination, waypoints, googleMapsClient}
+    return getOptimizedRoute(args)
+  })
+  return Promise.all(routePromises).then(function (routeWaypointPairs) {
+    const result = sortOn(routeWaypointPairs, ({route, waypoints}) => getTotalDistance(route))[0]
+    return result
+  })
+}
+
+function getOptimizedRoute ({origin, destination, waypoints, googleMapsClient}) {
   return googleMapsClient.directions({
     origin,
     destination,
     waypoints: 'optimize:true|' + waypoints.join('|'),
-    mode: 'bicycling'
-  }).asPromise().then(response => response.json.routes[0])
+    // mode: 'bicycling' // TODO figure out why this sometimes causes errors
+  }).asPromise().then(function (response) {
+    const route = response.json.routes[0]
+    return {
+      route,
+      waypoints: reorderWaypoints({route, waypoints})
+    }
+  })
 }
 
 function getTotalDistance (route) {
@@ -39,18 +64,15 @@ function getMapsLink ({origin, destination, waypoints}) {
 // //////
 
 const inspect = require('util').inspect
-const waypoints = ['Barossa Valley, SA', 'Clare, SA', 'Coonawarra, SA', 'McLaren Vale, SA']
-const origin = 'Adelaide, SA'
-const destination = origin
+const origin = 'Hudson Yards Park'
+const destination = '440 Grand St'
 
-getOptimizedRoute({
+getBestWaypoints({
   origin,
   destination,
-  waypoints
-}).then(function (route) {
+  waypointGrid: enumerateWaypointSets.grid
+}).then(function ({route, waypoints}) {
   console.log(inspect(route, false, null))
-
-  const reorderedWaypoints = reorderWaypoints({waypoints, route})
-  console.log(reorderedWaypoints)
-  console.log(getMapsLink({origin, destination, waypoints: reorderedWaypoints}))
+  console.log(waypoints)
+  console.log(getMapsLink({origin, destination, waypoints}))
 })

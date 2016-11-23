@@ -6,11 +6,11 @@ module.exports = enumerateWaypointSets
 function enumerateWaypointSets (grid) {
   const n = grid.length
   if (n === 1) {
-    return [[grid[0][0]]];
+    return [[grid[0][0]]]
   }
 
-  const firstRow = grid[0];
-  const otherRows = grid.slice(1);
+  const firstRow = grid[0]
+  const otherRows = grid.slice(1)
 
   // For every item in the row, construct a subgrid with the item's row and column removed
   // Recursively enumerate the subgrid solutions, and prepend the item onto each solution
@@ -21,20 +21,20 @@ function enumerateWaypointSets (grid) {
     })
     const subresults = enumerateWaypointSets(otherRowsWithoutColumn)
     return subresults.map(subresult => [item].concat(subresult))
-  });
+  })
 
   // Finally, flatten the list of list of solutions
-  return result.reduce(function(a, b) {
-    return a.concat(b);
-  }, []);
+  return result.reduce(function (a, b) {
+    return a.concat(b)
+  }, [])
 }
 
 function removeColumn ({grid, index}) {
   return grid.map(function (row) {
-     const result = row.slice()
-     result.splice(index, 1)
-     return result
-   })
+    const result = row.slice()
+    result.splice(index, 1)
+    return result
+  })
 }
 
 // ///////

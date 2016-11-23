@@ -10,6 +10,7 @@ module.exports = getBestWaypoints
 
 function getBestWaypoints ({origin, destination, waypointGrid, key, babyFoodStops}) {
   key = key || process.env.GOOGLE_MAPS_API_KEY
+  babyFoodStops = babyFoodStops || []
 
   const waypointsSets = enumerateWaypointSets(waypointGrid, babyFoodStops)
   // 50 is the max free rate limit, according to
@@ -23,8 +24,10 @@ function getBestWaypoints ({origin, destination, waypointGrid, key, babyFoodStop
     return getOptimizedRoute(args)
   })
   return Promise.all(routePromises).then(function (routeWaypointPairs) {
-    // TODO filter out routes that make a baby food stop first
-    const result = sortOn(routeWaypointPairs, ({route, waypoints}) => getTotalDistance(route))[0]
+    // filter out routes that make a baby food stop first
+    // TODO what if they all get filtered out?
+    const pairsWithValidBabyFoodStops = routeWaypointPairs.filter(({waypoints}) => !babyFoodStops.includes(waypoints[0]))
+    const result = sortOn(pairsWithValidBabyFoodStops, ({route, waypoints}) => getTotalDistance(route))[0]
     return result
   })
 }

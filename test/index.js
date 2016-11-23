@@ -55,3 +55,22 @@ test('Cranksgiving 11 NYC (w/ baby food)', function (t) {
     t.comment(getBestWaypoints.getMapsLink({origin, destination, waypoints}))
   }).catch(t.end)
 })
+
+test('baby food stops should not come first', function (t) {
+  t.plan(1)
+
+  getBestWaypoints({
+    origin,
+    destination,
+    waypointGrid: grid,
+    // this is very slightly closer to the origin than is the first stop otherwise
+    babyFoodStops: ['891 8th Ave, New York, NY 10019']
+  }).then(function ({route, waypoints}) {
+    t.deepEqual(waypoints, [ '452 W 43rd St., NYC', '891 8th Ave, New York, NY 10019', '609 Columbus Ave, NYC', '221-225 8th Ave, 10011', '5 St. James Pl, NYC' ])
+    // TODO this is not optimal. For example, here's the corresponding map:
+    // https://goo.gl/maps/qgPt6hpN41u
+    // but here is one that would be faster:
+    // https://goo.gl/maps/rzZyuRgySTR2
+    t.comment(getBestWaypoints.getMapsLink({origin, destination, waypoints}))
+  }).catch(t.end)
+})

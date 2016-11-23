@@ -16,5 +16,8 @@
     "url": "https://github.com/josephfrazier/alley-cheetah/issues"
   },
   "homepage": "https://github.com/josephfrazier/alley-cheetah#readme",
-  "private": true
+  "private": true,
+  "dependencies": {
+    "@google/maps": "^0.3.0"
+  }
 }

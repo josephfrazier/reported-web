@@ -24,6 +24,7 @@ test('Cranksgiving 11 NYC (no baby food)', function (t) {
   }).then(function ({route, waypoints}) {
     t.deepEqual(waypoints, [ '225 W. 57th St, NYC', '289 Columbus Ave, NYC', '512 2nd Ave, NYC', '5 St. James Pl, NYC' ])
     t.comment(getBestWaypoints.getMapsLink({origin, destination, waypoints}))
+    t.comment('')
   }).catch(t.end)
 })
 
@@ -41,6 +42,7 @@ test('Cranksgiving 11 NYC (w/ baby food)', function (t) {
   }).then(function ({route, waypoints}) {
     t.deepEqual(waypoints, [ '452 W 43rd St., NYC', '289 Columbus Ave, NYC', '441 West 26th St, NYC', '10 Union Sq. East, NYC', '137 East 2nd St, NYC', '5 St. James Pl, NYC' ])
     t.comment(getBestWaypoints.getMapsLink({origin, destination, waypoints}))
+    t.comment('')
   }).catch(t.end)
 })
 
@@ -60,5 +62,6 @@ test('baby food stops should not come first', function (t) {
     // but here is one that would be faster:
     // https://goo.gl/maps/rzZyuRgySTR2
     t.comment(getBestWaypoints.getMapsLink({origin, destination, waypoints}))
+    t.comment('')
   }).catch(t.end)
 })

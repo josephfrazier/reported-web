@@ -3,6 +3,8 @@
 const googleMaps = require('@google/maps')
 const querystring = require('querystring')
 const sortOn = require('sort-on')
+const cachePath = require('path').join(__dirname, '..', 'cache')
+const memoize = require('memoize-fs')({ cachePath: cachePath })
 
 const enumerateWaypointSets = require('./rook.js')
 
@@ -20,7 +22,7 @@ function getBestWaypoints ({origin, destination, waypointGrid, key, babyFoodStop
 
   const routePromises = waypointsSets.map(function (waypoints) {
     const args = {origin, destination, waypoints, googleMapsClient}
-    return getOptimizedRoute(args)
+    return memoize.fn(getOptimizedRoute).then(f => f(args))
   })
   return Promise.all(routePromises).then(function (routeWaypointPairs) {
     // filter out routes that make a baby food stop first

@@ -18,8 +18,7 @@ function getBestWaypoints ({origin, destination, waypointGrid, key, babyFoodStop
   // https://googlemaps.github.io/google-maps-services-js/docs/module-@google_maps.html#.createClient
   const googleMapsClient = googleMaps.createClient({key, Promise, rate: {limit: 50}})
 
-  // TODO don't slice. This is only to avoid hitting the API quota
-  const routePromises = waypointsSets.slice(0, 10).map(function (waypoints) {
+  const routePromises = waypointsSets.map(function (waypoints) {
     const args = {origin, destination, waypoints, googleMapsClient}
     return getOptimizedRoute(args)
   })

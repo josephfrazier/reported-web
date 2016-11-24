@@ -3,10 +3,10 @@ module.exports = enumerateWaypointSets
 // Given a 2d square array of items, return a list of all Rook polynomial solutions
 // Each solution will be a list of items
 // https://en.wikipedia.org/wiki/Rook_polynomial
-function enumerateWaypointSets (grid, extraItems) {
+function enumerateWaypointSets (grid) {
   const n = grid.length
   if (n === 1) {
-    return [[grid[0][0]].concat(extraItems || [])]
+    return [[grid[0][0]]]
   }
 
   const firstRow = grid[0]
@@ -19,7 +19,7 @@ function enumerateWaypointSets (grid, extraItems) {
       grid: otherRows,
       index
     })
-    const subresults = enumerateWaypointSets(otherRowsWithoutColumn, extraItems)
+    const subresults = enumerateWaypointSets(otherRowsWithoutColumn)
     return subresults.map(subresult => [item].concat(subresult))
   })
 

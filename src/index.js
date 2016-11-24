@@ -16,7 +16,7 @@ function getBestWaypoints ({origin, destination, waypointGrid, key, babyFoodStop
   babyFoodStops = babyFoodStops || []
   routeSortKey = routeSortKey || 'distance'
 
-  const waypointsSets = enumerateWaypointSets(waypointGrid, babyFoodStops)
+  const waypointsSets = enumerateWaypointSets(waypointGrid).map(waypoints => waypoints.concat(babyFoodStops))
   // 50 is the max free rate limit, according to
   // https://developers.google.com/maps/documentation/directions/usage-limits
   // https://googlemaps.github.io/google-maps-services-js/docs/module-@google_maps.html#.createClient

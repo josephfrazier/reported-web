@@ -28,7 +28,8 @@ function getBestWaypoints ({origin, destination, waypointGrid, key, babyFoodStop
     // filter out routes that make a baby food stop first
     // TODO what if they all get filtered out? (see test/index.js TODO)
     routeWaypointPairs = routeWaypointPairs.filter(({waypoints}) => !babyFoodStops.includes(waypoints[0]))
-    const result = sortOn(routeWaypointPairs, ({route, waypoints}) => getLegsTotal({route, property: 'distance'}))[0]
+    const routeKeyFunction = ({route}) => getLegsTotal({route, property: 'distance'})
+    const result = sortOn(routeWaypointPairs, routeKeyFunction)[0]
     return result
   })
 }

@@ -65,3 +65,22 @@ test('Cranksgiving 11 NYC (w/ baby food)', function (t) {
     t.comment('')
   }).catch(t.end)
 })
+
+test('Cranksgiving 11 NYC (w/ baby food)', function (t) {
+  t.plan(1)
+
+  getBestWaypoints({
+    origin,
+    destination,
+    waypointGrid: grid,
+    babyFoodStops: [
+      '441 West 26th St, NYC',
+      '137 East 2nd St, NYC'
+    ],
+    routeSortKey: 'duration'
+  }).then(function ({route, waypoints}) {
+    t.deepEqual(waypoints, [ '225 W. 57th St, NYC', '289 Columbus Ave, NYC', '441 West 26th St, NYC', '512 2nd Ave, NYC', '137 East 2nd St, NYC', '5 St. James Pl, NYC' ])
+    t.comment(getBestWaypoints.getMapsLink({origin, destination, waypoints}))
+    t.comment('')
+  }).catch(t.end)
+})

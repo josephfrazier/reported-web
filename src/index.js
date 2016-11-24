@@ -11,9 +11,10 @@ const enumerateWaypointSets = require('./rook.js')
 module.exports = getBestWaypoints
 module.exports.getMapsLink = getMapsLink
 
-function getBestWaypoints ({origin, destination, waypointGrid, key, babyFoodStops}) {
+function getBestWaypoints ({origin, destination, waypointGrid, key, babyFoodStops, routeSortKey}) {
   key = key || process.env.GOOGLE_MAPS_API_KEY
   babyFoodStops = babyFoodStops || []
+  routeSortKey = routeSortKey || 'distance'
 
   const waypointsSets = enumerateWaypointSets(waypointGrid, babyFoodStops)
   // 50 is the max free rate limit, according to
@@ -29,7 +30,7 @@ function getBestWaypoints ({origin, destination, waypointGrid, key, babyFoodStop
     // filter out routes that make a baby food stop first
     // TODO what if they all get filtered out? (see test/index.js TODO)
     routeWaypointPairs = routeWaypointPairs.filter(({waypoints}) => !babyFoodStops.includes(waypoints[0]))
-    const routeKeyFunction = ({route}) => getLegsTotal({route, property: 'distance'})
+    const routeKeyFunction = ({route}) => getLegsTotal({route, property: routeSortKey})
     const result = sortOn(routeWaypointPairs, routeKeyFunction)[0]
     return result
   })

@@ -5,8 +5,8 @@ module.exports = enumerateWaypointSets
 // https://en.wikipedia.org/wiki/Rook_polynomial
 function enumerateWaypointSets (grid) {
   const n = grid.length
-  if (n === 1) {
-    return [[grid[0][0]]]
+  if (n === 0) {
+    return [[]]
   }
 
   const firstRow = grid[0]

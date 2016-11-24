@@ -25,9 +25,9 @@ function getBestWaypoints ({origin, destination, waypointGrid, key, babyFoodStop
   })
   return Promise.all(routePromises).then(function (routeWaypointPairs) {
     // filter out routes that make a baby food stop first
-    // TODO what if they all get filtered out?
-    const pairsWithValidBabyFoodStops = routeWaypointPairs.filter(({waypoints}) => !babyFoodStops.includes(waypoints[0]))
-    const result = sortOn(pairsWithValidBabyFoodStops, ({route, waypoints}) => getTotalDistance(route))[0]
+    // TODO what if they all get filtered out? (see test/index.js TODO)
+    routeWaypointPairs = routeWaypointPairs.filter(({waypoints}) => !babyFoodStops.includes(waypoints[0]))
+    const result = sortOn(routeWaypointPairs, ({route, waypoints}) => getTotalDistance(route))[0]
     return result
   })
 }

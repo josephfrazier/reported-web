@@ -48,7 +48,7 @@ test('baby food stops should not come first', function (t) {
   }).catch(t.end)
 })
 
-test('Cranksgiving 11 NYC (w/ baby food)', function (t) {
+test('Cranksgiving 11 NYC (w/ baby food) (sorted by distance)', function (t) {
   t.plan(1)
 
   getBestWaypoints({
@@ -66,7 +66,7 @@ test('Cranksgiving 11 NYC (w/ baby food)', function (t) {
   }).catch(t.end)
 })
 
-test('Cranksgiving 11 NYC (w/ baby food)', function (t) {
+test('Cranksgiving 11 NYC (w/ baby food) (sorted by duration)', function (t) {
   t.plan(1)
 
   getBestWaypoints({

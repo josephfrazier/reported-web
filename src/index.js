@@ -9,6 +9,7 @@ const memoize = require('memoize-fs')({ cachePath: cachePath })
 const enumerateWaypointSets = require('./rook.js')
 
 module.exports = getBestWaypoints
+module.exports.getMapsLink = getMapsLink
 
 function getBestWaypoints ({origin, destination, waypointGrid, key, babyFoodStops}) {
   key = key || process.env.GOOGLE_MAPS_API_KEY
@@ -60,7 +61,7 @@ function reorderWaypoints ({route, waypoints}) {
   return route.waypoint_order.map((index) => waypoints[index])
 }
 
-module.exports.getMapsLink = function getMapsLink ({origin, destination, waypoints}) {
+function getMapsLink ({origin, destination, waypoints}) {
   const allWaypoints = [origin].concat(waypoints).concat(destination)
   const escapedWaypoints = allWaypoints.map(querystring.escape).join('/')
   const dataString = '!4m2!4m1!3e1' // https://webapps.stackexchange.com/questions/67190/how-can-i-encode-my-preference-of-biking-walking-public-transport-in-a-google-ma/78800#78800

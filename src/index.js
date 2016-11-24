@@ -28,7 +28,7 @@ function getBestWaypoints ({origin, destination, waypointGrid, key, babyFoodStop
     // filter out routes that make a baby food stop first
     // TODO what if they all get filtered out? (see test/index.js TODO)
     routeWaypointPairs = routeWaypointPairs.filter(({waypoints}) => !babyFoodStops.includes(waypoints[0]))
-    const result = sortOn(routeWaypointPairs, ({route, waypoints}) => getTotalDistance(route))[0]
+    const result = sortOn(routeWaypointPairs, ({route, waypoints}) => getLegsTotal({route, property: 'distance'}))[0]
     return result
   })
 }
@@ -48,11 +48,11 @@ function getOptimizedRoute ({origin, destination, waypoints, googleMapsClient}) 
   })
 }
 
-function getTotalDistance (route) {
-  const distances = route.legs.map(leg => leg.distance.value)
+function getLegsTotal ({route, property}) {
+  const values = route.legs.map(leg => leg[property].value)
   const sum = (a, b) => a + b
-  const totalDistance = distances.reduce(sum, 0)
-  return totalDistance
+  const total = values.reduce(sum, 0)
+  return total
 }
 
 function reorderWaypoints ({route, waypoints}) {

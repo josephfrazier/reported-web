@@ -3,18 +3,17 @@
 const googleMaps = require('@google/maps')
 const querystring = require('querystring')
 const sortOn = require('sort-on')
-const cachePath = require('path').join(__dirname, '..', 'cache')
-const memoize = require('memoize-fs')({ cachePath: cachePath })
 
 const enumerateWaypointSets = require('./rook.js')
 
 module.exports = getBestWaypoints
 module.exports.getMapsLink = getMapsLink
 
-function getBestWaypoints ({origin, destination, waypointGrid, key, babyFoodStops, routeSortKey}) {
+function getBestWaypoints ({origin, destination, waypointGrid, key, babyFoodStops, routeSortKey, memoizeFn}) {
   key = key || process.env.GOOGLE_MAPS_API_KEY
   babyFoodStops = babyFoodStops || []
   routeSortKey = routeSortKey || 'distance'
+  memoizeFn = memoizeFn || (f => f)
 
   const waypointsSets = enumerateWaypointSets(waypointGrid).map(waypoints => waypoints.concat(babyFoodStops))
   // 50 is the max free rate limit, according to
@@ -24,7 +23,7 @@ function getBestWaypoints ({origin, destination, waypointGrid, key, babyFoodStop
 
   const routePromises = waypointsSets.map(function (waypoints) {
     const args = {origin, destination, waypoints, googleMapsClient}
-    return memoize.fn(getOptimizedRoute).then(f => f(args))
+    return Promise.resolve(memoizeFn(getOptimizedRoute)).then(f => f(args))
   })
   return Promise.all(routePromises).then(function (routeWaypointPairs) {
     // filter out routes that make a baby food stop first

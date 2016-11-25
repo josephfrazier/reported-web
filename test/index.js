@@ -2,7 +2,10 @@ require('dotenv').config()
 
 const test = require('tape')
 const getBestWaypoints = require('../')
+const cachePath = require('path').join(__dirname, '..', 'cache')
+const memoize = require('memoize-fs')({ cachePath: cachePath })
 
+const memoizeFn = memoize.fn
 const origin = 'Hudson Yards Park'
 const destination = '440 Grand St'
 
@@ -18,6 +21,7 @@ test('Cranksgiving 11 NYC (no baby food)', function (t) {
   t.plan(1)
 
   getBestWaypoints({
+    memoizeFn,
     origin,
     destination,
     waypointGrid: grid
@@ -32,6 +36,7 @@ test('baby food stops should not come first', function (t) {
   t.plan(1)
 
   getBestWaypoints({
+    memoizeFn,
     origin,
     destination,
     waypointGrid: grid,
@@ -52,6 +57,7 @@ test('Cranksgiving 11 NYC (w/ baby food) (sorted by distance)', function (t) {
   t.plan(1)
 
   getBestWaypoints({
+    memoizeFn,
     origin,
     destination,
     waypointGrid: grid,
@@ -70,6 +76,7 @@ test('Cranksgiving 11 NYC (w/ baby food) (sorted by duration)', function (t) {
   t.plan(1)
 
   getBestWaypoints({
+    memoizeFn,
     origin,
     destination,
     waypointGrid: grid,

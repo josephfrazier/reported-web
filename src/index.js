@@ -9,12 +9,15 @@ const enumerateWaypointSets = require('./rook.js')
 module.exports = getBestWaypoints
 module.exports.getMapsLink = getMapsLink
 
-function getBestWaypoints ({origin, destination, waypointGrid, key, babyFoodStops, routeSortKey, memoizeFn}) {
-  key = key || process.env.GOOGLE_MAPS_API_KEY
-  babyFoodStops = babyFoodStops || []
-  routeSortKey = routeSortKey || 'distance'
-  memoizeFn = memoizeFn || (f => f)
-
+function getBestWaypoints ({
+    origin,
+    destination,
+    waypointGrid,
+    key = process.env.GOOGLE_MAPS_API_KEY,
+    babyFoodStops = [],
+    routeSortKey = 'distance',
+    memoizeFn = (f => f)
+  }) {
   const waypointsSets = enumerateWaypointSets(waypointGrid).map(waypoints => waypoints.concat(babyFoodStops))
   // 50 is the max free rate limit, according to
   // https://developers.google.com/maps/documentation/directions/usage-limits

@@ -3,7 +3,7 @@ require('dotenv').config()
 const test = require('tape')
 const getBestWaypoints = require('../')
 const cachePath = require('path').join(__dirname, '..', 'cache')
-const memoize = require('memoize-fs')({ cachePath: cachePath })
+const memoize = require('memoize-fs')({ cachePath })
 
 const memoizeFn = memoize.fn
 const origin = 'Hudson Yards Park'

@@ -8,17 +8,19 @@ const enumerateWaypointSets = require('./rook.js')
 
 module.exports = getBestWaypoints
 module.exports.getMapsLink = getMapsLink
+module.exports.getLegsTotal = getLegsTotal
 
 function getBestWaypoints ({
     origin,
     destination,
     waypointGrid,
+    waypointOptions,
     key = process.env.GOOGLE_MAPS_API_KEY,
     babyFoodStops = [],
     routeSortKey = 'distance',
     memoizeFn = (f => f)
   }) {
-  const waypointsSets = enumerateWaypointSets(waypointGrid).map(waypoints => waypoints.concat(babyFoodStops))
+  const waypointsSets = enumerateWaypointSets(waypointGrid, waypointOptions).map(waypoints => waypoints.concat(babyFoodStops))
   // 50 is the max free rate limit, according to
   // https://developers.google.com/maps/documentation/directions/usage-limits
   // https://googlemaps.github.io/google-maps-services-js/docs/module-@google_maps.html#.createClient

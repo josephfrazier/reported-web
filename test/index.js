@@ -91,3 +91,22 @@ test('Cranksgiving 11 NYC (w/ baby food) (sorted by duration)', function (t) {
     t.comment('')
   }).catch(t.end)
 })
+
+test('Cranksgiving 11 NYC (w/o eliminating columns)', function (t) {
+  t.plan(2)
+
+  getBestWaypoints({
+    memoizeFn,
+    origin,
+    destination,
+    waypointGrid: grid,
+    waypointOptions: {
+      eliminateColumns: false
+    }
+  }).then(function ({route, waypoints}) {
+    t.ok(getBestWaypoints.getLegsTotal({route, property: 'distance'}) < 16238, 'route is shorter without eliminating columns')
+    t.deepEqual(waypoints, [ '452 W 43rd St., NYC', '580 9th Ave, NYC', '221-225 8th Ave, 10011', '10 Union Sq. East, NYC' ])
+    t.comment(getBestWaypoints.getMapsLink({origin, destination, waypoints}))
+    t.comment('')
+  }).catch(t.end)
+})

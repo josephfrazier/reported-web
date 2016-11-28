@@ -7,17 +7,27 @@ const sortOn = require('sort-on')
 const enumerateWaypointSets = require('./rook.js')
 
 module.exports = getBestWaypoints
+module.exports.getOptimizedRoutes = getOptimizedRoutes
+module.exports.sortRoutesBy = sortRoutesBy
 module.exports.getMapsLink = getMapsLink
 module.exports.getLegsTotal = getLegsTotal
 
-function getBestWaypoints ({
+// args is an object that looks like the arguments for `getOptimizedRoutes`
+// It can also have a `routeSortKey` property ('distance' or 'duration')
+function getBestWaypoints (args) {
+  const routeSortKey = args.routeSortKey || 'distance'
+  return getOptimizedRoutes(args).then(function (routeWaypointPairs) {
+    return sortRoutesBy({routeWaypointPairs, routeSortKey})[0]
+  })
+}
+
+function getOptimizedRoutes ({
     origin,
     destination,
     waypointGrid,
     waypointOptions,
     key = process.env.GOOGLE_MAPS_API_KEY,
     babyFoodStops = [],
-    routeSortKey = 'distance',
     memoizeFn = (f => f)
   }) {
   const waypointsSets = enumerateWaypointSets(waypointGrid, waypointOptions).map(waypoints => waypoints.concat(babyFoodStops))
@@ -34,10 +44,7 @@ function getBestWaypoints ({
   return Promise.all(routePromises).then(function (routeWaypointPairs) {
     // filter out routes that make a baby food stop first
     // TODO what if they all get filtered out? (see test/index.js TODO)
-    routeWaypointPairs = routeWaypointPairs.filter(({waypoints}) => !babyFoodStops.includes(waypoints[0]))
-    const routeKeyFunction = ({route}) => getLegsTotal({route, property: routeSortKey})
-    const result = sortOn(routeWaypointPairs, routeKeyFunction)[0]
-    return result
+    return routeWaypointPairs.filter(({waypoints}) => !babyFoodStops.includes(waypoints[0]))
   })
 }
 
@@ -54,6 +61,11 @@ function getOptimizedRoute ({origin, destination, waypoints, googleMapsClient}) 
       waypoints: reorderWaypoints({route, waypoints})
     }
   })
+}
+
+function sortRoutesBy ({routeWaypointPairs, routeSortKey}) {
+  const routeKeyFunction = ({route}) => getLegsTotal({route, property: routeSortKey})
+  return sortOn(routeWaypointPairs, routeKeyFunction)
 }
 
 function getLegsTotal ({route, property}) {

@@ -27,6 +27,7 @@ function getBestWaypoints ({
   const googleMapsClient = googleMaps.createClient({key, Promise, rate: {limit: 50}})
 
   const routePromises = waypointsSets.map(function (waypoints) {
+    waypoints = waypoints.sort()
     const args = {origin, destination, waypoints, googleMapsClient}
     return Promise.resolve(memoizeFn(getOptimizedRoute)).then(f => f(args))
   })

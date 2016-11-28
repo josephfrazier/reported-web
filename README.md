@@ -3,7 +3,6 @@
 # TODOs / Braindump
 
 * Generalize to other manifest types? http://cranksgiving.net/manifests.html
-* Sort routes by time rather than distance? http://www.betterbybicycle.com/2014/09/how-accurate-are-google-maps-cycling.html
 * Use a distance matrix to make routing more flexible?
   * https://developers.google.com/maps/documentation/distance-matrix/intro
   * http://forio.com/about/blog/route-optimizer-julia-google-maps-epicenter/

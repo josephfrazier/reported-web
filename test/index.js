@@ -17,6 +17,8 @@ const grid = [
   ['10 Union Sq. East, NYC', '225 W. 57th St, NYC', '609 Columbus Ave, NYC', '2217 7th Ave, NYC']
 ]
 
+const babyFoodStops = [ '441 West 26th St, NYC', '137 East 2nd St, NYC' ]
+
 test('Cranksgiving 11 NYC (no baby food)', function (t) {
   t.plan(1)
 
@@ -61,10 +63,7 @@ test('Cranksgiving 11 NYC (w/ baby food) (sorted by distance)', function (t) {
     origin,
     destination,
     waypointGrid: grid,
-    babyFoodStops: [
-      '441 West 26th St, NYC',
-      '137 East 2nd St, NYC'
-    ]
+    babyFoodStops
   }).then(function ({route, waypoints}) {
     t.deepEqual(waypoints, [ '452 W 43rd St., NYC', '289 Columbus Ave, NYC', '441 West 26th St, NYC', '10 Union Sq. East, NYC', '137 East 2nd St, NYC', '5 St. James Pl, NYC' ])
     t.comment(getBestWaypoints.getMapsLink({origin, destination, waypoints}))
@@ -80,10 +79,7 @@ test('Cranksgiving 11 NYC (w/ baby food) (sorted by duration)', function (t) {
     origin,
     destination,
     waypointGrid: grid,
-    babyFoodStops: [
-      '441 West 26th St, NYC',
-      '137 East 2nd St, NYC'
-    ],
+    babyFoodStops,
     routeSortKey: 'duration'
   }).then(function ({route, waypoints}) {
     t.deepEqual(waypoints, [ '225 W. 57th St, NYC', '289 Columbus Ave, NYC', '441 West 26th St, NYC', '512 2nd Ave, NYC', '137 East 2nd St, NYC', '5 St. James Pl, NYC' ])

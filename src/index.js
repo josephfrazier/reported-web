@@ -34,7 +34,13 @@ function getOptimizedRoutes ({
   // 50 is the max free rate limit, according to
   // https://developers.google.com/maps/documentation/directions/usage-limits
   // https://googlemaps.github.io/google-maps-services-js/docs/module-@google_maps.html#.createClient
-  const googleMapsClient = googleMaps.createClient({key, Promise, rate: {limit: 50}})
+  const googleMapsClient = googleMaps.createClient({
+    key,
+    Promise,
+    rate: {
+      limit: 50
+    }
+  })
 
   const routePromises = waypointsSets.map(function (waypoints) {
     waypoints = waypoints.sort()

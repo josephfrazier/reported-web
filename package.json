@@ -4,7 +4,9 @@
   "description": "",
   "main": "src/index.js",
   "scripts": {
-    "test": "standard && tape test/**/*.js"
+    "lint": "standard",
+    "pretest": "npm run lint",
+    "test": "tape test/**/*.js"
   },
   "repository": {
     "type": "git",

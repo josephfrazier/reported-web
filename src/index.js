@@ -1,6 +1,7 @@
 'use strict'
 
 const googleMaps = require('@google/maps')
+const makeUrlRequest = require('@google/maps/lib/internal/make-url-request.js')
 const querystring = require('querystring')
 const sortOn = require('sort-on')
 
@@ -27,6 +28,7 @@ function getOptimizedRoutes ({
     waypointGrid,
     waypointOptions,
     key = process.env.GOOGLE_MAPS_API_KEY,
+    corsProxy = '',
     babyFoodStops = [],
     memoizeFn = (f => f)
   }) {
@@ -39,6 +41,9 @@ function getOptimizedRoutes ({
     Promise,
     rate: {
       limit: 50
+    },
+    makeUrlRequest: function (url, onSuccess, onError) {
+      return makeUrlRequest(corsProxy + url, onSuccess, onError)
     }
   })
 

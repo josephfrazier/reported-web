@@ -2,7 +2,6 @@
 
 const googleMaps = require('@google/maps')
 const makeUrlRequest = require('@google/maps/lib/internal/make-url-request.js')
-const querystring = require('querystring')
 const sortOn = require('sort-on')
 
 const enumerateWaypointSets = require('./rook.js')
@@ -92,7 +91,7 @@ function reorderWaypoints ({route, waypoints}) {
 
 function getMapsLink ({origin, destination, waypoints}) {
   const allWaypoints = [origin].concat(waypoints).concat(destination)
-  const escapedWaypoints = allWaypoints.map(querystring.escape).join('/')
+  const escapedWaypoints = allWaypoints.map(encodeURIComponent).join('/')
   const dataString = '!4m2!4m1!3e1' // https://webapps.stackexchange.com/questions/67190/how-can-i-encode-my-preference-of-biking-walking-public-transport-in-a-google-ma/78800#78800
   return `https://www.google.com/maps/dir/${escapedWaypoints}/data=${dataString}`
 }

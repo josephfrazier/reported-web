@@ -28,8 +28,10 @@ test('Cranksgiving 11 NYC (no baby food)', function (t) {
     destination,
     waypointGrid: grid
   }).then(function ({route, waypoints}) {
-    t.deepEqual(waypoints, [ '225 W. 57th St, NYC', '289 Columbus Ave, NYC', '512 2nd Ave, NYC', '5 St. James Pl, NYC' ])
-    t.comment(getBestWaypoints.getMapsLink({origin, destination, waypoints}))
+    const expected = [ '225 W. 57th St, NYC', '289 Columbus Ave, NYC', '512 2nd Ave, NYC', '5 St. James Pl, NYC' ]
+    t.deepEqual(waypoints, expected)
+    t.comment('expected:\n' + getBestWaypoints.getMapsLink({origin, destination, waypoints: expected}))
+    t.comment('actual:\n' + getBestWaypoints.getMapsLink({origin, destination, waypoints}))
     t.comment('')
   }).catch(t.end)
 })
@@ -45,12 +47,14 @@ test('baby food stops should not come first', function (t) {
     // this is very slightly closer to the origin than is the first stop otherwise
     babyFoodStops: ['891 8th Ave, New York, NY 10019']
   }).then(function ({route, waypoints}) {
-    t.deepEqual(waypoints, [ '452 W 43rd St., NYC', '891 8th Ave, New York, NY 10019', '609 Columbus Ave, NYC', '221-225 8th Ave, 10011', '5 St. James Pl, NYC' ])
+    const expected = [ '452 W 43rd St., NYC', '891 8th Ave, New York, NY 10019', '609 Columbus Ave, NYC', '221-225 8th Ave, 10011', '5 St. James Pl, NYC' ]
+    t.deepEqual(waypoints, expected)
     // TODO this is not optimal. For example, here's the corresponding map:
     // https://goo.gl/maps/qgPt6hpN41u
     // but here is one that would be faster:
     // https://goo.gl/maps/rzZyuRgySTR2
-    t.comment(getBestWaypoints.getMapsLink({origin, destination, waypoints}))
+    t.comment('expected:\n' + getBestWaypoints.getMapsLink({origin, destination, waypoints: expected}))
+    t.comment('actual:\n' + getBestWaypoints.getMapsLink({origin, destination, waypoints}))
     t.comment('')
   }).catch(t.end)
 })
@@ -65,8 +69,10 @@ test('Cranksgiving 11 NYC (w/ baby food) (sorted by distance)', function (t) {
     waypointGrid: grid,
     babyFoodStops
   }).then(function ({route, waypoints}) {
-    t.deepEqual(waypoints, [ '452 W 43rd St., NYC', '289 Columbus Ave, NYC', '441 West 26th St, NYC', '10 Union Sq. East, NYC', '137 East 2nd St, NYC', '5 St. James Pl, NYC' ])
-    t.comment(getBestWaypoints.getMapsLink({origin, destination, waypoints}))
+    const expected = [ '452 W 43rd St., NYC', '289 Columbus Ave, NYC', '441 West 26th St, NYC', '10 Union Sq. East, NYC', '137 East 2nd St, NYC', '5 St. James Pl, NYC' ]
+    t.deepEqual(waypoints, expected)
+    t.comment('expected:\n' + getBestWaypoints.getMapsLink({origin, destination, waypoints: expected}))
+    t.comment('actual:\n' + getBestWaypoints.getMapsLink({origin, destination, waypoints}))
     t.comment('')
   }).catch(t.end)
 })
@@ -82,8 +88,10 @@ test('Cranksgiving 11 NYC (w/ baby food) (sorted by duration)', function (t) {
     babyFoodStops,
     routeSortKey: 'duration'
   }).then(function ({route, waypoints}) {
-    t.deepEqual(waypoints, [ '225 W. 57th St, NYC', '289 Columbus Ave, NYC', '441 West 26th St, NYC', '512 2nd Ave, NYC', '137 East 2nd St, NYC', '5 St. James Pl, NYC' ])
-    t.comment(getBestWaypoints.getMapsLink({origin, destination, waypoints}))
+    const expected = [ '225 W. 57th St, NYC', '289 Columbus Ave, NYC', '441 West 26th St, NYC', '512 2nd Ave, NYC', '137 East 2nd St, NYC', '5 St. James Pl, NYC' ]
+    t.deepEqual(waypoints, expected)
+    t.comment('expected:\n' + getBestWaypoints.getMapsLink({origin, destination, waypoints: expected}))
+    t.comment('actual:\n' + getBestWaypoints.getMapsLink({origin, destination, waypoints}))
     t.comment('')
   }).catch(t.end)
 })
@@ -101,8 +109,10 @@ test('Cranksgiving 11 NYC (w/o eliminating columns)', function (t) {
     }
   }).then(function ({route, waypoints}) {
     t.ok(getBestWaypoints.getLegsTotal({route, property: 'distance'}) < 16238, 'route is shorter without eliminating columns')
-    t.deepEqual(waypoints, [ '452 W 43rd St., NYC', '580 9th Ave, NYC', '221-225 8th Ave, 10011', '10 Union Sq. East, NYC' ])
-    t.comment(getBestWaypoints.getMapsLink({origin, destination, waypoints}))
+    const expected = [ '452 W 43rd St., NYC', '580 9th Ave, NYC', '221-225 8th Ave, 10011', '10 Union Sq. East, NYC' ]
+    t.deepEqual(waypoints, expected)
+    t.comment('expected:\n' + getBestWaypoints.getMapsLink({origin, destination, waypoints: expected}))
+    t.comment('actual:\n' + getBestWaypoints.getMapsLink({origin, destination, waypoints}))
     t.comment('')
   }).catch(t.end)
 })

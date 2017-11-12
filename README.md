@@ -14,3 +14,5 @@
 * https://graphhopper.com/api/1/docs/route-optimization/
 * http://openrouteservice.org/
 * http://www.optaplanner.org/learn/useCases/vehicleRoutingProblem.html
+* https://www.routexl.com/
+* https://developer.here.com/documentation/routing-waypoints/topics/optimizing-waypoints.html

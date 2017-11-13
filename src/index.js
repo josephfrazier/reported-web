@@ -11,6 +11,7 @@ module.exports.getOptimizedRoutes = getOptimizedRoutes
 module.exports.sortRoutesBy = sortRoutesBy
 module.exports.getMapsLink = getMapsLink
 module.exports.getLegsTotal = getLegsTotal
+module.exports.testData = require('./testData')
 
 // args is an object that looks like the arguments for `getOptimizedRoutes`
 // It can also have a `routeSortKey` property ('distance' or 'duration')

@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "description": "",
   "main": "lib/index.js",
+  "files": ["lib"],
   "scripts": {
     "lint": "standard",
     "build": "babel src -d lib",

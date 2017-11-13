@@ -28,7 +28,7 @@ test('Cranksgiving 11 NYC (no baby food)', function (t) {
     destination,
     waypointGrid: grid
   }).then(function ({route, waypoints}) {
-    const expected = [ '225 W. 57th St, NYC', '289 Columbus Ave, NYC', '512 2nd Ave, NYC', '5 St James Pl, New York, NY 10038' ]
+    const expected = [ grid[3][1], grid[0][2], grid[1][0], grid[2][3] ]
     t.deepEqual(waypoints, expected)
     t.equal(
       getBestWaypoints.getMapsLink({origin, destination, waypoints}),
@@ -48,7 +48,7 @@ test('baby food stops should not come first', function (t) {
     // this is very slightly closer to the origin than is the first stop otherwise
     babyFoodStops: ['891 8th Ave, New York, NY 10019']
   }).then(function ({route, waypoints}) {
-    const expected = [ '452 W 43rd St., NYC', '891 8th Ave, New York, NY 10019', '289 Columbus Ave, NYC', '10 Union Sq. East, NYC', '5 St James Pl, New York, NY 10038' ]
+    const expected = [ grid[1][1], '891 8th Ave, New York, NY 10019', grid[0][2], grid[3][0], grid[2][3] ]
     t.deepEqual(waypoints, expected)
     // TODO this is not optimal. For example, here's the corresponding map:
     // https://goo.gl/maps/qgPt6hpN41u
@@ -71,7 +71,7 @@ test('Cranksgiving 11 NYC (w/ baby food) (sorted by distance)', function (t) {
     waypointGrid: grid,
     babyFoodStops
   }).then(function ({route, waypoints}) {
-    const expected = [ '452 W 43rd St., NYC', '289 Columbus Ave, NYC', '441 West 26th St, NYC', '10 Union Sq. East, NYC', '137 East 2nd St, NYC', '5 St James Pl, New York, NY 10038' ]
+    const expected = [ grid[1][1], grid[0][2], babyFoodStops[0], grid[3][0], babyFoodStops[1], grid[2][3] ]
     t.deepEqual(waypoints, expected)
     t.equal(
       getBestWaypoints.getMapsLink({origin, destination, waypoints}),
@@ -91,7 +91,7 @@ test('Cranksgiving 11 NYC (w/ baby food) (sorted by duration)', function (t) {
     babyFoodStops,
     routeSortKey: 'duration'
   }).then(function ({route, waypoints}) {
-    const expected = [ '225 W. 57th St, NYC', '289 Columbus Ave, NYC', '441 West 26th St, NYC', '512 2nd Ave, NYC', '137 East 2nd St, NYC', '5 St James Pl, New York, NY 10038' ]
+    const expected = [ grid[3][1], grid[0][2], babyFoodStops[0], grid[1][0], babyFoodStops[1], grid[2][3] ]
     t.deepEqual(waypoints, expected)
     t.equal(
       getBestWaypoints.getMapsLink({origin, destination, waypoints}),
@@ -113,7 +113,7 @@ test('Cranksgiving 11 NYC (w/o eliminating columns)', function (t) {
     }
   }).then(function ({route, waypoints}) {
     t.ok(getBestWaypoints.getLegsTotal({route, property: 'distance'}) < 16238, 'route is shorter without eliminating columns')
-    const expected = [ '452 W 43rd St., NYC', '580 9th Ave, NYC', '221-225 8th Ave, 10011', '10 Union Sq. East, NYC' ]
+    const expected = [ grid[1][1], grid[2][1], grid[0][0], grid[3][0] ]
     t.deepEqual(waypoints, expected)
     t.equal(
       getBestWaypoints.getMapsLink({origin, destination, waypoints}),

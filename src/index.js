@@ -89,9 +89,16 @@ function reorderWaypoints ({route, waypoints}) {
   return route.waypoint_order.map((index) => waypoints[index])
 }
 
+// https://stackoverflow.com/questions/2660201/what-parameters-should-i-use-in-a-google-maps-url-to-go-to-a-lat-lon/44859423#44859423
+// https://developers.google.com/maps/documentation/urls/guide#directions-action
 function getMapsLink ({origin, destination, waypoints}) {
-  const allWaypoints = [origin].concat(waypoints).concat(destination)
-  const escapedWaypoints = allWaypoints.map(encodeURIComponent).join('/')
-  const dataString = '!4m2!4m1!3e1' // https://webapps.stackexchange.com/questions/67190/how-can-i-encode-my-preference-of-biking-walking-public-transport-in-a-google-ma/78800#78800
-  return `https://www.google.com/maps/dir/${escapedWaypoints}/data=${dataString}`
+  const joinedWaypoints = waypoints.join('|')
+
+  return `https://www.google.com/maps/dir/?api=1&origin=${
+    encodeURIComponent(origin)
+  }&destination=${
+    encodeURIComponent(destination)
+  }&waypoints=${
+    encodeURIComponent(joinedWaypoints)
+  }&travelmode=bicycling`
 }

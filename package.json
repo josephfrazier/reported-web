@@ -6,8 +6,9 @@
   "files": ["lib"],
   "scripts": {
     "lint": "standard",
+    "prebuild": "npm run lint",
     "build": "babel src -d lib",
-    "pretest": "npm run lint && npm run build",
+    "pretest": "npm run build",
     "test": "tape test/**/*.js",
     "prepare": "npm run build"
   },

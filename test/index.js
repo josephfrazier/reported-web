@@ -6,18 +6,41 @@ const cachePath = require('path').join(__dirname, '..', 'cache')
 const memoize = require('memoize-fs')({ cachePath })
 
 const memoizeFn = memoize.fn
-const origin = 'Hudson Yards Park'
-const destination = '440 Grand St'
+const origin = 'Hudson Yards Park, West 36th Street, New York, NY, United States'
+const destination = `Saint Mary's Church, 440 Grand Street, New York, NY, United States`
 
 // https://farm3.static.flickr.com/2778/4134507221_d0c9ec1b7c_o.jpg
 const grid = [
-  ['221-225 8th Ave, 10011', '907 8th Ave, NYC', '289 Columbus Ave, NYC', '25 University Pl, NYC'],
-  ['512 2nd Ave, NYC', '452 W 43rd St., NYC', '1407 Lexington Ave, NYC', '316 Greenwich St, NYC'],
-  ['311 E 23rd St, NYC', '580 9th Ave, NYC', '2704 Broadway, NYC', '5 St James Pl, New York, NY 10038'],
-  ['10 Union Sq. East, NYC', '225 W. 57th St, NYC', '609 Columbus Ave, NYC', '2217 7th Ave, NYC']
+  [
+    `Gristede's Foods, 221 8th Avenue, New York, NY, United States`,
+    `Gristedes, 907 8th Avenue, New York, NY, United States`,
+    `Pioneer Supermarket, 289 Columbus Avenue, New York, NY, United States`,
+    `Gristede's Foods, 25 University Place, New York, NY, United States`
+  ],
+  [
+    `512 2nd Avenue, New York, NY, United States`,
+    `Food Emporium, 452 W 43rd St, New York, NY, United States`,
+    `Pioneer Supermarket, 1407 Lexington Avenue, New York, NY, United States`,
+    `316 Greenwich Street, New York, NY, United States`
+  ],
+  [
+    `Morton Williams Supermarkets, 311 E 23rd St, New York, NY, United States`,
+    `580 9th Avenue, New York, NY, United States`,
+    `2704 Broadway, New York, NY, United States`,
+    `C-Town Supermarkets, 5 St James Pl, New York, NY, United States`
+  ],
+  [
+    `The Food Emporium, 10 Union Square East, New York, NY, United States`,
+    `225 West 57th Street, New York, NY, United States`,
+    `609 Columbus Avenue, New York, NY, United States`,
+    `2217 7th Avenue, New York, NY, United States`
+  ]
 ]
 
-const babyFoodStops = [ '441 West 26th St, NYC', '137 East 2nd St, NYC' ]
+const babyFoodStops = [
+  `Hudson Guild, 441 West 26th Street, New York, NY, United States`,
+  `137 East 2nd Street, New York, NY, United States`
+]
 
 test('Cranksgiving 11 NYC (no baby food)', function (t) {
   t.plan(2)

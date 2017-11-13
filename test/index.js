@@ -48,7 +48,7 @@ test('baby food stops should not come first', function (t) {
     // this is very slightly closer to the origin than is the first stop otherwise
     babyFoodStops: ['891 8th Ave, New York, NY 10019']
   }).then(function ({route, waypoints}) {
-    const expected = [ '452 W 43rd St., NYC', '891 8th Ave, New York, NY 10019', '609 Columbus Ave, NYC', '221-225 8th Ave, 10011', '5 St James Pl, New York, NY 10038' ]
+    const expected = [ '452 W 43rd St., NYC', '891 8th Ave, New York, NY 10019', '289 Columbus Ave, NYC', '10 Union Sq. East, NYC', '5 St James Pl, New York, NY 10038' ]
     t.deepEqual(waypoints, expected)
     // TODO this is not optimal. For example, here's the corresponding map:
     // https://goo.gl/maps/qgPt6hpN41u

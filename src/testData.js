@@ -1,5 +1,5 @@
-const origin = 'Hudson Yards Park, West 36th Street, New York, NY, United States'
-const destination = `Saint Mary's Church, 440 Grand Street, New York, NY, United States`
+const origin = '539 W 34th St, New York, NY 10001'
+const destination = `440 Grand Street, New York, NY, United States`
 
 // https://farm3.static.flickr.com/2778/4134507221_d0c9ec1b7c_o.jpg
 const grid = [

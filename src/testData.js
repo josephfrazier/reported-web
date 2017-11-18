@@ -19,7 +19,7 @@ const grid = [
     `311 E 23rd St, New York, NY, United States`,
     `580 9th Avenue, New York, NY, United States`,
     `2704 Broadway, New York, NY, United States`,
-    `5 St James Pl, New York, NY, United States`
+    `5 St James Pl, Manhattan, New York, NY, United States`
   ],
   [
     `10 Union Square East, New York, NY, United States`,

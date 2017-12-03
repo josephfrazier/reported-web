@@ -6,6 +6,8 @@ const sortOn = require('sort-on')
 
 const enumerateWaypointSets = require('./rook.js')
 
+const DEFAULT_MODE = 'bicycling'
+
 module.exports = getBestWaypoints
 module.exports.getOptimizedRoutes = getOptimizedRoutes
 module.exports.sortRoutesBy = sortRoutesBy
@@ -30,6 +32,7 @@ function getOptimizedRoutes ({
     key = process.env.GOOGLE_MAPS_API_KEY,
     corsProxy = '',
     babyFoodStops = [],
+    mode = DEFAULT_MODE,
     memoizeFn = (f => f)
   }) {
   const waypointsSets = enumerateWaypointSets(waypointGrid, waypointOptions).map(waypoints => waypoints.concat(babyFoodStops))
@@ -59,12 +62,12 @@ function getOptimizedRoutes ({
   })
 }
 
-function getOptimizedRoute ({origin, destination, waypoints, googleMapsClient}) {
+function getOptimizedRoute ({origin, destination, waypoints, googleMapsClient, mode = DEFAULT_MODE}) {
   return googleMapsClient.directions({
     origin,
     destination,
     waypoints: 'optimize:true|' + waypoints.join('|'),
-    mode: 'bicycling'
+    mode
   }).asPromise().then(function (response) {
     const route = response.json.routes[0]
     return {
@@ -92,7 +95,7 @@ function reorderWaypoints ({route, waypoints}) {
 
 // https://stackoverflow.com/questions/2660201/what-parameters-should-i-use-in-a-google-maps-url-to-go-to-a-lat-lon/44859423#44859423
 // https://developers.google.com/maps/documentation/urls/guide#directions-action
-function getMapsLink ({origin, destination, waypoints}) {
+function getMapsLink ({origin, destination, waypoints, mode = DEFAULT_MODE}) {
   const joinedWaypoints = waypoints.join('|')
 
   return `https://www.google.com/maps/dir/?api=1&origin=${
@@ -101,5 +104,7 @@ function getMapsLink ({origin, destination, waypoints}) {
     encodeURIComponent(destination)
   }&waypoints=${
     encodeURIComponent(joinedWaypoints)
-  }&travelmode=bicycling`
+  }&travelmode=${
+    encodeURIComponent(mode)
+  }`
 }

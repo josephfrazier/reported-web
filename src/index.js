@@ -11,6 +11,7 @@ const DEFAULT_MODE = 'bicycling'
 module.exports = getBestWaypoints
 module.exports.getOptimizedRoutes = getOptimizedRoutes
 module.exports.getOptimizedRoute = getOptimizedRoute
+module.exports.reorderWaypoints = reorderWaypoints
 module.exports.sortRoutesBy = sortRoutesBy
 module.exports.getMapsLink = getMapsLink
 module.exports.getLegsTotal = getLegsTotal

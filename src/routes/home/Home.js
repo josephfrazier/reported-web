@@ -7,39 +7,72 @@
  * LICENSE.txt file in the root directory of this source tree.
  */
 
+import promisify from 'util.promisify';
+
 import React from 'react';
-import PropTypes from 'prop-types';
 import withStyles from 'isomorphic-style-loader/lib/withStyles';
+import FileReaderInput from 'react-file-reader-input';
+import toBuffer from 'blob-to-buffer';
+import { ExifImage } from 'exif';
 import s from './Home.css';
 
 class Home extends React.Component {
-  static propTypes = {
-    news: PropTypes.arrayOf(
-      PropTypes.shape({
-        title: PropTypes.string.isRequired,
-        link: PropTypes.string.isRequired,
-        content: PropTypes.string,
-      }),
-    ).isRequired,
+  state = {};
+
+  // adapted from https://github.com/ngokevin/react-file-reader-input/tree/f970257f271b8c3bba9d529ffdbfa4f4731e0799#usage
+  handleChange = async (_, results) => {
+    for (const result of results) {
+      const [, file] = result;
+      try {
+        const image = await promisify(toBuffer)(file); // eslint-disable-line no-await-in-loop
+        const exifData = await promisify(ExifImage)({ image }); // eslint-disable-line no-await-in-loop
+
+        console.info(JSON.stringify(exifData, null, 2)); // Do something with your data!
+
+        const { gps, exif: { CreateDate } } = exifData;
+        const CreateDateJs = new Date(
+          CreateDate.replace(':', '/').replace(':', '/'),
+        );
+        console.info(JSON.stringify(gps, null, 2)); // Do something with your data!
+        console.info(JSON.stringify(CreateDateJs, null, 2)); // Do something with your data!
+        // below adapted from http://danielhindrikes.se/web/get-coordinates-from-photo-with-javascript/
+        let lat = gps.GPSLatitude;
+        let lon = gps.GPSLongitude;
+
+        // Convert coordinates to WGS84 decimal
+        const latRef = gps.GPSLatitudeRef || 'N';
+        const lonRef = gps.GPSLongitudeRef || 'W';
+        lat =
+          (lat[0] + lat[1] / 60 + lat[2] / 3600) * (latRef === 'N' ? 1 : -1);
+        lon =
+          (lon[0] + lon[1] / 60 + lon[2] / 3600) * (lonRef === 'W' ? -1 : 1);
+        // above adapted from http://danielhindrikes.se/web/get-coordinates-from-photo-with-javascript/
+
+        console.info(JSON.stringify({ lat, lon }, null, 2));
+        this.setState({ lat, lon, CreateDate: CreateDateJs.toString() });
+      } catch (err) {
+        console.error(`Error: ${err.message}`);
+      }
+    }
   };
 
   render() {
     return (
       <div className={s.root}>
         <div className={s.container}>
-          <h1>React.js News</h1>
-          {this.props.news.map(item => (
-            <article key={item.link} className={s.newsItem}>
-              <h1 className={s.newsTitle}>
-                <a href={item.link}>{item.title}</a>
-              </h1>
-              <div
-                className={s.newsDesc}
-                // eslint-disable-next-line react/no-danger
-                dangerouslySetInnerHTML={{ __html: item.content }}
-              />
-            </article>
-          ))}
+          <br />
+
+          <FileReaderInput
+            accept="image/*"
+            as="buffer"
+            onChange={this.handleChange}
+          >
+            <button>Select/Take a picture</button>
+          </FileReaderInput>
+
+          <p>Latitude: {this.state.lat}</p>
+          <p>Longitude: {this.state.lon}</p>
+          <p>Create Date: {this.state.CreateDate}</p>
         </div>
       </div>
     );

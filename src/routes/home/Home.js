@@ -78,9 +78,21 @@ class Home extends React.Component {
             <button>Select/Take a picture</button>
           </FileReaderInput>
 
-          <p>Latitude: {this.state.lat}</p>
-          <p>Longitude: {this.state.lon}</p>
-          <p>Create Date: {this.state.CreateDate}</p>
+          <p>Cab Color: TODO yellow/green/black radio buttons</p>
+          <p>License/Medallion: TODO input, openALPR</p>
+          <p>I was: TODO cyclist/walker/passenger dropdown</p>
+          <p>Type: TODO dropdown from native app</p>
+          <p>
+            Where: {this.state.lat}, {this.state.lon} TODO reverse geocode,
+            allow edits
+          </p>
+          <p>When: {this.state.CreateDate} TODO allow edits</p>
+          <p>Description: TODO text box</p>
+          <p>
+            TODO checkbox: Allow the photo, description, category, and location
+            to be publicly displayed
+          </p>
+          <p>TODO submit button</p>
         </div>
       </div>
     );

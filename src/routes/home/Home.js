@@ -99,10 +99,12 @@ class Home extends React.Component {
           <p>Type: TODO dropdown from native app</p>
           */}
           <p>
-            Where: {this.state.lat}, {this.state.lon} TODO reverse geocode,
-            allow edits
+            Where: {this.state.lat}, {this.state.lon}
+            {/* TODO reverse geocode, allow edits */}
           </p>
-          <p>When: {this.state.CreateDate} TODO allow edits</p>
+          <p>
+            When: {this.state.CreateDate} {/* TODO allow edits */}
+          </p>
           {/*
           <p>Description: TODO text box</p>
           <p>

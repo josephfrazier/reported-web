@@ -14,6 +14,7 @@ import withStyles from 'isomorphic-style-loader/lib/withStyles';
 import FileReaderInput from 'react-file-reader-input';
 import toBuffer from 'blob-to-buffer';
 import { ExifImage } from 'exif';
+import axios from 'axios';
 import s from './Home.css';
 
 class Home extends React.Component {
@@ -31,10 +32,23 @@ class Home extends React.Component {
 
         this.extractLocation({ exifData });
         this.extractDate({ exifData });
+        this.extractPlate({ image });
       } catch (err) {
         console.error(`Error: ${err.message}`);
       }
     }
+  };
+
+  // adapted from https://github.com/openalpr/cloudapi/tree/8141c1ba57f03df4f53430c6e5e389b39714d0e0/javascript#getting-started
+  extractPlate = async ({ image }) => {
+    const imageBytes = image.toString('base64'); // {String} The image file that you wish to analyze encoded in base64
+
+    const { data } = await axios.post('/openalpr', {
+      imageBytes,
+    });
+    console.info(`API called successfully. Returned data: ${data}`);
+    const { plate } = data.results[0];
+    this.setState({ plate });
   };
 
   extractDate = ({ exifData }) => {
@@ -78,21 +92,25 @@ class Home extends React.Component {
             <button>Select/Take a picture</button>
           </FileReaderInput>
 
-          <p>Cab Color: TODO yellow/green/black radio buttons</p>
-          <p>License/Medallion: TODO input, openALPR</p>
+          {/* <p>Cab Color: TODO yellow/green/black radio buttons</p> */}
+          <p>License/Medallion: {this.state.plate}</p>
+          {/*
           <p>I was: TODO cyclist/walker/passenger dropdown</p>
           <p>Type: TODO dropdown from native app</p>
+          */}
           <p>
             Where: {this.state.lat}, {this.state.lon} TODO reverse geocode,
             allow edits
           </p>
           <p>When: {this.state.CreateDate} TODO allow edits</p>
+          {/*
           <p>Description: TODO text box</p>
           <p>
             TODO checkbox: Allow the photo, description, category, and location
             to be publicly displayed
           </p>
           <p>TODO submit button</p>
+          */}
         </div>
       </div>
     );

@@ -26,13 +26,13 @@ class Home extends React.Component {
       const [, file] = result;
       try {
         const image = await promisify(toBuffer)(file); // eslint-disable-line no-await-in-loop
+        this.extractPlate({ image });
         const exifData = await promisify(ExifImage)({ image }); // eslint-disable-line no-await-in-loop
 
         console.info(JSON.stringify(exifData, null, 2)); // Do something with your data!
 
         this.extractLocation({ exifData });
         this.extractDate({ exifData });
-        this.extractPlate({ image });
       } catch (err) {
         console.error(`Error: ${err.message}`);
       }

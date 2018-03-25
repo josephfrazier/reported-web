@@ -20,7 +20,8 @@ import s from './Home.css';
 
 class Home extends React.Component {
   state = {
-    CreateDate: new Date().toString(),
+    // TODO dedupe `.toISOString().replace(/\..*/g, '')`
+    CreateDate: new Date().toISOString().replace(/\..*/g, ''),
   };
 
   componentDidMount() {
@@ -79,7 +80,10 @@ class Home extends React.Component {
     );
     console.info(JSON.stringify(CreateDateJs, null, 2)); // Do something with your data!
 
-    this.setState({ CreateDate: CreateDateJs.toString() });
+    // TODO dedupe `.toISOString().replace(/\..*/g, '')`
+    this.setState({
+      CreateDate: CreateDateJs.toISOString().replace(/\..*/g, ''),
+    });
   };
 
   extractLocation = ({ exifData }) => {
@@ -124,7 +128,15 @@ class Home extends React.Component {
             {/* TODO reverse geocode, allow edits */}
           </p>
           <p>
-            When: {this.state.CreateDate} {/* TODO allow edits */}
+            {/* TODO use local timezone */}
+            When (UTC):{' '}
+            <input
+              type="datetime-local"
+              value={this.state.CreateDate}
+              onChange={event => {
+                this.setState({ CreateDate: event.target.value });
+              }}
+            />
           </p>
           {/*
           <p>Description: TODO text box</p>

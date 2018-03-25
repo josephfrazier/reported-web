@@ -3173,11 +3173,12 @@ execall@^1.0.0:
   dependencies:
     clone-regexp "^1.0.0"
 
-exif@^0.6.0:
+"exif@https://github.com/josephfrazier/node-exif#isbuffer":
   version "0.6.0"
-  resolved "https://registry.yarnpkg.com/exif/-/exif-0.6.0.tgz#60a62668076542cb7e4f57199d4ac6f37d2c5f4a"
+  resolved "https://github.com/josephfrazier/node-exif#1652ac5735211c3bc6940a6a91ff7aba31f83a3d"
   dependencies:
     debug "^2.2"
+    is-buffer "^2.0.2"
 
 exit-hook@^1.0.0:
   version "1.1.1"
@@ -4306,6 +4307,10 @@ is-boolean-object@^1.0.0:
 is-buffer@^1.1.4, is-buffer@^1.1.5:
   version "1.1.6"
   resolved "https://registry.yarnpkg.com/is-buffer/-/is-buffer-1.1.6.tgz#efaa2ea9daa0d7ab2ea13a97b2b8ad51fefbe8be"
+
+is-buffer@^2.0.2:
+  version "2.0.2"
+  resolved "https://registry.yarnpkg.com/is-buffer/-/is-buffer-2.0.2.tgz#f83a0c5bc453f6431bf83cc2ceff6cbc9d50a83b"
 
 is-builtin-module@^1.0.0:
   version "1.0.0"

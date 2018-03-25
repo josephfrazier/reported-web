@@ -60,7 +60,7 @@ app.set('trust proxy', config.trustProxy);
 app.use(express.static(path.resolve(__dirname, 'public')));
 app.use(cookieParser());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json({ limit: '2mb' }));
+app.use(bodyParser.json({ limit: '10mb' }));
 
 //
 // Authentication

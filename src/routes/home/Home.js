@@ -15,10 +15,17 @@ import FileReaderInput from 'react-file-reader-input';
 import toBuffer from 'blob-to-buffer';
 import { ExifImage } from 'exif';
 import axios from 'axios';
+import promisedLocation from 'promised-location';
 import s from './Home.css';
 
 class Home extends React.Component {
   state = {};
+
+  componentDidMount() {
+    promisedLocation().then(({ coords: { latitude: lat, longitude: lon } }) => {
+      this.setState({ lat, lon });
+    });
+  }
 
   // adapted from https://github.com/ngokevin/react-file-reader-input/tree/f970257f271b8c3bba9d529ffdbfa4f4731e0799#usage
   handleChange = async (_, results) => {

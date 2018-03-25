@@ -19,7 +19,9 @@ import promisedLocation from 'promised-location';
 import s from './Home.css';
 
 class Home extends React.Component {
-  state = {};
+  state = {
+    CreateDate: new Date().toString(),
+  };
 
   componentDidMount() {
     promisedLocation().then(({ coords: { latitude: lat, longitude: lon } }) => {

@@ -25,8 +25,8 @@ class Home extends React.Component {
   };
 
   componentDidMount() {
-    promisedLocation().then(({ coords: { latitude: lat, longitude: lon } }) => {
-      this.setState({ lat, lon });
+    promisedLocation().then(({ coords: { latitude: lat, longitude: lng } }) => {
+      this.setState({ lat, lng });
     });
   }
 
@@ -91,16 +91,16 @@ class Home extends React.Component {
     console.info(JSON.stringify(gps, null, 2)); // Do something with your data!
     // below adapted from http://danielhindrikes.se/web/get-coordinates-from-photo-with-javascript/
     let lat = gps.GPSLatitude;
-    let lon = gps.GPSLongitude;
+    let lng = gps.GPSLongitude;
 
     // Convert coordinates to WGS84 decimal
     const latRef = gps.GPSLatitudeRef || 'N';
-    const lonRef = gps.GPSLongitudeRef || 'W';
+    const lngRef = gps.GPSLongitudeRef || 'W';
     lat = (lat[0] + lat[1] / 60 + lat[2] / 3600) * (latRef === 'N' ? 1 : -1);
-    lon = (lon[0] + lon[1] / 60 + lon[2] / 3600) * (lonRef === 'W' ? -1 : 1);
+    lng = (lng[0] + lng[1] / 60 + lng[2] / 3600) * (lngRef === 'W' ? -1 : 1);
     // above adapted from http://danielhindrikes.se/web/get-coordinates-from-photo-with-javascript/
-    console.info(JSON.stringify({ lat, lon }, null, 2));
-    this.setState({ lat, lon });
+    console.info(JSON.stringify({ lat, lng }, null, 2));
+    this.setState({ lat, lng });
   };
 
   render() {
@@ -124,7 +124,7 @@ class Home extends React.Component {
           <p>Type: TODO dropdown from native app</p>
           */}
           <p>
-            Where: {this.state.lat}, {this.state.lon}
+            Where: {this.state.lat}, {this.state.lng}
             {/* TODO reverse geocode, allow edits */}
           </p>
           <p>

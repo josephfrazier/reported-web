@@ -140,6 +140,11 @@ class Home extends React.Component {
                 lat: this.state.lat,
                 lng: this.state.lng,
               }}
+              onDragEnd={({ latLng }) => {
+                const lat = latLng.lat();
+                const lng = latLng.lng();
+                this.setState({ lat, lng });
+              }}
             />
             {/* TODO reverse geocode, allow edits */}
           </p>
@@ -180,11 +185,13 @@ const MyMapComponent = compose(
   withScriptjs,
   withGoogleMap,
 )(props => {
-  const { position } = props;
+  const { position, onDragEnd } = props;
 
   return (
+    // TODO To set position: Instead of dragging marker, keep marker centered and drag map
+    // https://github.com/tomchentw/react-google-maps/issues/730
     <GoogleMap defaultZoom={16} center={position}>
-      <Marker position={position} />
+      <Marker position={position} draggable onDragEnd={onDragEnd} />
     </GoogleMap>
   );
 });

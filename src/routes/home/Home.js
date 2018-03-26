@@ -16,12 +16,21 @@ import toBuffer from 'blob-to-buffer';
 import { ExifImage } from 'exif';
 import axios from 'axios';
 import promisedLocation from 'promised-location';
+import { compose, withProps } from 'recompose';
+import {
+  withScriptjs,
+  withGoogleMap,
+  GoogleMap,
+  Marker,
+} from 'react-google-maps';
 import s from './Home.css';
 
 class Home extends React.Component {
   state = {
     // TODO dedupe `.toISOString().replace(/\..*/g, '')`
     CreateDate: new Date().toISOString().replace(/\..*/g, ''),
+    lat: 40.7128,
+    lng: -74.006,
   };
 
   componentDidMount() {
@@ -125,6 +134,13 @@ class Home extends React.Component {
           */}
           <p>
             Where: {this.state.lat}, {this.state.lng}
+            <MyMapComponent
+              key="map"
+              position={{
+                lat: this.state.lat,
+                lng: this.state.lng,
+              }}
+            />
             {/* TODO reverse geocode, allow edits */}
           </p>
           <p>
@@ -151,5 +167,26 @@ class Home extends React.Component {
     );
   }
 }
+
+const MyMapComponent = compose(
+  withProps({
+    // TODO Add API key: https://developers.google.com/maps/documentation/javascript/get-api-key
+    googleMapURL:
+      'https://maps.googleapis.com/maps/api/js?v=3.exp&libraries=geometry,drawing,places',
+    loadingElement: <div style={{ height: `100%` }} />,
+    containerElement: <div style={{ height: `400px` }} />,
+    mapElement: <div style={{ height: `100%` }} />,
+  }),
+  withScriptjs,
+  withGoogleMap,
+)(props => {
+  const { position } = props;
+
+  return (
+    <GoogleMap defaultZoom={16} center={position}>
+      <Marker position={position} />
+    </GoogleMap>
+  );
+});
 
 export default withStyles(s)(Home);

@@ -47,6 +47,16 @@ class Home extends React.Component {
 
   setPlate = ({ plate }) => {
     this.setState({ plate });
+
+    // TODO dedupe with color dropdown, add placeholders
+    // See https://github.com/jeffrono/Reported-Android/blob/1e48575d11c87ba3ae611a71603d58f472249220/app/src/main/java/cab/reported/nyc/ui/createreport/CarType.kt#L9-L11
+    if (plate.match(RegExp('^\\d[A-Za-z]\\d\\d$'))) {
+      this.setState({ colorTaxi: 'Yellow' });
+    } else if (plate.match(RegExp('^[A-Za-z]{2}\\d{3}$'))) {
+      this.setState({ colorTaxi: 'Green' });
+    } else if (plate.match(RegExp('(^T\\d{6}C$)|(^\\d{6}$)'))) {
+      this.setState({ colorTaxi: 'Black' });
+    }
   };
 
   // adapted from https://github.com/ngokevin/react-file-reader-input/tree/f970257f271b8c3bba9d529ffdbfa4f4731e0799#usage

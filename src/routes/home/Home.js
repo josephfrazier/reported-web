@@ -22,6 +22,7 @@ import {
   GoogleMap,
   Marker,
 } from 'react-google-maps';
+import { SearchBox } from 'react-google-maps/lib/components/places/SearchBox';
 import persist from 'react-localstorage-hoc';
 
 import s from './Home.css';
@@ -329,6 +330,28 @@ class Home extends React.Component {
                 const longitude = this.mapRef.getCenter().lng();
                 this.setCoords({ latitude, longitude });
               }}
+              onSearchBoxMounted={ref => {
+                this.searchBox = ref;
+              }}
+              onPlacesChanged={() => {
+                const places = this.searchBox.getPlaces();
+
+                const nextMarkers = places.map(place => ({
+                  position: place.geometry.location,
+                }));
+                const { latitude, longitude } =
+                  nextMarkers.length > 0
+                    ? {
+                        latitude: nextMarkers[0].position.lat(),
+                        longitude: nextMarkers[0].position.lng(),
+                      }
+                    : this.state;
+
+                this.setCoords({
+                  latitude,
+                  longitude,
+                });
+              }}
             />
           </details>
           {/* TODO reverse geocode, allow edits */}
@@ -394,6 +417,29 @@ const MyMapComponent = compose(
       options={{ gestureHandling: 'greedy' }}
     >
       <Marker position={position} />
+      <SearchBox
+        ref={props.onSearchBoxMounted}
+        controlPosition={window.google.maps.ControlPosition.TOP_LEFT}
+        onPlacesChanged={props.onPlacesChanged}
+      >
+        <input
+          type="text"
+          placeholder="Search..."
+          style={{
+            boxSizing: `border-box`,
+            border: `1px solid transparent`,
+            width: `240px`,
+            height: `32px`,
+            marginTop: `27px`,
+            padding: `0 12px`,
+            borderRadius: `3px`,
+            boxShadow: `0 2px 6px rgba(0, 0, 0, 0.3)`,
+            fontSize: `14px`,
+            outline: `none`,
+            textOverflow: `ellipses`,
+          }}
+        />
+      </SearchBox>
     </GoogleMap>
   );
 });

@@ -218,22 +218,26 @@ class Home extends React.Component {
           </p>
 
           <p>
-            Where: {this.state.lat}, {this.state.lng}
-            <MyMapComponent
-              key="map"
-              position={{
-                lat: this.state.lat,
-                lng: this.state.lng,
-              }}
-              onRef={mapRef => {
-                this.mapRef = mapRef;
-              }}
-              onCenterChanged={() => {
-                const lat = this.mapRef.getCenter().lat();
-                const lng = this.mapRef.getCenter().lng();
-                this.setState({ lat, lng });
-              }}
-            />
+            <details>
+              <summary>
+                Where: {this.state.lat}, {this.state.lng}
+              </summary>
+              <MyMapComponent
+                key="map"
+                position={{
+                  lat: this.state.lat,
+                  lng: this.state.lng,
+                }}
+                onRef={mapRef => {
+                  this.mapRef = mapRef;
+                }}
+                onCenterChanged={() => {
+                  const lat = this.mapRef.getCenter().lat();
+                  const lng = this.mapRef.getCenter().lng();
+                  this.setState({ lat, lng });
+                }}
+              />
+            </details>
             {/* TODO reverse geocode, allow edits */}
           </p>
 
@@ -301,6 +305,7 @@ const MyMapComponent = compose(
       center={position}
       ref={onRef}
       onCenterChanged={onCenterChanged}
+      options={{ gestureHandling: 'greedy' }}
     >
       <Marker position={position} />
     </GoogleMap>

@@ -28,6 +28,7 @@ import s from './Home.css';
 class Home extends React.Component {
   state = {
     colorTaxi: 'Yellow',
+    typeofuser: 'Cyclist',
     lat: 40.7128,
     lng: -74.006,
   };
@@ -166,8 +167,20 @@ class Home extends React.Component {
               }}
             />
           </p>
+          <p>
+            I was:{' '}
+            <select
+              value={this.state.typeofuser}
+              onChange={event => {
+                this.setState({ typeofuser: event.target.value });
+              }}
+            >
+              <option value="Cyclist">Cyclist</option>
+              <option value="Walker">Walker</option>
+              <option value="Passenger">Passenger</option>
+            </select>
+          </p>
           {/*
-          <p>I was: TODO cyclist/walker/passenger dropdown</p>
           <p>Type: TODO dropdown from native app</p>
           */}
           <p>

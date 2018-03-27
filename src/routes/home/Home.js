@@ -129,7 +129,16 @@ class Home extends React.Component {
           </FileReaderInput>
 
           {/* <p>Cab Color: TODO yellow/green/black radio buttons</p> */}
-          <p>License/Medallion: {this.state.plate}</p>
+          <p>
+            License/Medallion:{' '}
+            <input
+              type="text"
+              value={this.state.plate}
+              onChange={event => {
+                this.setState({ plate: event.target.value });
+              }}
+            />
+          </p>
           {/*
           <p>I was: TODO cyclist/walker/passenger dropdown</p>
           <p>Type: TODO dropdown from native app</p>

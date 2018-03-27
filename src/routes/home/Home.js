@@ -27,6 +27,7 @@ import s from './Home.css';
 
 class Home extends React.Component {
   state = {
+    colorTaxi: 'Yellow',
     lat: 40.7128,
     lng: -74.006,
   };
@@ -132,7 +133,19 @@ class Home extends React.Component {
             <button>Select/Take a picture</button>
           </FileReaderInput>
 
-          {/* <p>Cab Color: TODO yellow/green/black radio buttons</p> */}
+          <p>
+            Cab Color:{' '}
+            <select
+              value={this.state.colorTaxi}
+              onChange={event => {
+                this.setState({ colorTaxi: event.target.value });
+              }}
+            >
+              <option value="Yellow">Yellow</option>
+              <option value="Green">Green</option>
+              <option value="Black">Black</option>
+            </select>
+          </p>
           <p>
             License/Medallion:{' '}
             <input

@@ -274,7 +274,7 @@ class Home extends React.Component {
                 // https://reactjs.org/docs/forms.html
                 this.setState({ can_be_shared_publicly: event.target.checked });
               }}
-            />
+            />{' '}
             Allow the photo, description, category, and location to be publicly
             displayed
           </label>

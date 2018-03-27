@@ -31,6 +31,7 @@ class Home extends React.Component {
     typeofuser: 'Cyclist',
     typeofcomplaint: 'Blocked the bike lane',
     reportDescription: '',
+    can_be_shared_publicly: false,
     lat: 40.7128,
     lng: -74.006,
   };
@@ -246,11 +247,18 @@ class Home extends React.Component {
               }}
             />
           </p>
-          {/*
           <p>
-            TODO checkbox: Allow the photo, description, category, and location
-            to be publicly displayed
+            <input
+              type="checkbox"
+              checked={this.state.can_be_shared_publicly}
+              onChange={event => {
+                this.setState({ can_be_shared_publicly: event.target.checked });
+              }}
+            />
+            Allow the photo, description, category, and location to be publicly
+            displayed
           </p>
+          {/*
           <p>TODO submit button</p>
           */}
         </div>

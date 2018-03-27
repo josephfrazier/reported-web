@@ -76,6 +76,11 @@ module.exports = {
       },
     ],
 
+    // Allow <label> to refer to nested <input>
+    // https://github.com/evcohen/eslint-plugin-jsx-a11y/blob/ab0bd82dad4a5bc16ed4a62ea71b9e6b53218c9e/docs/rules/label-has-for.md
+    // TODO make this more granular
+    'jsx-a11y/label-has-for': 'off',
+
     // Allow .js files to use JSX syntax
     // https://github.com/yannickcr/eslint-plugin-react/blob/master/docs/rules/jsx-filename-extension.md
     'react/jsx-filename-extension': ['error', { extensions: ['.js', '.jsx'] }],

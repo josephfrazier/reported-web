@@ -152,7 +152,7 @@ class Home extends React.Component {
             {/* TODO allow images to be deleted */}
           </FileReaderInput>
 
-          <p>
+          <label>
             Cab Color:{' '}
             <select
               value={this.state.colorTaxi}
@@ -164,9 +164,9 @@ class Home extends React.Component {
               <option value="Green">Green</option>
               <option value="Black">Black</option>
             </select>
-          </p>
+          </label>
 
-          <p>
+          <label>
             License/Medallion:{' '}
             <input
               type="text"
@@ -175,9 +175,9 @@ class Home extends React.Component {
                 this.setPlate({ plate: event.target.value });
               }}
             />
-          </p>
+          </label>
 
-          <p>
+          <label>
             I was:{' '}
             <select
               value={this.state.typeofuser}
@@ -189,9 +189,9 @@ class Home extends React.Component {
               <option value="Walker">Walker</option>
               <option value="Passenger">Passenger</option>
             </select>
-          </p>
+          </label>
 
-          <p>
+          <label>
             Type:{' '}
             <select
               value={this.state.typeofcomplaint}
@@ -215,33 +215,31 @@ class Home extends React.Component {
                 </option>
               ))}
             </select>
-          </p>
+          </label>
 
-          <p>
-            <details>
-              <summary>
-                Where: {this.state.lat}, {this.state.lng}
-              </summary>
-              <MyMapComponent
-                key="map"
-                position={{
-                  lat: this.state.lat,
-                  lng: this.state.lng,
-                }}
-                onRef={mapRef => {
-                  this.mapRef = mapRef;
-                }}
-                onCenterChanged={() => {
-                  const lat = this.mapRef.getCenter().lat();
-                  const lng = this.mapRef.getCenter().lng();
-                  this.setState({ lat, lng });
-                }}
-              />
-            </details>
-            {/* TODO reverse geocode, allow edits */}
-          </p>
+          <details>
+            <summary>
+              Where: {this.state.lat}, {this.state.lng}
+            </summary>
+            <MyMapComponent
+              key="map"
+              position={{
+                lat: this.state.lat,
+                lng: this.state.lng,
+              }}
+              onRef={mapRef => {
+                this.mapRef = mapRef;
+              }}
+              onCenterChanged={() => {
+                const lat = this.mapRef.getCenter().lat();
+                const lng = this.mapRef.getCenter().lng();
+                this.setState({ lat, lng });
+              }}
+            />
+          </details>
+          {/* TODO reverse geocode, allow edits */}
 
-          <p>
+          <label>
             {/* TODO use local timezone */}
             When (UTC):{' '}
             <input
@@ -251,9 +249,9 @@ class Home extends React.Component {
                 this.setState({ CreateDate: event.target.value });
               }}
             />
-          </p>
+          </label>
 
-          <p>
+          <label>
             Description:{' '}
             <textarea
               value={this.state.reportDescription}
@@ -261,9 +259,9 @@ class Home extends React.Component {
                 this.setState({ reportDescription: event.target.value });
               }}
             />
-          </p>
+          </label>
 
-          <p>
+          <label>
             <input
               type="checkbox"
               checked={this.state.can_be_shared_publicly}
@@ -275,7 +273,7 @@ class Home extends React.Component {
             />
             Allow the photo, description, category, and location to be publicly
             displayed
-          </p>
+          </label>
 
           {/*
           <p>TODO submit button</p>

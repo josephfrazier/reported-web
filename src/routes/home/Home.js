@@ -27,17 +27,22 @@ import s from './Home.css';
 
 class Home extends React.Component {
   state = {
-    // TODO dedupe `.toISOString().replace(/\..*/g, '')`
-    CreateDate: new Date().toISOString().replace(/\..*/g, ''),
     lat: 40.7128,
     lng: -74.006,
   };
 
   componentDidMount() {
+    this.setCreateDate({ CreateDateJs: new Date() });
     promisedLocation().then(({ coords: { latitude: lat, longitude: lng } }) => {
       this.setState({ lat, lng });
     });
   }
+
+  setCreateDate = ({ CreateDateJs }) => {
+    this.setState({
+      CreateDate: CreateDateJs.toISOString().replace(/\..*/g, ''),
+    });
+  };
 
   // adapted from https://github.com/ngokevin/react-file-reader-input/tree/f970257f271b8c3bba9d529ffdbfa4f4731e0799#usage
   handleChange = async (_, results) => {
@@ -89,10 +94,7 @@ class Home extends React.Component {
     );
     console.info(JSON.stringify(CreateDateJs, null, 2)); // Do something with your data!
 
-    // TODO dedupe `.toISOString().replace(/\..*/g, '')`
-    this.setState({
-      CreateDate: CreateDateJs.toISOString().replace(/\..*/g, ''),
-    });
+    this.setCreateDate({ CreateDateJs });
   };
 
   extractLocation = ({ exifData }) => {

@@ -8,7 +8,6 @@
  */
 
 import promisify from 'util.promisify';
-
 import React from 'react';
 import withStyles from 'isomorphic-style-loader/lib/withStyles';
 import FileReaderInput from 'react-file-reader-input';
@@ -23,6 +22,7 @@ import {
   GoogleMap,
   Marker,
 } from 'react-google-maps';
+
 import s from './Home.css';
 
 class Home extends React.Component {

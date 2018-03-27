@@ -44,6 +44,10 @@ class Home extends React.Component {
     });
   };
 
+  setPlate = ({ plate }) => {
+    this.setState({ plate });
+  };
+
   // adapted from https://github.com/ngokevin/react-file-reader-input/tree/f970257f271b8c3bba9d529ffdbfa4f4731e0799#usage
   handleChange = async (_, results) => {
     for (const result of results) {
@@ -84,7 +88,7 @@ class Home extends React.Component {
     });
     console.info(`API called successfully. Returned data: ${data}`);
     const { plate } = data.results[0];
-    this.setState({ plate });
+    this.setPlate({ plate });
   };
 
   extractDate = ({ exifData }) => {
@@ -135,7 +139,7 @@ class Home extends React.Component {
               type="text"
               value={this.state.plate}
               onChange={event => {
-                this.setState({ plate: event.target.value });
+                this.setPlate({ plate: event.target.value });
               }}
             />
           </p>

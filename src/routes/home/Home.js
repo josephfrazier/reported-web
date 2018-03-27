@@ -30,6 +30,7 @@ class Home extends React.Component {
     colorTaxi: 'Yellow',
     typeofuser: 'Cyclist',
     typeofcomplaint: 'Blocked the bike lane',
+    reportDescription: '',
     lat: 40.7128,
     lng: -74.006,
   };
@@ -236,8 +237,16 @@ class Home extends React.Component {
               }}
             />
           </p>
+          <p>
+            Description:{' '}
+            <textarea
+              value={this.state.reportDescription}
+              onChange={event => {
+                this.setState({ reportDescription: event.target.value });
+              }}
+            />
+          </p>
           {/*
-          <p>Description: TODO text box</p>
           <p>
             TODO checkbox: Allow the photo, description, category, and location
             to be publicly displayed

@@ -25,11 +25,24 @@ import {
 
 import s from './Home.css';
 
+const typeofuserValues = ['Cyclist', 'Walker', 'Passenger'];
+const typeofcomplaintValues = [
+  'Blocked the bike lane',
+  'Blocked the crosswalk',
+  'Honked horn (no emergency)',
+  'Failed to yield to pedestrian',
+  'Drove aggressively',
+  'Was on a cell phone while driving',
+  'Refused to pick me up',
+  'Was courteous, kind or polite',
+  'Went above and beyond to help',
+];
+
 class Home extends React.Component {
   state = {
     colorTaxi: 'Yellow',
-    typeofuser: 'Cyclist',
-    typeofcomplaint: 'Blocked the bike lane',
+    typeofuser: typeofuserValues[0],
+    typeofcomplaint: typeofcomplaintValues[0],
     reportDescription: '',
     can_be_shared_publicly: false,
     lat: 40.7128,
@@ -187,7 +200,7 @@ class Home extends React.Component {
                 this.setState({ typeofuser: event.target.value });
               }}
             >
-              {['Cyclist', 'Walker', 'Passenger'].map(typeofuser => (
+              {typeofuserValues.map(typeofuser => (
                 <option key={typeofuser} value={typeofuser}>
                   {typeofuser}
                 </option>
@@ -203,17 +216,7 @@ class Home extends React.Component {
                 this.setState({ typeofcomplaint: event.target.value });
               }}
             >
-              {[
-                'Blocked the bike lane',
-                'Blocked the crosswalk',
-                'Honked horn (no emergency)',
-                'Failed to yield to pedestrian',
-                'Drove aggressively',
-                'Was on a cell phone while driving',
-                'Refused to pick me up',
-                'Was courteous, kind or polite',
-                'Went above and beyond to help',
-              ].map(typeofcomplaint => (
+              {typeofcomplaintValues.map(typeofcomplaint => (
                 <option key={typeofcomplaint} value={typeofcomplaint}>
                   {typeofcomplaint}
                 </option>

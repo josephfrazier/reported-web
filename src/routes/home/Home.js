@@ -29,6 +29,7 @@ class Home extends React.Component {
   state = {
     colorTaxi: 'Yellow',
     typeofuser: 'Cyclist',
+    typeofcomplaint: 'Blocked the bike lane',
     lat: 40.7128,
     lng: -74.006,
   };
@@ -180,9 +181,31 @@ class Home extends React.Component {
               <option value="Passenger">Passenger</option>
             </select>
           </p>
-          {/*
-          <p>Type: TODO dropdown from native app</p>
-          */}
+          <p>
+            Type:{' '}
+            <select
+              value={this.state.typeofcomplaint}
+              onChange={event => {
+                this.setState({ typeofcomplaint: event.target.value });
+              }}
+            >
+              {[
+                'Blocked the bike lane',
+                'Blocked the crosswalk',
+                'Honked horn (no emergency)',
+                'Failed to yield to pedestrian',
+                'Drove aggressively',
+                'Was on a cell phone while driving',
+                'Refused to pick me up',
+                'Was courteous, kind or polite',
+                'Went above and beyond to help',
+              ].map(typeofcomplaint => (
+                <option key={typeofcomplaint} value={typeofcomplaint}>
+                  {typeofcomplaint}
+                </option>
+              ))}
+            </select>
+          </p>
           <p>
             Where: {this.state.lat}, {this.state.lng}
             <MyMapComponent

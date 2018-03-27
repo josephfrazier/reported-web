@@ -139,12 +139,17 @@ class Home extends React.Component {
         <div className={s.container}>
           <br />
 
+          {/* TODO User Profile Info */}
+          {/* TODO Persist in localstorage */}
+
           <FileReaderInput
             accept="image/*"
             as="buffer"
             onChange={this.handleChange}
           >
             <button>Select/Take a picture</button>
+            {/* TODO `data:` links to images: https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URIs */}
+            {/* TODO allow images to be deleted */}
           </FileReaderInput>
 
           <p>
@@ -259,6 +264,8 @@ class Home extends React.Component {
               type="checkbox"
               checked={this.state.can_be_shared_publicly}
               onChange={event => {
+                // TODO dedupe onChange handlers
+                // https://reactjs.org/docs/forms.html
                 this.setState({ can_be_shared_publicly: event.target.checked });
               }}
             />

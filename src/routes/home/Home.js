@@ -219,7 +219,11 @@ class Home extends React.Component {
 
           <details>
             <summary>
-              Where: {this.state.lat}, {this.state.lng}
+              Where:
+              <br />
+              {this.state.lat},
+              <br />
+              {this.state.lng}
             </summary>
             <MyMapComponent
               key="map"

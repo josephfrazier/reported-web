@@ -160,6 +160,7 @@ class Home extends React.Component {
               <option value="Black">Black</option>
             </select>
           </p>
+
           <p>
             License/Medallion:{' '}
             <input
@@ -170,6 +171,7 @@ class Home extends React.Component {
               }}
             />
           </p>
+
           <p>
             I was:{' '}
             <select
@@ -183,6 +185,7 @@ class Home extends React.Component {
               <option value="Passenger">Passenger</option>
             </select>
           </p>
+
           <p>
             Type:{' '}
             <select
@@ -208,6 +211,7 @@ class Home extends React.Component {
               ))}
             </select>
           </p>
+
           <p>
             Where: {this.state.lat}, {this.state.lng}
             <MyMapComponent
@@ -227,6 +231,7 @@ class Home extends React.Component {
             />
             {/* TODO reverse geocode, allow edits */}
           </p>
+
           <p>
             {/* TODO use local timezone */}
             When (UTC):{' '}
@@ -238,6 +243,7 @@ class Home extends React.Component {
               }}
             />
           </p>
+
           <p>
             Description:{' '}
             <textarea
@@ -247,6 +253,7 @@ class Home extends React.Component {
               }}
             />
           </p>
+
           <p>
             <input
               type="checkbox"
@@ -258,6 +265,7 @@ class Home extends React.Component {
             Allow the photo, description, category, and location to be publicly
             displayed
           </p>
+
           {/*
           <p>TODO submit button</p>
           */}

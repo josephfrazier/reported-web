@@ -25,6 +25,14 @@ import {
 
 import s from './Home.css';
 
+// TODO add placeholders
+// See https://github.com/jeffrono/Reported-Android/blob/1e48575d11c87ba3ae611a71603d58f472249220/app/src/main/java/cab/reported/nyc/ui/createreport/CarType.kt#L9-L11
+const colorTaxiRegexes = {
+  Yellow: RegExp('^\\d[A-Za-z]\\d\\d$'),
+  Green: RegExp('^[A-Za-z]{2}\\d{3}$'),
+  Black: RegExp('(^T\\d{6}C$)|(^\\d{6}$)'),
+};
+const colorTaxiValues = Object.keys(colorTaxiRegexes);
 const typeofuserValues = ['Cyclist', 'Walker', 'Passenger'];
 const typeofcomplaintValues = [
   'Blocked the bike lane',
@@ -40,7 +48,7 @@ const typeofcomplaintValues = [
 
 class Home extends React.Component {
   state = {
-    colorTaxi: 'Yellow',
+    colorTaxi: colorTaxiValues[0],
     typeofuser: typeofuserValues[0],
     typeofcomplaint: typeofcomplaintValues[0],
     reportDescription: '',
@@ -65,14 +73,10 @@ class Home extends React.Component {
   setPlate = ({ plate }) => {
     this.setState({ plate });
 
-    // TODO dedupe with color dropdown, add placeholders
-    // See https://github.com/jeffrono/Reported-Android/blob/1e48575d11c87ba3ae611a71603d58f472249220/app/src/main/java/cab/reported/nyc/ui/createreport/CarType.kt#L9-L11
-    if (plate.match(RegExp('^\\d[A-Za-z]\\d\\d$'))) {
-      this.setState({ colorTaxi: 'Yellow' });
-    } else if (plate.match(RegExp('^[A-Za-z]{2}\\d{3}$'))) {
-      this.setState({ colorTaxi: 'Green' });
-    } else if (plate.match(RegExp('(^T\\d{6}C$)|(^\\d{6}$)'))) {
-      this.setState({ colorTaxi: 'Black' });
+    for (const colorTaxi of colorTaxiValues) {
+      if (plate.match(colorTaxiRegexes[colorTaxi])) {
+        this.setState({ colorTaxi });
+      }
     }
   };
 
@@ -173,7 +177,7 @@ class Home extends React.Component {
                 this.setState({ colorTaxi: event.target.value });
               }}
             >
-              {['Yellow', 'Green', 'Black'].map(colorTaxi => (
+              {colorTaxiValues.map(colorTaxi => (
                 <option key={colorTaxi} value={colorTaxi}>
                   {colorTaxi}
                 </option>

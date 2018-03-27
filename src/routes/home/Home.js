@@ -86,7 +86,7 @@ class Home extends React.Component {
       const [, file] = result;
       try {
         const image = await promisify(toBuffer)(file); // eslint-disable-line no-await-in-loop
-        this.extractPlate({ image });
+        this.extractPlate({ image, file });
         const exifData = await promisify(ExifImage)({ image }); // eslint-disable-line no-await-in-loop
 
         console.info(JSON.stringify(exifData, null, 2)); // Do something with your data!
@@ -100,8 +100,10 @@ class Home extends React.Component {
   };
 
   // adapted from https://github.com/openalpr/cloudapi/tree/8141c1ba57f03df4f53430c6e5e389b39714d0e0/javascript#getting-started
-  extractPlate = async ({ image }) => {
+  extractPlate = async ({ image, file }) => {
     const imageBytes = image.toString('base64'); // {String} The image file that you wish to analyze encoded in base64
+    const imageUrl = window.URL.createObjectURL(file);
+    this.setState({ imageUrl });
 
     const country = 'us'; // {String} Defines the training data used by OpenALPR.  \"us\" analyzes  North-American style plates.  \"eu\" analyzes European-style plates.  This field is required if using the \"plate\" task  You may use multiple datasets by using commas between the country  codes.  For example, 'au,auwide' would analyze using both the  Australian plate styles.  A full list of supported country codes  can be found here https://github.com/openalpr/openalpr/tree/master/runtime_data/config
 
@@ -165,9 +167,13 @@ class Home extends React.Component {
             onChange={this.handleChange}
           >
             <button>Select/Take a picture</button>
-            {/* TODO `data:` links to images: https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URIs */}
             {/* TODO allow images to be deleted */}
           </FileReaderInput>
+
+          {/* TODO show a link for each image, not just the last one */}
+          <a target="_blank" href={this.state.imageUrl}>
+            {this.state.imageUrl}
+          </a>
 
           <label>
             Cab Color:{' '}

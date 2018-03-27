@@ -160,9 +160,11 @@ class Home extends React.Component {
                 this.setState({ colorTaxi: event.target.value });
               }}
             >
-              <option value="Yellow">Yellow</option>
-              <option value="Green">Green</option>
-              <option value="Black">Black</option>
+              {['Yellow', 'Green', 'Black'].map(colorTaxi => (
+                <option key={colorTaxi} value={colorTaxi}>
+                  {colorTaxi}
+                </option>
+              ))}
             </select>
           </label>
 
@@ -185,9 +187,11 @@ class Home extends React.Component {
                 this.setState({ typeofuser: event.target.value });
               }}
             >
-              <option value="Cyclist">Cyclist</option>
-              <option value="Walker">Walker</option>
-              <option value="Passenger">Passenger</option>
+              {['Cyclist', 'Walker', 'Passenger'].map(typeofuser => (
+                <option key={typeofuser} value={typeofuser}>
+                  {typeofuser}
+                </option>
+              ))}
             </select>
           </label>
 

@@ -124,7 +124,7 @@ app.use('/openalpr', (req, res) => {
   const { imageBytes, country, opts } = req.body;
   const api = new OpenalprApi.DefaultApi();
 
-  const secretKey = process.env.OPENALPR_SECRET_KEY; // {String} The secret key used to authenticate your account.  You can view your  secret key by visiting  https://cloud.openalpr.com/
+  const secretKey = process.env.OPENALPR_SECRET_KEY; // {String} The secret key used to authenticate your account. You can view your secret key by visiting https://cloud.openalpr.com/
 
   api.recognizeBytes(imageBytes, secretKey, country, opts, (error, data) => {
     if (error) {

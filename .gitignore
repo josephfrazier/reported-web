@@ -8,6 +8,7 @@ build
 
 # Runtime data
 database.sqlite
+.env
 
 # Test coverage
 coverage

@@ -165,7 +165,10 @@ class Home extends React.Component {
         <div className={s.container}>
           <br />
 
-          {/* TODO User Profile Info */}
+          {/*
+            TODO User Profile Info
+            https://github.com/jeffrono/Reported-Android/blob/f92949014678f8847ef83a9e5746a9d97d4db87f/app/src/main/java/cab/reported/nyc/session/SessionManagerImpl.kt#L152-L238
+          */}
 
           <FileReaderInput
             accept="image/*"

@@ -70,7 +70,7 @@ class Home extends React.Component {
     });
   };
 
-  setPlate = ({ plate }) => {
+  setLicensePlate = ({ plate }) => {
     this.setState({ plate });
 
     for (const colorTaxi of colorTaxiValues) {
@@ -128,7 +128,7 @@ class Home extends React.Component {
       )}`,
     );
     const { plate } = data.results[0];
-    this.setPlate({ plate });
+    this.setLicensePlate({ plate });
   };
 
   extractDate = ({ exifData }) => {
@@ -203,7 +203,7 @@ class Home extends React.Component {
               type="text"
               value={this.state.plate}
               onChange={event => {
-                this.setPlate({ plate: event.target.value });
+                this.setLicensePlate({ plate: event.target.value });
               }}
             />
           </label>

@@ -197,12 +197,13 @@ class Home extends React.Component {
             {/* TODO allow images to be deleted */}
           </FileReaderInput>
 
-          {this.state.imageUrls.map(imageUrl => [
-            <a target="_blank" href={imageUrl}>
-              {imageUrl}
-            </a>,
-            <br />,
-          ])}
+          {this.state.imageUrls.map(imageUrl => (
+            <div key={imageUrl}>
+              <a target="_blank" href={imageUrl}>
+                {imageUrl}
+              </a>
+            </div>
+          ))}
 
           <label>
             Cab Color:{' '}

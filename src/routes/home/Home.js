@@ -56,6 +56,7 @@ class Home extends React.Component {
     can_be_shared_publicly: false,
     lat: 40.7128,
     lng: -74.006,
+    imageUrls: [],
   };
 
   componentDidMount() {
@@ -87,7 +88,8 @@ class Home extends React.Component {
       const [, file] = result;
       try {
         const imageUrl = window.URL.createObjectURL(file);
-        this.setState({ imageUrl });
+        /* TODO show a link for each image, not just the last one */
+        this.setState({ imageUrls: [imageUrl] });
         const image = await promisify(toBuffer)(file); // eslint-disable-line no-await-in-loop
         this.extractPlate({ image });
         const exifData = await promisify(ExifImage)({ image }); // eslint-disable-line no-await-in-loop
@@ -179,10 +181,11 @@ class Home extends React.Component {
             {/* TODO allow images to be deleted */}
           </FileReaderInput>
 
-          {/* TODO show a link for each image, not just the last one */}
-          <a target="_blank" href={this.state.imageUrl}>
-            {this.state.imageUrl}
-          </a>
+          {this.state.imageUrls.map(imageUrl => (
+            <a target="_blank" href={imageUrl}>
+              {imageUrl}
+            </a>
+          ))}
 
           <label>
             Cab Color:{' '}

@@ -22,6 +22,7 @@ import {
   GoogleMap,
   Marker,
 } from 'react-google-maps';
+import persist from 'react-localstorage-hoc';
 
 import s from './Home.css';
 
@@ -165,7 +166,6 @@ class Home extends React.Component {
           <br />
 
           {/* TODO User Profile Info */}
-          {/* TODO Persist in localstorage */}
 
           <FileReaderInput
             accept="image/*"
@@ -337,4 +337,4 @@ const MyMapComponent = compose(
   );
 });
 
-export default withStyles(s)(Home);
+export default withStyles(s)(persist(Home));

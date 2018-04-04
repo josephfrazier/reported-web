@@ -84,13 +84,24 @@ class Home extends React.Component {
 
   // adapted from https://github.com/ngokevin/react-file-reader-input/tree/f970257f271b8c3bba9d529ffdbfa4f4731e0799#usage
   handleChange = async (_, results) => {
-    for (const result of results) {
-      const [, file] = result;
+    const images = await Promise.all(
+      results.map(async result => {
+        const [, file] = result;
+        try {
+          const imageUrl = window.URL.createObjectURL(file);
+          const image = await promisify(toBuffer)(file); // eslint-disable-line no-await-in-loop
+          return { imageUrl, image };
+        } catch (err) {
+          console.error(`Error: ${err.message}`);
+          return {};
+        }
+      }),
+    );
+
+    this.setState({ imageUrls: images.map(({ imageUrl }) => imageUrl) });
+
+    for (const { image } of images) {
       try {
-        const imageUrl = window.URL.createObjectURL(file);
-        /* TODO show a link for each image, not just the last one */
-        this.setState({ imageUrls: [imageUrl] });
-        const image = await promisify(toBuffer)(file); // eslint-disable-line no-await-in-loop
         this.extractPlate({ image });
         const exifData = await promisify(ExifImage)({ image }); // eslint-disable-line no-await-in-loop
 
@@ -182,11 +193,12 @@ class Home extends React.Component {
             {/* TODO allow images to be deleted */}
           </FileReaderInput>
 
-          {this.state.imageUrls.map(imageUrl => (
+          {this.state.imageUrls.map(imageUrl => [
             <a target="_blank" href={imageUrl}>
               {imageUrl}
-            </a>
-          ))}
+            </a>,
+            <br />,
+          ])}
 
           <label>
             Cab Color:{' '}

@@ -56,6 +56,8 @@ class Home extends React.Component {
     can_be_shared_publicly: false,
     lat: 40.7128,
     lng: -74.006,
+    // TODO keep track of image data instead of url, maybe `imageBytes`?
+    // TODO also consider using IndexedDB (via e.g. localForage) to store File/Blob objects directly
     imageUrls: [],
   };
 

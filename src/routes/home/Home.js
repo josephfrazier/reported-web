@@ -194,7 +194,6 @@ class Home extends React.Component {
             onChange={this.handleChange}
           >
             <button>Select/Take a picture</button>
-            {/* TODO allow images to be deleted */}
           </FileReaderInput>
 
           {this.state.imageUrls.map(imageUrl => (
@@ -202,6 +201,18 @@ class Home extends React.Component {
               <a target="_blank" href={imageUrl}>
                 {imageUrl}
               </a>
+
+              <button
+                onClick={() => {
+                  this.setState({
+                    imageUrls: this.state.imageUrls.filter(
+                      url => url !== imageUrl,
+                    ),
+                  });
+                }}
+              >
+                Remove this image
+              </button>
             </div>
           ))}
 

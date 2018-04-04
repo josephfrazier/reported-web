@@ -102,13 +102,17 @@ class Home extends React.Component {
 
     for (const { image } of images) {
       try {
-        this.extractPlate({ image });
-        const exifData = await promisify(ExifImage)({ image }); // eslint-disable-line no-await-in-loop
-
-        console.info(JSON.stringify(exifData, null, 2)); // Do something with your data!
-
-        this.extractLocation({ exifData });
-        this.extractDate({ exifData });
+        // eslint-disable-next-line no-await-in-loop
+        await Promise.all([
+          this.extractPlate({ image }),
+          promisify(ExifImage)({ image }).then(exifData =>
+            Promise.all([
+              console.info(JSON.stringify(exifData, null, 2)),
+              this.extractLocation({ exifData }),
+              this.extractDate({ exifData }),
+            ]),
+          ),
+        ]);
       } catch (err) {
         console.error(`Error: ${err.message}`);
       }

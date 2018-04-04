@@ -174,6 +174,7 @@ class Home extends React.Component {
 
           <FileReaderInput
             accept="image/*"
+            multiple
             as="buffer"
             onChange={this.handleChange}
           >

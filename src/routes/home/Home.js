@@ -135,6 +135,16 @@ class Home extends React.Component {
     }
   };
 
+  handleInputChange = event => {
+    const { target } = event;
+    const value = target.type === 'checkbox' ? target.checked : target.value;
+    const { name } = target;
+
+    this.setState({
+      [name]: value,
+    });
+  };
+
   // adapted from https://github.com/openalpr/cloudapi/tree/8141c1ba57f03df4f53430c6e5e389b39714d0e0/javascript#getting-started
   extractPlate = async ({ image }) => {
     const imageBytes = image.toString('base64'); // {String} The image file that you wish to analyze encoded in base64
@@ -241,9 +251,8 @@ class Home extends React.Component {
             Cab Color:{' '}
             <select
               value={this.state.colorTaxi}
-              onChange={event => {
-                this.setState({ colorTaxi: event.target.value });
-              }}
+              name="colorTaxi"
+              onChange={this.handleInputChange}
             >
               {colorTaxiNames.map(colorTaxi => (
                 <option key={colorTaxi} value={colorTaxi}>
@@ -269,9 +278,8 @@ class Home extends React.Component {
             I was:{' '}
             <select
               value={this.state.typeofuser}
-              onChange={event => {
-                this.setState({ typeofuser: event.target.value });
-              }}
+              name="typeofuser"
+              onChange={this.handleInputChange}
             >
               {typeofuserValues.map(typeofuser => (
                 <option key={typeofuser} value={typeofuser}>
@@ -285,9 +293,8 @@ class Home extends React.Component {
             Type:{' '}
             <select
               value={this.state.typeofcomplaint}
-              onChange={event => {
-                this.setState({ typeofcomplaint: event.target.value });
-              }}
+              name="typeofcomplaint"
+              onChange={this.handleInputChange}
             >
               {typeofcomplaintValues.map(typeofcomplaint => (
                 <option key={typeofcomplaint} value={typeofcomplaint}>
@@ -328,9 +335,8 @@ class Home extends React.Component {
             <input
               type="datetime-local"
               value={this.state.CreateDate}
-              onChange={event => {
-                this.setState({ CreateDate: event.target.value });
-              }}
+              name="CreateDate"
+              onChange={this.handleInputChange}
             />
           </label>
 
@@ -338,9 +344,8 @@ class Home extends React.Component {
             Description:{' '}
             <textarea
               value={this.state.reportDescription}
-              onChange={event => {
-                this.setState({ reportDescription: event.target.value });
-              }}
+              name="reportDescription"
+              onChange={this.handleInputChange}
             />
           </label>
 
@@ -348,11 +353,8 @@ class Home extends React.Component {
             <input
               type="checkbox"
               checked={this.state.can_be_shared_publicly}
-              onChange={event => {
-                // TODO dedupe onChange handlers
-                // https://reactjs.org/docs/forms.html
-                this.setState({ can_be_shared_publicly: event.target.checked });
-              }}
+              name="can_be_shared_publicly"
+              onChange={this.handleInputChange}
             />{' '}
             Allow the photo, description, category, and location to be publicly
             displayed

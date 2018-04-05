@@ -61,8 +61,8 @@ class Home extends React.Component {
     typeofcomplaint: typeofcomplaintValues[0],
     reportDescription: '',
     can_be_shared_publicly: false,
-    lat: 40.7128,
-    lng: -74.006,
+    latitude: 40.7128,
+    longitude: -74.006,
     // TODO keep track of image data instead of url, maybe `imageBytes`?
     // TODO also consider using IndexedDB (via e.g. localForage) to store File/Blob objects directly
     imageUrls: [],
@@ -70,13 +70,13 @@ class Home extends React.Component {
 
   componentDidMount() {
     this.setCreateDate({ millisecondsSinceEpoch: Date.now() });
-    promisedLocation().then(({ coords: { latitude: lat, longitude: lng } }) => {
-      this.setLatLng({ lat, lng });
+    promisedLocation().then(({ coords: { latitude, longitude } }) => {
+      this.setLatLng({ latitude, longitude });
     });
   }
 
-  setLatLng = ({ lat, lng }) => {
-    this.setState({ lat, lng });
+  setLatLng = ({ latitude, longitude }) => {
+    this.setState({ latitude, longitude });
   };
 
   setCreateDate = ({ millisecondsSinceEpoch }) => {
@@ -198,16 +198,18 @@ class Home extends React.Component {
 
   // adapted from http://danielhindrikes.se/web/get-coordinates-from-photo-with-javascript/
   coordsFromExifGps = ({ gps }) => {
-    let lat = gps.GPSLatitude;
-    let lng = gps.GPSLongitude;
+    const lat = gps.GPSLatitude;
+    const lng = gps.GPSLongitude;
 
     // Convert coordinates to WGS84 decimal
     const latRef = gps.GPSLatitudeRef || 'N';
     const lngRef = gps.GPSLongitudeRef || 'W';
-    lat = (lat[0] + lat[1] / 60 + lat[2] / 3600) * (latRef === 'N' ? 1 : -1);
-    lng = (lng[0] + lng[1] / 60 + lng[2] / 3600) * (lngRef === 'W' ? -1 : 1);
+    const latitude =
+      (lat[0] + lat[1] / 60 + lat[2] / 3600) * (latRef === 'N' ? 1 : -1);
+    const longitude =
+      (lng[0] + lng[1] / 60 + lng[2] / 3600) * (lngRef === 'W' ? -1 : 1);
 
-    return { lat, lng };
+    return { latitude, longitude };
   };
 
   render() {
@@ -311,23 +313,23 @@ class Home extends React.Component {
             <summary>
               Where:
               <br />
-              {this.state.lat},
+              {this.state.latitude},
               <br />
-              {this.state.lng}
+              {this.state.longitude}
             </summary>
             <MyMapComponent
               key="map"
               position={{
-                lat: this.state.lat,
-                lng: this.state.lng,
+                lat: this.state.latitude,
+                lng: this.state.longitude,
               }}
               onRef={mapRef => {
                 this.mapRef = mapRef;
               }}
               onCenterChanged={() => {
-                const lat = this.mapRef.getCenter().lat();
-                const lng = this.mapRef.getCenter().lng();
-                this.setLatLng({ lat, lng });
+                const latitude = this.mapRef.getCenter().lat();
+                const longitude = this.mapRef.getCenter().lng();
+                this.setLatLng({ latitude, longitude });
               }}
             />
           </details>

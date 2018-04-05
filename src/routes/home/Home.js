@@ -193,9 +193,7 @@ class Home extends React.Component {
   extractLocation = ({ exifData }) => {
     const { gps } = exifData;
     console.info(JSON.stringify(gps, null, 2)); // Do something with your data!
-    const { lat, lng } = this.coordsFromExifGps({ gps });
-    console.info(JSON.stringify({ lat, lng }, null, 2));
-    this.setLatLng({ lat, lng });
+    this.setLatLng(this.coordsFromExifGps({ gps }));
   };
 
   // adapted from http://danielhindrikes.se/web/get-coordinates-from-photo-with-javascript/

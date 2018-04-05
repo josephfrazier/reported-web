@@ -70,10 +70,10 @@ class Home extends React.Component {
 
   componentDidMount() {
     this.setCreateDate({ millisecondsSinceEpoch: Date.now() });
-    promisedLocation().then(({ coords }) => this.setLatLng(coords));
+    promisedLocation().then(({ coords }) => this.setCoords(coords));
   }
 
-  setLatLng = ({ latitude, longitude }) => {
+  setCoords = ({ latitude, longitude }) => {
     this.setState({ latitude, longitude });
   };
 
@@ -191,7 +191,7 @@ class Home extends React.Component {
   extractLocation = ({ exifData }) => {
     const { gps } = exifData;
     console.info(JSON.stringify(gps, null, 2)); // Do something with your data!
-    this.setLatLng(this.coordsFromExifGps({ gps }));
+    this.setCoords(this.coordsFromExifGps({ gps }));
   };
 
   // adapted from http://danielhindrikes.se/web/get-coordinates-from-photo-with-javascript/
@@ -327,7 +327,7 @@ class Home extends React.Component {
               onCenterChanged={() => {
                 const latitude = this.mapRef.getCenter().lat();
                 const longitude = this.mapRef.getCenter().lng();
-                this.setLatLng({ latitude, longitude });
+                this.setCoords({ latitude, longitude });
               }}
             />
           </details>

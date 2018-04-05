@@ -178,7 +178,13 @@ class Home extends React.Component {
   extractLocation = ({ exifData }) => {
     const { gps } = exifData;
     console.info(JSON.stringify(gps, null, 2)); // Do something with your data!
-    // below adapted from http://danielhindrikes.se/web/get-coordinates-from-photo-with-javascript/
+    const { lat, lng } = this.coordsFromExifGps({ gps });
+    console.info(JSON.stringify({ lat, lng }, null, 2));
+    this.setState({ lat, lng });
+  };
+
+  // adapted from http://danielhindrikes.se/web/get-coordinates-from-photo-with-javascript/
+  coordsFromExifGps = ({ gps }) => {
     let lat = gps.GPSLatitude;
     let lng = gps.GPSLongitude;
 
@@ -187,9 +193,8 @@ class Home extends React.Component {
     const lngRef = gps.GPSLongitudeRef || 'W';
     lat = (lat[0] + lat[1] / 60 + lat[2] / 3600) * (latRef === 'N' ? 1 : -1);
     lng = (lng[0] + lng[1] / 60 + lng[2] / 3600) * (lngRef === 'W' ? -1 : 1);
-    // above adapted from http://danielhindrikes.se/web/get-coordinates-from-photo-with-javascript/
-    console.info(JSON.stringify({ lat, lng }, null, 2));
-    this.setState({ lat, lng });
+
+    return { lat, lng };
   };
 
   render() {

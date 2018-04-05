@@ -354,7 +354,7 @@ class Home extends React.Component {
               }}
             />
           </details>
-          {/* TODO reverse geocode, allow edits */}
+          {/* TODO reverse geocode */}
 
           <label>
             When:{' '}

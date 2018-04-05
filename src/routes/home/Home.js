@@ -179,12 +179,11 @@ class Home extends React.Component {
 
   extractDate = ({ exifData }) => {
     const { exif: { CreateDate } } = exifData;
-    const CreateDateJs = new Date(
+    const millisecondsSinceEpoch = new Date(
       CreateDate.replace(':', '/').replace(':', '/'),
-    );
-    console.info(JSON.stringify(CreateDateJs, null, 2)); // Do something with your data!
+    ).getTime();
 
-    this.setCreateDate({ millisecondsSinceEpoch: CreateDateJs.getTime() });
+    this.setCreateDate({ millisecondsSinceEpoch });
   };
 
   extractLocation = ({ exifData }) => {

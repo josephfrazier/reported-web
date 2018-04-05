@@ -26,14 +26,21 @@ import persist from 'react-localstorage-hoc';
 
 import s from './Home.css';
 
-// TODO add placeholders
-// See https://github.com/jeffrono/Reported-Android/blob/1e48575d11c87ba3ae611a71603d58f472249220/app/src/main/java/cab/reported/nyc/ui/createreport/CarType.kt#L9-L11
-const colorTaxiRegexes = {
-  Yellow: RegExp('^\\d[A-Za-z]\\d\\d$'),
-  Green: RegExp('^[A-Za-z]{2}\\d{3}$'),
-  Black: RegExp('(^T\\d{6}C$)|(^\\d{6}$)'),
+const colorTaxiInfos = {
+  Yellow: {
+    regex: RegExp('^\\d[A-Za-z]\\d\\d$'),
+    placeholder: '1E23',
+  },
+  Green: {
+    regex: RegExp('^[A-Za-z]{2}\\d{3}$'),
+    placeholder: 'AA123',
+  },
+  Black: {
+    regex: RegExp('(^T\\d{6}C$)|(^\\d{6}$)'),
+    placeholder: 'T646345C',
+  },
 };
-const colorTaxiValues = Object.keys(colorTaxiRegexes);
+const colorTaxiNames = Object.keys(colorTaxiInfos);
 const typeofuserValues = ['Cyclist', 'Walker', 'Passenger'];
 const typeofcomplaintValues = [
   'Blocked the bike lane',
@@ -49,7 +56,7 @@ const typeofcomplaintValues = [
 
 class Home extends React.Component {
   state = {
-    colorTaxi: colorTaxiValues[0],
+    colorTaxi: colorTaxiNames[0],
     typeofuser: typeofuserValues[0],
     typeofcomplaint: typeofcomplaintValues[0],
     reportDescription: '',
@@ -84,8 +91,8 @@ class Home extends React.Component {
   setLicensePlate = ({ plate }) => {
     this.setState({ plate });
 
-    for (const colorTaxi of colorTaxiValues) {
-      if (plate.match(colorTaxiRegexes[colorTaxi])) {
+    for (const colorTaxi of colorTaxiNames) {
+      if (plate.match(colorTaxiInfos[colorTaxi].regex)) {
         this.setState({ colorTaxi });
       }
     }
@@ -233,7 +240,7 @@ class Home extends React.Component {
                 this.setState({ colorTaxi: event.target.value });
               }}
             >
-              {colorTaxiValues.map(colorTaxi => (
+              {colorTaxiNames.map(colorTaxi => (
                 <option key={colorTaxi} value={colorTaxi}>
                   {colorTaxi}
                 </option>
@@ -246,6 +253,7 @@ class Home extends React.Component {
             <input
               type="text"
               value={this.state.plate}
+              placeholder={colorTaxiInfos[this.state.colorTaxi].placeholder}
               onChange={event => {
                 this.setLicensePlate({ plate: event.target.value });
               }}

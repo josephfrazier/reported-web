@@ -70,9 +70,7 @@ class Home extends React.Component {
 
   componentDidMount() {
     this.setCreateDate({ millisecondsSinceEpoch: Date.now() });
-    promisedLocation().then(({ coords: { latitude, longitude } }) => {
-      this.setLatLng({ latitude, longitude });
-    });
+    promisedLocation().then(({ coords }) => this.setLatLng(coords));
   }
 
   setLatLng = ({ latitude, longitude }) => {

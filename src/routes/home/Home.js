@@ -69,8 +69,15 @@ class Home extends React.Component {
   }
 
   setCreateDate = ({ CreateDateJs }) => {
+    // Adjust date to local time
+    // https://stackoverflow.com/questions/674721/how-do-i-subtract-minutes-from-a-date-in-javascript
+    const MS_PER_MINUTE = 60000;
+    const offset = new Date().getTimezoneOffset();
+    const CreateDateJsLocal = new Date(CreateDateJs - offset * MS_PER_MINUTE);
+
     this.setState({
-      CreateDate: CreateDateJs.toISOString().replace(/\..*/g, ''),
+      // TODO make sure this is submitted as UTC: https://reportedcab.slack.com/messages/C852Q265V/p1522269753000718
+      CreateDate: CreateDateJsLocal.toISOString().replace(/\..*/g, ''),
     });
   };
 
@@ -304,8 +311,7 @@ class Home extends React.Component {
           {/* TODO reverse geocode, allow edits */}
 
           <label>
-            {/* TODO use local timezone */}
-            When (UTC):{' '}
+            When:{' '}
             <input
               type="datetime-local"
               value={this.state.CreateDate}

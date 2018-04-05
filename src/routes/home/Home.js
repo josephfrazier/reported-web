@@ -69,18 +69,20 @@ class Home extends React.Component {
   };
 
   componentDidMount() {
-    this.setCreateDate({ CreateDateJs: new Date() });
+    this.setCreateDate({ millisecondsSinceEpoch: Date.now() });
     promisedLocation().then(({ coords: { latitude: lat, longitude: lng } }) => {
       this.setState({ lat, lng });
     });
   }
 
-  setCreateDate = ({ CreateDateJs }) => {
+  setCreateDate = ({ millisecondsSinceEpoch }) => {
     // Adjust date to local time
     // https://stackoverflow.com/questions/674721/how-do-i-subtract-minutes-from-a-date-in-javascript
     const MS_PER_MINUTE = 60000;
     const offset = new Date().getTimezoneOffset();
-    const CreateDateJsLocal = new Date(CreateDateJs - offset * MS_PER_MINUTE);
+    const CreateDateJsLocal = new Date(
+      millisecondsSinceEpoch - offset * MS_PER_MINUTE,
+    );
 
     this.setState({
       // TODO make sure this is submitted as UTC: https://reportedcab.slack.com/messages/C852Q265V/p1522269753000718
@@ -182,7 +184,7 @@ class Home extends React.Component {
     );
     console.info(JSON.stringify(CreateDateJs, null, 2)); // Do something with your data!
 
-    this.setCreateDate({ CreateDateJs });
+    this.setCreateDate({ millisecondsSinceEpoch: CreateDateJs.getTime() });
   };
 
   extractLocation = ({ exifData }) => {

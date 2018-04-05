@@ -12,6 +12,7 @@ import React from 'react';
 import withStyles from 'isomorphic-style-loader/lib/withStyles';
 import FileReaderInput from 'react-file-reader-input';
 import toBuffer from 'blob-to-buffer';
+import b64toBlob from 'b64-to-blob';
 import { ExifImage } from 'exif';
 import axios from 'axios';
 import promisedLocation from 'promised-location';
@@ -25,6 +26,7 @@ import {
 import { SearchBox } from 'react-google-maps/lib/components/places/SearchBox';
 import persist from 'react-localstorage-hoc';
 import debounce from 'debounce-promise';
+import fileType from 'file-type-es5';
 
 import s from './Home.css';
 
@@ -74,14 +76,31 @@ class Home extends React.Component {
     can_be_shared_publicly: false,
     latitude: 40.7128,
     longitude: -74.006,
-    // TODO keep track of image data instead of url, maybe `imageBytes`?
     // TODO also consider using IndexedDB (via e.g. localForage) to store File/Blob objects directly
+    // instead of having to convert back from base64
+    imageBytess: [],
+    // TODO improve URL generation/storage: https://www.bignerdranch.com/blog/dont-over-react/
+    // Ideally they won't be in the state at all, and we can just generate/memoize them on the fly
     imageUrls: [],
   };
 
   componentDidMount() {
     this.setCreateDate({ millisecondsSinceEpoch: Date.now() });
     promisedLocation().then(({ coords }) => this.setCoords(coords));
+    this.setImages({
+      images: this.state.imageBytess.map(imageBytes => ({ imageBytes })),
+    });
+  }
+
+  setImages({ images }) {
+    const imageUrls = images.map(({ imageBytes }) => {
+      const contentType = fileType(Buffer.from(imageBytes, 'base64')).mime;
+      const file = b64toBlob(imageBytes, contentType);
+      const imageUrl = window.URL.createObjectURL(file);
+      return imageUrl;
+    });
+    this.setState({ imageUrls });
+    this.setState({ imageBytess: images.map(({ imageBytes }) => imageBytes) });
   }
 
   setCoords = ({ latitude, longitude }) => {
@@ -122,10 +141,9 @@ class Home extends React.Component {
       results.map(async result => {
         const [, file] = result;
         try {
-          const imageUrl = window.URL.createObjectURL(file);
           const image = await promisify(toBuffer)(file); // eslint-disable-line no-await-in-loop
           const imageBytes = image.toString('base64'); // {String} The image file that you wish to analyze encoded in base64
-          return { imageUrl, image, imageBytes };
+          return { image, imageBytes };
         } catch (err) {
           console.error(`Error: ${err.message}`);
           return {};
@@ -133,7 +151,7 @@ class Home extends React.Component {
       }),
     );
 
-    this.setState({ imageUrls: images.map(({ imageUrl }) => imageUrl) });
+    this.setImages({ images });
 
     for (const { image, imageBytes } of images) {
       try {
@@ -251,10 +269,13 @@ class Home extends React.Component {
 
               <button
                 onClick={() => {
-                  this.setState({
-                    imageUrls: this.state.imageUrls.filter(
-                      url => url !== imageUrl,
-                    ),
+                  this.setImages({
+                    images: this.state.imageBytess
+                      .filter((_, i) => {
+                        const url = this.state.imageUrls[i];
+                        return url !== imageUrl;
+                      })
+                      .map(imageBytes => ({ imageBytes })),
                   });
                 }}
               >

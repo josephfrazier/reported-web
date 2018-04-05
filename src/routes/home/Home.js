@@ -124,7 +124,8 @@ class Home extends React.Component {
         try {
           const imageUrl = window.URL.createObjectURL(file);
           const image = await promisify(toBuffer)(file); // eslint-disable-line no-await-in-loop
-          return { imageUrl, image };
+          const imageBytes = image.toString('base64'); // {String} The image file that you wish to analyze encoded in base64
+          return { imageUrl, image, imageBytes };
         } catch (err) {
           console.error(`Error: ${err.message}`);
           return {};
@@ -134,11 +135,11 @@ class Home extends React.Component {
 
     this.setState({ imageUrls: images.map(({ imageUrl }) => imageUrl) });
 
-    for (const { image } of images) {
+    for (const { image, imageBytes } of images) {
       try {
         // eslint-disable-next-line no-await-in-loop
         await Promise.all([
-          this.extractPlate({ image }),
+          this.extractPlate({ imageBytes }),
           promisify(ExifImage)({ image }).then(exifData =>
             Promise.all([
               console.info(JSON.stringify(exifData, null, 2)),
@@ -164,9 +165,7 @@ class Home extends React.Component {
   };
 
   // adapted from https://github.com/openalpr/cloudapi/tree/8141c1ba57f03df4f53430c6e5e389b39714d0e0/javascript#getting-started
-  extractPlate = async ({ image }) => {
-    const imageBytes = image.toString('base64'); // {String} The image file that you wish to analyze encoded in base64
-
+  extractPlate = async ({ imageBytes }) => {
     const country = 'us'; // {String} Defines the training data used by OpenALPR. \"us\" analyzes North-American style plates. \"eu\" analyzes European-style plates. This field is required if using the \"plate\" task You may use multiple datasets by using commas between the country codes. For example, 'au,auwide' would analyze using both the Australian plate styles. A full list of supported country codes can be found here https://github.com/openalpr/openalpr/tree/master/runtime_data/config
 
     const opts = {

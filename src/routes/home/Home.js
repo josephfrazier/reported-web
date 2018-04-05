@@ -24,8 +24,18 @@ import {
 } from 'react-google-maps';
 import { SearchBox } from 'react-google-maps/lib/components/places/SearchBox';
 import persist from 'react-localstorage-hoc';
+import debounce from 'debounce-promise';
 
 import s from './Home.css';
+
+const GOOGLE_MAPS_API_KEY = 'AIzaSyDlwm2ykA0ohTXeVepQYvkcmdjz2M2CKEI';
+
+const debouncedReverseGeocode = debounce(async ({ latitude, longitude }) => {
+  const { data } = await axios.get(
+    `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${GOOGLE_MAPS_API_KEY}`,
+  );
+  return data;
+}, 500);
 
 const colorTaxiInfos = {
   Yellow: {
@@ -76,6 +86,9 @@ class Home extends React.Component {
 
   setCoords = ({ latitude, longitude }) => {
     this.setState({ latitude, longitude });
+    debouncedReverseGeocode({ latitude, longitude }).then(data => {
+      this.setState({ formatted_address: data.results[0].formatted_address });
+    });
   };
 
   setCreateDate = ({ millisecondsSinceEpoch }) => {
@@ -315,6 +328,8 @@ class Home extends React.Component {
               {this.state.latitude},
               <br />
               {this.state.longitude}
+              <br />
+              ({this.state.formatted_address})
             </summary>
             <MyMapComponent
               key="map"
@@ -354,7 +369,6 @@ class Home extends React.Component {
               }}
             />
           </details>
-          {/* TODO reverse geocode */}
 
           <label>
             When:{' '}
@@ -395,7 +409,6 @@ class Home extends React.Component {
   }
 }
 
-const GOOGLE_MAPS_API_KEY = 'AIzaSyDlwm2ykA0ohTXeVepQYvkcmdjz2M2CKEI';
 const MyMapComponent = compose(
   withProps({
     googleMapURL: `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&v=3.exp&libraries=geometry,drawing,places`,

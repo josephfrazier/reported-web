@@ -67,6 +67,9 @@ const typeofcomplaintValues = [
   'Went above and beyond to help',
 ];
 
+const defaultLatitude = 40.7128;
+const defaultLongitude = -74.006;
+
 class Home extends React.Component {
   state = {
     colorTaxi: colorTaxiNames[0],
@@ -74,8 +77,8 @@ class Home extends React.Component {
     typeofcomplaint: typeofcomplaintValues[0],
     reportDescription: '',
     can_be_shared_publicly: false,
-    latitude: 40.7128,
-    longitude: -74.006,
+    latitude: defaultLatitude,
+    longitude: defaultLongitude,
     // TODO also consider using IndexedDB (via e.g. localForage) to store File/Blob objects directly
     // instead of having to convert back from base64
     imageBytess: [],

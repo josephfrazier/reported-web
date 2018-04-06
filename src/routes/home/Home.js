@@ -92,7 +92,16 @@ class Home extends React.Component {
     if (this.state.imageBytess.length === 0 || !this.state.CreateDate) {
       this.setCreateDate({ millisecondsSinceEpoch: Date.now() });
     }
-    promisedLocation().then(({ coords }) => this.setCoords(coords));
+    promisedLocation().then(({ coords }) => {
+      // if there's no images or a location couldn't be extracted, just use here
+      if (
+        this.state.imageBytess.length === 0 ||
+        (this.state.latitude === defaultLatitude &&
+          this.state.longitude === defaultLongitude)
+      ) {
+        this.setCoords(coords);
+      }
+    });
     this.setImages({
       images: this.state.imageBytess.map(imageBytes => ({ imageBytes })),
     });

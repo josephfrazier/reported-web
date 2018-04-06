@@ -135,7 +135,6 @@ class Home extends React.Component {
     );
 
     this.setState({
-      // TODO make sure this is submitted as UTC: https://reportedcab.slack.com/messages/C852Q265V/p1522269753000718
       CreateDate: CreateDateJsLocal.toISOString().replace(/\..*/g, ''),
     });
   };
@@ -438,7 +437,10 @@ class Home extends React.Component {
           <button
             type="button"
             onClick={async () => {
-              const { data } = await axios.post('/submit', this.state);
+              const { data } = await axios.post('/submit', {
+                ...this.state,
+                CreateDate: new Date(this.state.CreateDate).toISOString(),
+              });
               console.info(
                 `submitted successfully. Returned data: ${JSON.stringify(
                   data,

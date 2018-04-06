@@ -121,6 +121,11 @@ app.use(
   })),
 );
 
+app.use('/submit', (req, res) => {
+  const { body } = req;
+  res.json(body); // TODO create Parse Submission
+});
+
 // adapted from https://github.com/openalpr/cloudapi/tree/8141c1ba57f03df4f53430c6e5e389b39714d0e0/javascript#getting-started
 app.use('/openalpr', (req, res) => {
   const { imageBytes, country, opts } = req.body;

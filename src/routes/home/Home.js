@@ -435,9 +435,21 @@ class Home extends React.Component {
             displayed
           </label>
 
-          {/*
-          <p>TODO submit button</p>
-          */}
+          <button
+            type="button"
+            onClick={async () => {
+              const { data } = await axios.post('/submit', this.state);
+              console.info(
+                `submitted successfully. Returned data: ${JSON.stringify(
+                  data,
+                  null,
+                  2,
+                )}`,
+              );
+            }}
+          >
+            Submit
+          </button>
         </div>
       </div>
     );

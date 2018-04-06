@@ -85,7 +85,10 @@ class Home extends React.Component {
   };
 
   componentDidMount() {
-    this.setCreateDate({ millisecondsSinceEpoch: Date.now() });
+    // if there's no images or a time couldn't be extracted, just use now
+    if (this.state.imageBytess.length === 0 || !this.state.CreateDate) {
+      this.setCreateDate({ millisecondsSinceEpoch: Date.now() });
+    }
     promisedLocation().then(({ coords }) => this.setCoords(coords));
     this.setImages({
       images: this.state.imageBytess.map(imageBytes => ({ imageBytes })),

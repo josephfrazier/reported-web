@@ -115,10 +115,6 @@ class Home extends React.Component {
     });
   }
 
-  setImages({ images }) {
-    this.setState({ imageBytess: images.map(({ imageBytes }) => imageBytes) });
-  }
-
   setCoords = ({ latitude, longitude }) => {
     this.setState({ latitude, longitude });
     debouncedReverseGeocode({ latitude, longitude }).then(data => {
@@ -166,7 +162,7 @@ class Home extends React.Component {
       }),
     );
 
-    this.setImages({ images });
+    this.setState({ imageBytess: images.map(({ imageBytes }) => imageBytes) });
 
     for (const { image, imageBytes } of images) {
       try {
@@ -286,12 +282,10 @@ class Home extends React.Component {
 
                 <button
                   onClick={() => {
-                    this.setImages({
-                      images: this.state.imageBytess
-                        .filter(imageBytesItem => imageBytesItem !== imageBytes)
-                        .map(imageBytesItem => ({
-                          imageBytes: imageBytesItem,
-                        })),
+                    this.setState({
+                      imageBytess: this.state.imageBytess.filter(
+                        bytes => bytes !== imageBytes,
+                      ),
                     });
                   }}
                 >

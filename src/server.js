@@ -149,6 +149,9 @@ app.use('/submit', (req, res) => {
   saveUser({ password, email })
     .then(user => {
       console.info({ user });
+      if (!user.get('emailVerified')) {
+        throw { message: 'email must be verified' }; // eslint-disable-line no-throw-literal
+      }
       const Submission = Parse.Object.extend('submission');
       const submission = new Submission();
       submission.set({ user });

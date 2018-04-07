@@ -70,6 +70,19 @@ const typeofcomplaintValues = [
 const defaultLatitude = 40.7128;
 const defaultLongitude = -74.006;
 
+// adapted from https://www.bignerdranch.com/blog/dont-over-react/
+const urls = new Map(); // using Map instead of WeakMap because the keys are primitive strings, which WeakMap doesn't allow
+const getImageUrl = imageBytes => {
+  if (urls.has(imageBytes)) {
+    return urls.get(imageBytes);
+  }
+  const contentType = fileType(Buffer.from(imageBytes, 'base64')).mime;
+  const file = b64toBlob(imageBytes, contentType);
+  const imageUrl = window.URL.createObjectURL(file);
+  urls.set(imageBytes, imageUrl);
+  return imageUrl;
+};
+
 class Home extends React.Component {
   state = {
     colorTaxi: colorTaxiNames[0],
@@ -81,10 +94,8 @@ class Home extends React.Component {
     longitude: defaultLongitude,
     // TODO also consider using IndexedDB (via e.g. localForage) to store File/Blob objects directly
     // instead of having to convert back from base64
+    // If this is done, we can use a WeakMap instead of a Map in getImageUrl() above.
     imageBytess: [],
-    // TODO improve URL generation/storage: https://www.bignerdranch.com/blog/dont-over-react/
-    // Ideally they won't be in the state at all, and we can just generate/memoize them on the fly
-    imageUrls: [],
   };
 
   componentDidMount() {
@@ -102,19 +113,9 @@ class Home extends React.Component {
         this.setCoords(coords);
       }
     });
-    this.setImages({
-      images: this.state.imageBytess.map(imageBytes => ({ imageBytes })),
-    });
   }
 
   setImages({ images }) {
-    const imageUrls = images.map(({ imageBytes }) => {
-      const contentType = fileType(Buffer.from(imageBytes, 'base64')).mime;
-      const file = b64toBlob(imageBytes, contentType);
-      const imageUrl = window.URL.createObjectURL(file);
-      return imageUrl;
-    });
-    this.setState({ imageUrls });
     this.setState({ imageBytess: images.map(({ imageBytes }) => imageBytes) });
   }
 
@@ -275,28 +276,30 @@ class Home extends React.Component {
             <button>Select/Take a picture</button>
           </FileReaderInput>
 
-          {this.state.imageUrls.map(imageUrl => (
-            <div key={imageUrl}>
-              <a target="_blank" href={imageUrl}>
-                {imageUrl}
-              </a>
+          {this.state.imageBytess.map(imageBytes => {
+            const imageUrl = getImageUrl(imageBytes);
+            return (
+              <div key={imageUrl}>
+                <a target="_blank" href={imageUrl}>
+                  {imageUrl}
+                </a>
 
-              <button
-                onClick={() => {
-                  this.setImages({
-                    images: this.state.imageBytess
-                      .filter((_, i) => {
-                        const url = this.state.imageUrls[i];
-                        return url !== imageUrl;
-                      })
-                      .map(imageBytes => ({ imageBytes })),
-                  });
-                }}
-              >
-                Remove this image
-              </button>
-            </div>
-          ))}
+                <button
+                  onClick={() => {
+                    this.setImages({
+                      images: this.state.imageBytess
+                        .filter(imageBytesItem => imageBytesItem !== imageBytes)
+                        .map(imageBytesItem => ({
+                          imageBytes: imageBytesItem,
+                        })),
+                    });
+                  }}
+                >
+                  Remove this image
+                </button>
+              </div>
+            );
+          })}
 
           <label>
             Cab Color:{' '}

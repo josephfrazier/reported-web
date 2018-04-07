@@ -258,10 +258,36 @@ class Home extends React.Component {
         <div className={s.container}>
           <br />
 
-          {/*
-            TODO User Profile Info
-            https://github.com/jeffrono/Reported-Android/blob/f92949014678f8847ef83a9e5746a9d97d4db87f/app/src/main/java/cab/reported/nyc/session/SessionManagerImpl.kt#L152-L238
-          */}
+          <details>
+            <summary>User info</summary>
+
+            {/*
+              // adapted from https://github.com/jeffrono/Reported-Android/blob/641967c0db2e7c020645c21b8ea845d46dcbaa62/app/src/main/java/cab/reported/nyc/session/SessionManagerImpl.kt#L357-L402
+              // TODO add remaining fields from ^ to server and to here
+            */}
+
+            <label>
+              Email:{' '}
+              <input
+                type="text"
+                value={this.state.email}
+                name="email"
+                onChange={this.handleInputChange}
+              />
+            </label>
+
+            <label>
+              Password:{' '}
+              <input
+                type="text"
+                value={this.state.password}
+                name="password"
+                onChange={this.handleInputChange}
+              />
+            </label>
+          </details>
+
+          <br />
 
           <FileReaderInput
             accept="image/*"

@@ -20,6 +20,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/server';
 import PrettyError from 'pretty-error';
 import OpenalprApi from 'openalpr_api';
+import Parse from 'parse/node';
 
 import App from './components/App';
 import Html from './components/Html';
@@ -40,6 +41,10 @@ process.on('unhandledRejection', (reason, p) => {
   // send entire app down. Process manager will restart it
   process.exit(1);
 });
+
+// http://docs.parseplatform.org/js/guide/#getting-started
+Parse.initialize(process.env.PARSE_APP_ID, process.env.PARSE_JAVASCRIPT_KEY);
+Parse.serverURL = process.env.PARSE_SERVER_URL;
 
 //
 // Tell any CSS tooling (such as Material UI) to use all vendor prefixes if the
@@ -121,9 +126,44 @@ app.use(
   })),
 );
 
+// adapted from https://github.com/jeffrono/Reported-Android/blob/641967c0db2e7c020645c21b8ea845d46dcbaa62/app/src/main/java/cab/reported/nyc/session/SessionManagerImpl.kt#L357-L402
+// TODO add remaining fields from ^ to UI and to here
+function saveUser({ password, email }) {
+  // adapted from http://docs.parseplatform.org/js/guide/#signing-up
+  const user = new Parse.User();
+  const username = email;
+  const fields = { username, password, email };
+  user.set(fields);
+
+  return user.signUp(null).catch(() => Parse.User.logIn(username, password));
+  // TODO use the save() method to actually update information after logging in
+  // http://docs.parseplatform.org/js/guide/#updating-objects
+  // http://docs.parseplatform.org/js/guide/#security-for-user-objects
+}
+
 app.use('/submit', (req, res) => {
   const { body } = req;
-  res.json(body); // TODO create Parse Submission
+
+  const { password, email } = body;
+
+  saveUser({ password, email })
+    .then(user => {
+      console.info({ user });
+      const Submission = Parse.Object.extend('submission');
+      const submission = new Submission();
+      submission.set({ user });
+      // TODO populate Parse Submission
+      return submission.save(null);
+    })
+    .then(submission => {
+      console.info({ submission });
+
+      res.json({ submission });
+    })
+    .catch(error => {
+      console.error({ error });
+      res.status(500).json({ error });
+    });
 });
 
 // adapted from https://github.com/openalpr/cloudapi/tree/8141c1ba57f03df4f53430c6e5e389b39714d0e0/javascript#getting-started

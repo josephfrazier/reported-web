@@ -127,18 +127,35 @@ app.use(
   })),
 );
 
-// adapted from https://github.com/jeffrono/Reported-Android/blob/641967c0db2e7c020645c21b8ea845d46dcbaa62/app/src/main/java/cab/reported/nyc/session/SessionManagerImpl.kt#L357-L402
-// TODO add remaining fields from ^ to UI and to here
-function saveUser({ password, email }) {
+function saveUser({
+  email,
+  password,
+  FirstName,
+  LastName,
+  Building,
+  StreetName,
+  Apt,
+  Borough,
+  Phone,
+  testify,
+}) {
   // adapted from http://docs.parseplatform.org/js/guide/#signing-up
   const user = new Parse.User();
   const username = email;
   const useremail = email;
   const fields = {
     username,
-    password,
-    email,
     useremail,
+    email,
+    password,
+    FirstName,
+    LastName,
+    Building,
+    StreetName,
+    Apt,
+    Borough,
+    Phone,
+    testify,
   };
   user.set(fields);
 
@@ -158,9 +175,31 @@ function saveUser({ password, email }) {
 app.use('/submit', (req, res) => {
   const { body } = req;
 
-  const { password, email } = body;
+  const {
+    email,
+    password,
+    FirstName,
+    LastName,
+    Building,
+    StreetName,
+    Apt,
+    Borough,
+    Phone,
+    testify,
+  } = body;
 
-  saveUser({ password, email })
+  saveUser({
+    email,
+    password,
+    FirstName,
+    LastName,
+    Building,
+    StreetName,
+    Apt,
+    Borough,
+    Phone,
+    testify,
+  })
     .then(user => {
       console.info({ user });
       if (!user.get('emailVerified')) {

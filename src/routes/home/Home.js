@@ -67,6 +67,16 @@ const typeofcomplaintValues = [
   'Went above and beyond to help',
 ];
 
+// copied from https://github.com/jeffrono/Reported-Android/blob/f92949014678f8847ef83a9e5746a9d97d4db87f/app/src/main/res/values/strings.xml#L105-L112
+const boroughValues = [
+  'Bronx',
+  'Brooklyn',
+  'Manhattan',
+  'Queens',
+  'Staten Island',
+  'NOT WITHIN NEW YORK CITY',
+];
+
 const defaultLatitude = 40.7128;
 const defaultLongitude = -74.006;
 
@@ -85,6 +95,17 @@ const getImageUrl = imageBytes => {
 
 class Home extends React.Component {
   state = {
+    email: '',
+    password: '',
+    FirstName: '',
+    LastName: '',
+    Building: '',
+    StreetName: '',
+    Apt: '',
+    Borough: boroughValues[0],
+    Phone: '',
+    testify: false,
+
     colorTaxi: colorTaxiNames[0],
     typeofuser: typeofuserValues[0],
     typeofcomplaint: typeofcomplaintValues[0],
@@ -261,11 +282,6 @@ class Home extends React.Component {
           <details>
             <summary>User info</summary>
 
-            {/*
-              // adapted from https://github.com/jeffrono/Reported-Android/blob/641967c0db2e7c020645c21b8ea845d46dcbaa62/app/src/main/java/cab/reported/nyc/session/SessionManagerImpl.kt#L357-L402
-              // TODO add remaining fields from ^ to server and to here
-            */}
-
             <label>
               Email:{' '}
               <input
@@ -284,6 +300,93 @@ class Home extends React.Component {
                 name="password"
                 onChange={this.handleInputChange}
               />
+            </label>
+
+            <label>
+              First Name:{' '}
+              <input
+                type="text"
+                value={this.state.FirstName}
+                name="FirstName"
+                onChange={this.handleInputChange}
+              />
+            </label>
+
+            <label>
+              Last Name:{' '}
+              <input
+                type="text"
+                value={this.state.LastName}
+                name="LastName"
+                onChange={this.handleInputChange}
+              />
+            </label>
+
+            <label>
+              Building Number:{' '}
+              <input
+                type="text"
+                value={this.state.Building}
+                name="Building"
+                onChange={this.handleInputChange}
+              />
+            </label>
+
+            <label>
+              Street Name:{' '}
+              <input
+                type="text"
+                value={this.state.StreetName}
+                name="StreetName"
+                onChange={this.handleInputChange}
+              />
+            </label>
+
+            <label>
+              Apartment Number:{' '}
+              <input
+                type="text"
+                value={this.state.Apt}
+                name="Apt"
+                onChange={this.handleInputChange}
+              />
+            </label>
+
+            <label>
+              Borough:{' '}
+              <select
+                value={this.state.Borough}
+                name="Borough"
+                onChange={this.handleInputChange}
+              >
+                {boroughValues.map(borough => (
+                  <option key={borough} value={borough}>
+                    {borough}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              Phone Number:{' '}
+              <input
+                type="text"
+                value={this.state.Phone}
+                name="Phone"
+                onChange={this.handleInputChange}
+              />
+            </label>
+
+            <label>
+              <input
+                type="checkbox"
+                checked={this.state.testify}
+                name="testify"
+                onChange={this.handleInputChange}
+              />{' '}
+              {
+                "I'm willing to testify at a hearing, which can be done by phone."
+              }
             </label>
           </details>
 

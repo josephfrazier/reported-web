@@ -133,7 +133,13 @@ function saveUser({ password, email }) {
   // adapted from http://docs.parseplatform.org/js/guide/#signing-up
   const user = new Parse.User();
   const username = email;
-  const fields = { username, password, email };
+  const useremail = email;
+  const fields = {
+    username,
+    password,
+    email,
+    useremail,
+  };
   user.set(fields);
 
   return user

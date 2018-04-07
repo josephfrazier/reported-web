@@ -21,6 +21,7 @@ import ReactDOM from 'react-dom/server';
 import PrettyError from 'pretty-error';
 import OpenalprApi from 'openalpr_api';
 import Parse from 'parse/node';
+import omit from 'object.omit';
 
 import App from './components/App';
 import Html from './components/Html';
@@ -135,10 +136,17 @@ function saveUser({ password, email }) {
   const fields = { username, password, email };
   user.set(fields);
 
-  return user.signUp(null).catch(() => Parse.User.logIn(username, password));
-  // TODO use the save() method to actually update information after logging in
-  // http://docs.parseplatform.org/js/guide/#updating-objects
-  // http://docs.parseplatform.org/js/guide/#security-for-user-objects
+  return user
+    .signUp(null)
+    .catch(() => Parse.User.logIn(username, password))
+    .then(userAgain => {
+      userAgain.set(omit(fields, 'email')); // don't re-set email since that triggers a verification email
+      return userAgain.save(null, {
+        // sessionToken must be manually passed in:
+        // https://github.com/parse-community/parse-server/issues/1729#issuecomment-218932566
+        sessionToken: userAgain.get('sessionToken'),
+      });
+    });
 }
 
 app.use('/submit', (req, res) => {

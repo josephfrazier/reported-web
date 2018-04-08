@@ -260,11 +260,19 @@ app.use('/submit', (req, res) => {
         // VERSION_NUMBER, BuildConfig.VERSION_CODE)
         reqnumber: 'N/A until submitted to 311',
       });
+
       // upload images
       // http://docs.parseplatform.org/js/guide/#creating-a-parsefile
+
+      const images = imageBytess
+        .map(imageBytes => ({
+          imageBytes,
+          ext: fileType(Buffer.from(imageBytes, 'base64')).ext,
+        }))
+        .filter(({ ext }) => ['jpg', 'png', 'jpeg'].includes(ext));
+
       await Promise.all(
-        imageBytess.map(async (imageBytes, index) => {
-          const { ext } = fileType(Buffer.from(imageBytes, 'base64'));
+        images.map(async ({ imageBytes, ext }, index) => {
           // TODO handle photos/videos separately
           // https://reportedcab.slack.com/messages/C85007FUY/p1523149628000063
           const key = `photoData${index}`;

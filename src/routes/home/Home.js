@@ -392,6 +392,10 @@ class Home extends React.Component {
 
           <br />
 
+          {/*
+          TODO accept videos too
+          Will this work on mobile with just one input, or do we need another?
+          */}
           <FileReaderInput
             accept="image/*"
             multiple

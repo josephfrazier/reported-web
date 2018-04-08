@@ -567,18 +567,24 @@ class Home extends React.Component {
 
           <button
             type="button"
-            onClick={async () => {
-              const { data } = await axios.post('/submit', {
-                ...this.state,
-                CreateDate: new Date(this.state.CreateDate).toISOString(),
-              });
-              console.info(
-                `submitted successfully. Returned data: ${JSON.stringify(
-                  data,
-                  null,
-                  2,
-                )}`,
-              );
+            onClick={() => {
+              axios
+                .post('/submit', {
+                  ...this.state,
+                  CreateDate: new Date(this.state.CreateDate).toISOString(),
+                })
+                .then(({ data }) => {
+                  console.info(
+                    `submitted successfully. Returned data: ${JSON.stringify(
+                      data,
+                      null,
+                      2,
+                    )}`,
+                  );
+                })
+                .catch(err => {
+                  window.alert(`Error: ${err.response.data.error.message}`);
+                });
             }}
           >
             Submit

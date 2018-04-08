@@ -581,6 +581,10 @@ class Home extends React.Component {
                       2,
                     )}`,
                   );
+                  window.prompt(
+                    'Submitted! objectId:',
+                    data.submission.objectId,
+                  );
                 })
                 .catch(err => {
                   window.alert(`Error: ${err.response.data.error.message}`);

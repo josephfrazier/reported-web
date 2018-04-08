@@ -22,6 +22,7 @@ import PrettyError from 'pretty-error';
 import OpenalprApi from 'openalpr_api';
 import Parse from 'parse/node';
 import omit from 'object.omit';
+import fileType from 'file-type-es5';
 
 import App from './components/App';
 import Html from './components/Html';
@@ -186,7 +187,22 @@ app.use('/submit', (req, res) => {
     Borough,
     Phone,
     testify,
+
+    colorTaxi,
+    plate,
+    typeofuser,
+    typeofreport = 'complaint',
+    typeofcomplaint,
+    reportDescription,
+    can_be_shared_publicly, // eslint-disable-line camelcase
+    latitude,
+    longitude,
+    formatted_address, // eslint-disable-line camelcase
+    imageBytess = [],
   } = body;
+
+  const timeofreport = new Date();
+  const timeofreported = timeofreport;
 
   saveUser({
     email,
@@ -200,15 +216,63 @@ app.use('/submit', (req, res) => {
     Phone,
     testify,
   })
-    .then(user => {
+    .then(async user => {
       console.info({ user });
       if (!user.get('emailVerified')) {
         throw { message: 'email must be verified' }; // eslint-disable-line no-throw-literal
       }
       const Submission = Parse.Object.extend('submission');
       const submission = new Submission();
-      submission.set({ user });
-      // TODO populate Parse Submission
+      submission.set({
+        user,
+
+        FirstName,
+        LastName,
+        Phone,
+        Borough,
+        Building,
+        Apt,
+        testify,
+        StreetName,
+
+        Username: email,
+
+        typeofreport,
+        selectedReport: typeofreport === 'complaint' ? 1 : 0,
+        colorTaxi,
+        medallionNo: plate,
+        typeofcomplaint,
+        typeofuser: typeofuser.toLowerCase(),
+        passenger: typeofuser.toLowerCase() === 'passenger',
+        locationNumber: 1,
+        latitude: latitude.toString(),
+        longitude: longitude.toString(),
+        latitude1: latitude,
+        longitude1: longitude,
+        loc1_address: formatted_address, // TODO this is unused: https://reportedcab.slack.com/messages/C852Q265V/
+        timeofreport,
+        timeofreported,
+        reportDescription,
+        can_be_shared_publicly,
+        status: 0,
+        operating_system: 'web',
+        // TODO use commit hash or something?
+        // VERSION_NUMBER, BuildConfig.VERSION_CODE)
+        reqnumber: 'N/A until submitted to 311',
+      });
+      // upload images
+      // http://docs.parseplatform.org/js/guide/#creating-a-parsefile
+      await Promise.all(
+        imageBytess.map(async (imageBytes, index) => {
+          const { ext } = fileType(Buffer.from(imageBytes, 'base64'));
+          // TODO handle photos/videos separately
+          // https://reportedcab.slack.com/messages/C85007FUY/p1523149628000063
+          const key = `photoData${index}`;
+          const file = new Parse.File(`${key}.${ext}`, { base64: imageBytes });
+          await file.save();
+          submission.set(key, file);
+        }),
+      );
       return submission.save(null);
     })
     .then(submission => {

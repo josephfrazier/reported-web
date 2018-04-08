@@ -134,6 +134,7 @@ class Home extends React.Component {
         this.setCoords(coords);
       }
     });
+    this.forceUpdate(); // force "User info" fields to render persisted value after load
   }
 
   setCoords = ({ latitude, longitude }) => {

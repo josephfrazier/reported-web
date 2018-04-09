@@ -14,6 +14,7 @@ import Layout from '../../components/Layout';
 async function action() {
   return {
     title: 'Reported',
+    chunks: ['home'],
     component: (
       <Layout>
         <Home />

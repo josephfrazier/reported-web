@@ -543,6 +543,13 @@ class Home extends React.Component {
               name="CreateDate"
               onChange={this.handleInputChange}
             />
+            <button
+              onClick={() => {
+                this.setCreateDate({ millisecondsSinceEpoch: Date.now() });
+              }}
+            >
+              Now
+            </button>
           </label>
 
           <label>

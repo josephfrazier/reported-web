@@ -489,6 +489,20 @@ class Home extends React.Component {
           <details>
             <summary>
               Where:
+              <button
+                onClick={() => {
+                  promisedLocation()
+                    .then(({ coords }) => {
+                      this.setCoords(coords);
+                    })
+                    .catch(err => {
+                      window.alert(err.message);
+                      console.error(err);
+                    });
+                }}
+              >
+                Here
+              </button>
               <br />
               {this.state.latitude},
               <br />

@@ -3725,6 +3725,10 @@ expect@^22.4.3:
     jest-message-util "^22.4.3"
     jest-regex-util "^22.4.3"
 
+express-force-https@^1.0.0:
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/express-force-https/-/express-force-https-1.0.0.tgz#2adb8121a6894616fc78ea05b15bd8d4b855fd0c"
+
 express-graphql@^0.6.12:
   version "0.6.12"
   resolved "https://registry.yarnpkg.com/express-graphql/-/express-graphql-0.6.12.tgz#dfcb2058ca72ed5190b140830ad8cdbf76a9128a"

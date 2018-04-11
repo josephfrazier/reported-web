@@ -21,6 +21,7 @@
     "dotenv": "^5.0.1",
     "exif": "https://github.com/josephfrazier/node-exif#isbuffer",
     "express": "^4.16.3",
+    "express-force-https": "^1.0.0",
     "express-graphql": "^0.6.12",
     "express-jwt": "^5.3.1",
     "file-type-es5": "^6.2.1",

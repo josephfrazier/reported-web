@@ -202,9 +202,10 @@ app.use('/submit', (req, res) => {
     longitude,
     formatted_address, // eslint-disable-line camelcase
     imageBytess = [],
+    CreateDate,
   } = body;
 
-  const timeofreport = new Date();
+  const timeofreport = new Date(CreateDate);
   const timeofreported = timeofreport;
 
   saveUser({

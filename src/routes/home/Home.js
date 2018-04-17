@@ -549,28 +549,26 @@ class Home extends React.Component {
 
           <details>
             <summary>
-              Where:
-              <button
-                onClick={() => {
-                  promisedLocation()
-                    .then(({ coords }) => {
-                      this.setCoords(coords);
-                    })
-                    .catch(err => {
-                      window.alert(err.message);
-                      console.error(err);
-                    });
-                }}
-              >
-                Here
-              </button>
+              Where: (click to edit)
               <br />
-              {this.state.latitude},
-              <br />
-              {this.state.longitude}
-              <br />
-              ({this.state.formatted_address})
+              {this.state.formatted_address}
             </summary>
+
+            <button
+              onClick={() => {
+                promisedLocation()
+                  .then(({ coords }) => {
+                    this.setCoords(coords);
+                  })
+                  .catch(err => {
+                    window.alert(err.message);
+                    console.error(err);
+                  });
+              }}
+            >
+              Here
+            </button>
+
             <MyMapComponent
               key="map"
               position={{

@@ -439,6 +439,14 @@ class Home extends React.Component {
                 >
                   Remove
                 </button>
+
+                <button
+                  onClick={() => {
+                    this.extractLocationDate({ imageBytes });
+                  }}
+                >
+                  Use location/date
+                </button>
               </div>
             );
           })}

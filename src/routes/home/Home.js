@@ -503,7 +503,9 @@ class Home extends React.Component {
             <input
               type="text"
               value={this.state.plate}
-              placeholder={colorTaxiInfos[this.state.colorTaxi].placeholder}
+              placeholder={`i.e. ${
+                colorTaxiInfos[this.state.colorTaxi].placeholder
+              }`}
               onChange={event => {
                 this.setLicensePlate({ plate: event.target.value });
               }}

@@ -28,6 +28,7 @@ import withLocalStorage from 'react-localstorage';
 import debounce from 'debounce-promise';
 import fileType from 'file-type-es5';
 
+import marx from 'marx-css/css/marx.css';
 import s from './Home.css';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyDlwm2ykA0ohTXeVepQYvkcmdjz2M2CKEI';
@@ -733,4 +734,4 @@ const MyMapComponent = compose(
   );
 });
 
-export default withStyles(s)(withLocalStorage(Home));
+export default withStyles(marx, s)(withLocalStorage(Home));

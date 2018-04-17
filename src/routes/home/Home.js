@@ -425,7 +425,7 @@ class Home extends React.Component {
             return (
               <div key={imageUrl}>
                 <a target="_blank" href={imageUrl}>
-                  View image {i + 1}
+                  View #{i + 1}
                 </a>
 
                 <button
@@ -437,7 +437,7 @@ class Home extends React.Component {
                     });
                   }}
                 >
-                  Remove this image
+                  Remove
                 </button>
               </div>
             );

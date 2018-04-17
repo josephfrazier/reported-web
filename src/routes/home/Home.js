@@ -24,7 +24,7 @@ import {
   Marker,
 } from 'react-google-maps';
 import { SearchBox } from 'react-google-maps/lib/components/places/SearchBox';
-import persist from 'react-localstorage-hoc';
+import withLocalStorage from 'react-localstorage';
 import debounce from 'debounce-promise';
 import fileType from 'file-type-es5';
 
@@ -668,4 +668,4 @@ const MyMapComponent = compose(
   );
 });
 
-export default withStyles(s)(persist(Home));
+export default withStyles(s)(withLocalStorage(Home));

@@ -609,6 +609,9 @@ class Home extends React.Component {
                 })
                 .catch(err => {
                   window.alert(`Error: ${err.response.data.error.message}`);
+                })
+                .catch(err => {
+                  console.error(err);
                 });
             }}
           >

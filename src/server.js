@@ -24,6 +24,7 @@ import OpenalprApi from 'openalpr_api';
 import Parse from 'parse/node';
 import omit from 'object.omit';
 import fileType from 'file-type-es5';
+import jpegAutorotate from 'jpeg-autorotate';
 
 import App from './components/App';
 import Html from './components/Html';
@@ -305,12 +306,23 @@ app.use('/openalpr', (req, res) => {
 
   const secretKey = process.env.OPENALPR_SECRET_KEY; // {String} The secret key used to authenticate your account. You can view your secret key by visiting https://cloud.openalpr.com/
 
-  api.recognizeBytes(imageBytes, secretKey, country, opts, (error, data) => {
-    if (error) {
-      throw error;
-    } else {
-      res.json(data);
-    }
+  const imageBuffer = Buffer.from(imageBytes, 'base64');
+  const rotateOptions = {};
+  jpegAutorotate.rotate(imageBuffer, rotateOptions, (err, buffer) => {
+    const imageBytesRotated = err ? imageBytes : buffer.toString('base64');
+    api.recognizeBytes(
+      imageBytesRotated,
+      secretKey,
+      country,
+      opts,
+      (error, data) => {
+        if (error) {
+          throw error;
+        } else {
+          res.json(data);
+        }
+      },
+    );
   });
 });
 

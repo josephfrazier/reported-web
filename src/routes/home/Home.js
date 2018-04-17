@@ -424,8 +424,6 @@ class Home extends React.Component {
             </label>
           </details>
 
-          <br />
-
           {/*
           TODO accept videos too
           Probably use a separate input, since that looks better on Android Chrome

@@ -86,7 +86,8 @@ const getImageUrl = imageBytes => {
   if (urls.has(imageBytes)) {
     return urls.get(imageBytes);
   }
-  const contentType = fileType(Buffer.from(imageBytes, 'base64')).mime;
+  const imageBuffer = Buffer.from(imageBytes, 'base64');
+  const contentType = fileType(imageBuffer).mime;
   const file = b64toBlob(imageBytes, contentType);
   const imageUrl = window.URL.createObjectURL(file);
   urls.set(imageBytes, imageUrl);

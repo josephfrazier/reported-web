@@ -117,6 +117,8 @@ class Home extends React.Component {
     // instead of having to convert back from base64
     // If this is done, we can use a WeakMap instead of a Map in getImageUrl() above.
     imageBytess: [],
+
+    isSubmitting: false,
   };
 
   componentDidMount() {
@@ -588,7 +590,11 @@ class Home extends React.Component {
 
           <button
             type="button"
+            disabled={this.state.isSubmitting}
             onClick={() => {
+              this.setState({
+                isSubmitting: true,
+              });
               axios
                 .post('/submit', {
                   ...this.state,
@@ -612,6 +618,11 @@ class Home extends React.Component {
                 })
                 .catch(err => {
                   console.error(err);
+                })
+                .then(() => {
+                  this.setState({
+                    isSubmitting: false,
+                  });
                 });
             }}
           >

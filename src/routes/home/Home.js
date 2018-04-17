@@ -194,17 +194,10 @@ class Home extends React.Component {
 
     for (const { imageBytes } of images) {
       try {
-        const imageBuffer = Buffer.from(imageBytes, 'base64');
         // eslint-disable-next-line no-await-in-loop
         await Promise.all([
           this.extractPlate({ imageBytes }),
-          promisify(ExifImage)({ image: imageBuffer }).then(exifData =>
-            Promise.all([
-              console.info(JSON.stringify(exifData, null, 2)),
-              this.extractLocation({ exifData }),
-              this.extractDate({ exifData }),
-            ]),
-          ),
+          this.extractLocationDate({ imageBytes }),
         ]);
       } catch (err) {
         console.error(`Error: ${err.message}`);
@@ -212,6 +205,17 @@ class Home extends React.Component {
     }
 
     this.setState({ isLoadingImages: false });
+  };
+
+  extractLocationDate = ({ imageBytes }) => {
+    const imageBuffer = Buffer.from(imageBytes, 'base64');
+    return promisify(ExifImage)({ image: imageBuffer }).then(exifData =>
+      Promise.all([
+        console.info(JSON.stringify(exifData, null, 2)),
+        this.extractLocation({ exifData }),
+        this.extractDate({ exifData }),
+      ]),
+    );
   };
 
   handleInputChange = event => {

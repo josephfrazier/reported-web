@@ -420,36 +420,38 @@ class Home extends React.Component {
             &nbsp; {this.state.isLoadingImages && 'Loading...'}
           </FileReaderInput>
 
-          {this.state.imageBytess.map((imageBytes, i) => {
-            const imageUrl = getImageUrl(imageBytes);
-            return (
-              <div key={imageUrl}>
-                <a target="_blank" href={imageUrl}>
-                  View #{i + 1}
-                </a>
-                &nbsp;
-                <button
-                  onClick={() => {
-                    this.setState({
-                      imageBytess: this.state.imageBytess.filter(
-                        bytes => bytes !== imageBytes,
-                      ),
-                    });
-                  }}
-                >
-                  Remove
-                </button>
-                &nbsp;
-                <button
-                  onClick={() => {
-                    this.extractLocationDate({ imageBytes });
-                  }}
-                >
-                  Use location/date
-                </button>
-              </div>
-            );
-          })}
+          <ol>
+            {this.state.imageBytess.map(imageBytes => {
+              const imageUrl = getImageUrl(imageBytes);
+              return (
+                <li key={imageUrl}>
+                  <a target="_blank" href={imageUrl}>
+                    View
+                  </a>
+                  &nbsp;
+                  <button
+                    onClick={() => {
+                      this.setState({
+                        imageBytess: this.state.imageBytess.filter(
+                          bytes => bytes !== imageBytes,
+                        ),
+                      });
+                    }}
+                  >
+                    Remove
+                  </button>
+                  &nbsp;
+                  <button
+                    onClick={() => {
+                      this.extractLocationDate({ imageBytes });
+                    }}
+                  >
+                    Use location/date
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
 
           <label>
             Cab Color:{' '}

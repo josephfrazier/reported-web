@@ -414,12 +414,12 @@ class Home extends React.Component {
             &nbsp; {this.state.isLoadingImages && 'Loading...'}
           </FileReaderInput>
 
-          {this.state.imageBytess.map(imageBytes => {
+          {this.state.imageBytess.map((imageBytes, i) => {
             const imageUrl = getImageUrl(imageBytes);
             return (
               <div key={imageUrl}>
                 <a target="_blank" href={imageUrl}>
-                  {imageUrl}
+                  View image {i + 1}
                 </a>
 
                 <button

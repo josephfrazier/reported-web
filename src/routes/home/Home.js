@@ -179,9 +179,9 @@ class Home extends React.Component {
       results.map(async result => {
         const [, file] = result;
         try {
-          const image = await promisify(toBuffer)(file); // eslint-disable-line no-await-in-loop
-          const imageBytes = image.toString('base64'); // {String} The image file that you wish to analyze encoded in base64
-          return { image, imageBytes };
+          const imageBuffer = await promisify(toBuffer)(file); // eslint-disable-line no-await-in-loop
+          const imageBytes = imageBuffer.toString('base64'); // {String} The image file that you wish to analyze encoded in base64
+          return { imageBuffer, imageBytes };
         } catch (err) {
           console.error(`Error: ${err.message}`);
           return {};
@@ -191,12 +191,12 @@ class Home extends React.Component {
 
     this.setState({ imageBytess: images.map(({ imageBytes }) => imageBytes) });
 
-    for (const { image, imageBytes } of images) {
+    for (const { imageBuffer, imageBytes } of images) {
       try {
         // eslint-disable-next-line no-await-in-loop
         await Promise.all([
           this.extractPlate({ imageBytes }),
-          promisify(ExifImage)({ image }).then(exifData =>
+          promisify(ExifImage)({ image: imageBuffer }).then(exifData =>
             Promise.all([
               console.info(JSON.stringify(exifData, null, 2)),
               this.extractLocation({ exifData }),

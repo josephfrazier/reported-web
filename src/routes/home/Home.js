@@ -182,7 +182,7 @@ class Home extends React.Component {
         try {
           const imageBuffer = await promisify(toBuffer)(file); // eslint-disable-line no-await-in-loop
           const imageBytes = imageBuffer.toString('base64'); // {String} The image file that you wish to analyze encoded in base64
-          return { imageBuffer, imageBytes };
+          return { imageBytes };
         } catch (err) {
           console.error(`Error: ${err.message}`);
           return {};
@@ -192,8 +192,9 @@ class Home extends React.Component {
 
     this.setState({ imageBytess: images.map(({ imageBytes }) => imageBytes) });
 
-    for (const { imageBuffer, imageBytes } of images) {
+    for (const { imageBytes } of images) {
       try {
+        const imageBuffer = Buffer.from(imageBytes, 'base64');
         // eslint-disable-next-line no-await-in-loop
         await Promise.all([
           this.extractPlate({ imageBytes }),

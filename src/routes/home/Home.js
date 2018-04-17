@@ -444,9 +444,13 @@ class Home extends React.Component {
               const imageUrl = getImageUrl(imageBytes);
               return (
                 <li key={imageUrl}>
-                  <a target="_blank" href={imageUrl}>
+                  <button
+                    onClick={() => {
+                      window.open(imageUrl);
+                    }}
+                  >
                     View
-                  </a>
+                  </button>
                   &nbsp;
                   <button
                     style={{

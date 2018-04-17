@@ -119,6 +119,7 @@ class Home extends React.Component {
     imageBytess: [],
 
     isSubmitting: false,
+    isLoadingImages: false,
   };
 
   componentDidMount() {
@@ -172,6 +173,8 @@ class Home extends React.Component {
 
   // adapted from https://github.com/ngokevin/react-file-reader-input/tree/f970257f271b8c3bba9d529ffdbfa4f4731e0799#usage
   handleChange = async (_, results) => {
+    this.setState({ isLoadingImages: true });
+
     const images = await Promise.all(
       results.map(async result => {
         const [, file] = result;
@@ -205,6 +208,8 @@ class Home extends React.Component {
         console.error(`Error: ${err.message}`);
       }
     }
+
+    this.setState({ isLoadingImages: false });
   };
 
   handleInputChange = event => {
@@ -406,6 +411,7 @@ class Home extends React.Component {
             onChange={this.handleChange}
           >
             <button>Select/Take a picture</button>
+            &nbsp; {this.state.isLoadingImages && 'Loading...'}
           </FileReaderInput>
 
           {this.state.imageBytess.map(imageBytes => {

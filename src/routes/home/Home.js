@@ -427,7 +427,7 @@ class Home extends React.Component {
                 <a target="_blank" href={imageUrl}>
                   View #{i + 1}
                 </a>
-
+                &nbsp;
                 <button
                   onClick={() => {
                     this.setState({
@@ -439,7 +439,7 @@ class Home extends React.Component {
                 >
                   Remove
                 </button>
-
+                &nbsp;
                 <button
                   onClick={() => {
                     this.extractLocationDate({ imageBytes });

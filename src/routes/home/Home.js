@@ -230,11 +230,18 @@ class Home extends React.Component {
     });
   };
 
+  // adapted from https://www.bignerdranch.com/blog/dont-over-react/
+  imagePlates = new Map(); // using Map instead of WeakMap because the keys are primitive strings, which WeakMap doesn't allow
   // adapted from https://github.com/openalpr/cloudapi/tree/8141c1ba57f03df4f53430c6e5e389b39714d0e0/javascript#getting-started
   extractPlate = async ({ imageBytes }) => {
     this.setState({ isLoadingPlate: true });
 
     try {
+      if (this.imagePlates.has(imageBytes)) {
+        const plate = this.imagePlates.get(imageBytes);
+        this.setLicensePlate({ plate });
+        return;
+      }
       const country = 'us'; // {String} Defines the training data used by OpenALPR. \"us\" analyzes North-American style plates. \"eu\" analyzes European-style plates. This field is required if using the \"plate\" task You may use multiple datasets by using commas between the country codes. For example, 'au,auwide' would analyze using both the Australian plate styles. A full list of supported country codes can be found here https://github.com/openalpr/openalpr/tree/master/runtime_data/config
 
       const opts = {
@@ -258,6 +265,7 @@ class Home extends React.Component {
         )}`,
       );
       const { plate } = data.results[0];
+      this.imagePlates.set(imageBytes, plate);
       this.setLicensePlate({ plate });
     } catch (err) {
       throw err;

@@ -430,6 +430,9 @@ class Home extends React.Component {
                   </a>
                   &nbsp;
                   <button
+                    style={{
+                      color: 'red', // Ubuntu Chrome shows black otherwise
+                    }}
                     onClick={() => {
                       this.setState({
                         imageBytess: this.state.imageBytess.filter(
@@ -438,7 +441,7 @@ class Home extends React.Component {
                       });
                     }}
                   >
-                    Remove
+                    ❌
                   </button>
                   &nbsp;
                   <button
@@ -446,7 +449,7 @@ class Home extends React.Component {
                       this.extractLocationDate({ imageBytes });
                     }}
                   >
-                    Use location/date
+                    📍 &amp; 📅⌚
                   </button>
                 </li>
               );

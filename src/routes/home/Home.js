@@ -109,6 +109,7 @@ class Home extends React.Component {
     testify: false,
 
     colorTaxi: colorTaxiNames[0],
+    plate: '',
     typeofuser: typeofuserValues[0],
     typeofcomplaint: typeofcomplaintValues[0],
     reportDescription: '',

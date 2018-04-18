@@ -472,285 +472,287 @@ class Home extends React.Component {
             </button>
           </details>
 
-          {!this.state.isUserInfoOpen && (
-            <div>
-              {/*
-              TODO accept videos too
-              Probably use a separate input, since that looks better on Android Chrome
-              */}
-              <FileReaderInput
-                accept="image/*"
-                multiple
-                as="buffer"
-                onChange={this.handleChange}
-              >
-                <button>Select/Take a picture</button>
-                &nbsp; {this.state.isLoadingImages && 'Loading...'}
-              </FileReaderInput>
+          <div
+            style={{
+              display: this.state.isUserInfoOpen ? 'none' : 'block',
+            }}
+          >
+            {/*
+            TODO accept videos too
+            Probably use a separate input, since that looks better on Android Chrome
+            */}
+            <FileReaderInput
+              accept="image/*"
+              multiple
+              as="buffer"
+              onChange={this.handleChange}
+            >
+              <button>Select/Take a picture</button>
+              &nbsp; {this.state.isLoadingImages && 'Loading...'}
+            </FileReaderInput>
 
-              <ol style={{ padding: 0 }}>
-                {this.state.imageBytess.map((imageBytes, i) => {
-                  const imageUrl = getImageUrl(imageBytes);
-                  return (
-                    <li
-                      key={imageUrl}
-                      style={{
-                        display: 'flex',
-                        marginTop: '1ex',
+            <ol style={{ padding: 0 }}>
+              {this.state.imageBytess.map((imageBytes, i) => {
+                const imageUrl = getImageUrl(imageBytes);
+                return (
+                  <li
+                    key={imageUrl}
+                    style={{
+                      display: 'flex',
+                      marginTop: '1ex',
+                    }}
+                  >
+                    {i + 1}.&nbsp;
+                    <button
+                      onClick={() => {
+                        window.open(imageUrl);
                       }}
                     >
-                      {i + 1}.&nbsp;
-                      <button
-                        onClick={() => {
-                          window.open(imageUrl);
-                        }}
-                      >
-                        View
-                      </button>
-                      &nbsp;
-                      <button
-                        style={{
-                          color: 'red', // Ubuntu Chrome shows black otherwise
-                        }}
-                        onClick={() => {
-                          this.setState({
-                            imageBytess: this.state.imageBytess.filter(
-                              bytes => bytes !== imageBytes,
-                            ),
-                          });
-                        }}
-                      >
-                        ❌
-                      </button>
-                      &nbsp;
-                      <button
-                        onClick={() => {
-                          this.extractLocationDate({ imageBytes });
-                        }}
-                      >
-                        📍 &amp; 📅⌚
-                      </button>
-                      &nbsp;
-                      <button
-                        onClick={() => {
-                          this.extractPlate({ imageBytes });
-                        }}
-                      >
-                        Read plate
-                      </button>
-                    </li>
-                  );
-                })}
-              </ol>
-
-              <label>
-                Cab Color:{' '}
-                <select
-                  value={this.state.colorTaxi}
-                  name="colorTaxi"
-                  onChange={this.handleInputChange}
-                >
-                  {colorTaxiNames.map(colorTaxi => (
-                    <option key={colorTaxi} value={colorTaxi}>
-                      {colorTaxi}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label>
-                License/Medallion: {this.state.isLoadingPlate && 'Loading...'}
-                <input
-                  type="text"
-                  value={this.state.plate}
-                  placeholder={`i.e. ${
-                    colorTaxiInfos[this.state.colorTaxi].placeholder
-                  }`}
-                  onChange={event => {
-                    this.setLicensePlate({ plate: event.target.value });
-                  }}
-                />
-              </label>
-
-              <label>
-                I was:{' '}
-                <select
-                  value={this.state.typeofuser}
-                  name="typeofuser"
-                  onChange={this.handleInputChange}
-                >
-                  {typeofuserValues.map(typeofuser => (
-                    <option key={typeofuser} value={typeofuser}>
-                      {typeofuser}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label>
-                Type:{' '}
-                <select
-                  value={this.state.typeofcomplaint}
-                  name="typeofcomplaint"
-                  onChange={this.handleInputChange}
-                >
-                  {typeofcomplaintValues.map(typeofcomplaint => (
-                    <option key={typeofcomplaint} value={typeofcomplaint}>
-                      {typeofcomplaint}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <details>
-                <summary>
-                  Where: (click to edit)
-                  <button
-                    style={{
-                      float: 'right',
-                    }}
-                    onClick={() => {
-                      geolocate()
-                        .then(({ coords }) => {
-                          this.setCoords(coords);
-                        })
-                        .catch(err => {
-                          window.alert(err.message);
-                          console.error(err);
+                      View
+                    </button>
+                    &nbsp;
+                    <button
+                      style={{
+                        color: 'red', // Ubuntu Chrome shows black otherwise
+                      }}
+                      onClick={() => {
+                        this.setState({
+                          imageBytess: this.state.imageBytess.filter(
+                            bytes => bytes !== imageBytes,
+                          ),
                         });
-                    }}
-                  >
-                    Here
-                  </button>
-                  <br />
-                  {this.state.formatted_address
-                    .split(', ')
-                    .slice(0, 2)
-                    .join(', ')}
-                </summary>
+                      }}
+                    >
+                      ❌
+                    </button>
+                    &nbsp;
+                    <button
+                      onClick={() => {
+                        this.extractLocationDate({ imageBytes });
+                      }}
+                    >
+                      📍 &amp; 📅⌚
+                    </button>
+                    &nbsp;
+                    <button
+                      onClick={() => {
+                        this.extractPlate({ imageBytes });
+                      }}
+                    >
+                      Read plate
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
 
-                <MyMapComponent
-                  key="map"
-                  position={{
-                    lat: this.state.latitude,
-                    lng: this.state.longitude,
-                  }}
-                  onRef={mapRef => {
-                    this.mapRef = mapRef;
-                  }}
-                  onCenterChanged={() => {
-                    const latitude = this.mapRef.getCenter().lat();
-                    const longitude = this.mapRef.getCenter().lng();
-                    this.setCoords({ latitude, longitude });
-                  }}
-                  onSearchBoxMounted={ref => {
-                    this.searchBox = ref;
-                  }}
-                  onPlacesChanged={() => {
-                    const places = this.searchBox.getPlaces();
-
-                    const nextMarkers = places.map(place => ({
-                      position: place.geometry.location,
-                    }));
-                    const { latitude, longitude } =
-                      nextMarkers.length > 0
-                        ? {
-                            latitude: nextMarkers[0].position.lat(),
-                            longitude: nextMarkers[0].position.lng(),
-                          }
-                        : this.state;
-
-                    this.setCoords({
-                      latitude,
-                      longitude,
-                    });
-                  }}
-                />
-              </details>
-
-              <label>
-                When:{' '}
-                <div style={{ display: 'flex' }}>
-                  <input
-                    type="datetime-local"
-                    value={this.state.CreateDate}
-                    name="CreateDate"
-                    onChange={this.handleInputChange}
-                  />
-                  <button
-                    onClick={() => {
-                      this.setCreateDate({
-                        millisecondsSinceEpoch: Date.now(),
-                      });
-                    }}
-                  >
-                    Now
-                  </button>
-                </div>
-              </label>
-
-              <label>
-                Description:{' '}
-                <textarea
-                  value={this.state.reportDescription}
-                  name="reportDescription"
-                  onChange={this.handleInputChange}
-                />
-              </label>
-
-              <label>
-                <input
-                  type="checkbox"
-                  checked={this.state.can_be_shared_publicly}
-                  name="can_be_shared_publicly"
-                  onChange={this.handleInputChange}
-                />{' '}
-                Allow the photo, description, category, and location to be
-                publicly displayed
-              </label>
-
-              <button
-                type="button"
-                disabled={this.state.isSubmitting}
-                onClick={() => {
-                  this.setState({
-                    isSubmitting: true,
-                  });
-                  axios
-                    .post('/submit', {
-                      ...this.state,
-                      CreateDate: new Date(this.state.CreateDate).toISOString(),
-                    })
-                    .then(({ data }) => {
-                      console.info(
-                        `submitted successfully. Returned data: ${JSON.stringify(
-                          data,
-                          null,
-                          2,
-                        )}`,
-                      );
-                      window.prompt(
-                        'Submitted! objectId:',
-                        data.submission.objectId,
-                      );
-                    })
-                    .catch(err => {
-                      window.alert(`Error: ${err.response.data.error.message}`);
-                    })
-                    .catch(err => {
-                      console.error(err);
-                    })
-                    .then(() => {
-                      this.setState({
-                        isSubmitting: false,
-                      });
-                    });
-                }}
+            <label>
+              Cab Color:{' '}
+              <select
+                value={this.state.colorTaxi}
+                name="colorTaxi"
+                onChange={this.handleInputChange}
               >
-                Submit
-              </button>
-            </div>
-          )}
+                {colorTaxiNames.map(colorTaxi => (
+                  <option key={colorTaxi} value={colorTaxi}>
+                    {colorTaxi}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              License/Medallion: {this.state.isLoadingPlate && 'Loading...'}
+              <input
+                type="text"
+                value={this.state.plate}
+                placeholder={`i.e. ${
+                  colorTaxiInfos[this.state.colorTaxi].placeholder
+                }`}
+                onChange={event => {
+                  this.setLicensePlate({ plate: event.target.value });
+                }}
+              />
+            </label>
+
+            <label>
+              I was:{' '}
+              <select
+                value={this.state.typeofuser}
+                name="typeofuser"
+                onChange={this.handleInputChange}
+              >
+                {typeofuserValues.map(typeofuser => (
+                  <option key={typeofuser} value={typeofuser}>
+                    {typeofuser}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              Type:{' '}
+              <select
+                value={this.state.typeofcomplaint}
+                name="typeofcomplaint"
+                onChange={this.handleInputChange}
+              >
+                {typeofcomplaintValues.map(typeofcomplaint => (
+                  <option key={typeofcomplaint} value={typeofcomplaint}>
+                    {typeofcomplaint}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <details>
+              <summary>
+                Where: (click to edit)
+                <button
+                  style={{
+                    float: 'right',
+                  }}
+                  onClick={() => {
+                    geolocate()
+                      .then(({ coords }) => {
+                        this.setCoords(coords);
+                      })
+                      .catch(err => {
+                        window.alert(err.message);
+                        console.error(err);
+                      });
+                  }}
+                >
+                  Here
+                </button>
+                <br />
+                {this.state.formatted_address
+                  .split(', ')
+                  .slice(0, 2)
+                  .join(', ')}
+              </summary>
+
+              <MyMapComponent
+                key="map"
+                position={{
+                  lat: this.state.latitude,
+                  lng: this.state.longitude,
+                }}
+                onRef={mapRef => {
+                  this.mapRef = mapRef;
+                }}
+                onCenterChanged={() => {
+                  const latitude = this.mapRef.getCenter().lat();
+                  const longitude = this.mapRef.getCenter().lng();
+                  this.setCoords({ latitude, longitude });
+                }}
+                onSearchBoxMounted={ref => {
+                  this.searchBox = ref;
+                }}
+                onPlacesChanged={() => {
+                  const places = this.searchBox.getPlaces();
+
+                  const nextMarkers = places.map(place => ({
+                    position: place.geometry.location,
+                  }));
+                  const { latitude, longitude } =
+                    nextMarkers.length > 0
+                      ? {
+                          latitude: nextMarkers[0].position.lat(),
+                          longitude: nextMarkers[0].position.lng(),
+                        }
+                      : this.state;
+
+                  this.setCoords({
+                    latitude,
+                    longitude,
+                  });
+                }}
+              />
+            </details>
+
+            <label>
+              When:{' '}
+              <div style={{ display: 'flex' }}>
+                <input
+                  type="datetime-local"
+                  value={this.state.CreateDate}
+                  name="CreateDate"
+                  onChange={this.handleInputChange}
+                />
+                <button
+                  onClick={() => {
+                    this.setCreateDate({
+                      millisecondsSinceEpoch: Date.now(),
+                    });
+                  }}
+                >
+                  Now
+                </button>
+              </div>
+            </label>
+
+            <label>
+              Description:{' '}
+              <textarea
+                value={this.state.reportDescription}
+                name="reportDescription"
+                onChange={this.handleInputChange}
+              />
+            </label>
+
+            <label>
+              <input
+                type="checkbox"
+                checked={this.state.can_be_shared_publicly}
+                name="can_be_shared_publicly"
+                onChange={this.handleInputChange}
+              />{' '}
+              Allow the photo, description, category, and location to be
+              publicly displayed
+            </label>
+
+            <button
+              type="button"
+              disabled={this.state.isSubmitting}
+              onClick={() => {
+                this.setState({
+                  isSubmitting: true,
+                });
+                axios
+                  .post('/submit', {
+                    ...this.state,
+                    CreateDate: new Date(this.state.CreateDate).toISOString(),
+                  })
+                  .then(({ data }) => {
+                    console.info(
+                      `submitted successfully. Returned data: ${JSON.stringify(
+                        data,
+                        null,
+                        2,
+                      )}`,
+                    );
+                    window.prompt(
+                      'Submitted! objectId:',
+                      data.submission.objectId,
+                    );
+                  })
+                  .catch(err => {
+                    window.alert(`Error: ${err.response.data.error.message}`);
+                  })
+                  .catch(err => {
+                    console.error(err);
+                  })
+                  .then(() => {
+                    this.setState({
+                      isSubmitting: false,
+                    });
+                  });
+              }}
+            >
+              Submit
+            </button>
+          </div>
         </div>
       </div>
     );

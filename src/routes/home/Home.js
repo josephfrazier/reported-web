@@ -446,6 +446,7 @@ class Home extends React.Component {
                   key={imageUrl}
                   style={{
                     display: 'flex',
+                    marginTop: '1ex',
                   }}
                 >
                   {i + 1}.&nbsp;

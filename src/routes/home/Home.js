@@ -560,24 +560,26 @@ class Home extends React.Component {
           <details>
             <summary>
               Where: (click to edit)
+              <button
+                style={{
+                  float: 'right',
+                }}
+                onClick={() => {
+                  geolocate()
+                    .then(({ coords }) => {
+                      this.setCoords(coords);
+                    })
+                    .catch(err => {
+                      window.alert(err.message);
+                      console.error(err);
+                    });
+                }}
+              >
+                Here
+              </button>
               <br />
               {this.state.formatted_address}
             </summary>
-
-            <button
-              onClick={() => {
-                geolocate()
-                  .then(({ coords }) => {
-                    this.setCoords(coords);
-                  })
-                  .catch(err => {
-                    window.alert(err.message);
-                    console.error(err);
-                  });
-              }}
-            >
-              Here
-            </button>
 
             <MyMapComponent
               key="map"

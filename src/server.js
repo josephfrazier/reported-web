@@ -224,7 +224,14 @@ app.use('/submit', (req, res) => {
     .then(async user => {
       console.info({ user });
       if (!user.get('emailVerified')) {
-        throw { message: 'email must be verified' }; // eslint-disable-line no-throw-literal
+        user.set({ email }); // reset email to trigger a verification email
+        user.save(null, {
+          // sessionToken must be manually passed in:
+          // https://github.com/parse-community/parse-server/issues/1729#issuecomment-218932566
+          sessionToken: user.get('sessionToken'),
+        });
+        const message = `Please verify ${email} and try again. You should have received a message.`;
+        throw { message }; // eslint-disable-line no-throw-literal
       }
       const Submission = Parse.Object.extend('submission');
       const submission = new Submission();

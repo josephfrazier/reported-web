@@ -234,7 +234,6 @@ class Home extends React.Component {
     return promisify(ExifImage)({ image: imageBuffer }).then(exifData => {
       console.timeEnd(`ExifImage`); // eslint-disable-line no-console
       return Promise.all([
-        console.info(JSON.stringify(exifData, null, 2)),
         this.extractLocation({ exifData }),
         this.extractDate({ exifData }),
       ]);
@@ -308,7 +307,6 @@ class Home extends React.Component {
 
   extractLocation = ({ exifData }) => {
     const { gps } = exifData;
-    console.info(JSON.stringify(gps, null, 2)); // Do something with your data!
     this.setCoords(this.coordsFromExifGps({ gps }));
   };
 

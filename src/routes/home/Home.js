@@ -12,7 +12,6 @@ import React from 'react';
 import withStyles from 'isomorphic-style-loader/lib/withStyles';
 import FileReaderInput from 'react-file-reader-input';
 import blobUtil from 'blob-util';
-import jpegAutorotate from 'jpeg-autorotate';
 import { ExifImage } from 'exif';
 import axios from 'axios';
 import promisedLocation from 'promised-location';
@@ -192,23 +191,7 @@ class Home extends React.Component {
       results.map(async result => {
         const [, file] = result;
         try {
-          const imageBuffer = Buffer.from(
-            await blobUtil.blobToArrayBuffer(file),
-          ); // eslint-disable-line no-await-in-loop
-          const rotateOptions = {};
-          const imageBytes = await new Promise(resolve => {
-            jpegAutorotate.rotate(
-              imageBuffer,
-              rotateOptions,
-              async (err, buffer) => {
-                resolve(
-                  err
-                    ? imageBuffer.toString('base64')
-                    : buffer.toString('base64'),
-                );
-              },
-            );
-          });
+          const imageBytes = await blobUtil.blobToBase64String(file); // eslint-disable-line no-await-in-loop
           return { imageBytes };
         } catch (err) {
           console.error(`Error: ${err.message}`);

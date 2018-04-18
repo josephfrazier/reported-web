@@ -623,6 +623,12 @@ class Home extends React.Component {
           <label>
             When:{' '}
             <div style={{ display: 'flex' }}>
+              <input
+                type="datetime-local"
+                value={this.state.CreateDate}
+                name="CreateDate"
+                onChange={this.handleInputChange}
+              />
               <button
                 onClick={() => {
                   this.setCreateDate({ millisecondsSinceEpoch: Date.now() });
@@ -630,12 +636,6 @@ class Home extends React.Component {
               >
                 Now
               </button>
-              <input
-                type="datetime-local"
-                value={this.state.CreateDate}
-                name="CreateDate"
-                onChange={this.handleInputChange}
-              />
             </div>
           </label>
 

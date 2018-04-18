@@ -104,6 +104,7 @@ const geolocate = () =>
 
 class Home extends React.Component {
   state = {
+    isUserInfoOpen: true,
     email: '',
     password: '',
     FirstName: '',
@@ -319,7 +320,14 @@ class Home extends React.Component {
     return (
       <div className={s.root}>
         <div className={s.container}>
-          <details>
+          <details
+            open={this.state.isUserInfoOpen}
+            onToggle={evt => {
+              this.setState({
+                isUserInfoOpen: evt.target.open,
+              });
+            }}
+          >
             <summary>User Info</summary>
 
             <label>

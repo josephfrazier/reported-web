@@ -506,7 +506,7 @@ class Home extends React.Component {
                       // The <meta> tag allows pinch-to-zoom on mobile, and was copied from what the browser generated in the previous implementation
                       // https://stackoverflow.com/questions/7815956/how-to-make-pinch-zoom-work-on-an-image/8354439#8354439
                       w.document.head.innerHTML = `<meta name="viewport" content="width=device-width, minimum-scale=0.1">`;
-                      w.document.body.innerHTML = `<img src="${imageUrl}" />`;
+                      w.document.body.innerHTML = `<img src="${imageUrl}" style="width: 100vw; height: 100vh; object-fit: contain" />`;
                       // TODO detect orientation from EXIF and use CSS transform?
                       // See https://gist.github.com/nezed/d536ccdace84c6f2ef13da47a8fd6bdb#file-exif-image-orientation-css-transform-fix-js-L13-L22
                     }}

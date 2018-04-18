@@ -342,12 +342,37 @@ class Home extends React.Component {
 
             <label>
               Password:{' '}
-              <input
-                type="text"
-                value={this.state.password}
-                name="password"
-                onChange={this.handleInputChange}
-              />
+              <div style={{ display: 'flex' }}>
+                <input
+                  type="text"
+                  value={this.state.password}
+                  name="password"
+                  onChange={this.handleInputChange}
+                />
+                <button
+                  onClick={() => {
+                    const { email } = this.state;
+                    axios
+                      .post('/requestPasswordReset', {
+                        email,
+                      })
+                      .then(() => {
+                        const message = `Please check ${email} to reset your password.`;
+                        window.alert(message);
+                      })
+                      .catch(err => {
+                        window.alert(
+                          `Error: ${err.response.data.error.message}`,
+                        );
+                      })
+                      .catch(err => {
+                        console.error(err);
+                      });
+                  }}
+                >
+                  Reset
+                </button>
+              </div>
             </label>
 
             <label>

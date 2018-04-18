@@ -177,6 +177,19 @@ function saveUser({
     });
 }
 
+app.use('/requestPasswordReset', (req, res) => {
+  const { body } = req;
+  const { email } = body;
+
+  // http://docs.parseplatform.org/js/guide/#resetting-passwords
+  Parse.User.requestPasswordReset(email)
+    .then(() => res.end())
+    .catch(error => {
+      console.error({ error });
+      res.status(500).json({ error });
+    });
+});
+
 app.use('/submit', (req, res) => {
   const { body } = req;
 

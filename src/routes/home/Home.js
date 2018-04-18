@@ -193,10 +193,12 @@ class Home extends React.Component {
     this.setState({ isLoadingImages: true });
 
     const images = await Promise.all(
-      results.map(async result => {
+      results.map(async (result, i) => {
         const [, file] = result;
         try {
+          console.time(`blobToBase64String ${i}`); // eslint-disable-line no-console
           const imageBytes = await blobUtil.blobToBase64String(file); // eslint-disable-line no-await-in-loop
+          console.timeEnd(`blobToBase64String ${i}`); // eslint-disable-line no-console
           return { imageBytes };
         } catch (err) {
           console.error(`Error: ${err.message}`);
@@ -224,14 +226,19 @@ class Home extends React.Component {
   };
 
   extractLocationDate = ({ imageBytes }) => {
+    console.time(`Buffer.from(imageBytes, 'base64')`); // eslint-disable-line no-console
     const imageBuffer = Buffer.from(imageBytes, 'base64');
-    return promisify(ExifImage)({ image: imageBuffer }).then(exifData =>
-      Promise.all([
+    console.timeEnd(`Buffer.from(imageBytes, 'base64')`); // eslint-disable-line no-console
+
+    console.time(`ExifImage`); // eslint-disable-line no-console
+    return promisify(ExifImage)({ image: imageBuffer }).then(exifData => {
+      console.timeEnd(`ExifImage`); // eslint-disable-line no-console
+      return Promise.all([
         console.info(JSON.stringify(exifData, null, 2)),
         this.extractLocation({ exifData }),
         this.extractDate({ exifData }),
-      ]),
-    );
+      ]);
+    });
   };
 
   handleInputChange = event => {
@@ -248,6 +255,7 @@ class Home extends React.Component {
   imagePlates = new Map(); // using Map instead of WeakMap because the keys are primitive strings, which WeakMap doesn't allow
   // adapted from https://github.com/openalpr/cloudapi/tree/8141c1ba57f03df4f53430c6e5e389b39714d0e0/javascript#getting-started
   extractPlate = async ({ imageBytes }) => {
+    console.time('extractPlate'); // eslint-disable-line no-console
     this.setState({ isLoadingPlate: true });
 
     try {
@@ -285,6 +293,7 @@ class Home extends React.Component {
       throw err;
     } finally {
       this.setState({ isLoadingPlate: false });
+      console.timeEnd('extractPlate'); // eslint-disable-line no-console
     }
   };
 

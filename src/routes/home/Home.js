@@ -438,11 +438,17 @@ class Home extends React.Component {
             &nbsp; {this.state.isLoadingImages && 'Loading...'}
           </FileReaderInput>
 
-          <ol>
-            {this.state.imageBytess.map(imageBytes => {
+          <ol style={{ padding: 0 }}>
+            {this.state.imageBytess.map((imageBytes, i) => {
               const imageUrl = getImageUrl(imageBytes);
               return (
-                <li key={imageUrl}>
+                <li
+                  key={imageUrl}
+                  style={{
+                    display: 'flex',
+                  }}
+                >
+                  {i + 1}.&nbsp;
                   <button
                     onClick={() => {
                       window.open(imageUrl);

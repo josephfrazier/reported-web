@@ -11,7 +11,7 @@ import promisify from 'util.promisify';
 import React from 'react';
 import withStyles from 'isomorphic-style-loader/lib/withStyles';
 import FileReaderInput from 'react-file-reader-input';
-import toBuffer from 'blob-to-buffer';
+import blobUtil from 'blob-util';
 import b64toBlob from 'b64-to-blob';
 import { ExifImage } from 'exif';
 import axios from 'axios';
@@ -192,8 +192,7 @@ class Home extends React.Component {
       results.map(async result => {
         const [, file] = result;
         try {
-          const imageBuffer = await promisify(toBuffer)(file); // eslint-disable-line no-await-in-loop
-          const imageBytes = imageBuffer.toString('base64'); // {String} The image file that you wish to analyze encoded in base64
+          const imageBytes = await blobUtil.blobToBase64String(file); // eslint-disable-line no-await-in-loop
           return { imageBytes };
         } catch (err) {
           console.error(`Error: ${err.message}`);

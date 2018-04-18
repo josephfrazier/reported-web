@@ -278,13 +278,6 @@ class Home extends React.Component {
         country,
         opts,
       });
-      console.info(
-        `API called successfully. Returned data: ${JSON.stringify(
-          data,
-          null,
-          2,
-        )}`,
-      );
       const { plate } = data.results[0];
       this.imagePlates.set(imageBytes, plate);
       this.setLicensePlate({ plate });

@@ -579,7 +579,10 @@ class Home extends React.Component {
                 Here
               </button>
               <br />
-              {this.state.formatted_address}
+              {this.state.formatted_address
+                .split(', ')
+                .slice(0, 2)
+                .join(', ')}
             </summary>
 
             <MyMapComponent

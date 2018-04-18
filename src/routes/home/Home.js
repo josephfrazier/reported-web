@@ -311,8 +311,6 @@ class Home extends React.Component {
     return (
       <div className={s.root}>
         <div className={s.container}>
-          <br />
-
           <details>
             <summary>User Info</summary>
 

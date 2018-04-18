@@ -436,6 +436,15 @@ class Home extends React.Component {
                 "I'm willing to testify at a hearing, which can be done by phone."
               }
             </label>
+
+            <button
+              onClick={() => {
+                this.setState({ isUserInfoOpen: false });
+                window.scrollTo(0, 0);
+              }}
+            >
+              Done
+            </button>
           </details>
 
           {/*

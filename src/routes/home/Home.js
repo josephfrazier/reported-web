@@ -12,7 +12,6 @@ import React from 'react';
 import withStyles from 'isomorphic-style-loader/lib/withStyles';
 import FileReaderInput from 'react-file-reader-input';
 import blobUtil from 'blob-util';
-import b64toBlob from 'b64-to-blob';
 import { ExifImage } from 'exif';
 import axios from 'axios';
 import promisedLocation from 'promised-location';
@@ -26,7 +25,6 @@ import {
 import { SearchBox } from 'react-google-maps/lib/components/places/SearchBox';
 import withLocalStorage from 'react-localstorage';
 import debounce from 'debounce-promise';
-import fileType from 'file-type-es5';
 
 import marx from 'marx-css/css/marx.css';
 import s from './Home.css';
@@ -87,10 +85,7 @@ const getImageUrl = imageBytes => {
   if (urls.has(imageBytes)) {
     return urls.get(imageBytes);
   }
-  const imageBuffer = Buffer.from(imageBytes, 'base64');
-  const contentType = fileType(imageBuffer).mime;
-  const file = b64toBlob(imageBytes, contentType);
-  const imageUrl = window.URL.createObjectURL(file);
+  const imageUrl = `data:;base64,${imageBytes}`;
   urls.set(imageBytes, imageUrl);
   return imageUrl;
 };
@@ -495,58 +490,62 @@ class Home extends React.Component {
             </FileReaderInput>
 
             <ol style={{ padding: 0 }}>
-              {this.state.imageBytess.map((imageBytes, i) => {
-                const imageUrl = getImageUrl(imageBytes);
-                return (
-                  <li
-                    key={imageUrl}
-                    style={{
-                      display: 'flex',
-                      marginTop: '1ex',
+              {this.state.imageBytess.map((imageBytes, i) => (
+                <li
+                  key={imageBytes}
+                  style={{
+                    display: 'flex',
+                    marginTop: '1ex',
+                  }}
+                >
+                  {i + 1}.&nbsp;
+                  <button
+                    onClick={() => {
+                      const imageUrl = getImageUrl(imageBytes);
+                      const w = window.open();
+                      // The <meta> tag allows pinch-to-zoom on mobile, and was copied from what the browser generated in the previous implementation
+                      // https://stackoverflow.com/questions/7815956/how-to-make-pinch-zoom-work-on-an-image/8354439#8354439
+                      w.document.head.innerHTML = `<meta name="viewport" content="width=device-width, minimum-scale=0.1">`;
+                      w.document.body.innerHTML = `<img src="${imageUrl}" />`;
+                      // TODO detect orientation from EXIF and use CSS transform?
+                      // See https://gist.github.com/nezed/d536ccdace84c6f2ef13da47a8fd6bdb#file-exif-image-orientation-css-transform-fix-js-L13-L22
                     }}
                   >
-                    {i + 1}.&nbsp;
-                    <button
-                      onClick={() => {
-                        window.open(imageUrl);
-                      }}
-                    >
-                      View
-                    </button>
-                    &nbsp;
-                    <button
-                      style={{
-                        color: 'red', // Ubuntu Chrome shows black otherwise
-                      }}
-                      onClick={() => {
-                        this.setState({
-                          imageBytess: this.state.imageBytess.filter(
-                            bytes => bytes !== imageBytes,
-                          ),
-                        });
-                      }}
-                    >
-                      ❌
-                    </button>
-                    &nbsp;
-                    <button
-                      onClick={() => {
-                        this.extractLocationDate({ imageBytes });
-                      }}
-                    >
-                      📍 &amp; 📅⌚
-                    </button>
-                    &nbsp;
-                    <button
-                      onClick={() => {
-                        this.extractPlate({ imageBytes });
-                      }}
-                    >
-                      Read plate
-                    </button>
-                  </li>
-                );
-              })}
+                    View
+                  </button>
+                  &nbsp;
+                  <button
+                    style={{
+                      color: 'red', // Ubuntu Chrome shows black otherwise
+                    }}
+                    onClick={() => {
+                      this.setState({
+                        imageBytess: this.state.imageBytess.filter(
+                          bytes => bytes !== imageBytes,
+                        ),
+                      });
+                    }}
+                  >
+                    ❌
+                  </button>
+                  &nbsp;
+                  <button
+                    onClick={() => {
+                      this.extractLocationDate({ imageBytes });
+                    }}
+                  >
+                    📍 &amp; 📅⌚
+                  </button>
+                  &nbsp;
+                  <button
+                    onClick={() => {
+                      this.extractPlate({ imageBytes });
+                    }}
+                  >
+                    Read plate
+                  </button>
+                </li>
+              ))}
             </ol>
 
             <label>

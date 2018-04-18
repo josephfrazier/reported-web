@@ -328,14 +328,18 @@ app.use('/openalpr', (req, res) => {
 
   const imageBuffer = Buffer.from(imageBytes, 'base64');
   const rotateOptions = {};
+  console.time(`/openalpr jpegAutorotate`); // eslint-disable-line no-console
   jpegAutorotate.rotate(imageBuffer, rotateOptions, (err, buffer) => {
+    console.timeEnd(`/openalpr jpegAutorotate`); // eslint-disable-line no-console
     const imageBytesRotated = err ? imageBytes : buffer.toString('base64');
+    console.time(`/openalpr recognizeBytes`); // eslint-disable-line no-console
     api.recognizeBytes(
       imageBytesRotated,
       secretKey,
       country,
       opts,
       (error, data) => {
+        console.timeEnd(`/openalpr recognizeBytes`); // eslint-disable-line no-console
         if (error) {
           throw error;
         } else {

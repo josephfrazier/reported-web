@@ -495,58 +495,56 @@ class Home extends React.Component {
             </FileReaderInput>
 
             <ol style={{ padding: 0 }}>
-              {this.state.imageBytess.map((imageBytes, i) => {
-                const imageUrl = getImageUrl(imageBytes);
-                return (
-                  <li
-                    key={imageUrl}
-                    style={{
-                      display: 'flex',
-                      marginTop: '1ex',
+              {this.state.imageBytess.map((imageBytes, i) => (
+                <li
+                  key={imageBytes}
+                  style={{
+                    display: 'flex',
+                    marginTop: '1ex',
+                  }}
+                >
+                  {i + 1}.&nbsp;
+                  <button
+                    onClick={() => {
+                      const imageUrl = getImageUrl(imageBytes);
+                      window.open(imageUrl);
                     }}
                   >
-                    {i + 1}.&nbsp;
-                    <button
-                      onClick={() => {
-                        window.open(imageUrl);
-                      }}
-                    >
-                      View
-                    </button>
-                    &nbsp;
-                    <button
-                      style={{
-                        color: 'red', // Ubuntu Chrome shows black otherwise
-                      }}
-                      onClick={() => {
-                        this.setState({
-                          imageBytess: this.state.imageBytess.filter(
-                            bytes => bytes !== imageBytes,
-                          ),
-                        });
-                      }}
-                    >
-                      ❌
-                    </button>
-                    &nbsp;
-                    <button
-                      onClick={() => {
-                        this.extractLocationDate({ imageBytes });
-                      }}
-                    >
-                      📍 &amp; 📅⌚
-                    </button>
-                    &nbsp;
-                    <button
-                      onClick={() => {
-                        this.extractPlate({ imageBytes });
-                      }}
-                    >
-                      Read plate
-                    </button>
-                  </li>
-                );
-              })}
+                    View
+                  </button>
+                  &nbsp;
+                  <button
+                    style={{
+                      color: 'red', // Ubuntu Chrome shows black otherwise
+                    }}
+                    onClick={() => {
+                      this.setState({
+                        imageBytess: this.state.imageBytess.filter(
+                          bytes => bytes !== imageBytes,
+                        ),
+                      });
+                    }}
+                  >
+                    ❌
+                  </button>
+                  &nbsp;
+                  <button
+                    onClick={() => {
+                      this.extractLocationDate({ imageBytes });
+                    }}
+                  >
+                    📍 &amp; 📅⌚
+                  </button>
+                  &nbsp;
+                  <button
+                    onClick={() => {
+                      this.extractPlate({ imageBytes });
+                    }}
+                  >
+                    Read plate
+                  </button>
+                </li>
+              ))}
             </ol>
 
             <label>

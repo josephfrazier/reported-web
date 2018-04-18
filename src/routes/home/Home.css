@@ -9,6 +9,10 @@
 
 @import '../../components/variables.css';
 
+* {
+  box-sizing: border-box;
+}
+
 .root {
   padding-left: 20px;
   padding-right: 20px;

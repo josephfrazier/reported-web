@@ -24,7 +24,7 @@ import OpenalprApi from 'openalpr_api';
 import Parse from 'parse/node';
 import omit from 'object.omit';
 import fileType from 'file-type-es5';
-import jpegAutorotate from 'jpeg-autorotate';
+import sharp from 'sharp';
 
 import App from './components/App';
 import Html from './components/Html';
@@ -327,27 +327,30 @@ app.use('/openalpr', (req, res) => {
   const secretKey = process.env.OPENALPR_SECRET_KEY; // {String} The secret key used to authenticate your account. You can view your secret key by visiting https://cloud.openalpr.com/
 
   const imageBuffer = Buffer.from(imageBytes, 'base64');
-  const rotateOptions = {};
-  console.time(`/openalpr jpegAutorotate`); // eslint-disable-line no-console
-  jpegAutorotate.rotate(imageBuffer, rotateOptions, (err, buffer) => {
-    console.timeEnd(`/openalpr jpegAutorotate`); // eslint-disable-line no-console
-    const imageBytesRotated = err ? imageBytes : buffer.toString('base64');
-    console.time(`/openalpr recognizeBytes`); // eslint-disable-line no-console
-    api.recognizeBytes(
-      imageBytesRotated,
-      secretKey,
-      country,
-      opts,
-      (error, data) => {
-        console.timeEnd(`/openalpr recognizeBytes`); // eslint-disable-line no-console
-        if (error) {
-          throw error;
-        } else {
-          res.json(data);
-        }
-      },
-    );
-  });
+  console.time(`/openalpr rotate`); // eslint-disable-line no-console
+  sharp(imageBuffer)
+    .rotate()
+    .toBuffer()
+    .catch(() => imageBuffer)
+    .then(buffer => {
+      console.timeEnd(`/openalpr rotate`); // eslint-disable-line no-console
+      const imageBytesRotated = buffer.toString('base64');
+      console.time(`/openalpr recognizeBytes`); // eslint-disable-line no-console
+      api.recognizeBytes(
+        imageBytesRotated,
+        secretKey,
+        country,
+        opts,
+        (error, data) => {
+          console.timeEnd(`/openalpr recognizeBytes`); // eslint-disable-line no-console
+          if (error) {
+            throw error;
+          } else {
+            res.json(data);
+          }
+        },
+      );
+    });
 });
 
 //

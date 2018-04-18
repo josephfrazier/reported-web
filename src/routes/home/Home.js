@@ -141,7 +141,7 @@ class Home extends React.Component {
         this.setCoords(coords);
       }
     });
-    this.forceUpdate(); // force "User info" fields to render persisted value after load
+    this.forceUpdate(); // force "User Info" fields to render persisted value after load
   }
 
   setCoords = ({ latitude, longitude }) => {
@@ -314,7 +314,7 @@ class Home extends React.Component {
           <br />
 
           <details>
-            <summary>User info</summary>
+            <summary>User Info</summary>
 
             <label>
               Email:{' '}

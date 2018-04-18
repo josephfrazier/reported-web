@@ -95,6 +95,13 @@ const getImageUrl = imageBytes => {
   return imageUrl;
 };
 
+const geolocate = () =>
+  promisedLocation().catch(async () => {
+    const { data } = await axios.get('https://ipapi.co/json');
+    const { latitude, longitude } = data;
+    return { coords: { latitude, longitude } };
+  });
+
 class Home extends React.Component {
   state = {
     email: '',
@@ -131,7 +138,7 @@ class Home extends React.Component {
     if (this.state.imageBytess.length === 0 || !this.state.CreateDate) {
       this.setCreateDate({ millisecondsSinceEpoch: Date.now() });
     }
-    promisedLocation().then(({ coords }) => {
+    geolocate().then(({ coords }) => {
       // if there's no images or a location couldn't be extracted, just use here
       if (
         this.state.imageBytess.length === 0 ||
@@ -559,7 +566,7 @@ class Home extends React.Component {
 
             <button
               onClick={() => {
-                promisedLocation()
+                geolocate()
                   .then(({ coords }) => {
                     this.setCoords(coords);
                   })

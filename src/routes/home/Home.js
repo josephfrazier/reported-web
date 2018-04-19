@@ -693,6 +693,7 @@ class Home extends React.Component {
                   name="CreateDate"
                   onChange={this.handleInputChange}
                 />
+                &nbsp;
                 <button
                   onClick={() => {
                     this.setCreateDate({

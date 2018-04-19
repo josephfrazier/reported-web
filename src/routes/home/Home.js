@@ -318,6 +318,7 @@ class Home extends React.Component {
     return (
       <div className={s.root}>
         <div className={s.container}>
+          {/* TODO use tabbed interface instead of toggling <details> ? */}
           <details
             open={this.state.isUserInfoOpen}
             onToggle={evt => {

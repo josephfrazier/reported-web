@@ -190,6 +190,7 @@ app.use('/requestPasswordReset', (req, res) => {
     });
 });
 
+// TODO make sure all required fields are present/valid
 app.use('/submit', (req, res) => {
   const { body } = req;
 
@@ -307,6 +308,8 @@ app.use('/submit', (req, res) => {
         }),
       );
       return submission.save(null);
+      // TODO logout after submission is saved
+      // http://docs.parseplatform.org/js/guide/#sessions
     })
     .then(submission => {
       console.info({ submission });

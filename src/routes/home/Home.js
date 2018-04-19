@@ -342,11 +342,22 @@ class Home extends React.Component {
               Password:{' '}
               <div style={{ display: 'flex' }}>
                 <input
-                  type="text"
+                  type={this.state.isPasswordRevealed ? 'text' : 'password'}
                   value={this.state.password}
                   name="password"
                   onChange={this.handleInputChange}
                 />
+                &nbsp;
+                <button
+                  onClick={() => {
+                    this.setState({
+                      isPasswordRevealed: !this.state.isPasswordRevealed,
+                    });
+                  }}
+                >
+                  {this.state.isPasswordRevealed ? 'Hide' : 'Show'}
+                </button>
+                &nbsp;
                 <button
                   onClick={() => {
                     const { email } = this.state;

@@ -300,8 +300,7 @@ app.use('/submit', (req, res) => {
         can_be_shared_publicly,
         status: 0,
         operating_system: 'web',
-        // TODO use commit hash or something?
-        // VERSION_NUMBER, BuildConfig.VERSION_CODE)
+        version_number: Number(process.env.HEROKU_RELEASE_VERSION.slice(1)),
         reqnumber: 'N/A until submitted to 311',
       });
 

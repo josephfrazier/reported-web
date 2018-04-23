@@ -308,14 +308,13 @@ app.use('/submit', (req, res) => {
         }),
       );
       return submission.save(null);
-      // TODO logout after submission is saved
-      // http://docs.parseplatform.org/js/guide/#sessions
     })
     .then(submission => {
       console.info({ submission });
 
       res.json({ submission });
     })
+    .then(() => Parse.User.logOut())
     .catch(error => {
       console.error({ error });
       res.status(500).json({ error });

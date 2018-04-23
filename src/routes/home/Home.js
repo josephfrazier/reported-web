@@ -97,6 +97,8 @@ const geolocate = () =>
     return { coords: { latitude, longitude } };
   });
 
+const jsDateToCreateDate = jsDate => jsDate.toISOString().replace(/\..*/g, '');
+
 class Home extends React.Component {
   state = {
     isUserInfoOpen: true,
@@ -120,7 +122,7 @@ class Home extends React.Component {
     latitude: defaultLatitude,
     longitude: defaultLongitude,
     formatted_address: '',
-    CreateDate: new Date().toISOString().replace(/\..*/g, ''), // TODO dedupe with setCreateDate
+    CreateDate: jsDateToCreateDate(new Date()),
     // TODO also consider using IndexedDB (via e.g. localForage) to store File/Blob objects directly
     // instead of having to convert back from base64
     // If this is done, we can use a WeakMap instead of a Map in getImageUrl() above.
@@ -169,7 +171,7 @@ class Home extends React.Component {
     );
 
     this.setState({
-      CreateDate: CreateDateJsLocal.toISOString().replace(/\..*/g, ''), // TODO dedupe with initial state.CreateDate
+      CreateDate: jsDateToCreateDate(CreateDateJsLocal),
     });
   };
 

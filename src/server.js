@@ -206,7 +206,6 @@ app.use('/submit', (req, res) => {
     Phone,
     testify,
 
-    colorTaxi,
     plate,
     typeofuser,
     typeofreport = 'complaint',
@@ -265,7 +264,6 @@ app.use('/submit', (req, res) => {
 
         typeofreport,
         selectedReport: typeofreport === 'complaint' ? 1 : 0,
-        colorTaxi,
         medallionNo: plate,
         typeofcomplaint,
         typeofuser: typeofuser.toLowerCase(),

@@ -38,21 +38,6 @@ const debouncedReverseGeocode = debounce(async ({ latitude, longitude }) => {
   return data;
 }, 500);
 
-const colorTaxiInfos = {
-  Yellow: {
-    regex: RegExp('^\\d[A-Za-z]\\d\\d$'),
-    placeholder: '1E23',
-  },
-  Green: {
-    regex: RegExp('^[A-Za-z]{2}\\d{3}$'),
-    placeholder: 'AA123',
-  },
-  Black: {
-    regex: RegExp('(^T\\d{6}C$)|(^\\d{6}$)'),
-    placeholder: 'T646345C',
-  },
-};
-const colorTaxiNames = Object.keys(colorTaxiInfos);
 const typeofuserValues = ['Cyclist', 'Walker', 'Passenger'];
 const typeofcomplaintValues = [
   'Blocked the bike lane',
@@ -113,7 +98,6 @@ class Home extends React.Component {
     Phone: '',
     testify: false,
 
-    colorTaxi: colorTaxiNames[0],
     plate: '',
     typeofuser: typeofuserValues[0],
     typeofcomplaint: typeofcomplaintValues[0],
@@ -177,12 +161,6 @@ class Home extends React.Component {
 
   setLicensePlate = ({ plate }) => {
     this.setState({ plate });
-
-    for (const colorTaxi of colorTaxiNames) {
-      if (plate.match(colorTaxiInfos[colorTaxi].regex)) {
-        this.setState({ colorTaxi });
-      }
-    }
   };
 
   // adapted from https://github.com/ngokevin/react-file-reader-input/tree/f970257f271b8c3bba9d529ffdbfa4f4731e0799#usage
@@ -563,28 +541,10 @@ class Home extends React.Component {
             </ol>
 
             <label>
-              Cab Color:{' '}
-              <select
-                value={this.state.colorTaxi}
-                name="colorTaxi"
-                onChange={this.handleInputChange}
-              >
-                {colorTaxiNames.map(colorTaxi => (
-                  <option key={colorTaxi} value={colorTaxi}>
-                    {colorTaxi}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label>
               License/Medallion: {this.state.isLoadingPlate && 'Loading...'}
               <input
                 type="text"
                 value={this.state.plate}
-                placeholder={`i.e. ${
-                  colorTaxiInfos[this.state.colorTaxi].placeholder
-                }`}
                 onChange={event => {
                   this.setLicensePlate({ plate: event.target.value });
                 }}

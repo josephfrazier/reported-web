@@ -348,7 +348,7 @@ class Home extends React.Component {
               <input
                 required
                 onInvalid={() => this.setState({ isUserInfoOpen: true })}
-                type="text"
+                type="email"
                 value={this.state.email}
                 name="email"
                 onChange={this.handleInputChange}
@@ -485,7 +485,7 @@ class Home extends React.Component {
               <input
                 required
                 onInvalid={() => this.setState({ isUserInfoOpen: true })}
-                type="text"
+                type="tel"
                 value={this.state.Phone}
                 name="Phone"
                 onChange={this.handleInputChange}

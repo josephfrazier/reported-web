@@ -214,7 +214,6 @@ app.use('/submit', (req, res) => {
     can_be_shared_publicly, // eslint-disable-line camelcase
     latitude,
     longitude,
-    formatted_address, // eslint-disable-line camelcase
     imageBytess = [],
     CreateDate,
   } = body;
@@ -273,7 +272,6 @@ app.use('/submit', (req, res) => {
         longitude: longitude.toString(),
         latitude1: latitude,
         longitude1: longitude,
-        loc1_address: formatted_address, // TODO this is unused: https://reportedcab.slack.com/messages/C852Q265V/p1523147911000014
         timeofreport,
         timeofreported,
         reportDescription,

@@ -190,7 +190,6 @@ app.use('/requestPasswordReset', (req, res) => {
     });
 });
 
-// TODO make sure all required fields are present/valid
 app.use('/submit', (req, res) => {
   const { body } = req;
 
@@ -245,6 +244,29 @@ app.use('/submit', (req, res) => {
         const message = `Please verify ${email} and try again. You should have received a message.`;
         throw { message }; // eslint-disable-line no-throw-literal
       }
+
+      // make sure all required fields are present
+      Object.entries({
+        FirstName,
+        LastName,
+        Building,
+        StreetName,
+        Apt,
+        Borough,
+        Phone,
+
+        plate,
+        typeofuser,
+        typeofcomplaint,
+        latitude,
+        longitude,
+        CreateDate,
+      }).forEach(([key, value]) => {
+        if (!value) {
+          throw { message: `${key} is required` }; // eslint-disable-line no-throw-literal
+        }
+      });
+
       const Submission = Parse.Object.extend('submission');
       const submission = new Submission();
       submission.set({

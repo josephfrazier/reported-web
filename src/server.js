@@ -310,6 +310,11 @@ app.use('/submit', (req, res) => {
       return submission.save(null);
       // TODO logout after submission is saved
       // http://docs.parseplatform.org/js/guide/#sessions
+      // Note that Parse.User.logOut() won't work here:
+      // https://github.com/parse-community/parse-server/issues/2553
+      // https://github.com/parse-community/Parse-SDK-JS/issues/393
+      // Also, you can't just query sessions by token and delete it:
+      // https://github.com/parse-community/Parse-SDK-JS/issues/83
     })
     .then(submission => {
       console.info({ submission });

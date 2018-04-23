@@ -297,7 +297,41 @@ class Home extends React.Component {
   render() {
     return (
       <div className={s.root}>
-        <div className={s.container}>
+        <form
+          className={s.container}
+          onSubmit={e => {
+            e.preventDefault();
+            this.setState({
+              isSubmitting: true,
+            });
+            axios
+              .post('/submit', {
+                ...this.state,
+                CreateDate: new Date(this.state.CreateDate).toISOString(),
+              })
+              .then(({ data }) => {
+                console.info(
+                  `submitted successfully. Returned data: ${JSON.stringify(
+                    data,
+                    null,
+                    2,
+                  )}`,
+                );
+                window.prompt('Submitted! objectId:', data.submission.objectId);
+              })
+              .catch(err => {
+                window.alert(`Error: ${err.response.data.error.message}`);
+              })
+              .catch(err => {
+                console.error(err);
+              })
+              .then(() => {
+                this.setState({
+                  isSubmitting: false,
+                });
+              });
+          }}
+        >
           {/* TODO use tabbed interface instead of toggling <details> ? */}
           <details
             open={this.state.isUserInfoOpen}
@@ -330,6 +364,7 @@ class Home extends React.Component {
                 />
                 &nbsp;
                 <button
+                  type="button"
                   onClick={() => {
                     this.setState({
                       isPasswordRevealed: !this.state.isPasswordRevealed,
@@ -340,6 +375,7 @@ class Home extends React.Component {
                 </button>
                 &nbsp;
                 <button
+                  type="button"
                   onClick={() => {
                     const { email } = this.state;
                     axios
@@ -453,6 +489,7 @@ class Home extends React.Component {
             </label>
 
             <button
+              type="button"
               onClick={() => {
                 this.setState({ isUserInfoOpen: false });
                 window.scrollTo(0, 0);
@@ -477,7 +514,7 @@ class Home extends React.Component {
               as="buffer"
               onChange={this.handleChange}
             >
-              <button>Select/Take a picture</button>
+              <button type="button">Select/Take a picture</button>
               &nbsp; {this.state.isLoadingImages && 'Loading...'}
             </FileReaderInput>
 
@@ -492,6 +529,7 @@ class Home extends React.Component {
                 >
                   {i + 1}.&nbsp;
                   <button
+                    type="button"
                     onClick={() => {
                       const imageUrl = getImageUrl(imageBytes);
                       const w = window.open();
@@ -507,6 +545,7 @@ class Home extends React.Component {
                   </button>
                   &nbsp;
                   <button
+                    type="button"
                     style={{
                       color: 'red', // Ubuntu Chrome shows black otherwise
                     }}
@@ -522,6 +561,7 @@ class Home extends React.Component {
                   </button>
                   &nbsp;
                   <button
+                    type="button"
                     onClick={() => {
                       this.extractLocationDate({ imageBytes });
                     }}
@@ -530,6 +570,7 @@ class Home extends React.Component {
                   </button>
                   &nbsp;
                   <button
+                    type="button"
                     onClick={() => {
                       this.extractPlate({ imageBytes });
                     }}
@@ -585,6 +626,7 @@ class Home extends React.Component {
               <summary>
                 Where: (click to edit)
                 <button
+                  type="button"
                   style={{
                     float: 'right',
                   }}
@@ -658,6 +700,7 @@ class Home extends React.Component {
                 />
                 &nbsp;
                 <button
+                  type="button"
                   onClick={() => {
                     this.setCreateDate({
                       millisecondsSinceEpoch: Date.now(),
@@ -689,48 +732,11 @@ class Home extends React.Component {
               publicly displayed
             </label>
 
-            <button
-              type="button"
-              disabled={this.state.isSubmitting}
-              onClick={() => {
-                this.setState({
-                  isSubmitting: true,
-                });
-                axios
-                  .post('/submit', {
-                    ...this.state,
-                    CreateDate: new Date(this.state.CreateDate).toISOString(),
-                  })
-                  .then(({ data }) => {
-                    console.info(
-                      `submitted successfully. Returned data: ${JSON.stringify(
-                        data,
-                        null,
-                        2,
-                      )}`,
-                    );
-                    window.prompt(
-                      'Submitted! objectId:',
-                      data.submission.objectId,
-                    );
-                  })
-                  .catch(err => {
-                    window.alert(`Error: ${err.response.data.error.message}`);
-                  })
-                  .catch(err => {
-                    console.error(err);
-                  })
-                  .then(() => {
-                    this.setState({
-                      isSubmitting: false,
-                    });
-                  });
-              }}
-            >
+            <button type="submit" disabled={this.state.isSubmitting}>
               Submit
             </button>
           </div>
-        </div>
+        </form>
       </div>
     );
   }

@@ -346,6 +346,8 @@ class Home extends React.Component {
             <label>
               Email:{' '}
               <input
+                required
+                onInvalid={() => this.setState({ isUserInfoOpen: true })}
                 type="text"
                 value={this.state.email}
                 name="email"
@@ -357,6 +359,8 @@ class Home extends React.Component {
               Password:{' '}
               <div style={{ display: 'flex' }}>
                 <input
+                  required
+                  onInvalid={() => this.setState({ isUserInfoOpen: true })}
                   type={this.state.isPasswordRevealed ? 'text' : 'password'}
                   value={this.state.password}
                   name="password"
@@ -404,6 +408,8 @@ class Home extends React.Component {
             <label>
               First Name:{' '}
               <input
+                required
+                onInvalid={() => this.setState({ isUserInfoOpen: true })}
                 type="text"
                 value={this.state.FirstName}
                 name="FirstName"
@@ -414,6 +420,8 @@ class Home extends React.Component {
             <label>
               Last Name:{' '}
               <input
+                required
+                onInvalid={() => this.setState({ isUserInfoOpen: true })}
                 type="text"
                 value={this.state.LastName}
                 name="LastName"
@@ -424,6 +432,8 @@ class Home extends React.Component {
             <label>
               Building Number:{' '}
               <input
+                required
+                onInvalid={() => this.setState({ isUserInfoOpen: true })}
                 type="text"
                 value={this.state.Building}
                 name="Building"
@@ -434,6 +444,8 @@ class Home extends React.Component {
             <label>
               Street Name:{' '}
               <input
+                required
+                onInvalid={() => this.setState({ isUserInfoOpen: true })}
                 type="text"
                 value={this.state.StreetName}
                 name="StreetName"
@@ -444,6 +456,8 @@ class Home extends React.Component {
             <label>
               Apartment Number:{' '}
               <input
+                required
+                onInvalid={() => this.setState({ isUserInfoOpen: true })}
                 type="text"
                 value={this.state.Apt}
                 name="Apt"
@@ -469,6 +483,8 @@ class Home extends React.Component {
             <label>
               Phone Number:{' '}
               <input
+                required
+                onInvalid={() => this.setState({ isUserInfoOpen: true })}
                 type="text"
                 value={this.state.Phone}
                 name="Phone"
@@ -584,6 +600,7 @@ class Home extends React.Component {
             <label>
               License/Medallion: {this.state.isLoadingPlate && 'Loading...'}
               <input
+                required
                 type="text"
                 value={this.state.plate}
                 onChange={event => {
@@ -693,6 +710,7 @@ class Home extends React.Component {
               When:{' '}
               <div style={{ display: 'flex' }}>
                 <input
+                  required
                   type="datetime-local"
                   value={this.state.CreateDate}
                   name="CreateDate"

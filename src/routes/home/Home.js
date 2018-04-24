@@ -794,6 +794,12 @@ class Home extends React.Component {
             <button type="submit" disabled={this.state.isSubmitting}>
               {this.state.isSubmitting ? 'Submitting...' : 'Submit'}
             </button>
+
+            <div style={{ float: 'right' }}>
+              <a href="https://twitter.com/@Reported_NYC">
+                <button type="button">@Reported_NYC</button>
+              </a>
+            </div>
           </form>
         </div>
       </div>

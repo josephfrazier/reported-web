@@ -25,6 +25,7 @@ import {
 import { SearchBox } from 'react-google-maps/lib/components/places/SearchBox';
 import withLocalStorage from 'react-localstorage';
 import debounce from 'debounce-promise';
+import GithubCorner from 'react-github-corner';
 
 import marx from 'marx-css/css/marx.css';
 import s from './Home.css';
@@ -297,6 +298,10 @@ class Home extends React.Component {
   render() {
     return (
       <div className={s.root}>
+        <GithubCorner
+          href="https://github.com/josephfrazier/Reported-Web"
+          bannerColor="#007bff"
+        />
         <form
           className={s.container}
           onSubmit={e => {

@@ -132,7 +132,7 @@ app.use(
   })),
 );
 
-function saveUser({
+async function saveUser({
   email,
   password,
   FirstName,
@@ -144,6 +144,21 @@ function saveUser({
   Phone,
   testify,
 }) {
+  // make sure all required fields are present
+  Object.entries({
+    FirstName,
+    LastName,
+    Building,
+    StreetName,
+    Apt,
+    Borough,
+    Phone,
+  }).forEach(([key, value]) => {
+    if (!value) {
+      throw { message: `${key} is required` }; // eslint-disable-line no-throw-literal
+    }
+  });
+
   // adapted from http://docs.parseplatform.org/js/guide/#signing-up
   const user = new Parse.User();
   const username = email;
@@ -248,14 +263,6 @@ app.use('/submit', (req, res) => {
 
       // make sure all required fields are present
       Object.entries({
-        FirstName,
-        LastName,
-        Building,
-        StreetName,
-        Apt,
-        Borough,
-        Phone,
-
         plate,
         typeofuser,
         typeofcomplaint,

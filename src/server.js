@@ -206,6 +206,15 @@ async function saveUser({
     });
 }
 
+app.use('/saveUser', (req, res) => {
+  saveUser(req.body)
+    .then(() => res.end())
+    .catch(error => {
+      console.error({ error });
+      res.status(500).json({ error });
+    });
+});
+
 app.use('/requestPasswordReset', (req, res) => {
   const { body } = req;
   const { email } = body;

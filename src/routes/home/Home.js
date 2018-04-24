@@ -302,41 +302,7 @@ class Home extends React.Component {
           href="https://github.com/josephfrazier/Reported-Web"
           bannerColor="#007bff"
         />
-        <form
-          className={s.container}
-          onSubmit={e => {
-            e.preventDefault();
-            this.setState({
-              isSubmitting: true,
-            });
-            axios
-              .post('/submit', {
-                ...this.state,
-                CreateDate: new Date(this.state.CreateDate).toISOString(),
-              })
-              .then(({ data }) => {
-                console.info(
-                  `submitted successfully. Returned data: ${JSON.stringify(
-                    data,
-                    null,
-                    2,
-                  )}`,
-                );
-                window.prompt('Submitted! objectId:', data.submission.objectId);
-              })
-              .catch(err => {
-                window.alert(`Error: ${err.response.data.error.message}`);
-              })
-              .catch(err => {
-                console.error(err);
-              })
-              .then(() => {
-                this.setState({
-                  isSubmitting: false,
-                });
-              });
-          }}
-        >
+        <div className={s.container}>
           {/* TODO use tabbed interface instead of toggling <details> ? */}
           <details
             open={this.state.isUserInfoOpen}
@@ -354,182 +320,226 @@ class Home extends React.Component {
               User Info (click to edit)
             </summary>
 
-            <label>
-              Email:{' '}
-              <input
-                required
-                onInvalid={() => this.setState({ isUserInfoOpen: true })}
-                type="email"
-                value={this.state.email}
-                name="email"
-                onChange={this.handleInputChange}
-              />
-            </label>
-
-            <label>
-              Password:{' '}
-              <div style={{ display: 'flex' }}>
+            <form
+              onSubmit={e => {
+                e.preventDefault();
+                axios
+                  .post('/saveUser', this.state)
+                  .then(() => {
+                    this.setState({ isUserInfoOpen: false });
+                    window.scrollTo(0, 0);
+                  })
+                  .catch(err => {
+                    window.alert(`Error: ${err.response.data.error.message}`);
+                  })
+                  .catch(err => {
+                    console.error(err);
+                  });
+              }}
+            >
+              <label>
+                Email:{' '}
                 <input
                   required
                   onInvalid={() => this.setState({ isUserInfoOpen: true })}
-                  type={this.state.isPasswordRevealed ? 'text' : 'password'}
-                  value={this.state.password}
-                  name="password"
+                  type="email"
+                  value={this.state.email}
+                  name="email"
                   onChange={this.handleInputChange}
                 />
-                &nbsp;
-                <button
-                  type="button"
-                  onClick={() => {
-                    this.setState({
-                      isPasswordRevealed: !this.state.isPasswordRevealed,
-                    });
-                  }}
-                >
-                  {this.state.isPasswordRevealed ? 'Hide' : 'Show'}
-                </button>
-                &nbsp;
-                <button
-                  type="button"
-                  onClick={() => {
-                    const { email } = this.state;
-                    axios
-                      .post('/requestPasswordReset', {
-                        email,
-                      })
-                      .then(() => {
-                        const message = `Please check ${email} to reset your password.`;
-                        window.alert(message);
-                      })
-                      .catch(err => {
-                        window.alert(
-                          `Error: ${err.response.data.error.message}`,
-                        );
-                      })
-                      .catch(err => {
-                        console.error(err);
+              </label>
+
+              <label>
+                Password:{' '}
+                <div style={{ display: 'flex' }}>
+                  <input
+                    required
+                    onInvalid={() => this.setState({ isUserInfoOpen: true })}
+                    type={this.state.isPasswordRevealed ? 'text' : 'password'}
+                    value={this.state.password}
+                    name="password"
+                    onChange={this.handleInputChange}
+                  />
+                  &nbsp;
+                  <button
+                    type="button"
+                    onClick={() => {
+                      this.setState({
+                        isPasswordRevealed: !this.state.isPasswordRevealed,
                       });
-                  }}
+                    }}
+                  >
+                    {this.state.isPasswordRevealed ? 'Hide' : 'Show'}
+                  </button>
+                  &nbsp;
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const { email } = this.state;
+                      axios
+                        .post('/requestPasswordReset', {
+                          email,
+                        })
+                        .then(() => {
+                          const message = `Please check ${email} to reset your password.`;
+                          window.alert(message);
+                        })
+                        .catch(err => {
+                          window.alert(
+                            `Error: ${err.response.data.error.message}`,
+                          );
+                        })
+                        .catch(err => {
+                          console.error(err);
+                        });
+                    }}
+                  >
+                    Reset
+                  </button>
+                </div>
+              </label>
+
+              <label>
+                First Name:{' '}
+                <input
+                  required
+                  onInvalid={() => this.setState({ isUserInfoOpen: true })}
+                  type="text"
+                  value={this.state.FirstName}
+                  name="FirstName"
+                  onChange={this.handleInputChange}
+                />
+              </label>
+
+              <label>
+                Last Name:{' '}
+                <input
+                  required
+                  onInvalid={() => this.setState({ isUserInfoOpen: true })}
+                  type="text"
+                  value={this.state.LastName}
+                  name="LastName"
+                  onChange={this.handleInputChange}
+                />
+              </label>
+
+              <label>
+                Building Number:{' '}
+                <input
+                  required
+                  onInvalid={() => this.setState({ isUserInfoOpen: true })}
+                  type="text"
+                  value={this.state.Building}
+                  name="Building"
+                  onChange={this.handleInputChange}
+                />
+              </label>
+
+              <label>
+                Street Name:{' '}
+                <input
+                  required
+                  onInvalid={() => this.setState({ isUserInfoOpen: true })}
+                  type="text"
+                  value={this.state.StreetName}
+                  name="StreetName"
+                  onChange={this.handleInputChange}
+                />
+              </label>
+
+              <label>
+                Apartment Number:{' '}
+                <input
+                  required
+                  onInvalid={() => this.setState({ isUserInfoOpen: true })}
+                  type="text"
+                  value={this.state.Apt}
+                  name="Apt"
+                  onChange={this.handleInputChange}
+                />
+              </label>
+
+              <label>
+                Borough:{' '}
+                <select
+                  value={this.state.Borough}
+                  name="Borough"
+                  onChange={this.handleInputChange}
                 >
-                  Reset
-                </button>
-              </div>
-            </label>
+                  {boroughValues.map(borough => (
+                    <option key={borough} value={borough}>
+                      {borough}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-            <label>
-              First Name:{' '}
-              <input
-                required
-                onInvalid={() => this.setState({ isUserInfoOpen: true })}
-                type="text"
-                value={this.state.FirstName}
-                name="FirstName"
-                onChange={this.handleInputChange}
-              />
-            </label>
+              <label>
+                Phone Number:{' '}
+                <input
+                  required
+                  onInvalid={() => this.setState({ isUserInfoOpen: true })}
+                  type="tel"
+                  value={this.state.Phone}
+                  name="Phone"
+                  onChange={this.handleInputChange}
+                />
+              </label>
 
-            <label>
-              Last Name:{' '}
-              <input
-                required
-                onInvalid={() => this.setState({ isUserInfoOpen: true })}
-                type="text"
-                value={this.state.LastName}
-                name="LastName"
-                onChange={this.handleInputChange}
-              />
-            </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={this.state.testify}
+                  name="testify"
+                  onChange={this.handleInputChange}
+                />{' '}
+                {
+                  "I'm willing to testify at a hearing, which can be done by phone."
+                }
+              </label>
 
-            <label>
-              Building Number:{' '}
-              <input
-                required
-                onInvalid={() => this.setState({ isUserInfoOpen: true })}
-                type="text"
-                value={this.state.Building}
-                name="Building"
-                onChange={this.handleInputChange}
-              />
-            </label>
-
-            <label>
-              Street Name:{' '}
-              <input
-                required
-                onInvalid={() => this.setState({ isUserInfoOpen: true })}
-                type="text"
-                value={this.state.StreetName}
-                name="StreetName"
-                onChange={this.handleInputChange}
-              />
-            </label>
-
-            <label>
-              Apartment Number:{' '}
-              <input
-                required
-                onInvalid={() => this.setState({ isUserInfoOpen: true })}
-                type="text"
-                value={this.state.Apt}
-                name="Apt"
-                onChange={this.handleInputChange}
-              />
-            </label>
-
-            <label>
-              Borough:{' '}
-              <select
-                value={this.state.Borough}
-                name="Borough"
-                onChange={this.handleInputChange}
-              >
-                {boroughValues.map(borough => (
-                  <option key={borough} value={borough}>
-                    {borough}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              Phone Number:{' '}
-              <input
-                required
-                onInvalid={() => this.setState({ isUserInfoOpen: true })}
-                type="tel"
-                value={this.state.Phone}
-                name="Phone"
-                onChange={this.handleInputChange}
-              />
-            </label>
-
-            <label>
-              <input
-                type="checkbox"
-                checked={this.state.testify}
-                name="testify"
-                onChange={this.handleInputChange}
-              />{' '}
-              {
-                "I'm willing to testify at a hearing, which can be done by phone."
-              }
-            </label>
-
-            <button
-              type="button"
-              onClick={() => {
-                // TODO saveUser? change button text accordingly
-                this.setState({ isUserInfoOpen: false });
-                window.scrollTo(0, 0);
-              }}
-            >
-              Done
-            </button>
+              <button type="submit">Save</button>
+            </form>
           </details>
 
-          <div
+          <form
             style={{
               display: this.state.isUserInfoOpen ? 'none' : 'block',
+            }}
+            onSubmit={e => {
+              e.preventDefault();
+              this.setState({
+                isSubmitting: true,
+              });
+              axios
+                .post('/submit', {
+                  ...this.state,
+                  CreateDate: new Date(this.state.CreateDate).toISOString(),
+                })
+                .then(({ data }) => {
+                  console.info(
+                    `submitted successfully. Returned data: ${JSON.stringify(
+                      data,
+                      null,
+                      2,
+                    )}`,
+                  );
+                  window.prompt(
+                    'Submitted! objectId:',
+                    data.submission.objectId,
+                  );
+                })
+                .catch(err => {
+                  window.alert(`Error: ${err.response.data.error.message}`);
+                })
+                .catch(err => {
+                  console.error(err);
+                })
+                .then(() => {
+                  this.setState({
+                    isSubmitting: false,
+                  });
+                });
             }}
           >
             {/*
@@ -784,8 +794,8 @@ class Home extends React.Component {
             <button type="submit" disabled={this.state.isSubmitting}>
               {this.state.isSubmitting ? 'Submitting...' : 'Submit'}
             </button>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
     );
   }

@@ -346,7 +346,13 @@ class Home extends React.Component {
               });
             }}
           >
-            <summary>User Info</summary>
+            <summary
+              style={{
+                outline: 'none',
+              }}
+            >
+              User Info
+            </summary>
 
             <label>
               Email:{' '}
@@ -657,7 +663,11 @@ class Home extends React.Component {
             </label>
 
             <details>
-              <summary>
+              <summary
+                style={{
+                  outline: 'none',
+                }}
+              >
                 Where: (click to edit)
                 <button
                   type="button"

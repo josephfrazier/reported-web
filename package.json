@@ -18,7 +18,7 @@
     "cookie-parser": "^1.4.3",
     "core-js": "^2.5.4",
     "debounce-promise": "^3.1.0",
-    "dotenv-safe": "^5.0.1",
+    "dotenv": "^5.0.1",
     "exif": "https://github.com/josephfrazier/node-exif#isbuffer",
     "express": "^4.16.3",
     "express-graphql": "^0.6.12",

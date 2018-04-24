@@ -39,7 +39,7 @@ import schema from './data/schema';
 import chunks from './chunk-manifest.json'; // eslint-disable-line import/no-unresolved
 import config from './config';
 
-require('dotenv-safe').config();
+require('dotenv').config();
 
 process.on('unhandledRejection', (reason, p) => {
   console.error('Unhandled Rejection at:', p, 'reason:', reason);

@@ -351,7 +351,7 @@ class Home extends React.Component {
                 outline: 'none',
               }}
             >
-              User Info
+              User Info (click to edit)
             </summary>
 
             <label>

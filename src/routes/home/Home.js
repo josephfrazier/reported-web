@@ -605,14 +605,25 @@ class Home extends React.Component {
 
             <label>
               License/Medallion: {this.state.isLoadingPlate && 'Loading...'}
-              <input
-                required
-                type="text"
-                value={this.state.plate}
-                onChange={event => {
-                  this.setLicensePlate({ plate: event.target.value });
-                }}
-              />
+              <div style={{ display: 'flex' }}>
+                <input
+                  required
+                  type="text"
+                  value={this.state.plate}
+                  onChange={event => {
+                    this.setLicensePlate({ plate: event.target.value });
+                  }}
+                />
+                &nbsp;
+                <button
+                  type="button"
+                  onClick={() => {
+                    this.setLicensePlate({ plate: '' });
+                  }}
+                >
+                  Clear
+                </button>
+              </div>
             </label>
 
             <label>

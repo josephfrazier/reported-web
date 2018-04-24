@@ -590,8 +590,9 @@ class Home extends React.Component {
                     onClick={() => {
                       this.extractPlate({ imageBytes });
                     }}
+                    disabled={this.state.isLoadingPlate}
                   >
-                    Read plate
+                    {this.state.isLoadingPlate ? 'Reading...' : 'Read plate'}
                   </button>
                 </li>
               ))}

@@ -518,6 +518,7 @@ class Home extends React.Component {
             <button
               type="button"
               onClick={() => {
+                // TODO saveUser? change button text accordingly
                 this.setState({ isUserInfoOpen: false });
                 window.scrollTo(0, 0);
               }}

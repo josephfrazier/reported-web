@@ -26,6 +26,7 @@ import { SearchBox } from 'react-google-maps/lib/components/places/SearchBox';
 import withLocalStorage from 'react-localstorage';
 import debounce from 'debounce-promise';
 import GithubCorner from 'react-github-corner';
+import NewWindow from 'react-new-window/umd/react-new-window'; // https://github.com/rmariuzzo/react-new-window/pull/10
 
 import marx from 'marx-css/css/marx.css';
 import s from './Home.css';
@@ -556,8 +557,29 @@ class Home extends React.Component {
               &nbsp; {this.state.isLoadingImages && 'Loading...'}
             </FileReaderInput>
 
+            {this.state.popupImageIndex > -1 && (
+              <NewWindow
+                name="_blank"
+                onUnload={() => this.setState({ popupImageIndex: -1 })}
+              >
+                <img
+                  alt={`#${this.state.popupImageIndex + 1}`}
+                  src={getImageUrl(
+                    this.state.imageBytess[this.state.popupImageIndex],
+                    // TODO detect orientation from EXIF and use CSS transform?
+                    // See https://gist.github.com/nezed/d536ccdace84c6f2ef13da47a8fd6bdb#file-exif-image-orientation-css-transform-fix-js-L13-L22
+                  )}
+                  style={{
+                    width: '100vw',
+                    height: '100vh',
+                    objectFit: 'contain',
+                  }}
+                />
+              </NewWindow>
+            )}
+
             <ol>
-              {this.state.imageBytess.map(imageBytes => (
+              {this.state.imageBytess.map((imageBytes, i) => (
                 <li key={imageBytes}>
                   <button
                     type="button"
@@ -565,11 +587,7 @@ class Home extends React.Component {
                       margin: '1px',
                     }}
                     onClick={() => {
-                      const imageUrl = getImageUrl(imageBytes);
-                      const w = window.open();
-                      w.document.body.innerHTML = `<img src="${imageUrl}" style="width: 100vw; height: 100vh; object-fit: contain" />`;
-                      // TODO detect orientation from EXIF and use CSS transform?
-                      // See https://gist.github.com/nezed/d536ccdace84c6f2ef13da47a8fd6bdb#file-exif-image-orientation-css-transform-fix-js-L13-L22
+                      this.setState({ popupImageIndex: i });
                     }}
                   >
                     View

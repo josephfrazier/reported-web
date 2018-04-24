@@ -8123,6 +8123,12 @@ react-is@^16.3.1:
   version "1.0.0"
   resolved "https://github.com/josephfrazier/react-localstorage#830829c25cb13ea83d4d3dfc23ef3dbc200c438a"
 
+react-new-window@^0.0.7:
+  version "0.0.7"
+  resolved "https://registry.yarnpkg.com/react-new-window/-/react-new-window-0.0.7.tgz#2e76399eb631eff589cd7fddfbd8566c5fa849ed"
+  dependencies:
+    prop-types "^15.6.1"
+
 react-test-renderer@^16.3.1:
   version "16.3.1"
   resolved "https://registry.yarnpkg.com/react-test-renderer/-/react-test-renderer-16.3.1.tgz#d9257936d8535bd40f57f3d5a84e7b0452fb17f2"

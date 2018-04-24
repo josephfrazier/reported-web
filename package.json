@@ -48,6 +48,7 @@
     "react-google-maps": "^9.4.5",
     "react-localstorage":
       "https://github.com/josephfrazier/react-localstorage#higher-ordered-component",
+    "react-new-window": "^0.0.7",
     "recompose": "^0.26.0",
     "sequelize": "^4.37.6",
     "serialize-javascript": "^1.4.0",

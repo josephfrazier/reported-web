@@ -189,6 +189,20 @@ async function saveUser({
         // https://github.com/parse-community/parse-server/issues/1729#issuecomment-218932566
         sessionToken: userAgain.get('sessionToken'),
       });
+    })
+    .then(userAgain => {
+      console.info({ user: userAgain });
+      if (!userAgain.get('emailVerified')) {
+        userAgain.set({ email }); // reset email to trigger a verification email
+        userAgain.save(null, {
+          // sessionToken must be manually passed in:
+          // https://github.com/parse-community/parse-server/issues/1729#issuecomment-218932566
+          sessionToken: userAgain.get('sessionToken'),
+        });
+        const message = `Please verify ${email} and try again. You should have received a message.`;
+        throw { message }; // eslint-disable-line no-throw-literal
+      }
+      return userAgain;
     });
 }
 
@@ -249,18 +263,6 @@ app.use('/submit', (req, res) => {
     testify,
   })
     .then(async user => {
-      console.info({ user });
-      if (!user.get('emailVerified')) {
-        user.set({ email }); // reset email to trigger a verification email
-        user.save(null, {
-          // sessionToken must be manually passed in:
-          // https://github.com/parse-community/parse-server/issues/1729#issuecomment-218932566
-          sessionToken: user.get('sessionToken'),
-        });
-        const message = `Please verify ${email} and try again. You should have received a message.`;
-        throw { message }; // eslint-disable-line no-throw-literal
-      }
-
       // make sure all required fields are present
       Object.entries({
         plate,

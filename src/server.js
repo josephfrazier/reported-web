@@ -208,7 +208,7 @@ async function saveUser({
 
 app.use('/saveUser', (req, res) => {
   saveUser(req.body)
-    .then(() => res.end())
+    .then(user => res.json(user))
     .catch(error => {
       console.error({ error });
       res.status(500).json({ error });

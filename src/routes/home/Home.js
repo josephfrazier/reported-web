@@ -751,7 +751,7 @@ class Home extends React.Component {
             </label>
 
             <button type="submit" disabled={this.state.isSubmitting}>
-              Submit
+              {this.state.isSubmitting ? 'Submitting...' : 'Submit'}
             </button>
           </div>
         </form>

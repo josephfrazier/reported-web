@@ -545,18 +545,14 @@ class Home extends React.Component {
               &nbsp; {this.state.isLoadingImages && 'Loading...'}
             </FileReaderInput>
 
-            <ol style={{ padding: 0 }}>
-              {this.state.imageBytess.map((imageBytes, i) => (
-                <li
-                  key={imageBytes}
-                  style={{
-                    display: 'flex',
-                    marginTop: '1ex',
-                  }}
-                >
-                  {i + 1}.&nbsp;
+            <ol>
+              {this.state.imageBytess.map(imageBytes => (
+                <li key={imageBytes}>
                   <button
                     type="button"
+                    style={{
+                      margin: '1px',
+                    }}
                     onClick={() => {
                       const imageUrl = getImageUrl(imageBytes);
                       const w = window.open();
@@ -570,10 +566,11 @@ class Home extends React.Component {
                   >
                     View
                   </button>
-                  &nbsp;
+
                   <button
                     type="button"
                     style={{
+                      margin: '1px',
                       color: 'red', // Ubuntu Chrome shows black otherwise
                     }}
                     onClick={() => {
@@ -586,18 +583,24 @@ class Home extends React.Component {
                   >
                     ❌
                   </button>
-                  &nbsp;
+
                   <button
                     type="button"
+                    style={{
+                      margin: '1px',
+                    }}
                     onClick={() => {
                       this.extractLocationDate({ imageBytes });
                     }}
                   >
-                    📍 &amp; 📅⌚
+                    Read location and time
                   </button>
-                  &nbsp;
+
                   <button
                     type="button"
+                    style={{
+                      margin: '1px',
+                    }}
                     onClick={() => {
                       this.extractPlate({ imageBytes });
                     }}

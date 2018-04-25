@@ -301,7 +301,7 @@ class Home extends React.Component {
       <div className={s.root}>
         <GithubCorner
           href="https://github.com/josephfrazier/Reported-Web"
-          bannerColor="#007bff"
+          bannerColor="black"
         />
         <div className={s.container}>
           {/* TODO use tabbed interface instead of toggling <details> ? */}
@@ -812,7 +812,15 @@ class Home extends React.Component {
 
             <div style={{ float: 'right' }}>
               <a href="https://twitter.com/@Reported_NYC">
-                <button type="button">@Reported_NYC</button>
+                <button
+                  type="button"
+                  style={{
+                    background: '#1da1f2',
+                    borderColor: '#1da1f2',
+                  }}
+                >
+                  @Reported_NYC
+                </button>
               </a>
             </div>
           </form>

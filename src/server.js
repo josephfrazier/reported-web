@@ -337,7 +337,7 @@ app.use('/submit', (req, res) => {
           imageBytes,
           ext: fileType(Buffer.from(imageBytes, 'base64')).ext,
         }))
-        .filter(({ ext }) => ['jpg', 'png', 'jpeg'].includes(ext));
+        .filter(({ ext }) => ['jpg', 'png'].includes(ext));
 
       await Promise.all(
         images.map(async ({ imageBytes, ext }, index) => {

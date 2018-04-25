@@ -26,6 +26,7 @@
     "file-type-es5": "^6.2.1",
     "force-ssl-heroku": "^1.0.2",
     "graphql": "^0.13.2",
+    "heroku-self-ping": "^1.1.4",
     "history": "^4.7.2",
     "isomorphic-style-loader": "^4.0.0",
     "jsonwebtoken": "^8.2.1",

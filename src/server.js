@@ -47,6 +47,11 @@ process.on('unhandledRejection', (reason, p) => {
   process.exit(1);
 });
 
+const { HEROKU_APP_NAME } = process.env;
+require('heroku-self-ping')(`https://${HEROKU_APP_NAME}.herokuapp.com/`, {
+  verbose: true,
+});
+
 // http://docs.parseplatform.org/js/guide/#getting-started
 Parse.initialize(process.env.PARSE_APP_ID, process.env.PARSE_JAVASCRIPT_KEY);
 Parse.serverURL = process.env.PARSE_SERVER_URL;

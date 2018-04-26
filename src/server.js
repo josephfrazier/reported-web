@@ -155,7 +155,6 @@ async function saveUser({
     LastName,
     Building,
     StreetName,
-    Apt,
     Borough,
     Phone,
   }).forEach(([key, value]) => {

@@ -451,8 +451,6 @@ class Home extends React.Component {
               <label>
                 Apartment Number:{' '}
                 <input
-                  required
-                  onInvalid={() => this.setState({ isUserInfoOpen: true })}
                   type="text"
                   value={this.state.Apt}
                   name="Apt"

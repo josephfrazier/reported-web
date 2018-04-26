@@ -86,42 +86,44 @@ const geolocate = () =>
 
 const jsDateToCreateDate = jsDate => jsDate.toISOString().replace(/\..*/g, '');
 
+const initialState = {
+  isUserInfoOpen: true,
+  isUserInfoSaving: false,
+  email: '',
+  password: '',
+  FirstName: '',
+  LastName: '',
+  Building: '',
+  StreetName: '',
+  Apt: '',
+  Borough: boroughValues[0],
+  Phone: '',
+  testify: false,
+
+  plate: '',
+  typeofuser: typeofuserValues[0],
+  typeofcomplaint: typeofcomplaintValues[0],
+  reportDescription: '',
+  can_be_shared_publicly: false,
+  latitude: defaultLatitude,
+  longitude: defaultLongitude,
+  formatted_address: '',
+  CreateDate: jsDateToCreateDate(new Date()),
+  // TODO also consider using IndexedDB (via e.g. localForage) to store File/Blob objects directly
+  // instead of having to convert back from base64
+  // If this is done, we can use a WeakMap instead of a Map in getImageUrl() above.
+  //
+  // See https://github.com/localForage/localForage/issues/40
+  // See https://github.com/localForage/localForage/issues/380
+  imageBytess: [],
+
+  isSubmitting: false,
+  isLoadingImages: false,
+  isLoadingPlate: false,
+};
+
 class Home extends React.Component {
-  state = {
-    isUserInfoOpen: true,
-    isUserInfoSaving: false,
-    email: '',
-    password: '',
-    FirstName: '',
-    LastName: '',
-    Building: '',
-    StreetName: '',
-    Apt: '',
-    Borough: boroughValues[0],
-    Phone: '',
-    testify: false,
-
-    plate: '',
-    typeofuser: typeofuserValues[0],
-    typeofcomplaint: typeofcomplaintValues[0],
-    reportDescription: '',
-    can_be_shared_publicly: false,
-    latitude: defaultLatitude,
-    longitude: defaultLongitude,
-    formatted_address: '',
-    CreateDate: jsDateToCreateDate(new Date()),
-    // TODO also consider using IndexedDB (via e.g. localForage) to store File/Blob objects directly
-    // instead of having to convert back from base64
-    // If this is done, we can use a WeakMap instead of a Map in getImageUrl() above.
-    //
-    // See https://github.com/localForage/localForage/issues/40
-    // See https://github.com/localForage/localForage/issues/380
-    imageBytess: [],
-
-    isSubmitting: false,
-    isLoadingImages: false,
-    isLoadingPlate: false,
-  };
+  state = initialState;
 
   componentDidMount() {
     // if there's no images or a time couldn't be extracted, just use now

@@ -356,7 +356,9 @@ class Home extends React.Component {
               </label>
 
               <label>
-                Password:{' '}
+                {
+                  "Password (this is saved on your device, so use a password you don't use anywhere else): "
+                }
                 <div style={{ display: 'flex' }}>
                   <input
                     required

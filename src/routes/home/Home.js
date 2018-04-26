@@ -138,7 +138,7 @@ class Home extends React.Component {
         this.setCoords(coords);
       }
     });
-    this.forceUpdate(); // force "User Info" fields to render persisted value after load
+    this.forceUpdate(); // force "Create/Edit User" fields to render persisted value after load
   }
 
   setCoords = ({ latitude, longitude }) => {
@@ -319,7 +319,7 @@ class Home extends React.Component {
                 outline: 'none',
               }}
             >
-              User Info (click to edit)
+              Create/Edit User (click to expand)
             </summary>
 
             <form

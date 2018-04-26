@@ -89,6 +89,7 @@ const jsDateToCreateDate = jsDate => jsDate.toISOString().replace(/\..*/g, '');
 class Home extends React.Component {
   state = {
     isUserInfoOpen: true,
+    isUserInfoSaving: false,
     email: '',
     password: '',
     FirstName: '',
@@ -324,6 +325,7 @@ class Home extends React.Component {
             <form
               onSubmit={e => {
                 e.preventDefault();
+                this.setState({ isUserInfoSaving: true });
                 axios
                   .post('/saveUser', this.state)
                   .then(() => {
@@ -335,6 +337,9 @@ class Home extends React.Component {
                   })
                   .catch(err => {
                     console.error(err);
+                  })
+                  .then(() => {
+                    this.setState({ isUserInfoSaving: false });
                   });
               }}
             >
@@ -497,7 +502,9 @@ class Home extends React.Component {
                 }
               </label>
 
-              <button type="submit">Save</button>
+              <button type="submit" disabled={this.state.isUserInfoSaving}>
+                {this.state.isUserInfoSaving ? 'Saving...' : 'Save'}
+              </button>
             </form>
           </details>
 

@@ -820,7 +820,7 @@ class Home extends React.Component {
             </button>
 
             <div style={{ float: 'right' }}>
-              <a href="https://twitter.com/@Reported_NYC">
+              <a href="https://twitter.com/Reported_NYC">
                 <button
                   type="button"
                   style={{

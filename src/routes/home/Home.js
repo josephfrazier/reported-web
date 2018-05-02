@@ -827,6 +827,7 @@ class Home extends React.Component {
                 url="https://github.com/josephfrazier/Reported-Web"
                 color="black"
               />
+              &nbsp;
               <SocialIcon url="https://twitter.com/Reported_NYC" />
             </div>
           </form>

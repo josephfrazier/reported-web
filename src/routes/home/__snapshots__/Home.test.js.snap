@@ -522,6 +522,7 @@ exports[`Home renders children correctly 1`] = `
             </svg>
           </div>
         </a>
+         
         <a
           className="social-icon"
           href="https://twitter.com/Reported_NYC"

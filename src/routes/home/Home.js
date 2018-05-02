@@ -651,7 +651,7 @@ class Home extends React.Component {
                   type="text"
                   disabled={this.state.isLoadingPlate}
                   value={
-                    this.state.isLoadingPlate ? 'Loading...' : this.state.plate
+                    this.state.isLoadingPlate ? 'Reading...' : this.state.plate
                   }
                   onChange={event => {
                     this.setLicensePlate({ plate: event.target.value });

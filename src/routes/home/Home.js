@@ -144,7 +144,11 @@ class Home extends React.Component {
   }
 
   setCoords = ({ latitude, longitude }) => {
-    this.setState({ latitude, longitude });
+    this.setState({
+      latitude,
+      longitude,
+      formatted_address: 'Finding Address...',
+    });
     debouncedReverseGeocode({ latitude, longitude }).then(data => {
       this.setState({ formatted_address: data.results[0].formatted_address });
     });

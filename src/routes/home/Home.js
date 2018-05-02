@@ -644,13 +644,15 @@ class Home extends React.Component {
             </ol>
 
             <label>
-              License/Medallion: {this.state.isLoadingPlate && 'Loading...'}
+              License/Medallion:
               <div style={{ display: 'flex' }}>
                 <input
                   required
                   type="text"
                   disabled={this.state.isLoadingPlate}
-                  value={this.state.plate}
+                  value={
+                    this.state.isLoadingPlate ? 'Loading...' : this.state.plate
+                  }
                   onChange={event => {
                     this.setLicensePlate({ plate: event.target.value });
                   }}

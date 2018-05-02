@@ -45,11 +45,11 @@
     "react": "^16.3.1",
     "react-dom": "^16.3.1",
     "react-file-reader-input": "^1.1.4",
-    "react-github-corner": "^2.3.0",
     "react-google-maps": "^9.4.5",
     "react-localstorage":
       "https://github.com/josephfrazier/react-localstorage#higher-ordered-component",
     "react-new-window": "^0.0.7",
+    "react-social-icons": "^2.8.1",
     "recompose": "^0.26.0",
     "sequelize": "^4.37.6",
     "serialize-javascript": "^1.4.0",

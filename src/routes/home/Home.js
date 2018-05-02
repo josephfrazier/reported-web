@@ -25,7 +25,7 @@ import {
 import { SearchBox } from 'react-google-maps/lib/components/places/SearchBox';
 import withLocalStorage from 'react-localstorage';
 import debounce from 'debounce-promise';
-import GithubCorner from 'react-github-corner';
+import { SocialIcon } from 'react-social-icons';
 import NewWindow from 'react-new-window/umd/react-new-window'; // https://github.com/rmariuzzo/react-new-window/pull/10
 
 import marx from 'marx-css/css/marx.css';
@@ -302,10 +302,6 @@ class Home extends React.Component {
   render() {
     return (
       <div className={s.root}>
-        <GithubCorner
-          href="https://github.com/josephfrazier/Reported-Web"
-          bannerColor="black"
-        />
         <div className={s.container}>
           {/* TODO use tabbed interface instead of toggling <details> ? */}
           <details
@@ -820,17 +816,11 @@ class Home extends React.Component {
             </button>
 
             <div style={{ float: 'right' }}>
-              <a href="https://twitter.com/Reported_NYC">
-                <button
-                  type="button"
-                  style={{
-                    background: '#1da1f2',
-                    borderColor: '#1da1f2',
-                  }}
-                >
-                  @Reported_NYC
-                </button>
-              </a>
+              <SocialIcon
+                url="https://github.com/josephfrazier/Reported-Web"
+                color="black"
+              />
+              <SocialIcon url="https://twitter.com/Reported_NYC" />
             </div>
           </form>
         </div>

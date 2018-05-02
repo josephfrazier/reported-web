@@ -8106,10 +8106,6 @@ react-file-reader-input@^1.1.4:
   dependencies:
     karma "^0.13.22"
 
-react-github-corner@^2.3.0:
-  version "2.3.0"
-  resolved "https://registry.yarnpkg.com/react-github-corner/-/react-github-corner-2.3.0.tgz#73ab17324b670c9cd955567b09663d385cfb05ef"
-
 react-google-maps@^9.4.5:
   version "9.4.5"
   resolved "https://registry.yarnpkg.com/react-google-maps/-/react-google-maps-9.4.5.tgz#920c199bdc925e0ce93880edffb09428d263aafa"
@@ -8139,6 +8135,13 @@ react-new-window@^0.0.7:
   resolved "https://registry.yarnpkg.com/react-new-window/-/react-new-window-0.0.7.tgz#2e76399eb631eff589cd7fddfbd8566c5fa849ed"
   dependencies:
     prop-types "^15.6.1"
+
+react-social-icons@^2.8.1:
+  version "2.8.1"
+  resolved "https://registry.yarnpkg.com/react-social-icons/-/react-social-icons-2.8.1.tgz#ba85df47d5275abb2c322ace0a58aa3b73f6dbf4"
+  dependencies:
+    babel-runtime "^6.11.6"
+    classnames "^2.2.5"
 
 react-test-renderer@^16.3.1:
   version "16.3.1"

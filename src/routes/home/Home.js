@@ -649,6 +649,7 @@ class Home extends React.Component {
                 <input
                   required
                   type="text"
+                  disabled={this.state.isLoadingPlate}
                   value={this.state.plate}
                   onChange={event => {
                     this.setLicensePlate({ plate: event.target.value });

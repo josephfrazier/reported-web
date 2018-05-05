@@ -218,7 +218,7 @@ class Home extends React.Component {
     return promisify(ExifImage)({ image: imageBuffer }).then(exifData => {
       console.timeEnd(`ExifImage`); // eslint-disable-line no-console
       return Promise.all([
-        this.extractLocation({ exifData }),
+        this.setCoords(this.extractLocation({ exifData })),
         this.extractDate({ exifData }),
       ]);
     });
@@ -284,7 +284,7 @@ class Home extends React.Component {
 
   extractLocation = ({ exifData }) => {
     const { gps } = exifData;
-    this.setCoords(this.coordsFromExifGps({ gps }));
+    return this.coordsFromExifGps({ gps });
   };
 
   // adapted from http://danielhindrikes.se/web/get-coordinates-from-photo-with-javascript/

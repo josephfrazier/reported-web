@@ -128,7 +128,7 @@ class Home extends React.Component {
   componentDidMount() {
     // if there's no images or a time couldn't be extracted, just use now
     if (this.state.imageBytess.length === 0 || !this.state.CreateDate) {
-      this.setCreateDate({ millisecondsSinceEpoch: Date.now() });
+      this.setCreateDate(Date.now());
     }
     geolocate().then(({ coords }) => {
       // if there's no images or a location couldn't be extracted, just use here
@@ -154,7 +154,7 @@ class Home extends React.Component {
     });
   };
 
-  setCreateDate = ({ millisecondsSinceEpoch }) => {
+  setCreateDate = millisecondsSinceEpoch => {
     // Adjust date to local time
     // https://stackoverflow.com/questions/674721/how-do-i-subtract-minutes-from-a-date-in-javascript
     const MS_PER_MINUTE = 60000;
@@ -279,7 +279,7 @@ class Home extends React.Component {
       CreateDate.replace(':', '/').replace(':', '/'),
     ).getTime();
 
-    return { millisecondsSinceEpoch };
+    return millisecondsSinceEpoch;
   };
 
   extractLocation = ({ exifData }) => {
@@ -788,9 +788,7 @@ class Home extends React.Component {
                 <button
                   type="button"
                   onClick={() => {
-                    this.setCreateDate({
-                      millisecondsSinceEpoch: Date.now(),
-                    });
+                    this.setCreateDate(Date.now());
                   }}
                 >
                   Now

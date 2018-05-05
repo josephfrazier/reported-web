@@ -205,7 +205,7 @@ class Home extends React.Component {
       try {
         // eslint-disable-next-line no-await-in-loop
         await Promise.all([
-          this.extractPlate({ imageBytes }),
+          this.extractPlate({ imageBytes }).then(this.setLicensePlate),
           this.extractLocationDate({ imageBytes }).then(this.setLocationDate),
         ]);
       } catch (err) {
@@ -249,8 +249,7 @@ class Home extends React.Component {
     try {
       if (this.imagePlates.has(imageBytes)) {
         const plate = this.imagePlates.get(imageBytes);
-        this.setLicensePlate({ plate });
-        return;
+        return { plate };
       }
       const country = 'us'; // {String} Defines the training data used by OpenALPR. \"us\" analyzes North-American style plates. \"eu\" analyzes European-style plates. This field is required if using the \"plate\" task You may use multiple datasets by using commas between the country codes. For example, 'au,auwide' would analyze using both the Australian plate styles. A full list of supported country codes can be found here https://github.com/openalpr/openalpr/tree/master/runtime_data/config
 
@@ -269,7 +268,7 @@ class Home extends React.Component {
       });
       const { plate } = data.results[0];
       this.imagePlates.set(imageBytes, plate);
-      this.setLicensePlate({ plate });
+      return { plate };
     } catch (err) {
       throw err;
     } finally {
@@ -644,7 +643,9 @@ class Home extends React.Component {
                       margin: '1px',
                     }}
                     onClick={() => {
-                      this.extractPlate({ imageBytes });
+                      this.extractPlate({ imageBytes }).then(
+                        this.setLicensePlate,
+                      );
                     }}
                     disabled={this.state.isLoadingPlate}
                   >

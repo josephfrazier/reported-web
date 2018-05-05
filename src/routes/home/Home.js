@@ -143,6 +143,11 @@ class Home extends React.Component {
     this.forceUpdate(); // force "Create/Edit User" fields to render persisted value after load
   }
 
+  setLocationDate = ([coords, millisecondsSinceEpoch]) => {
+    this.setCoords(coords);
+    this.setCreateDate(millisecondsSinceEpoch);
+  };
+
   setCoords = ({ latitude, longitude }) => {
     this.setState({
       latitude,
@@ -201,7 +206,7 @@ class Home extends React.Component {
         // eslint-disable-next-line no-await-in-loop
         await Promise.all([
           this.extractPlate({ imageBytes }),
-          this.extractLocationDate({ imageBytes }),
+          this.extractLocationDate({ imageBytes }).then(this.setLocationDate),
         ]);
       } catch (err) {
         console.error(`Error: ${err.message}`);
@@ -218,8 +223,8 @@ class Home extends React.Component {
     return promisify(ExifImage)({ image: imageBuffer }).then(exifData => {
       console.timeEnd(`ExifImage`); // eslint-disable-line no-console
       return Promise.all([
-        this.setCoords(this.extractLocation({ exifData })),
-        this.setCreateDate(this.extractDate({ exifData })),
+        this.extractLocation({ exifData }),
+        this.extractDate({ exifData }),
       ]);
     });
   };
@@ -625,7 +630,9 @@ class Home extends React.Component {
                       margin: '1px',
                     }}
                     onClick={() => {
-                      this.extractLocationDate({ imageBytes });
+                      this.extractLocationDate({ imageBytes }).then(
+                        this.setLocationDate,
+                      );
                     }}
                   >
                     Read location and time

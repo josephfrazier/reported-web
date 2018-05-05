@@ -349,13 +349,6 @@ app.use('/submit', (req, res) => {
         }),
       );
       return submission.save(null);
-      // TODO logout after submission is saved https://github.com/back4app/back4app-rest/blob/fc4b2c95e11255a1e4136456f406041b3ac4b41d/docs/guide/security.md#logging-out
-      // http://docs.parseplatform.org/js/guide/#sessions
-      // Note that Parse.User.logOut() won't work here:
-      // https://github.com/parse-community/parse-server/issues/2553
-      // https://github.com/parse-community/Parse-SDK-JS/issues/393
-      // Also, you can't just query sessions by token and delete it:
-      // https://github.com/parse-community/Parse-SDK-JS/issues/83
     })
     .then(submission => {
       console.info({ submission });

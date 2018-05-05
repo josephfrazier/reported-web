@@ -219,7 +219,7 @@ class Home extends React.Component {
       console.timeEnd(`ExifImage`); // eslint-disable-line no-console
       return Promise.all([
         this.setCoords(this.extractLocation({ exifData })),
-        this.extractDate({ exifData }),
+        this.setCreateDate(this.extractDate({ exifData })),
       ]);
     });
   };
@@ -279,7 +279,7 @@ class Home extends React.Component {
       CreateDate.replace(':', '/').replace(':', '/'),
     ).getTime();
 
-    this.setCreateDate({ millisecondsSinceEpoch });
+    return { millisecondsSinceEpoch };
   };
 
   extractLocation = ({ exifData }) => {

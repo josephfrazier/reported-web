@@ -117,6 +117,7 @@ const initialState = {
   // See https://github.com/localForage/localForage/issues/380
   imageBytess: [],
   popupImageIndex: -1,
+  popupImageRotation: 0,
 
   isSubmitting: false,
   isLoadingImages: false,
@@ -306,6 +307,12 @@ class Home extends React.Component {
       (lng[0] + lng[1] / 60 + lng[2] / 3600) * (lngRef === 'W' ? -1 : 1);
 
     return { latitude, longitude };
+  };
+
+  rotatePopupImageByDegrees = degrees => {
+    this.setState({
+      popupImageRotation: (this.state.popupImageRotation - degrees) % 360,
+    });
   };
 
   render() {
@@ -580,15 +587,49 @@ class Home extends React.Component {
                   alt={`#${this.state.popupImageIndex + 1}`}
                   src={getImageUrl(
                     this.state.imageBytess[this.state.popupImageIndex],
-                    // TODO detect orientation from EXIF and use CSS transform?
-                    // See https://gist.github.com/nezed/d536ccdace84c6f2ef13da47a8fd6bdb#file-exif-image-orientation-css-transform-fix-js-L13-L22
                   )}
                   style={{
                     width: '100vw',
                     height: '100vh',
                     objectFit: 'contain',
+                    transform: `rotate(${this.state.popupImageRotation}deg)`,
                   }}
                 />
+
+                {/* rotate counter-clockwise */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    this.rotatePopupImageByDegrees(-90);
+                  }}
+                  style={{
+                    position: 'fixed',
+                    bottom: 0,
+                    left: 0,
+                    fontSize: '1in',
+                    padding: 0,
+                    transform: 'scale(1, -1)', // mirror the clockwise button since 🔄 displays weirdly on Android Chrome
+                  }}
+                >
+                  🔃
+                </button>
+
+                {/* rotate clockwise */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    this.rotatePopupImageByDegrees(+90);
+                  }}
+                  style={{
+                    position: 'fixed',
+                    bottom: 0,
+                    right: 0,
+                    padding: 0,
+                    fontSize: '1in',
+                  }}
+                >
+                  🔃
+                </button>
               </NewWindow>
             )}
 

@@ -188,17 +188,7 @@ class Home extends React.Component {
   handleChange = async (_, results) => {
     this.setState({ isLoadingImages: true });
 
-    const images = await Promise.all(
-      results.map(async result => {
-        const [, imageFile] = result;
-        try {
-          return { imageFile };
-        } catch (err) {
-          console.error(`Error: ${err.message}`);
-          return {};
-        }
-      }),
-    );
+    const images = results.map(([, imageFile]) => ({ imageFile }));
 
     this.setState({
       images: images.map(({ imageFile }) => imageFile),

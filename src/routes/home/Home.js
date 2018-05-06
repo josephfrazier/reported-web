@@ -67,13 +67,13 @@ const defaultLatitude = 40.7128;
 const defaultLongitude = -74.006;
 
 // adapted from https://www.bignerdranch.com/blog/dont-over-react/
-const urls = new Map(); // using Map instead of WeakMap because the keys are primitive strings, which WeakMap doesn't allow
-const getImageUrl = imageBytes => {
-  if (urls.has(imageBytes)) {
-    return urls.get(imageBytes);
+const urls = new WeakMap();
+const getImageUrl = imageFile => {
+  if (urls.has(imageFile)) {
+    return urls.get(imageFile);
   }
-  const imageUrl = `data:;base64,${imageBytes}`;
-  urls.set(imageBytes, imageUrl);
+  const imageUrl = window.URL.createObjectURL(imageFile);
+  urls.set(imageFile, imageUrl);
   return imageUrl;
 };
 
@@ -111,12 +111,6 @@ const initialStatePersistent = {
 };
 
 const initialStatePerSession = {
-  // TODO also consider using IndexedDB (via e.g. localForage) to store File/Blob objects directly
-  // instead of having to convert back from base64
-  // If this is done, we can use a WeakMap instead of a Map in getImageUrl() above.
-  //
-  // See https://github.com/localForage/localForage/issues/40
-  // See https://github.com/localForage/localForage/issues/380
   images: [],
   popupImageIndex: -1,
   popupImageRotation: 0,
@@ -195,13 +189,10 @@ class Home extends React.Component {
     this.setState({ isLoadingImages: true });
 
     const images = await Promise.all(
-      results.map(async (result, i) => {
-        const [, file] = result;
+      results.map(async result => {
+        const [, imageFile] = result;
         try {
-          console.time(`blobToBase64String ${i}`); // eslint-disable-line no-console
-          const imageBytes = await blobUtil.blobToBase64String(file); // eslint-disable-line no-await-in-loop
-          console.timeEnd(`blobToBase64String ${i}`); // eslint-disable-line no-console
-          return { imageBytes };
+          return { imageFile };
         } catch (err) {
           console.error(`Error: ${err.message}`);
           return {};
@@ -210,16 +201,16 @@ class Home extends React.Component {
     );
 
     this.setState({
-      images: images.map(({ imageBytes }) => imageBytes),
+      images: images.map(({ imageFile }) => imageFile),
       isLoadingImages: false,
     });
 
-    for (const { imageBytes } of images) {
+    for (const { imageFile } of images) {
       try {
         // eslint-disable-next-line no-await-in-loop
         await Promise.all([
-          this.extractPlate({ imageBytes }).then(this.setLicensePlate),
-          this.extractLocationDate({ imageBytes }).then(this.setLocationDate),
+          this.extractPlate({ imageFile }).then(this.setLicensePlate),
+          this.extractLocationDate({ imageFile }).then(this.setLocationDate),
         ]);
       } catch (err) {
         console.error(`Error: ${err.message}`);
@@ -227,10 +218,14 @@ class Home extends React.Component {
     }
   };
 
-  extractLocationDate = ({ imageBytes }) => {
-    console.time(`Buffer.from(imageBytes, 'base64')`); // eslint-disable-line no-console
-    const imageBuffer = Buffer.from(imageBytes, 'base64');
-    console.timeEnd(`Buffer.from(imageBytes, 'base64')`); // eslint-disable-line no-console
+  extractLocationDate = async ({ imageFile }) => {
+    console.time(`blobUtil.blobToArrayBuffer(imageFile)`); // eslint-disable-line no-console
+    const imageArrayBuffer = await blobUtil.blobToArrayBuffer(imageFile);
+    console.timeEnd(`blobUtil.blobToArrayBuffer(imageFile)`); // eslint-disable-line no-console
+
+    console.time(`Buffer.from(imageArrayBuffer)`); // eslint-disable-line no-console
+    const imageBuffer = Buffer.from(imageArrayBuffer);
+    console.timeEnd(`Buffer.from(imageArrayBuffer)`); // eslint-disable-line no-console
 
     console.time(`ExifImage`); // eslint-disable-line no-console
     return promisify(ExifImage)({ image: imageBuffer }).then(exifData => {
@@ -253,17 +248,22 @@ class Home extends React.Component {
   };
 
   // adapted from https://www.bignerdranch.com/blog/dont-over-react/
-  imagePlates = new Map(); // using Map instead of WeakMap because the keys are primitive strings, which WeakMap doesn't allow
+  imagePlates = new WeakMap();
   // adapted from https://github.com/openalpr/cloudapi/tree/8141c1ba57f03df4f53430c6e5e389b39714d0e0/javascript#getting-started
-  extractPlate = async ({ imageBytes }) => {
+  extractPlate = async ({ imageFile }) => {
     console.time('extractPlate'); // eslint-disable-line no-console
     this.setState({ isLoadingPlate: true });
 
     try {
-      if (this.imagePlates.has(imageBytes)) {
-        const plate = this.imagePlates.get(imageBytes);
+      if (this.imagePlates.has(imageFile)) {
+        const plate = this.imagePlates.get(imageFile);
         return { plate };
       }
+
+      console.time(`blobToBase64String ${imageFile.name}`); // eslint-disable-line no-console
+      const imageBytes = await blobUtil.blobToBase64String(imageFile); // eslint-disable-line no-await-in-loop
+      console.timeEnd(`blobToBase64String ${imageFile.name}`); // eslint-disable-line no-console
+
       const country = 'us'; // {String} Defines the training data used by OpenALPR. \"us\" analyzes North-American style plates. \"eu\" analyzes European-style plates. This field is required if using the \"plate\" task You may use multiple datasets by using commas between the country codes. For example, 'au,auwide' would analyze using both the Australian plate styles. A full list of supported country codes can be found here https://github.com/openalpr/openalpr/tree/master/runtime_data/config
 
       const opts = {
@@ -280,7 +280,7 @@ class Home extends React.Component {
         opts,
       });
       const { plate } = data.results[0];
-      this.imagePlates.set(imageBytes, plate);
+      this.imagePlates.set(imageFile, plate);
       return { plate };
     } catch (err) {
       throw err;
@@ -645,8 +645,8 @@ class Home extends React.Component {
             )}
 
             <ol>
-              {this.state.images.map((imageBytes, i) => (
-                <li key={imageBytes}>
+              {this.state.images.map((imageFile, i) => (
+                <li key={imageFile.name}>
                   <button
                     type="button"
                     style={{
@@ -668,7 +668,7 @@ class Home extends React.Component {
                     onClick={() => {
                       this.setState({
                         images: this.state.images.filter(
-                          bytes => bytes !== imageBytes,
+                          file => file.name !== imageFile.name,
                         ),
                       });
                     }}
@@ -682,7 +682,7 @@ class Home extends React.Component {
                       margin: '1px',
                     }}
                     onClick={() => {
-                      this.extractLocationDate({ imageBytes }).then(
+                      this.extractLocationDate({ imageFile }).then(
                         this.setLocationDate,
                       );
                     }}
@@ -696,7 +696,7 @@ class Home extends React.Component {
                       margin: '1px',
                     }}
                     onClick={() => {
-                      this.extractPlate({ imageBytes }).then(
+                      this.extractPlate({ imageFile }).then(
                         this.setLicensePlate,
                       );
                     }}

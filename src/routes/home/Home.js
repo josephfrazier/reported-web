@@ -520,7 +520,7 @@ class Home extends React.Component {
             style={{
               display: this.state.isUserInfoOpen ? 'none' : 'block',
             }}
-            onSubmit={e => {
+            onSubmit={async e => {
               e.preventDefault();
               this.setState({
                 isSubmitting: true,
@@ -528,6 +528,11 @@ class Home extends React.Component {
               axios
                 .post('/submit', {
                   ...this.state,
+                  imageBytess: await Promise.all(
+                    this.state.images.map(imageFile =>
+                      blobUtil.blobToBase64String(imageFile),
+                    ),
+                  ),
                   CreateDate: new Date(this.state.CreateDate).toISOString(),
                 })
                 .then(({ data }) => {

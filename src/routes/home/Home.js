@@ -117,7 +117,7 @@ const initialStatePerSession = {
   //
   // See https://github.com/localForage/localForage/issues/40
   // See https://github.com/localForage/localForage/issues/380
-  imageBytess: [],
+  images: [],
   popupImageIndex: -1,
   popupImageRotation: 0,
 
@@ -140,13 +140,13 @@ class Home extends React.Component {
 
   componentDidMount() {
     // if there's no images or a time couldn't be extracted, just use now
-    if (this.state.imageBytess.length === 0 || !this.state.CreateDate) {
+    if (this.state.images.length === 0 || !this.state.CreateDate) {
       this.setCreateDate(Date.now());
     }
     geolocate().then(({ coords }) => {
       // if there's no images or a location couldn't be extracted, just use here
       if (
-        this.state.imageBytess.length === 0 ||
+        this.state.images.length === 0 ||
         (this.state.latitude === defaultLatitude &&
           this.state.longitude === defaultLongitude)
       ) {
@@ -210,7 +210,7 @@ class Home extends React.Component {
     );
 
     this.setState({
-      imageBytess: images.map(({ imageBytes }) => imageBytes),
+      images: images.map(({ imageBytes }) => imageBytes),
       isLoadingImages: false,
     });
 
@@ -597,7 +597,7 @@ class Home extends React.Component {
                 <img
                   alt={`#${this.state.popupImageIndex + 1}`}
                   src={getImageUrl(
-                    this.state.imageBytess[this.state.popupImageIndex],
+                    this.state.images[this.state.popupImageIndex],
                   )}
                   style={{
                     width: '100vw',
@@ -645,7 +645,7 @@ class Home extends React.Component {
             )}
 
             <ol>
-              {this.state.imageBytess.map((imageBytes, i) => (
+              {this.state.images.map((imageBytes, i) => (
                 <li key={imageBytes}>
                   <button
                     type="button"
@@ -667,7 +667,7 @@ class Home extends React.Component {
                     }}
                     onClick={() => {
                       this.setState({
-                        imageBytess: this.state.imageBytess.filter(
+                        images: this.state.images.filter(
                           bytes => bytes !== imageBytes,
                         ),
                       });

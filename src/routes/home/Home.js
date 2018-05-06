@@ -116,6 +116,7 @@ const initialState = {
   // See https://github.com/localForage/localForage/issues/40
   // See https://github.com/localForage/localForage/issues/380
   imageBytess: [],
+  popupImageIndex: -1,
 
   isSubmitting: false,
   isLoadingImages: false,

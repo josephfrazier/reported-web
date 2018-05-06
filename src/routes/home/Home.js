@@ -108,6 +108,9 @@ const initialStatePersistent = {
   longitude: defaultLongitude,
   formatted_address: '',
   CreateDate: jsDateToCreateDate(new Date()),
+};
+
+const initialStatePerSession = {
   // TODO also consider using IndexedDB (via e.g. localForage) to store File/Blob objects directly
   // instead of having to convert back from base64
   // If this is done, we can use a WeakMap instead of a Map in getImageUrl() above.
@@ -117,9 +120,7 @@ const initialStatePersistent = {
   imageBytess: [],
   popupImageIndex: -1,
   popupImageRotation: 0,
-};
 
-const initialStatePerSession = {
   isUserInfoSaving: false,
   isSubmitting: false,
   isLoadingImages: false,

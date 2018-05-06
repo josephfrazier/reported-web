@@ -592,56 +592,9 @@ class Home extends React.Component {
             {this.state.popupImageIndex > -1 && (
               <NewWindow
                 name="_blank"
+                url={getImageUrl(this.state.images[this.state.popupImageIndex])}
                 onUnload={() => this.setState({ popupImageIndex: -1 })}
-              >
-                <img
-                  alt={`#${this.state.popupImageIndex + 1}`}
-                  src={getImageUrl(
-                    this.state.images[this.state.popupImageIndex],
-                  )}
-                  style={{
-                    width: '100vw',
-                    height: '100vh',
-                    objectFit: 'contain',
-                    transform: `rotate(${this.state.popupImageRotation}deg)`,
-                  }}
-                />
-
-                {/* rotate counter-clockwise */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    this.rotatePopupImageByDegrees(-90);
-                  }}
-                  style={{
-                    position: 'fixed',
-                    bottom: 0,
-                    left: 0,
-                    fontSize: '1in',
-                    padding: 0,
-                    transform: 'scale(1, -1)', // mirror the clockwise button since 🔄 displays weirdly on Android Chrome
-                  }}
-                >
-                  🔃
-                </button>
-
-                {/* rotate clockwise */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    this.rotatePopupImageByDegrees(+90);
-                  }}
-                  style={{
-                    position: 'fixed',
-                    bottom: 0,
-                    right: 0,
-                    padding: 0,
-                    fontSize: '1in',
-                  }}
-                >
-                  🔃
-                </button>
-              </NewWindow>
+              />
             )}
 
             <ol>

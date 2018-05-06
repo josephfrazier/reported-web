@@ -27,6 +27,7 @@ import withLocalStorage from 'react-localstorage';
 import debounce from 'debounce-promise';
 import { SocialIcon } from 'react-social-icons';
 import NewWindow from 'react-new-window/umd/react-new-window'; // https://github.com/rmariuzzo/react-new-window/pull/10
+import omit from 'object.omit';
 
 import marx from 'marx-css/css/marx.css';
 import s from './Home.css';
@@ -124,7 +125,17 @@ const initialState = {
   isLoadingPlate: false,
 };
 
+const stateKeysToNotPersist = [
+  'isUserInfoSaving',
+  'isSubmitting',
+  'isLoadingImages',
+  'isLoadingPlate',
+];
+
 class Home extends React.Component {
+  static defaultProps = {
+    stateFilterKeys: Object.keys(omit(initialState, stateKeysToNotPersist)),
+  };
   state = initialState;
 
   componentDidMount() {

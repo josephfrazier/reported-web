@@ -26,7 +26,6 @@ import { SearchBox } from 'react-google-maps/lib/components/places/SearchBox';
 import withLocalStorage from 'react-localstorage';
 import debounce from 'debounce-promise';
 import { SocialIcon } from 'react-social-icons';
-import NewWindow from 'react-new-window/umd/react-new-window'; // https://github.com/rmariuzzo/react-new-window/pull/10
 
 import marx from 'marx-css/css/marx.css';
 import s from './Home.css';
@@ -112,7 +111,6 @@ const initialStatePersistent = {
 
 const initialStatePerSession = {
   images: [],
-  popupImageIndex: -1,
 
   isUserInfoSaving: false,
   isSubmitting: false,
@@ -572,28 +570,19 @@ class Home extends React.Component {
               &nbsp; {this.state.isLoadingImages && 'Loading...'}
             </FileReaderInput>
 
-            {this.state.popupImageIndex > -1 && (
-              <NewWindow
-                name="_blank"
-                url={getImageUrl(this.state.images[this.state.popupImageIndex])}
-                onUnload={() => this.setState({ popupImageIndex: -1 })}
-              />
-            )}
-
             <ol>
-              {this.state.images.map((imageFile, i) => (
+              {this.state.images.map(imageFile => (
                 <li key={imageFile.name}>
-                  <button
-                    type="button"
-                    style={{
-                      margin: '1px',
-                    }}
-                    onClick={() => {
-                      this.setState({ popupImageIndex: i });
-                    }}
-                  >
-                    View
-                  </button>
+                  <a href={getImageUrl(imageFile)} target="_blank">
+                    <button
+                      type="button"
+                      style={{
+                        margin: '1px',
+                      }}
+                    >
+                      View
+                    </button>
+                  </a>
 
                   <button
                     type="button"

@@ -113,7 +113,6 @@ const initialStatePersistent = {
 const initialStatePerSession = {
   images: [],
   popupImageIndex: -1,
-  popupImageRotation: 0,
 
   isUserInfoSaving: false,
   isSubmitting: false,
@@ -308,12 +307,6 @@ class Home extends React.Component {
       (lng[0] + lng[1] / 60 + lng[2] / 3600) * (lngRef === 'W' ? -1 : 1);
 
     return { latitude, longitude };
-  };
-
-  rotatePopupImageByDegrees = degrees => {
-    this.setState({
-      popupImageRotation: (this.state.popupImageRotation - degrees) % 360,
-    });
   };
 
   render() {

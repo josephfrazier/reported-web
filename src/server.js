@@ -455,7 +455,16 @@ app.use('/submit', (req, res) => {
 
 // adapted from https://github.com/openalpr/cloudapi/tree/8141c1ba57f03df4f53430c6e5e389b39714d0e0/javascript#getting-started
 app.use('/openalpr', (req, res) => {
-  const { attachmentBytes, country, opts } = req.body;
+  const country = 'us';
+  const opts = {
+    recognizeVehicle: 0,
+    state: 'ny',
+    returnImage: 0,
+    topn: 10,
+    prewarp: '',
+  };
+
+  const { attachmentBytes } = req.body;
   const api = new OpenalprApi.DefaultApi();
 
   const secretKey = process.env.OPENALPR_SECRET_KEY; // {String} The secret key used to authenticate your account. You can view your secret key by visiting https://cloud.openalpr.com/

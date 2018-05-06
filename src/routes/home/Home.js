@@ -374,22 +374,7 @@ class Home extends React.Component {
       const attachmentBytes = attachmentBuffer.toString('base64');
       console.timeEnd(`toString('base64') ${attachmentFile.name}`); // eslint-disable-line no-console
 
-      // See here for more info about OpenALPR options
-      // https://github.com/openalpr/cloudapi/tree/8141c1ba57f03df4f53430c6e5e389b39714d0e0/javascript#getting-started
-      const country = 'us';
-      const opts = {
-        recognizeVehicle: 0,
-        state: 'ny',
-        returnImage: 0,
-        topn: 10,
-        prewarp: '',
-      };
-
-      const { data } = await axios.post('/openalpr', {
-        attachmentBytes,
-        country,
-        opts,
-      });
+      const { data } = await axios.post('/openalpr', { attachmentBytes });
       const { plate } = data.results[0];
       this.attachmentPlates.set(attachmentFile, plate);
       return { plate };

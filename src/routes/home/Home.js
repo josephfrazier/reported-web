@@ -27,7 +27,6 @@ import withLocalStorage from 'react-localstorage';
 import debounce from 'debounce-promise';
 import { SocialIcon } from 'react-social-icons';
 import NewWindow from 'react-new-window/umd/react-new-window'; // https://github.com/rmariuzzo/react-new-window/pull/10
-import omit from 'object.omit';
 
 import marx from 'marx-css/css/marx.css';
 import s from './Home.css';
@@ -87,9 +86,8 @@ const geolocate = () =>
 
 const jsDateToCreateDate = jsDate => jsDate.toISOString().replace(/\..*/g, '');
 
-const initialState = {
+const initialStatePersistent = {
   isUserInfoOpen: true,
-  isUserInfoSaving: false,
   email: '',
   password: '',
   FirstName: '',
@@ -119,22 +117,23 @@ const initialState = {
   imageBytess: [],
   popupImageIndex: -1,
   popupImageRotation: 0,
+};
 
+const initialStatePerSession = {
+  isUserInfoSaving: false,
   isSubmitting: false,
   isLoadingImages: false,
   isLoadingPlate: false,
 };
 
-const stateKeysToNotPersist = [
-  'isUserInfoSaving',
-  'isSubmitting',
-  'isLoadingImages',
-  'isLoadingPlate',
-];
+const initialState = {
+  ...initialStatePersistent,
+  ...initialStatePerSession,
+};
 
 class Home extends React.Component {
   static defaultProps = {
-    stateFilterKeys: Object.keys(omit(initialState, stateKeysToNotPersist)),
+    stateFilterKeys: Object.keys(initialStatePersistent),
   };
   state = initialState;
 

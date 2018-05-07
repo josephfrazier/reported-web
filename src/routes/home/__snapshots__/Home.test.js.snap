@@ -448,7 +448,7 @@ exports[`Home renders children correctly 1`] = `
           type="checkbox"
         />
          
-        Allow the photo, description, category, and location to be publicly displayed
+        Allow the photos/videos, description, category, and location to be publicly displayed
       </label>
       <button
         disabled={false}

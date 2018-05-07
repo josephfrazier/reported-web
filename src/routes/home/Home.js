@@ -110,7 +110,7 @@ const initialStatePersistent = {
 };
 
 const initialStatePerSession = {
-  photoData: [], // TODO since videos are handled alongside images, s/photo|image/file|attachment|blob/ in variable names
+  attachmentData: [],
 
   isUserInfoSaving: false,
   isSubmitting: false,
@@ -129,14 +129,14 @@ class Home extends React.Component {
   state = initialState;
 
   componentDidMount() {
-    // if there's no images or a time couldn't be extracted, just use now
-    if (this.state.photoData.length === 0 || !this.state.CreateDate) {
+    // if there's no attachments or a time couldn't be extracted, just use now
+    if (this.state.attachmentData.length === 0 || !this.state.CreateDate) {
       this.setCreateDate(Date.now());
     }
     geolocate().then(({ coords }) => {
-      // if there's no images or a location couldn't be extracted, just use here
+      // if there's no attachments or a location couldn't be extracted, just use here
       if (
-        this.state.photoData.length === 0 ||
+        this.state.attachmentData.length === 0 ||
         (this.state.latitude === defaultLatitude &&
           this.state.longitude === defaultLongitude)
       ) {
@@ -181,19 +181,21 @@ class Home extends React.Component {
   };
 
   // adapted from https://github.com/ngokevin/react-file-reader-input/tree/f970257f271b8c3bba9d529ffdbfa4f4731e0799#usage
-  handleImageInput = async (_, results) => {
-    const photoData = results.map(([, imageFile]) => imageFile);
+  handleAttachmentInput = async (_, results) => {
+    const attachmentData = results.map(([, attachmentFile]) => attachmentFile);
 
     this.setState({
-      photoData: this.state.photoData.concat(photoData),
+      attachmentData: this.state.attachmentData.concat(attachmentData),
     });
 
-    for (const imageFile of photoData) {
+    for (const attachmentFile of attachmentData) {
       try {
         // eslint-disable-next-line no-await-in-loop
         await Promise.all([
-          this.extractPlate({ imageFile }).then(this.setLicensePlate),
-          this.extractLocationDate({ imageFile }).then(this.setLocationDate),
+          this.extractPlate({ attachmentFile }).then(this.setLicensePlate),
+          this.extractLocationDate({ attachmentFile }).then(
+            this.setLocationDate,
+          ),
         ]);
       } catch (err) {
         console.error(`Error: ${err.message}`);
@@ -204,17 +206,19 @@ class Home extends React.Component {
   // TODO make this work with videos
   // https://github.com/Sobesednik/node-exiftool
   // https://github.com/Sobesednik/dist-exiftool
-  extractLocationDate = async ({ imageFile }) => {
-    console.time(`blobUtil.blobToArrayBuffer(imageFile)`); // eslint-disable-line no-console
-    const imageArrayBuffer = await blobUtil.blobToArrayBuffer(imageFile);
-    console.timeEnd(`blobUtil.blobToArrayBuffer(imageFile)`); // eslint-disable-line no-console
+  extractLocationDate = async ({ attachmentFile }) => {
+    console.time(`blobUtil.blobToArrayBuffer(attachmentFile)`); // eslint-disable-line no-console
+    const attachmentArrayBuffer = await blobUtil.blobToArrayBuffer(
+      attachmentFile,
+    );
+    console.timeEnd(`blobUtil.blobToArrayBuffer(attachmentFile)`); // eslint-disable-line no-console
 
-    console.time(`Buffer.from(imageArrayBuffer)`); // eslint-disable-line no-console
-    const imageBuffer = Buffer.from(imageArrayBuffer);
-    console.timeEnd(`Buffer.from(imageArrayBuffer)`); // eslint-disable-line no-console
+    console.time(`Buffer.from(attachmentArrayBuffer)`); // eslint-disable-line no-console
+    const attachmentBuffer = Buffer.from(attachmentArrayBuffer);
+    console.timeEnd(`Buffer.from(attachmentArrayBuffer)`); // eslint-disable-line no-console
 
     console.time(`ExifImage`); // eslint-disable-line no-console
-    return promisify(ExifImage)({ image: imageBuffer }).then(exifData => {
+    return promisify(ExifImage)({ image: attachmentBuffer }).then(exifData => {
       console.timeEnd(`ExifImage`); // eslint-disable-line no-console
       return Promise.all([
         this.extractLocation({ exifData }),
@@ -234,21 +238,21 @@ class Home extends React.Component {
   };
 
   // adapted from https://www.bignerdranch.com/blog/dont-over-react/
-  imagePlates = new WeakMap();
+  attachmentPlates = new WeakMap();
   // adapted from https://github.com/openalpr/cloudapi/tree/8141c1ba57f03df4f53430c6e5e389b39714d0e0/javascript#getting-started
-  extractPlate = async ({ imageFile }) => {
+  extractPlate = async ({ attachmentFile }) => {
     console.time('extractPlate'); // eslint-disable-line no-console
     this.setState({ isLoadingPlate: true });
 
     try {
-      if (this.imagePlates.has(imageFile)) {
-        const plate = this.imagePlates.get(imageFile);
+      if (this.attachmentPlates.has(attachmentFile)) {
+        const plate = this.attachmentPlates.get(attachmentFile);
         return { plate };
       }
 
-      console.time(`blobToBase64String ${imageFile.name}`); // eslint-disable-line no-console
-      const imageBytes = await blobUtil.blobToBase64String(imageFile); // eslint-disable-line no-await-in-loop
-      console.timeEnd(`blobToBase64String ${imageFile.name}`); // eslint-disable-line no-console
+      console.time(`blobToBase64String ${attachmentFile.name}`); // eslint-disable-line no-console
+      const attachmentBytes = await blobUtil.blobToBase64String(attachmentFile); // eslint-disable-line no-await-in-loop
+      console.timeEnd(`blobToBase64String ${attachmentFile.name}`); // eslint-disable-line no-console
 
       // TODO don't hit server for videos, or make them work
 
@@ -263,12 +267,12 @@ class Home extends React.Component {
       };
 
       const { data } = await axios.post('/openalpr', {
-        imageBytes,
+        attachmentBytes,
         country,
         opts,
       });
       const { plate } = data.results[0];
-      this.imagePlates.set(imageFile, plate);
+      this.attachmentPlates.set(attachmentFile, plate);
       return { plate };
     } catch (err) {
       throw err;
@@ -529,9 +533,9 @@ class Home extends React.Component {
               axios
                 .post('/submit', {
                   ...this.state,
-                  photoDataBase64: await Promise.all(
-                    this.state.photoData.map(imageFile =>
-                      blobUtil.blobToBase64String(imageFile),
+                  attachmentDataBase64: await Promise.all(
+                    this.state.attachmentData.map(attachmentFile =>
+                      blobUtil.blobToBase64String(attachmentFile),
                     ),
                   ),
                   CreateDate: new Date(this.state.CreateDate).toISOString(),
@@ -566,7 +570,7 @@ class Home extends React.Component {
               accept="image/*"
               multiple
               as="buffer"
-              onChange={this.handleImageInput}
+              onChange={this.handleAttachmentInput}
               style={{
                 float: 'left',
                 margin: '1px',
@@ -579,7 +583,7 @@ class Home extends React.Component {
               accept="video/*"
               multiple
               as="buffer"
-              onChange={this.handleImageInput}
+              onChange={this.handleAttachmentInput}
               style={{
                 float: 'left',
                 margin: '1px',
@@ -593,10 +597,10 @@ class Home extends React.Component {
                 clear: 'both',
               }}
             >
-              {this.state.photoData.map(imageFile => (
-                <li key={imageFile.name}>
+              {this.state.attachmentData.map(attachmentFile => (
+                <li key={attachmentFile.name}>
                   <a
-                    href={getBlobUrl(imageFile)}
+                    href={getBlobUrl(attachmentFile)}
                     target="_blank"
                     rel="noopener"
                   >
@@ -618,8 +622,8 @@ class Home extends React.Component {
                     }}
                     onClick={() => {
                       this.setState({
-                        photoData: this.state.photoData.filter(
-                          file => file.name !== imageFile.name,
+                        attachmentData: this.state.attachmentData.filter(
+                          file => file.name !== attachmentFile.name,
                         ),
                       });
                     }}
@@ -633,7 +637,7 @@ class Home extends React.Component {
                       margin: '1px',
                     }}
                     onClick={() => {
-                      this.extractLocationDate({ imageFile }).then(
+                      this.extractLocationDate({ attachmentFile }).then(
                         this.setLocationDate,
                       );
                     }}
@@ -647,7 +651,7 @@ class Home extends React.Component {
                       margin: '1px',
                     }}
                     onClick={() => {
-                      this.extractPlate({ imageFile }).then(
+                      this.extractPlate({ attachmentFile }).then(
                         this.setLicensePlate,
                       );
                     }}
@@ -824,7 +828,7 @@ class Home extends React.Component {
                 name="can_be_shared_publicly"
                 onChange={this.handleInputChange}
               />{' '}
-              Allow the photo, description, category, and location to be
+              Allow the photos/videos, description, category, and location to be
               publicly displayed
             </label>
 

@@ -269,7 +269,7 @@ app.use('/submit', (req, res) => {
     latitude,
     longitude,
     formatted_address, // eslint-disable-line camelcase
-    photoDataBase64 = [],
+    attachmentDataBase64 = [],
     CreateDate,
   } = body;
 
@@ -341,33 +341,37 @@ app.use('/submit', (req, res) => {
         reqnumber: 'N/A until submitted to 311',
       });
 
-      // upload images
+      // upload attachments
       // http://docs.parseplatform.org/js/guide/#creating-a-parsefile
 
-      const images = photoDataBase64
-        .map(imageBytes => ({
-          imageBytes,
-          ext: fileType(Buffer.from(imageBytes, 'base64')).ext,
+      const images = attachmentDataBase64
+        .map(attachmentBytes => ({
+          attachmentBytes,
+          ext: fileType(Buffer.from(attachmentBytes, 'base64')).ext,
         }))
         .filter(({ ext }) => imageExtensions.includes(ext));
 
-      const videos = photoDataBase64
-        .map(imageBytes => ({
-          imageBytes,
-          ext: fileType(Buffer.from(imageBytes, 'base64')).ext,
+      const videos = attachmentDataBase64
+        .map(attachmentBytes => ({
+          attachmentBytes,
+          ext: fileType(Buffer.from(attachmentBytes, 'base64')).ext,
         }))
         .filter(({ ext }) => videoExtensions.includes(ext));
 
       await Promise.all([
-        ...images.slice(0, 3).map(async ({ imageBytes, ext }, index) => {
+        ...images.slice(0, 3).map(async ({ attachmentBytes, ext }, index) => {
           const key = `photoData${index}`;
-          const file = new Parse.File(`${key}.${ext}`, { base64: imageBytes });
+          const file = new Parse.File(`${key}.${ext}`, {
+            base64: attachmentBytes,
+          });
           await file.save();
           submission.set(key, file);
         }),
-        ...videos.slice(0, 3).map(async ({ imageBytes, ext }, index) => {
+        ...videos.slice(0, 3).map(async ({ attachmentBytes, ext }, index) => {
           const key = `videoData${index}`;
-          const file = new Parse.File(`${key}.${ext}`, { base64: imageBytes });
+          const file = new Parse.File(`${key}.${ext}`, {
+            base64: attachmentBytes,
+          });
           await file.save();
           submission.set(key, file.url());
         }),
@@ -387,24 +391,24 @@ app.use('/submit', (req, res) => {
 
 // adapted from https://github.com/openalpr/cloudapi/tree/8141c1ba57f03df4f53430c6e5e389b39714d0e0/javascript#getting-started
 app.use('/openalpr', (req, res) => {
-  const { imageBytes, country, opts } = req.body;
+  const { attachmentBytes, country, opts } = req.body;
   const api = new OpenalprApi.DefaultApi();
 
   const secretKey = process.env.OPENALPR_SECRET_KEY; // {String} The secret key used to authenticate your account. You can view your secret key by visiting https://cloud.openalpr.com/
 
-  const imageBuffer = Buffer.from(imageBytes, 'base64');
+  const attachmentBuffer = Buffer.from(attachmentBytes, 'base64');
   console.time(`/openalpr rotate`); // eslint-disable-line no-console
-  sharp(imageBuffer)
+  sharp(attachmentBuffer)
     .rotate()
     .toBuffer()
-    .catch(() => imageBuffer)
+    .catch(() => attachmentBuffer)
     .then(buffer => {
       console.timeEnd(`/openalpr rotate`); // eslint-disable-line no-console
-      const imageBytesRotated = buffer.toString('base64');
+      const attachmentBytesRotated = buffer.toString('base64');
       console.time(`/openalpr recognizeBytes`); // eslint-disable-line no-console
       return new Promise((resolve, reject) => {
         api.recognizeBytes(
-          imageBytesRotated,
+          attachmentBytesRotated,
           secretKey,
           country,
           opts,

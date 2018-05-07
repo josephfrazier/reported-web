@@ -1,5 +1,6 @@
 {
   "name": "Reported",
+  "short_name": "Reported",
   "theme_color": "#fbc02d",
   "background_color": "white",
   "display": "standalone",

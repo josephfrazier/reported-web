@@ -466,6 +466,7 @@ exports[`Home renders children correctly 1`] = `
         <a
           className="social-icon"
           href="https://github.com/josephfrazier/Reported-Web"
+          rel="noopener"
           style={
             Object {
               "display": "inline-block",
@@ -565,6 +566,7 @@ exports[`Home renders children correctly 1`] = `
         <a
           className="social-icon"
           href="https://twitter.com/Reported_NYC"
+          rel="noopener"
           style={
             Object {
               "display": "inline-block",

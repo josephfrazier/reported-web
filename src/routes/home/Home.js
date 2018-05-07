@@ -595,7 +595,11 @@ class Home extends React.Component {
             >
               {this.state.photoData.map(imageFile => (
                 <li key={imageFile.name}>
-                  <a href={getBlobUrl(imageFile)} target="_blank">
+                  <a
+                    href={getBlobUrl(imageFile)}
+                    target="_blank"
+                    rel="noopener"
+                  >
                     <button
                       type="button"
                       style={{
@@ -832,9 +836,13 @@ class Home extends React.Component {
               <SocialIcon
                 url="https://github.com/josephfrazier/Reported-Web"
                 color="black"
+                rel="noopener"
               />
               &nbsp;
-              <SocialIcon url="https://twitter.com/Reported_NYC" />
+              <SocialIcon
+                url="https://twitter.com/Reported_NYC"
+                rel="noopener"
+              />
             </div>
           </form>
         </div>

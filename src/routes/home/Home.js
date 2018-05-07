@@ -35,6 +35,7 @@ import execall from 'execall';
 import captureFrame from 'capture-frame';
 import pEvent from 'p-event';
 import omit from 'object.omit';
+import bufferToArrayBuffer from 'buffer-to-arraybuffer';
 
 import marx from 'marx-css/css/marx.css';
 import s from './Home.css';
@@ -370,11 +371,15 @@ class Home extends React.Component {
         throw new Error(`${attachmentFile.name} is not an image/video`);
       }
 
-      console.time(`toString('base64') ${attachmentFile.name}`); // eslint-disable-line no-console
-      const attachmentBytes = attachmentBuffer.toString('base64');
-      console.timeEnd(`toString('base64') ${attachmentFile.name}`); // eslint-disable-line no-console
+      console.time(`bufferToBlob(${attachmentFile.name})`); // eslint-disable-line no-console
+      const attachmentBlob = await blobUtil.arrayBufferToBlob(
+        bufferToArrayBuffer(attachmentBuffer),
+      );
+      console.timeEnd(`bufferToBlob(${attachmentFile.name})`); // eslint-disable-line no-console
 
-      const { data } = await axios.post('/openalpr', { attachmentBytes });
+      const formData = new window.FormData();
+      formData.append('attachmentFile', attachmentBlob);
+      const { data } = await axios.post('/openalpr', formData);
       const { plate } = data.results[0];
       this.attachmentPlates.set(attachmentFile, plate);
       return { plate };

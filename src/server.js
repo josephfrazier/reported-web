@@ -27,6 +27,7 @@ import omit from 'object.omit';
 import fileType from 'file-type-es5';
 import sharp from 'sharp';
 import axios from 'axios';
+import multer from 'multer';
 
 import { isImage, isVideo } from './isImage.js';
 
@@ -59,6 +60,8 @@ require('heroku-self-ping')(`https://${HEROKU_APP_NAME}.herokuapp.com/`, {
 // http://docs.parseplatform.org/js/guide/#getting-started
 Parse.initialize(process.env.PARSE_APP_ID, process.env.PARSE_JAVASCRIPT_KEY);
 Parse.serverURL = process.env.PARSE_SERVER_URL;
+
+const upload = multer({ storage: multer.memoryStorage() });
 
 //
 // Tell any CSS tooling (such as Material UI) to use all vendor prefixes if the
@@ -454,7 +457,7 @@ app.use('/submit', (req, res) => {
 });
 
 // adapted from https://github.com/openalpr/cloudapi/tree/8141c1ba57f03df4f53430c6e5e389b39714d0e0/javascript#getting-started
-app.use('/openalpr', (req, res) => {
+app.use('/openalpr', upload.single('attachmentFile'), (req, res) => {
   const country = 'us';
   const opts = {
     recognizeVehicle: 0,
@@ -464,7 +467,7 @@ app.use('/openalpr', (req, res) => {
     prewarp: '',
   };
 
-  const { attachmentBytes } = req.body;
+  const attachmentBytes = req.file.buffer.toString('base64');
   const api = new OpenalprApi.DefaultApi();
 
   const secretKey = process.env.OPENALPR_SECRET_KEY; // {String} The secret key used to authenticate your account. You can view your secret key by visiting https://cloud.openalpr.com/

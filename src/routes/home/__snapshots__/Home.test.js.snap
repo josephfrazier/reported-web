@@ -225,7 +225,7 @@ exports[`Home renders children correctly 1`] = `
         <button
           type="button"
         >
-          Select/Take a picture
+          Add picture(s)
         </button>
       </div>
       <ol />

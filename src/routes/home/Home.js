@@ -185,7 +185,7 @@ class Home extends React.Component {
     const photoData = results.map(([, imageFile]) => imageFile);
 
     this.setState({
-      photoData,
+      photoData: this.state.photoData.concat(photoData),
     });
 
     for (const imageFile of photoData) {
@@ -567,7 +567,7 @@ class Home extends React.Component {
               as="buffer"
               onChange={this.handleImageInput}
             >
-              <button type="button">Select/Take a picture</button>
+              <button type="button">Add picture(s)</button>
             </FileReaderInput>
 
             <ol>

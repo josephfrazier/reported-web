@@ -256,7 +256,7 @@ app.use('/submit', (req, res) => {
     latitude,
     longitude,
     formatted_address, // eslint-disable-line camelcase
-    imageBytess = [],
+    photoDataBase64 = [],
     CreateDate,
   } = body;
 
@@ -331,7 +331,7 @@ app.use('/submit', (req, res) => {
       // upload images
       // http://docs.parseplatform.org/js/guide/#creating-a-parsefile
 
-      const images = imageBytess
+      const images = photoDataBase64
         .map(imageBytes => ({
           imageBytes,
           ext: fileType(Buffer.from(imageBytes, 'base64')).ext,

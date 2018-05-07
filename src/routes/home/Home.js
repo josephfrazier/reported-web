@@ -524,7 +524,7 @@ class Home extends React.Component {
               axios
                 .post('/submit', {
                   ...this.state,
-                  imageBytess: await Promise.all(
+                  photoDataBase64: await Promise.all(
                     this.state.photoData.map(imageFile =>
                       blobUtil.blobToBase64String(imageFile),
                     ),

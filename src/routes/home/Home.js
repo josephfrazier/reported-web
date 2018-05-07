@@ -67,13 +67,13 @@ const defaultLongitude = -74.006;
 
 // adapted from https://www.bignerdranch.com/blog/dont-over-react/
 const urls = new WeakMap();
-const getImageUrl = imageFile => {
-  if (urls.has(imageFile)) {
-    return urls.get(imageFile);
+const getBlobUrl = blob => {
+  if (urls.has(blob)) {
+    return urls.get(blob);
   }
-  const imageUrl = window.URL.createObjectURL(imageFile);
-  urls.set(imageFile, imageUrl);
-  return imageUrl;
+  const blobUrl = window.URL.createObjectURL(blob);
+  urls.set(blob, blobUrl);
+  return blobUrl;
 };
 
 const geolocate = () =>
@@ -573,7 +573,7 @@ class Home extends React.Component {
             <ol>
               {this.state.photoData.map(imageFile => (
                 <li key={imageFile.name}>
-                  <a href={getImageUrl(imageFile)} target="_blank">
+                  <a href={getBlobUrl(imageFile)} target="_blank">
                     <button
                       type="button"
                       style={{

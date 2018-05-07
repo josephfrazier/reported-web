@@ -182,13 +182,13 @@ class Home extends React.Component {
 
   // adapted from https://github.com/ngokevin/react-file-reader-input/tree/f970257f271b8c3bba9d529ffdbfa4f4731e0799#usage
   handleImageInput = async (_, results) => {
-    const photoData = results.map(([, imageFile]) => ({ imageFile }));
+    const photoData = results.map(([, imageFile]) => imageFile);
 
     this.setState({
-      photoData: photoData.map(({ imageFile }) => imageFile),
+      photoData,
     });
 
-    for (const { imageFile } of photoData) {
+    for (const imageFile of photoData) {
       try {
         // eslint-disable-next-line no-await-in-loop
         await Promise.all([

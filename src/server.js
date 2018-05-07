@@ -358,20 +358,20 @@ app.use('/submit', (req, res) => {
         }))
         .filter(({ ext }) => videoExtensions.includes(ext));
 
-      await Promise.all(
-        images.map(async ({ imageBytes, ext }, index) => {
+      await Promise.all([
+        ...images.map(async ({ imageBytes, ext }, index) => {
           const key = `photoData${index}`;
           const file = new Parse.File(`${key}.${ext}`, { base64: imageBytes });
           await file.save();
           submission.set(key, file);
         }),
-        videos.map(async ({ imageBytes, ext }, index) => {
+        ...videos.map(async ({ imageBytes, ext }, index) => {
           const key = `videoData${index}`;
           const file = new Parse.File(`${key}.${ext}`, { base64: imageBytes });
           await file.save();
           submission.set(key, file);
         }),
-      );
+      ]);
       return submission.save(null);
     })
     .then(submission => {

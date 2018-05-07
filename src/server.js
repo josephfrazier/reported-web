@@ -25,6 +25,7 @@ import Parse from 'parse/node';
 import omit from 'object.omit';
 import fileType from 'file-type-es5';
 import sharp from 'sharp';
+import imageExtensions from 'image-extensions';
 
 import App from './components/App';
 import Html from './components/Html';
@@ -336,7 +337,7 @@ app.use('/submit', (req, res) => {
           imageBytes,
           ext: fileType(Buffer.from(imageBytes, 'base64')).ext,
         }))
-        .filter(({ ext }) => ['jpg', 'png'].includes(ext));
+        .filter(({ ext }) => imageExtensions.includes(ext));
 
       await Promise.all(
         images.map(async ({ imageBytes, ext }, index) => {

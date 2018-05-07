@@ -28,6 +28,7 @@
     "graphql": "^0.13.2",
     "heroku-self-ping": "^1.1.4",
     "history": "^4.7.2",
+    "image-extensions": "^1.1.0",
     "isomorphic-style-loader": "^4.0.0",
     "jsonwebtoken": "^8.2.1",
     "marx-css": "^3.0.3",

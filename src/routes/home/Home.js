@@ -182,7 +182,7 @@ class Home extends React.Component {
   };
 
   // adapted from https://github.com/ngokevin/react-file-reader-input/tree/f970257f271b8c3bba9d529ffdbfa4f4731e0799#usage
-  handleChange = async (_, results) => {
+  handleImageInput = async (_, results) => {
     this.setState({ isLoadingImages: true });
 
     const images = results.map(([, imageFile]) => ({ imageFile }));
@@ -569,7 +569,7 @@ class Home extends React.Component {
               accept="image/*"
               multiple
               as="buffer"
-              onChange={this.handleChange}
+              onChange={this.handleImageInput}
             >
               <button type="button">Select/Take a picture</button>
               &nbsp; {this.state.isLoadingImages && 'Loading...'}

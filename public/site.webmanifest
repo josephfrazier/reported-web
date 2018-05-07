@@ -1,6 +1,13 @@
 {
+  "name": "Reported",
   "theme_color": "#fbc02d",
+  "background_color": "white",
   "icons": [
+    {
+      "src": "favicon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
     {
       "src": "favicon-192x192.png",
       "sizes": "192x192",

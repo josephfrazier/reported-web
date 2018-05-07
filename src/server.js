@@ -379,20 +379,27 @@ app.use('/openalpr', (req, res) => {
       console.timeEnd(`/openalpr rotate`); // eslint-disable-line no-console
       const imageBytesRotated = buffer.toString('base64');
       console.time(`/openalpr recognizeBytes`); // eslint-disable-line no-console
-      api.recognizeBytes(
-        imageBytesRotated,
-        secretKey,
-        country,
-        opts,
-        (error, data) => {
-          console.timeEnd(`/openalpr recognizeBytes`); // eslint-disable-line no-console
-          if (error) {
-            throw error;
-          } else {
-            res.json(data);
-          }
-        },
-      );
+      return new Promise((resolve, reject) => {
+        api.recognizeBytes(
+          imageBytesRotated,
+          secretKey,
+          country,
+          opts,
+          (error, data) => {
+            console.timeEnd(`/openalpr recognizeBytes`); // eslint-disable-line no-console
+            if (error) {
+              reject(error);
+            } else {
+              resolve(data);
+            }
+          },
+        );
+      });
+    })
+    .then(data => res.json(data))
+    .catch(error => {
+      console.error({ error });
+      res.status(500).json({ error });
     });
 });
 

@@ -110,7 +110,7 @@ const initialStatePersistent = {
 };
 
 const initialStatePerSession = {
-  images: [],
+  photoData: [],
 
   isUserInfoSaving: false,
   isSubmitting: false,
@@ -130,13 +130,13 @@ class Home extends React.Component {
 
   componentDidMount() {
     // if there's no images or a time couldn't be extracted, just use now
-    if (this.state.images.length === 0 || !this.state.CreateDate) {
+    if (this.state.photoData.length === 0 || !this.state.CreateDate) {
       this.setCreateDate(Date.now());
     }
     geolocate().then(({ coords }) => {
       // if there's no images or a location couldn't be extracted, just use here
       if (
-        this.state.images.length === 0 ||
+        this.state.photoData.length === 0 ||
         (this.state.latitude === defaultLatitude &&
           this.state.longitude === defaultLongitude)
       ) {
@@ -182,13 +182,13 @@ class Home extends React.Component {
 
   // adapted from https://github.com/ngokevin/react-file-reader-input/tree/f970257f271b8c3bba9d529ffdbfa4f4731e0799#usage
   handleImageInput = async (_, results) => {
-    const images = results.map(([, imageFile]) => ({ imageFile }));
+    const photoData = results.map(([, imageFile]) => ({ imageFile }));
 
     this.setState({
-      images: images.map(({ imageFile }) => imageFile),
+      photoData: photoData.map(({ imageFile }) => imageFile),
     });
 
-    for (const { imageFile } of images) {
+    for (const { imageFile } of photoData) {
       try {
         // eslint-disable-next-line no-await-in-loop
         await Promise.all([
@@ -525,7 +525,7 @@ class Home extends React.Component {
                 .post('/submit', {
                   ...this.state,
                   imageBytess: await Promise.all(
-                    this.state.images.map(imageFile =>
+                    this.state.photoData.map(imageFile =>
                       blobUtil.blobToBase64String(imageFile),
                     ),
                   ),
@@ -571,7 +571,7 @@ class Home extends React.Component {
             </FileReaderInput>
 
             <ol>
-              {this.state.images.map(imageFile => (
+              {this.state.photoData.map(imageFile => (
                 <li key={imageFile.name}>
                   <a href={getImageUrl(imageFile)} target="_blank">
                     <button
@@ -592,7 +592,7 @@ class Home extends React.Component {
                     }}
                     onClick={() => {
                       this.setState({
-                        images: this.state.images.filter(
+                        photoData: this.state.photoData.filter(
                           file => file.name !== imageFile.name,
                         ),
                       });

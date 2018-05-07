@@ -26,6 +26,7 @@ import omit from 'object.omit';
 import fileType from 'file-type-es5';
 import sharp from 'sharp';
 import imageExtensions from 'image-extensions';
+import videoExtensions from 'video-extensions';
 
 import App from './components/App';
 import Html from './components/Html';
@@ -79,7 +80,18 @@ app.set('trust proxy', config.trustProxy);
 app.use(express.static(path.resolve(__dirname, 'public')));
 app.use(cookieParser());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json({ limit: '10mb' }));
+app.use(bodyParser.json({ limit: '80mb' }));
+// Here's the logic for 80mb:
+// * Back4App has a per-file limit of 10mb: https://docs.back4app.com/docs/faq-parse-back4app/can-i-store-files-larger-than-10-mb-can-i-pay-to-remove-this-limit/
+// * Up to 6 files can be included with each submission to Back4App:
+//   * photoData0
+//   * photoData1
+//   * photoData2
+//   * videoData0
+//   * videoData1
+//   * videoData2
+// * Base64 encoding adds 1/3 to the file size: https://stackoverflow.com/questions/4715415/base64-what-is-the-worst-possible-increase-in-space-usage/4715480#4715480
+// (10mb * 6) * (4/3) = 80mb
 
 //
 // Authentication
@@ -339,11 +351,22 @@ app.use('/submit', (req, res) => {
         }))
         .filter(({ ext }) => imageExtensions.includes(ext));
 
+      const videos = photoDataBase64
+        .map(imageBytes => ({
+          imageBytes,
+          ext: fileType(Buffer.from(imageBytes, 'base64')).ext,
+        }))
+        .filter(({ ext }) => videoExtensions.includes(ext));
+
       await Promise.all(
         images.map(async ({ imageBytes, ext }, index) => {
-          // TODO handle photos/videos separately
-          // https://reportedcab.slack.com/messages/C85007FUY/p1523149628000063
           const key = `photoData${index}`;
+          const file = new Parse.File(`${key}.${ext}`, { base64: imageBytes });
+          await file.save();
+          submission.set(key, file);
+        }),
+        videos.map(async ({ imageBytes, ext }, index) => {
+          const key = `videoData${index}`;
           const file = new Parse.File(`${key}.${ext}`, { base64: imageBytes });
           await file.save();
           submission.set(key, file);

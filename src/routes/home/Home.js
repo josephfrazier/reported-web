@@ -110,7 +110,7 @@ const initialStatePersistent = {
 };
 
 const initialStatePerSession = {
-  photoData: [],
+  photoData: [], // TODO since videos are handled alongside images, s/photo|image/file|attachment|blob/ in variable names
 
   isUserInfoSaving: false,
   isSubmitting: false,
@@ -201,6 +201,9 @@ class Home extends React.Component {
     }
   };
 
+  // TODO make this work with videos
+  // https://github.com/Sobesednik/node-exiftool
+  // https://github.com/Sobesednik/dist-exiftool
   extractLocationDate = async ({ imageFile }) => {
     console.time(`blobUtil.blobToArrayBuffer(imageFile)`); // eslint-disable-line no-console
     const imageArrayBuffer = await blobUtil.blobToArrayBuffer(imageFile);
@@ -246,6 +249,8 @@ class Home extends React.Component {
       console.time(`blobToBase64String ${imageFile.name}`); // eslint-disable-line no-console
       const imageBytes = await blobUtil.blobToBase64String(imageFile); // eslint-disable-line no-await-in-loop
       console.timeEnd(`blobToBase64String ${imageFile.name}`); // eslint-disable-line no-console
+
+      // TODO don't hit server for videos, or make them work
 
       const country = 'us'; // {String} Defines the training data used by OpenALPR. \"us\" analyzes North-American style plates. \"eu\" analyzes European-style plates. This field is required if using the \"plate\" task You may use multiple datasets by using commas between the country codes. For example, 'au,auwide' would analyze using both the Australian plate styles. A full list of supported country codes can be found here https://github.com/openalpr/openalpr/tree/master/runtime_data/config
 
@@ -557,20 +562,37 @@ class Home extends React.Component {
                 });
             }}
           >
-            {/*
-            TODO accept videos too
-            Probably use a separate input, since that looks better on Android Chrome
-            */}
             <FileReaderInput
               accept="image/*"
               multiple
               as="buffer"
               onChange={this.handleImageInput}
+              style={{
+                float: 'left',
+                margin: '1px',
+              }}
             >
               <button type="button">Add picture(s)</button>
             </FileReaderInput>
 
-            <ol>
+            <FileReaderInput
+              accept="video/*"
+              multiple
+              as="buffer"
+              onChange={this.handleImageInput}
+              style={{
+                float: 'left',
+                margin: '1px',
+              }}
+            >
+              <button type="button">Add video(s)</button>
+            </FileReaderInput>
+
+            <ol
+              style={{
+                clear: 'both',
+              }}
+            >
               {this.state.photoData.map(imageFile => (
                 <li key={imageFile.name}>
                   <a href={getBlobUrl(imageFile)} target="_blank">

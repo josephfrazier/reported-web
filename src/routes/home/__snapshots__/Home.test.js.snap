@@ -207,7 +207,12 @@ exports[`Home renders children correctly 1`] = `
       <div
         className="_react-file-reader-input"
         onClick={[Function]}
-        style={undefined}
+        style={
+          Object {
+            "float": "left",
+            "margin": "1px",
+          }
+        }
       >
         <input
           accept="image/*"
@@ -228,7 +233,42 @@ exports[`Home renders children correctly 1`] = `
           Add picture(s)
         </button>
       </div>
-      <ol />
+      <div
+        className="_react-file-reader-input"
+        onClick={[Function]}
+        style={
+          Object {
+            "float": "left",
+            "margin": "1px",
+          }
+        }
+      >
+        <input
+          accept="video/*"
+          multiple={true}
+          onChange={[Function]}
+          onClick={[Function]}
+          style={
+            Object {
+              "position": "absolute",
+              "top": "-9999px",
+            }
+          }
+          type="file"
+        />
+        <button
+          type="button"
+        >
+          Add video(s)
+        </button>
+      </div>
+      <ol
+        style={
+          Object {
+            "clear": "both",
+          }
+        }
+      />
       <label>
         License/Medallion:
         <div

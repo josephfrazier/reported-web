@@ -2,6 +2,7 @@
   "name": "Reported",
   "theme_color": "#fbc02d",
   "background_color": "white",
+  "display": "standalone",
   "icons": [
     {
       "src": "favicon-512x512.png",

@@ -227,7 +227,6 @@ exports[`Home renders children correctly 1`] = `
         >
           Select/Take a picture
         </button>
-          
       </div>
       <ol />
       <label>

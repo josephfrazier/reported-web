@@ -114,7 +114,6 @@ const initialStatePerSession = {
 
   isUserInfoSaving: false,
   isSubmitting: false,
-  isLoadingImages: false,
   isLoadingPlate: false,
 };
 
@@ -183,13 +182,10 @@ class Home extends React.Component {
 
   // adapted from https://github.com/ngokevin/react-file-reader-input/tree/f970257f271b8c3bba9d529ffdbfa4f4731e0799#usage
   handleImageInput = async (_, results) => {
-    this.setState({ isLoadingImages: true });
-
     const images = results.map(([, imageFile]) => ({ imageFile }));
 
     this.setState({
       images: images.map(({ imageFile }) => imageFile),
-      isLoadingImages: false,
     });
 
     for (const { imageFile } of images) {
@@ -572,7 +568,6 @@ class Home extends React.Component {
               onChange={this.handleImageInput}
             >
               <button type="button">Select/Take a picture</button>
-              &nbsp; {this.state.isLoadingImages && 'Loading...'}
             </FileReaderInput>
 
             <ol>

@@ -10,6 +10,7 @@
 import path from 'path';
 import express from 'express';
 import forceSsl from 'force-ssl-heroku';
+import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import bodyParser from 'body-parser';
 import expressJwt, { UnauthorizedError as Jwt401Error } from 'express-jwt';
@@ -66,6 +67,7 @@ global.navigator = global.navigator || {};
 global.navigator.userAgent = global.navigator.userAgent || 'all';
 
 const app = express();
+app.use(compression());
 app.use(forceSsl);
 
 //

@@ -203,9 +203,11 @@ class Home extends React.Component {
     }
   };
 
-  // TODO make this work with videos
-  // https://github.com/Sobesednik/node-exiftool
-  // https://github.com/Sobesednik/dist-exiftool
+  // TODO make this work with videos. Options include:
+  // * https://github.com/mceachen/exiftool-vendored.js
+  //   (recommended at https://www.sno.phy.queensu.ca/~phil/exiftool/#related_prog)
+  // * https://github.com/Sobesednik/node-exiftool
+  //   with https://github.com/Sobesednik/dist-exiftool
   extractLocationDate = async ({ attachmentFile }) => {
     console.time(`blobUtil.blobToArrayBuffer(attachmentFile)`); // eslint-disable-line no-console
     const attachmentArrayBuffer = await blobUtil.blobToArrayBuffer(

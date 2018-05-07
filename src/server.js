@@ -369,7 +369,7 @@ app.use('/submit', (req, res) => {
           const key = `videoData${index}`;
           const file = new Parse.File(`${key}.${ext}`, { base64: imageBytes });
           await file.save();
-          submission.set(key, file);
+          submission.set(key, file.url());
         }),
       ]);
       return submission.save(null);

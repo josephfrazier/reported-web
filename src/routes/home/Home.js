@@ -122,6 +122,62 @@ const initialState = {
   ...initialStatePerSession,
 };
 
+// adapted from http://danielhindrikes.se/web/get-coordinates-from-photo-with-javascript/
+function coordsFromExifGps({ gps }) {
+  const lat = gps.GPSLatitude;
+  const lng = gps.GPSLongitude;
+
+  // Convert coordinates to WGS84 decimal
+  const latRef = gps.GPSLatitudeRef || 'N';
+  const lngRef = gps.GPSLongitudeRef || 'W';
+  const latitude =
+    (lat[0] + lat[1] / 60 + lat[2] / 3600) * (latRef === 'N' ? 1 : -1);
+  const longitude =
+    (lng[0] + lng[1] / 60 + lng[2] / 3600) * (lngRef === 'W' ? -1 : 1);
+
+  return { latitude, longitude };
+}
+
+function extractLocation({ exifData }) {
+  const { gps } = exifData;
+  return coordsFromExifGps({ gps });
+}
+
+function extractDate({ exifData }) {
+  const { exif: { CreateDate } } = exifData;
+  const millisecondsSinceEpoch = new Date(
+    CreateDate.replace(':', '/').replace(':', '/'),
+  ).getTime();
+
+  return millisecondsSinceEpoch;
+}
+
+// TODO make this work with videos. Options include:
+// * https://github.com/mceachen/exiftool-vendored.js
+//   (recommended at https://www.sno.phy.queensu.ca/~phil/exiftool/#related_prog)
+// * https://github.com/Sobesednik/node-exiftool
+//   with https://github.com/Sobesednik/dist-exiftool
+async function extractLocationDate({ attachmentFile }) {
+  console.time(`blobUtil.blobToArrayBuffer(attachmentFile)`); // eslint-disable-line no-console
+  const attachmentArrayBuffer = await blobUtil.blobToArrayBuffer(
+    attachmentFile,
+  );
+  console.timeEnd(`blobUtil.blobToArrayBuffer(attachmentFile)`); // eslint-disable-line no-console
+
+  console.time(`Buffer.from(attachmentArrayBuffer)`); // eslint-disable-line no-console
+  const attachmentBuffer = Buffer.from(attachmentArrayBuffer);
+  console.timeEnd(`Buffer.from(attachmentArrayBuffer)`); // eslint-disable-line no-console
+
+  console.time(`ExifImage`); // eslint-disable-line no-console
+  return promisify(ExifImage)({ image: attachmentBuffer }).then(exifData => {
+    console.timeEnd(`ExifImage`); // eslint-disable-line no-console
+    return Promise.all([
+      extractLocation({ exifData }),
+      extractDate({ exifData }),
+    ]);
+  });
+}
+
 class Home extends React.Component {
   static defaultProps = {
     stateFilterKeys: Object.keys(initialStatePersistent),
@@ -193,40 +249,12 @@ class Home extends React.Component {
         // eslint-disable-next-line no-await-in-loop
         await Promise.all([
           this.extractPlate({ attachmentFile }).then(this.setLicensePlate),
-          this.extractLocationDate({ attachmentFile }).then(
-            this.setLocationDate,
-          ),
+          extractLocationDate({ attachmentFile }).then(this.setLocationDate),
         ]);
       } catch (err) {
         console.error(`Error: ${err.message}`);
       }
     }
-  };
-
-  // TODO make this work with videos. Options include:
-  // * https://github.com/mceachen/exiftool-vendored.js
-  //   (recommended at https://www.sno.phy.queensu.ca/~phil/exiftool/#related_prog)
-  // * https://github.com/Sobesednik/node-exiftool
-  //   with https://github.com/Sobesednik/dist-exiftool
-  extractLocationDate = async ({ attachmentFile }) => {
-    console.time(`blobUtil.blobToArrayBuffer(attachmentFile)`); // eslint-disable-line no-console
-    const attachmentArrayBuffer = await blobUtil.blobToArrayBuffer(
-      attachmentFile,
-    );
-    console.timeEnd(`blobUtil.blobToArrayBuffer(attachmentFile)`); // eslint-disable-line no-console
-
-    console.time(`Buffer.from(attachmentArrayBuffer)`); // eslint-disable-line no-console
-    const attachmentBuffer = Buffer.from(attachmentArrayBuffer);
-    console.timeEnd(`Buffer.from(attachmentArrayBuffer)`); // eslint-disable-line no-console
-
-    console.time(`ExifImage`); // eslint-disable-line no-console
-    return promisify(ExifImage)({ image: attachmentBuffer }).then(exifData => {
-      console.timeEnd(`ExifImage`); // eslint-disable-line no-console
-      return Promise.all([
-        this.extractLocation({ exifData }),
-        this.extractDate({ exifData }),
-      ]);
-    });
   };
 
   handleInputChange = event => {
@@ -282,36 +310,6 @@ class Home extends React.Component {
       this.setState({ isLoadingPlate: false });
       console.timeEnd('extractPlate'); // eslint-disable-line no-console
     }
-  };
-
-  extractDate = ({ exifData }) => {
-    const { exif: { CreateDate } } = exifData;
-    const millisecondsSinceEpoch = new Date(
-      CreateDate.replace(':', '/').replace(':', '/'),
-    ).getTime();
-
-    return millisecondsSinceEpoch;
-  };
-
-  extractLocation = ({ exifData }) => {
-    const { gps } = exifData;
-    return this.coordsFromExifGps({ gps });
-  };
-
-  // adapted from http://danielhindrikes.se/web/get-coordinates-from-photo-with-javascript/
-  coordsFromExifGps = ({ gps }) => {
-    const lat = gps.GPSLatitude;
-    const lng = gps.GPSLongitude;
-
-    // Convert coordinates to WGS84 decimal
-    const latRef = gps.GPSLatitudeRef || 'N';
-    const lngRef = gps.GPSLongitudeRef || 'W';
-    const latitude =
-      (lat[0] + lat[1] / 60 + lat[2] / 3600) * (latRef === 'N' ? 1 : -1);
-    const longitude =
-      (lng[0] + lng[1] / 60 + lng[2] / 3600) * (lngRef === 'W' ? -1 : 1);
-
-    return { latitude, longitude };
   };
 
   render() {
@@ -640,7 +638,7 @@ class Home extends React.Component {
                         margin: '1px',
                       }}
                       onClick={() => {
-                        this.extractLocationDate({ attachmentFile }).then(
+                        extractLocationDate({ attachmentFile }).then(
                           this.setLocationDate,
                         );
                       }}

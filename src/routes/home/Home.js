@@ -864,14 +864,17 @@ class Home extends React.Component {
                         timeofreport,
                       } = submission;
 
+                      const humanTimeString = new Date(
+                        timeofreport,
+                      ).toLocaleString();
+
                       return (
                         <li key={objectId}>
                           <a
                             href={`http://www1.nyc.gov/NYC311-SRLookup/?servicerequestnumber=${reqnumber}`}
                             target="_blank"
                           >
-                            {medallionNo} {typeofcomplaint} on{' '}
-                            {new Date(timeofreport).toLocaleString()}
+                            {medallionNo} {typeofcomplaint} on {humanTimeString}
                           </a>
                         </li>
                       );

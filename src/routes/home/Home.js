@@ -27,6 +27,8 @@ import { SearchBox } from 'react-google-maps/lib/components/places/SearchBox';
 import withLocalStorage from 'react-localstorage';
 import debounce from 'debounce-promise';
 import { SocialIcon } from 'react-social-icons';
+import Loadable from 'react-loadable';
+import humanizeString from 'humanize-string';
 
 import marx from 'marx-css/css/marx.css';
 import s from './Home.css';
@@ -941,6 +943,25 @@ class SubmissionDetails extends React.Component {
       );
     };
 
+    const LoadableServiceRequestStatus = Loadable({
+      loader: () =>
+        axios.get(`/srlookup/${reqnumber}`).then(({ data }) => () => {
+          const { threeOneOneSRLookupResponse } = data;
+          const items = Object.entries(threeOneOneSRLookupResponse[0]).map(
+            ([key, value]) => (
+              <React.Fragment key={key}>
+                <dt>{humanizeString(key)}:</dt>
+                <dd>
+                  {key.endsWith('Date') ? new Date(value).toString() : value}
+                </dd>
+              </React.Fragment>
+            ),
+          );
+          return <dl>{items}</dl>;
+        }),
+      loading: () => 'Loading Service Request Status...',
+    });
+
     return (
       <details
         open={this.state.isDetailsOpen}
@@ -960,11 +981,7 @@ class SubmissionDetails extends React.Component {
 
             {!reqnumber.startsWith('N/A') && (
               <div>
-                <iframe
-                  style={{ width: '100%', height: '75vh' }}
-                  src={`/srlookup/${reqnumber}`}
-                  title={`Status of Service Request ${reqnumber}`}
-                />
+                <LoadableServiceRequestStatus />
               </div>
             )}
           </React.Fragment>

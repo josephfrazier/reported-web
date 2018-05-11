@@ -29,8 +29,6 @@ import sharp from 'sharp';
 import imageExtensions from 'image-extensions';
 import videoExtensions from 'video-extensions';
 import axios from 'axios';
-import escapeHtml from 'escape-html';
-import humanizeString from 'humanize-string';
 
 import App from './components/App';
 import Html from './components/Html';
@@ -269,16 +267,7 @@ app.get('/srlookup/:reqnumber', (req, res) => {
   axios
     .get(`http://www1.nyc.gov/apps/311api/srlookup/${reqnumber}`)
     .then(({ data }) => {
-      const { threeOneOneSRLookupResponse } = data;
-      // TODO `res.json(data)` and build HTML with React in browser
-      const html = `${Object.entries(threeOneOneSRLookupResponse[0]).reduce(
-        (acc, [key, value]) => `${acc}
-          <dt>${escapeHtml(humanizeString(key))}:</dt>
-          <dd>${escapeHtml(key.endsWith('Date') ? new Date(value) : value)}</dd>
-        `,
-        '<dl>',
-      )}</dl>`;
-      res.send(html);
+      res.json(data);
     })
     .catch(error => {
       console.error({ error });

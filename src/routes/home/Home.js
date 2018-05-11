@@ -914,7 +914,11 @@ class SubmissionDetails extends React.Component {
         .filter(item => !!item)
         .map((photoData, i) => {
           const { url } = photoData;
-          return <img key={url} src={url} alt={`#${i}`} />;
+          return (
+            <a href={url} target="_blank">
+              <img key={url} src={url} alt={`#${i}`} />
+            </a>
+          );
         });
 
       const videos = [videoData0, videoData1, videoData2]
@@ -922,7 +926,10 @@ class SubmissionDetails extends React.Component {
         .map((videoData, i) => {
           const url = videoData;
           return (
-            <video key={url} src={url} alt={`#${i}`} /> // eslint-disable-line jsx-a11y/media-has-caption
+            <a href={url} target="_blank">
+              {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+              <video key={url} src={url} alt={`#${i}`} />
+            </a>
           );
         });
 

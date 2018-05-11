@@ -234,6 +234,29 @@ app.use('/saveUser', (req, res) => {
     });
 });
 
+app.use('/submissions', (req, res) => {
+  saveUser(req.body)
+    .then(user => {
+      const Submission = Parse.Object.extend('submission');
+      const query = new Parse.Query(Submission);
+      query.equalTo('user', user);
+      query.descending('timeofreport');
+      query.limit(Number.MAX_SAFE_INTEGER);
+      return query.find();
+    })
+    .then(results => {
+      const submissions = results.map(({ id, attributes }) => ({
+        objectId: id,
+        ...attributes,
+      }));
+      res.json({ submissions });
+    })
+    .catch(error => {
+      console.error({ error });
+      res.status(500).json({ error });
+    });
+});
+
 app.use('/requestPasswordReset', (req, res) => {
   const { body } = req;
   const { email } = body;

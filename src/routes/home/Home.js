@@ -115,6 +115,7 @@ const initialStatePerSession = {
   isUserInfoSaving: false,
   isSubmitting: false,
   isLoadingPlate: false,
+  submissions: [],
 };
 
 const initialState = {
@@ -831,20 +832,57 @@ class Home extends React.Component {
               <button type="submit" disabled={this.state.isSubmitting}>
                 {this.state.isSubmitting ? 'Submitting...' : 'Submit'}
               </button>
-
-              <div style={{ float: 'right' }}>
-                <SocialIcon
-                  url="https://github.com/josephfrazier/Reported-Web"
-                  color="black"
-                  rel="noopener"
-                />
-                &nbsp;
-                <SocialIcon
-                  url="https://twitter.com/Reported_NYC"
-                  rel="noopener"
-                />
-              </div>
             </form>
+
+            <br />
+
+            <details
+              onToggle={evt => {
+                if (!evt.target.open) {
+                  return;
+                }
+                axios
+                  .post('/submissions', this.state)
+                  .then(({ data }) => {
+                    const { submissions } = data;
+                    this.setState({ submissions });
+                  })
+                  .catch(handleAxiosError);
+              }}
+            >
+              <summary>Previous Submissions</summary>
+
+              <ul>
+                {this.state.submissions.length === 0
+                  ? 'Loading submissions...'
+                  : this.state.submissions.map(submission => (
+                      <li key={submission.objectId}>
+                        <a
+                          href={`http://www1.nyc.gov/NYC311-SRLookup/?servicerequestnumber=${
+                            submission.reqnumber
+                          }`}
+                        >
+                          {submission.medallionNo} {submission.typeofcomplaint}{' '}
+                          on{' '}
+                          {new Date(submission.timeofreport).toLocaleString()}
+                        </a>
+                      </li>
+                    ))}
+              </ul>
+            </details>
+
+            <div style={{ float: 'right' }}>
+              <SocialIcon
+                url="https://github.com/josephfrazier/Reported-Web"
+                color="black"
+                rel="noopener"
+              />
+              &nbsp;
+              <SocialIcon
+                url="https://twitter.com/Reported_NYC"
+                rel="noopener"
+              />
+            </div>
           </main>
         </div>
       </div>

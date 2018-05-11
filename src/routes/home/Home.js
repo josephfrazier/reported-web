@@ -9,6 +9,7 @@
 
 import promisify from 'util.promisify';
 import React from 'react';
+import PropTypes from 'prop-types';
 import withStyles from 'isomorphic-style-loader/lib/withStyles';
 import FileReaderInput from 'react-file-reader-input';
 import blobUtil from 'blob-util';
@@ -855,30 +856,11 @@ class Home extends React.Component {
               <ul>
                 {this.state.submissions.length === 0
                   ? 'Loading submissions...'
-                  : this.state.submissions.map(submission => {
-                      const {
-                        objectId,
-                        reqnumber,
-                        medallionNo,
-                        typeofcomplaint,
-                        timeofreport,
-                      } = submission;
-
-                      const humanTimeString = new Date(
-                        timeofreport,
-                      ).toLocaleString();
-
-                      return (
-                        <li key={objectId}>
-                          <a
-                            href={`http://www1.nyc.gov/NYC311-SRLookup/?servicerequestnumber=${reqnumber}`}
-                            target="_blank"
-                          >
-                            {medallionNo} {typeofcomplaint} on {humanTimeString}
-                          </a>
-                        </li>
-                      );
-                    })}
+                  : this.state.submissions.map(submission => (
+                      <li key={submission.objectId}>
+                        <SubmissionDetails submission={submission} />
+                      </li>
+                    ))}
               </ul>
             </details>
 
@@ -900,6 +882,104 @@ class Home extends React.Component {
     );
   }
 }
+
+// eslint-disable-next-line react/no-multi-comp
+class SubmissionDetails extends React.Component {
+  state = {
+    isDetailsOpen: false,
+  };
+
+  render() {
+    const {
+      reqnumber,
+      medallionNo,
+      typeofcomplaint,
+      timeofreport,
+
+      photoData0,
+      photoData1,
+      photoData2,
+
+      videoData0,
+      videoData1,
+      videoData2,
+    } = this.props.submission;
+
+    const humanTimeString = new Date(timeofreport).toLocaleString();
+
+    const ImagesAndVideos = () => {
+      const images = [photoData0, photoData1, photoData2]
+        .filter(item => !!item)
+        .map((photoData, i) => {
+          const { url } = photoData;
+          return <img key={url} src={url} alt={`#${i}`} />;
+        });
+
+      const videos = [videoData0, videoData1, videoData2]
+        .filter(item => !!item)
+        .map((videoData, i) => {
+          const url = videoData;
+          return (
+            <video key={url} src={url} alt={`#${i}`} /> // eslint-disable-line jsx-a11y/media-has-caption
+          );
+        });
+
+      return (
+        <React.Fragment>
+          {images}
+          {videos}
+        </React.Fragment>
+      );
+    };
+
+    return (
+      <details
+        open={this.state.isDetailsOpen}
+        onToggle={evt => {
+          this.setState({
+            isDetailsOpen: evt.target.open,
+          });
+        }}
+      >
+        <summary>
+          {medallionNo} {typeofcomplaint} on {humanTimeString}
+        </summary>
+
+        {this.state.isDetailsOpen && (
+          <React.Fragment>
+            <ImagesAndVideos />
+
+            {!reqnumber.startsWith('N/A') && (
+              <a
+                href={`http://www1.nyc.gov/NYC311-SRLookup/?servicerequestnumber=${reqnumber}`}
+                target="_blank"
+              >
+                Check Service Request Status
+              </a>
+            )}
+          </React.Fragment>
+        )}
+      </details>
+    );
+  }
+}
+
+SubmissionDetails.propTypes = {
+  submission: PropTypes.shape({
+    reqnumber: PropTypes.string,
+    medallionNo: PropTypes.string,
+    typeofcomplaint: PropTypes.string,
+    timeofreport: PropTypes.string,
+
+    photoData0: PropTypes.object,
+    photoData1: PropTypes.object,
+    photoData2: PropTypes.object,
+
+    videoData0: PropTypes.string,
+    videoData1: PropTypes.string,
+    videoData2: PropTypes.string,
+  }).isRequired,
+};
 
 const MyMapComponent = compose(
   withProps({

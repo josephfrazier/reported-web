@@ -288,6 +288,20 @@ app.use('/requestPasswordReset', (req, res) => {
     });
 });
 
+function orientImageBase64({ attachmentBytes }) {
+  const attachmentBuffer = Buffer.from(attachmentBytes, 'base64');
+  console.time(`orientImageBase64`); // eslint-disable-line no-console
+  return sharp(attachmentBuffer)
+    .rotate()
+    .toBuffer()
+    .catch(() => attachmentBuffer)
+    .then(buffer => {
+      console.timeEnd(`orientImageBase64`); // eslint-disable-line no-console
+      const attachmentBytesRotated = buffer.toString('base64');
+      return attachmentBytesRotated;
+    });
+}
+
 app.use('/submit', (req, res) => {
   const { body } = req;
 
@@ -439,15 +453,8 @@ app.use('/openalpr', (req, res) => {
 
   const secretKey = process.env.OPENALPR_SECRET_KEY; // {String} The secret key used to authenticate your account. You can view your secret key by visiting https://cloud.openalpr.com/
 
-  const attachmentBuffer = Buffer.from(attachmentBytes, 'base64');
-  console.time(`/openalpr rotate`); // eslint-disable-line no-console
-  sharp(attachmentBuffer)
-    .rotate()
-    .toBuffer()
-    .catch(() => attachmentBuffer)
-    .then(buffer => {
-      console.timeEnd(`/openalpr rotate`); // eslint-disable-line no-console
-      const attachmentBytesRotated = buffer.toString('base64');
+  orientImageBase64({ attachmentBytes })
+    .then(attachmentBytesRotated => {
       console.time(`/openalpr recognizeBytes`); // eslint-disable-line no-console
       return new Promise((resolve, reject) => {
         api.recognizeBytes(

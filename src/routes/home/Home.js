@@ -855,20 +855,27 @@ class Home extends React.Component {
               <ul>
                 {this.state.submissions.length === 0
                   ? 'Loading submissions...'
-                  : this.state.submissions.map(submission => (
-                      <li key={submission.objectId}>
-                        <a
-                          href={`http://www1.nyc.gov/NYC311-SRLookup/?servicerequestnumber=${
-                            submission.reqnumber
-                          }`}
-                          target="_blank"
-                        >
-                          {submission.medallionNo} {submission.typeofcomplaint}{' '}
-                          on{' '}
-                          {new Date(submission.timeofreport).toLocaleString()}
-                        </a>
-                      </li>
-                    ))}
+                  : this.state.submissions.map(submission => {
+                      const {
+                        objectId,
+                        reqnumber,
+                        medallionNo,
+                        typeofcomplaint,
+                        timeofreport,
+                      } = submission;
+
+                      return (
+                        <li key={objectId}>
+                          <a
+                            href={`http://www1.nyc.gov/NYC311-SRLookup/?servicerequestnumber=${reqnumber}`}
+                            target="_blank"
+                          >
+                            {medallionNo} {typeofcomplaint} on{' '}
+                            {new Date(timeofreport).toLocaleString()}
+                          </a>
+                        </li>
+                      );
+                    })}
               </ul>
             </details>
 

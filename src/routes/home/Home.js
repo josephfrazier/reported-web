@@ -861,6 +861,7 @@ class Home extends React.Component {
                           href={`http://www1.nyc.gov/NYC311-SRLookup/?servicerequestnumber=${
                             submission.reqnumber
                           }`}
+                          target="_blank"
                         >
                           {submission.medallionNo} {submission.typeofcomplaint}{' '}
                           on{' '}

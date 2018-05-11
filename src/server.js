@@ -419,7 +419,7 @@ app.use('/submit', (req, res) => {
         ...images.slice(0, 3).map(async ({ attachmentBytes, ext }, index) => {
           const key = `photoData${index}`;
           const file = new Parse.File(`${key}.${ext}`, {
-            base64: attachmentBytes,
+            base64: await orientImageBase64({ attachmentBytes }),
           });
           await file.save();
           submission.set(key, file);

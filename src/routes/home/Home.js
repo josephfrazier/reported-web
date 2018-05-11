@@ -178,6 +178,16 @@ async function extractLocationDate({ attachmentFile }) {
   });
 }
 
+function handleAxiosError(error) {
+  return Promise.reject(error)
+    .catch(err => {
+      window.alert(`Error: ${err.response.data.error.message}`);
+    })
+    .catch(err => {
+      console.error(err);
+    });
+}
+
 class Home extends React.Component {
   static defaultProps = {
     stateFilterKeys: Object.keys(initialStatePersistent),
@@ -344,12 +354,7 @@ class Home extends React.Component {
                       this.setState({ isUserInfoOpen: false });
                       window.scrollTo(0, 0);
                     })
-                    .catch(err => {
-                      window.alert(`Error: ${err.response.data.error.message}`);
-                    })
-                    .catch(err => {
-                      console.error(err);
-                    })
+                    .catch(handleAxiosError)
                     .then(() => {
                       this.setState({ isUserInfoSaving: false });
                     });
@@ -404,14 +409,7 @@ class Home extends React.Component {
                             const message = `Please check ${email} to reset your password.`;
                             window.alert(message);
                           })
-                          .catch(err => {
-                            window.alert(
-                              `Error: ${err.response.data.error.message}`,
-                            );
-                          })
-                          .catch(err => {
-                            console.error(err);
-                          });
+                          .catch(handleAxiosError);
                       }}
                     >
                       Reset
@@ -554,12 +552,7 @@ class Home extends React.Component {
                       data.submission.objectId,
                     );
                   })
-                  .catch(err => {
-                    window.alert(`Error: ${err.response.data.error.message}`);
-                  })
-                  .catch(err => {
-                    console.error(err);
-                  })
+                  .catch(handleAxiosError)
                   .then(() => {
                     this.setState({
                       isSubmitting: false,

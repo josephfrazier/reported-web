@@ -28,6 +28,7 @@ exports[`Home renders children correctly 1`] = `
             Email:
              
             <input
+              autoComplete="email"
               name="email"
               onChange={[Function]}
               onInvalid={[Function]}
@@ -46,6 +47,7 @@ exports[`Home renders children correctly 1`] = `
               }
             >
               <input
+                autoComplete="current-password"
                 name="password"
                 onChange={[Function]}
                 onInvalid={[Function]}

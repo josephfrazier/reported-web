@@ -368,6 +368,7 @@ class Home extends React.Component {
                     required
                     onInvalid={() => this.setState({ isUserInfoOpen: true })}
                     type="email"
+                    autoComplete="email"
                     value={this.state.email}
                     name="email"
                     onChange={this.handleInputChange}
@@ -383,6 +384,7 @@ class Home extends React.Component {
                       required
                       onInvalid={() => this.setState({ isUserInfoOpen: true })}
                       type={this.state.isPasswordRevealed ? 'text' : 'password'}
+                      autoComplete="current-password"
                       value={this.state.password}
                       name="password"
                       onChange={this.handleInputChange}

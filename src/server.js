@@ -239,7 +239,10 @@ app.use('/submissions', (req, res) => {
     .then(user => {
       const Submission = Parse.Object.extend('submission');
       const query = new Parse.Query(Submission);
-      query.equalTo('user', user);
+      // Search by "Username" (email address) to show submissions made by all
+      // users with the same email, since the web and mobile clients create
+      // separate users
+      query.equalTo('Username', user.get('username'));
       query.descending('timeofreport');
       query.limit(Number.MAX_SAFE_INTEGER);
       return query.find();

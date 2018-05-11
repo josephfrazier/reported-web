@@ -28,6 +28,7 @@ import fileType from 'file-type-es5';
 import sharp from 'sharp';
 import imageExtensions from 'image-extensions';
 import videoExtensions from 'video-extensions';
+import axios from 'axios';
 
 import App from './components/App';
 import Html from './components/Html';
@@ -253,6 +254,20 @@ app.use('/submissions', (req, res) => {
         ...attributes,
       }));
       res.json({ submissions });
+    })
+    .catch(error => {
+      console.error({ error });
+      res.status(500).json({ error });
+    });
+});
+
+app.get('/srlookup/:reqnumber', (req, res) => {
+  const { reqnumber } = req.params;
+
+  axios
+    .get(`http://www1.nyc.gov/apps/311api/srlookup/${reqnumber}`)
+    .then(({ data }) => {
+      res.send(`<pre>${JSON.stringify(data, null, 2)}</pre>`);
     })
     .catch(error => {
       console.error({ error });

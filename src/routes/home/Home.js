@@ -959,12 +959,13 @@ class SubmissionDetails extends React.Component {
             <ImagesAndVideos />
 
             {!reqnumber.startsWith('N/A') && (
-              <a
-                href={`http://www1.nyc.gov/NYC311-SRLookup/?servicerequestnumber=${reqnumber}`}
-                target="_blank"
-              >
-                Check Service Request Status
-              </a>
+              <div>
+                <iframe
+                  style={{ width: '100%', height: '75vh' }}
+                  src={`/srlookup/${reqnumber}`}
+                  title={`Status of Service Request ${reqnumber}`}
+                />
+              </div>
             )}
           </React.Fragment>
         )}

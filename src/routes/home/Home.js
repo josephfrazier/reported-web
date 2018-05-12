@@ -30,11 +30,13 @@ import { SocialIcon } from 'react-social-icons';
 import Loadable from 'react-loadable';
 import humanizeString from 'humanize-string';
 import fileType from 'file-type-es5';
+import MP4Box from 'mp4box';
+import execall from 'execall';
 
 import marx from 'marx-css/css/marx.css';
 import s from './Home.css';
 
-import { isImage } from '../../isImage.js';
+import { isImage, isVideo } from '../../isImage.js';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyDlwm2ykA0ohTXeVepQYvkcmdjz2M2CKEI';
 
@@ -140,7 +142,7 @@ async function blobToBuffer({ attachmentFile }) {
   const attachmentBuffer = Buffer.from(attachmentArrayBuffer);
   console.timeEnd(`Buffer.from(attachmentArrayBuffer)`); // eslint-disable-line no-console
 
-  return attachmentBuffer;
+  return { attachmentBuffer, attachmentArrayBuffer };
 }
 
 // adapted from http://danielhindrikes.se/web/get-coordinates-from-photo-with-javascript/
@@ -173,17 +175,35 @@ function extractDate({ exifData }) {
   return millisecondsSinceEpoch;
 }
 
-// TODO make this work with videos. Options include:
-// * https://github.com/mceachen/exiftool-vendored.js
-//   (recommended at https://www.sno.phy.queensu.ca/~phil/exiftool/#related_prog)
-// * https://github.com/Sobesednik/node-exiftool
-//   with https://github.com/Sobesednik/dist-exiftool
+function extractLocationDateFromVideo({ attachmentArrayBuffer }) {
+  const mp4boxfile = MP4Box.createFile();
+  attachmentArrayBuffer.fileStart = 0; // eslint-disable-line no-param-reassign
+  mp4boxfile.appendBuffer(attachmentArrayBuffer);
+  const info = mp4boxfile.getInfo();
+  const { created } = info; // TODO handle missing
+
+  // https://stackoverflow.com/questions/28916329/mp4-video-file-with-gps-location/42596889#42596889
+  const uint8array = mp4boxfile.moov.udta['©xyz'].data; // TODO handle missing
+  // https://stackoverflow.com/questions/8936984/uint8array-to-string-in-javascript/36949791#36949791
+  const string = new TextDecoder('utf-8').decode(uint8array);
+  const [latitude, longitude] = execall(/[+-][\d.]+/g, string)
+    .map(m => m.match)
+    .map(Number);
+
+  // TODO make sure time is correct (ugh timezones...)
+  return [{ latitude, longitude }, created.getTime()];
+}
+
 async function extractLocationDate({ attachmentFile }) {
-  const attachmentBuffer = await blobToBuffer({ attachmentFile });
+  const { attachmentBuffer, attachmentArrayBuffer } = await blobToBuffer({
+    attachmentFile,
+  });
 
   const { ext } = fileType(attachmentBuffer);
-  if (!isImage({ ext })) {
-    throw new Error(`${attachmentFile.name} is not an image`);
+  if (isVideo({ ext })) {
+    return extractLocationDateFromVideo({ attachmentArrayBuffer });
+  } else if (!isImage({ ext })) {
+    throw new Error(`${attachmentFile.name} is not an image/video`);
   }
 
   console.time(`ExifImage`); // eslint-disable-line no-console
@@ -312,7 +332,7 @@ class Home extends React.Component {
         return { plate };
       }
 
-      const attachmentBuffer = await blobToBuffer({ attachmentFile });
+      const { attachmentBuffer } = await blobToBuffer({ attachmentFile });
 
       const { ext } = fileType(attachmentBuffer);
       // TODO make videos work?

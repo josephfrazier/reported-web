@@ -235,7 +235,11 @@ class Home extends React.Component {
     this.setCreateDate(millisecondsSinceEpoch);
   };
 
-  setCoords = ({ latitude, longitude }) => {
+  setCoords = ({ latitude, longitude } = {}) => {
+    if (!latitude || !longitude) {
+      console.error('latitude and/or longitude is missing');
+      return;
+    }
     this.setState({
       latitude,
       longitude,

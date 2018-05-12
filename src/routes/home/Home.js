@@ -659,9 +659,11 @@ class Home extends React.Component {
                         margin: '1px',
                       }}
                       onClick={() => {
-                        this.extractPlate({ attachmentFile }).then(
-                          this.setLicensePlate,
-                        );
+                        this.extractPlate({ attachmentFile })
+                          .then(this.setLicensePlate)
+                          .catch(err => {
+                            console.error(`Error: ${err.message}`);
+                          });
                       }}
                       disabled={this.state.isLoadingPlate}
                     >

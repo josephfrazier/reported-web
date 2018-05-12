@@ -29,9 +29,12 @@ import debounce from 'debounce-promise';
 import { SocialIcon } from 'react-social-icons';
 import Loadable from 'react-loadable';
 import humanizeString from 'humanize-string';
+import fileType from 'file-type-es5';
 
 import marx from 'marx-css/css/marx.css';
 import s from './Home.css';
+
+import { isImage } from '../../isImage.js';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyDlwm2ykA0ohTXeVepQYvkcmdjz2M2CKEI';
 
@@ -178,6 +181,11 @@ function extractDate({ exifData }) {
 async function extractLocationDate({ attachmentFile }) {
   const attachmentBuffer = await blobToBuffer({ attachmentFile });
 
+  const { ext } = fileType(attachmentBuffer);
+  if (!isImage({ ext })) {
+    throw new Error(`${attachmentFile.name} is not an image`);
+  }
+
   console.time(`ExifImage`); // eslint-disable-line no-console
   return promisify(ExifImage)({ image: attachmentBuffer }).then(exifData => {
     console.timeEnd(`ExifImage`); // eslint-disable-line no-console
@@ -300,11 +308,17 @@ class Home extends React.Component {
         return { plate };
       }
 
-      console.time(`blobToBase64String ${attachmentFile.name}`); // eslint-disable-line no-console
-      const attachmentBytes = await blobUtil.blobToBase64String(attachmentFile); // eslint-disable-line no-await-in-loop
-      console.timeEnd(`blobToBase64String ${attachmentFile.name}`); // eslint-disable-line no-console
+      const attachmentBuffer = await blobToBuffer({ attachmentFile });
 
-      // TODO don't hit server for videos, or make them work
+      const { ext } = fileType(attachmentBuffer);
+      // TODO make videos work?
+      if (!isImage({ ext })) {
+        throw new Error(`${attachmentFile.name} is not an image`);
+      }
+
+      console.time(`toString('base64') ${attachmentFile.name}`); // eslint-disable-line no-console
+      const attachmentBytes = attachmentBuffer.toString('base64');
+      console.timeEnd(`toString('base64') ${attachmentFile.name}`); // eslint-disable-line no-console
 
       const country = 'us'; // {String} Defines the training data used by OpenALPR. \"us\" analyzes North-American style plates. \"eu\" analyzes European-style plates. This field is required if using the \"plate\" task You may use multiple datasets by using commas between the country codes. For example, 'au,auwide' would analyze using both the Australian plate styles. A full list of supported country codes can be found here https://github.com/openalpr/openalpr/tree/master/runtime_data/config
 

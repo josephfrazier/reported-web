@@ -26,9 +26,9 @@ import Parse from 'parse/node';
 import omit from 'object.omit';
 import fileType from 'file-type-es5';
 import sharp from 'sharp';
-import imageExtensions from 'image-extensions';
-import videoExtensions from 'video-extensions';
 import axios from 'axios';
+
+import { isImage, isVideo } from './isImage.js';
 
 import App from './components/App';
 import Html from './components/Html';
@@ -406,14 +406,14 @@ app.use('/submit', (req, res) => {
           attachmentBytes,
           ext: fileType(Buffer.from(attachmentBytes, 'base64')).ext,
         }))
-        .filter(({ ext }) => imageExtensions.includes(ext));
+        .filter(isImage);
 
       const videos = attachmentDataBase64
         .map(attachmentBytes => ({
           attachmentBytes,
           ext: fileType(Buffer.from(attachmentBytes, 'base64')).ext,
         }))
-        .filter(({ ext }) => videoExtensions.includes(ext));
+        .filter(isVideo);
 
       await Promise.all([
         ...images.slice(0, 3).map(async ({ attachmentBytes, ext }, index) => {

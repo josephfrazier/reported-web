@@ -126,6 +126,20 @@ const initialState = {
   ...initialStatePerSession,
 };
 
+async function blobToBuffer({ attachmentFile }) {
+  console.time(`blobUtil.blobToArrayBuffer(attachmentFile)`); // eslint-disable-line no-console
+  const attachmentArrayBuffer = await blobUtil.blobToArrayBuffer(
+    attachmentFile,
+  );
+  console.timeEnd(`blobUtil.blobToArrayBuffer(attachmentFile)`); // eslint-disable-line no-console
+
+  console.time(`Buffer.from(attachmentArrayBuffer)`); // eslint-disable-line no-console
+  const attachmentBuffer = Buffer.from(attachmentArrayBuffer);
+  console.timeEnd(`Buffer.from(attachmentArrayBuffer)`); // eslint-disable-line no-console
+
+  return attachmentBuffer;
+}
+
 // adapted from http://danielhindrikes.se/web/get-coordinates-from-photo-with-javascript/
 function coordsFromExifGps({ gps }) {
   const lat = gps.GPSLatitude;
@@ -162,15 +176,7 @@ function extractDate({ exifData }) {
 // * https://github.com/Sobesednik/node-exiftool
 //   with https://github.com/Sobesednik/dist-exiftool
 async function extractLocationDate({ attachmentFile }) {
-  console.time(`blobUtil.blobToArrayBuffer(attachmentFile)`); // eslint-disable-line no-console
-  const attachmentArrayBuffer = await blobUtil.blobToArrayBuffer(
-    attachmentFile,
-  );
-  console.timeEnd(`blobUtil.blobToArrayBuffer(attachmentFile)`); // eslint-disable-line no-console
-
-  console.time(`Buffer.from(attachmentArrayBuffer)`); // eslint-disable-line no-console
-  const attachmentBuffer = Buffer.from(attachmentArrayBuffer);
-  console.timeEnd(`Buffer.from(attachmentArrayBuffer)`); // eslint-disable-line no-console
+  const attachmentBuffer = await blobToBuffer({ attachmentFile });
 
   console.time(`ExifImage`); // eslint-disable-line no-console
   return promisify(ExifImage)({ image: attachmentBuffer }).then(exifData => {

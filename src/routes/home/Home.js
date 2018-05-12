@@ -32,6 +32,8 @@ import humanizeString from 'humanize-string';
 import fileType from 'file-type-es5';
 import MP4Box from 'mp4box';
 import execall from 'execall';
+import captureFrame from 'capture-frame';
+import pEvent from 'p-event';
 
 import marx from 'marx-css/css/marx.css';
 import s from './Home.css';
@@ -226,6 +228,30 @@ function handleAxiosError(error) {
     });
 }
 
+// derived from https://github.com/feross/capture-frame/tree/06b8f5eac78fea305f7f577d1697ee3b6999c9a8#complete-example
+async function getVideoScreenshot({ attachmentFile }) {
+  const src = getBlobUrl(attachmentFile);
+  const video = document.createElement('video');
+
+  video.volume = 0;
+  video.setAttribute('crossOrigin', 'anonymous'); // optional, when cross-domain
+  video.src = src;
+  video.play();
+  await pEvent(video, 'canplay');
+
+  video.currentTime = 0; // TODO let user choose time?
+  await pEvent(video, 'seeked');
+
+  const buf = captureFrame(video);
+
+  // unload video element, to prevent memory leaks
+  video.pause();
+  video.src = '';
+  video.load();
+
+  return buf;
+}
+
 class Home extends React.Component {
   static defaultProps = {
     stateFilterKeys: Object.keys(initialStatePersistent),
@@ -335,12 +361,13 @@ class Home extends React.Component {
         return { plate };
       }
 
-      const { attachmentBuffer } = await blobToBuffer({ attachmentFile });
+      let { attachmentBuffer } = await blobToBuffer({ attachmentFile });
 
       const { ext } = fileType(attachmentBuffer);
-      // TODO make videos work?
-      if (!isImage({ ext })) {
-        throw new Error(`${attachmentFile.name} is not an image`);
+      if (isVideo({ ext })) {
+        attachmentBuffer = await getVideoScreenshot({ attachmentFile });
+      } else if (!isImage({ ext })) {
+        throw new Error(`${attachmentFile.name} is not an image/video`);
       }
 
       console.time(`toString('base64') ${attachmentFile.name}`); // eslint-disable-line no-console

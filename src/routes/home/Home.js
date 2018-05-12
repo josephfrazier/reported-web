@@ -672,7 +672,9 @@ class Home extends React.Component {
                         });
                       }}
                     >
-                      ❌
+                      <span role="img" aria-label="Delete photo/video">
+                        ❌
+                      </span>
                     </button>
 
                     <button

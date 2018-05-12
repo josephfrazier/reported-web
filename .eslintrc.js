@@ -85,11 +85,6 @@ module.exports = {
     // TODO make this more granular
     'jsx-a11y/label-has-for': 'off',
 
-    // Allow inaccessible emoji.
-    // Here's the error message, for reference:
-    // Emojis should be wrapped in <span>, have role="img", and have an accessible description with aria-label or aria-labelledby
-    'jsx-a11y/accessible-emoji': 'off',
-
     // Allow .js files to use JSX syntax
     // https://github.com/yannickcr/eslint-plugin-react/blob/master/docs/rules/jsx-filename-extension.md
     'react/jsx-filename-extension': ['error', { extensions: ['.js', '.jsx'] }],

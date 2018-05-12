@@ -314,9 +314,12 @@ class Home extends React.Component {
     const value = target.type === 'checkbox' ? target.checked : target.value;
     const { name } = target;
 
-    this.setState({
-      [name]: value,
-    });
+    this.setState(
+      {
+        [name]: value,
+      },
+      () => this.saveStateToLocalStorage(),
+    );
   };
 
   // adapted from https://www.bignerdranch.com/blog/dont-over-react/

@@ -637,9 +637,11 @@ class Home extends React.Component {
                         margin: '1px',
                       }}
                       onClick={() => {
-                        extractLocationDate({ attachmentFile }).then(
-                          this.setLocationDate,
-                        );
+                        extractLocationDate({ attachmentFile })
+                          .then(this.setLocationDate)
+                          .catch(err => {
+                            console.error(`Error: ${err.message}`);
+                          });
                       }}
                     >
                       Read location and time

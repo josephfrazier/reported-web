@@ -6,7 +6,12 @@
     "node": ">=6.13.1",
     "npm": ">=3.10.10"
   },
-  "browserslist": [">1%", "last 4 versions", "Firefox ESR", "not ie < 9"],
+  "browserslist": [
+    ">1%",
+    "last 4 versions",
+    "Firefox ESR",
+    "not ie < 9"
+  ],
   "dependencies": {
     "@babel/polyfill": "^7.0.0-beta.44",
     "axios": "^0.18.0",
@@ -54,8 +59,7 @@
     "react-file-reader-input": "^1.1.4",
     "react-google-maps": "^9.4.5",
     "react-loadable": "^5.4.0",
-    "react-localstorage":
-      "https://github.com/josephfrazier/react-localstorage#higher-ordered-component",
+    "react-localstorage": "https://github.com/josephfrazier/react-localstorage#higher-ordered-component",
     "react-social-icons": "^2.8.1",
     "recompose": "^0.26.0",
     "sequelize": "^4.37.6",
@@ -151,9 +155,23 @@
     "webpack-node-externals": "^1.7.2"
   },
   "lint-staged": {
-    "*.{js,jsx}": ["eslint --no-ignore --fix", "git add --force"],
-    "*.{json,md,graphql}": ["prettier --write", "git add --force"],
-    "*.{css,less,styl,scss,sass,sss}": ["stylelint --fix", "git add --force"]
+    "ignore": [
+      "package.json"
+    ],
+    "linters": {
+      "*.{js,jsx}": [
+        "eslint --no-ignore --fix",
+        "git add --force"
+      ],
+      "*.{json,md,graphql}": [
+        "prettier --write",
+        "git add --force"
+      ],
+      "*.{css,less,styl,scss,sass,sss}": [
+        "stylelint --fix",
+        "git add --force"
+      ]
+    }
   },
   "scripts": {
     "precommit": "lint-staged && yarn run test",
@@ -170,10 +188,8 @@
     "test-cover": "yarn run test --coverage",
     "coverage": "yarn run test-cover && opn coverage/lcov-report/index.html",
     "mongo-start": "mongodb-runner start",
-    "parse":
-      "parse-server --appId $PARSE_APP_ID --masterKey PARSE_MASTER_KEY --databaseURI mongodb://localhost/test --javascriptKey $PARSE_JAVASCRIPT_KEY",
-    "dashboard":
-      "parse-dashboard --appId $PARSE_APP_ID --masterKey PARSE_MASTER_KEY --serverURL 'http://localhost:1337/parse'",
+    "parse": "parse-server --appId $PARSE_APP_ID --masterKey PARSE_MASTER_KEY --databaseURI mongodb://localhost/test --javascriptKey $PARSE_JAVASCRIPT_KEY",
+    "dashboard": "parse-dashboard --appId $PARSE_APP_ID --masterKey PARSE_MASTER_KEY --serverURL 'http://localhost:1337/parse'",
     "mongo-stop": "mongodb-runner stop",
     "clean": "babel-node tools/run clean",
     "copy": "babel-node tools/run copy",

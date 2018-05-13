@@ -171,9 +171,9 @@
     "coverage": "yarn run test-cover && opn coverage/lcov-report/index.html",
     "mongo-start": "mongodb-runner start",
     "parse":
-      "parse-server --appId $PARSE_APP_ID --masterKey $PARSE_MASTER_KEY --databaseURI mongodb://localhost/test --javascriptKey $PARSE_JAVASCRIPT_KEY",
+      "parse-server --appId $PARSE_APP_ID --masterKey PARSE_MASTER_KEY --databaseURI mongodb://localhost/test --javascriptKey $PARSE_JAVASCRIPT_KEY",
     "dashboard":
-      "parse-dashboard --appId $PARSE_APP_ID --masterKey $PARSE_MASTER_KEY --serverURL 'http://localhost:1337/parse'",
+      "parse-dashboard --appId $PARSE_APP_ID --masterKey PARSE_MASTER_KEY --serverURL 'http://localhost:1337/parse'",
     "mongo-stop": "mongodb-runner stop",
     "clean": "babel-node tools/run clean",
     "copy": "babel-node tools/run copy",

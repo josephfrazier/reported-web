@@ -15,7 +15,7 @@ cp .env.example .env
 
 ## Run
 
-In one session, load variables from .env into your environment, then:
+In one session, load variables from `.env` into your environment, then:
 
 ```bash
 yarn mongo-start

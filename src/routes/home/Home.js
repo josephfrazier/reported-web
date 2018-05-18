@@ -628,6 +628,10 @@ class Home extends React.Component {
                         2,
                       )}`,
                     );
+                    this.setState({
+                      attachmentData: [],
+                      plate: '',
+                    });
                     window.prompt(
                       'Submitted! objectId:',
                       data.submission.objectId,

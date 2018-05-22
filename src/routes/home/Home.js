@@ -323,15 +323,10 @@ class Home extends React.Component {
     });
 
     for (const attachmentFile of attachmentData) {
-      try {
-        // eslint-disable-next-line no-await-in-loop
-        await Promise.all([
-          this.extractPlate({ attachmentFile }).then(this.setLicensePlate),
-          extractLocationDate({ attachmentFile }).then(this.setLocationDate),
-        ]);
-      } catch (err) {
-        console.error(`Error: ${err.message}`);
-      }
+      // eslint-disable-next-line no-await-in-loop
+      await extractLocationDate({ attachmentFile })
+        .then(this.setLocationDate)
+        .catch(err => console.error(`Error: ${err.message}`));
     }
   };
 

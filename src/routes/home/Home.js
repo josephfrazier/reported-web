@@ -758,6 +758,9 @@ class Home extends React.Component {
                     onChange={event => {
                       this.setLicensePlate({ plate: event.target.value });
                     }}
+                    style={{
+                      textTransform: 'uppercase',
+                    }}
                   />
                   &nbsp;
                   <button

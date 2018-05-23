@@ -285,6 +285,11 @@ exports[`Home renders children correctly 1`] = `
               disabled={false}
               onChange={[Function]}
               required={true}
+              style={
+                Object {
+                  "textTransform": "uppercase",
+                }
+              }
               type="text"
               value=""
             />

@@ -34,6 +34,7 @@ import MP4Box from 'mp4box';
 import execall from 'execall';
 import captureFrame from 'capture-frame';
 import pEvent from 'p-event';
+import omit from 'object.omit';
 
 import marx from 'marx-css/css/marx.css';
 import s from './Home.css';
@@ -95,8 +96,7 @@ const geolocate = () =>
 
 const jsDateToCreateDate = jsDate => jsDate.toISOString().replace(/\..*/g, '');
 
-const initialStatePersistent = {
-  isUserInfoOpen: true,
+const initialStatePerSubmission = {
   email: '',
   password: '',
   FirstName: '',
@@ -117,6 +117,11 @@ const initialStatePersistent = {
   longitude: defaultLongitude,
   formatted_address: '',
   CreateDate: jsDateToCreateDate(new Date()),
+};
+
+const initialStatePersistent = {
+  ...initialStatePerSubmission,
+  isUserInfoOpen: true,
 };
 
 const initialStatePerSession = {
@@ -613,7 +618,9 @@ class Home extends React.Component {
                 });
                 axios
                   .post('/submit', {
-                    ...this.state,
+                    ...omit(this.state, (val, key) =>
+                      Object.keys(initialStatePerSubmission).includes(key),
+                    ),
                     attachmentDataBase64: await Promise.all(
                       this.state.attachmentData.map(attachmentFile =>
                         blobUtil.blobToBase64String(attachmentFile),

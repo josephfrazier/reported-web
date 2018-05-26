@@ -756,10 +756,9 @@ class Home extends React.Component {
                         : this.state.plate
                     }
                     onChange={event => {
-                      this.setLicensePlate({ plate: event.target.value });
-                    }}
-                    style={{
-                      textTransform: 'uppercase',
+                      this.setLicensePlate({
+                        plate: event.target.value.toUpperCase(),
+                      });
                     }}
                   />
                   &nbsp;

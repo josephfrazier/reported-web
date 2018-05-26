@@ -616,6 +616,7 @@ class Home extends React.Component {
                     CreateDate: new Date(this.state.CreateDate).toISOString(),
                   })
                   .then(({ data }) => {
+                    window.scrollTo(0, 0);
                     console.info(
                       `submitted successfully. Returned data: ${JSON.stringify(
                         data,

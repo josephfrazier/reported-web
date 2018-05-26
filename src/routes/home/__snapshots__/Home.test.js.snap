@@ -24,179 +24,183 @@ exports[`Home renders children correctly 1`] = `
         <form
           onSubmit={[Function]}
         >
-          <label>
-            Email:
-             
-            <input
-              autoComplete="email"
-              name="email"
-              onChange={[Function]}
-              onInvalid={[Function]}
-              required={true}
-              type="email"
-              value=""
-            />
-          </label>
-          <label>
-            Password (this is saved on your device, so use a password you don't use anywhere else): 
-            <div
-              style={
-                Object {
-                  "display": "flex",
-                }
-              }
-            >
+          <fieldset
+            disabled={false}
+          >
+            <label>
+              Email:
+               
               <input
-                autoComplete="current-password"
-                name="password"
+                autoComplete="email"
+                name="email"
                 onChange={[Function]}
                 onInvalid={[Function]}
                 required={true}
-                type="password"
+                type="email"
                 value=""
               />
-               
-              <button
-                onClick={[Function]}
-                type="button"
+            </label>
+            <label>
+              Password (this is saved on your device, so use a password you don't use anywhere else): 
+              <div
+                style={
+                  Object {
+                    "display": "flex",
+                  }
+                }
               >
-                Show
-              </button>
-               
-              <button
-                onClick={[Function]}
-                type="button"
-              >
-                Reset
-              </button>
-            </div>
-          </label>
-          <label>
-            First Name:
-             
-            <input
-              name="FirstName"
-              onChange={[Function]}
-              onInvalid={[Function]}
-              required={true}
-              type="text"
-              value=""
-            />
-          </label>
-          <label>
-            Last Name:
-             
-            <input
-              name="LastName"
-              onChange={[Function]}
-              onInvalid={[Function]}
-              required={true}
-              type="text"
-              value=""
-            />
-          </label>
-          <label>
-            Building Number:
-             
-            <input
-              name="Building"
-              onChange={[Function]}
-              onInvalid={[Function]}
-              required={true}
-              type="text"
-              value=""
-            />
-          </label>
-          <label>
-            Street Name:
-             
-            <input
-              name="StreetName"
-              onChange={[Function]}
-              onInvalid={[Function]}
-              required={true}
-              type="text"
-              value=""
-            />
-          </label>
-          <label>
-            Apartment Number:
-             
-            <input
-              name="Apt"
-              onChange={[Function]}
-              type="text"
-              value=""
-            />
-          </label>
-          <label>
-            Borough:
-             
-            <select
-              name="Borough"
-              onChange={[Function]}
-              value="Bronx"
-            >
-              <option
+                <input
+                  autoComplete="current-password"
+                  name="password"
+                  onChange={[Function]}
+                  onInvalid={[Function]}
+                  required={true}
+                  type="password"
+                  value=""
+                />
+                 
+                <button
+                  onClick={[Function]}
+                  type="button"
+                >
+                  Show
+                </button>
+                 
+                <button
+                  onClick={[Function]}
+                  type="button"
+                >
+                  Reset
+                </button>
+              </div>
+            </label>
+            <label>
+              First Name:
+               
+              <input
+                name="FirstName"
+                onChange={[Function]}
+                onInvalid={[Function]}
+                required={true}
+                type="text"
+                value=""
+              />
+            </label>
+            <label>
+              Last Name:
+               
+              <input
+                name="LastName"
+                onChange={[Function]}
+                onInvalid={[Function]}
+                required={true}
+                type="text"
+                value=""
+              />
+            </label>
+            <label>
+              Building Number:
+               
+              <input
+                name="Building"
+                onChange={[Function]}
+                onInvalid={[Function]}
+                required={true}
+                type="text"
+                value=""
+              />
+            </label>
+            <label>
+              Street Name:
+               
+              <input
+                name="StreetName"
+                onChange={[Function]}
+                onInvalid={[Function]}
+                required={true}
+                type="text"
+                value=""
+              />
+            </label>
+            <label>
+              Apartment Number:
+               
+              <input
+                name="Apt"
+                onChange={[Function]}
+                type="text"
+                value=""
+              />
+            </label>
+            <label>
+              Borough:
+               
+              <select
+                name="Borough"
+                onChange={[Function]}
                 value="Bronx"
               >
-                Bronx
-              </option>
-              <option
-                value="Brooklyn"
-              >
-                Brooklyn
-              </option>
-              <option
-                value="Manhattan"
-              >
-                Manhattan
-              </option>
-              <option
-                value="Queens"
-              >
-                Queens
-              </option>
-              <option
-                value="Staten Island"
-              >
-                Staten Island
-              </option>
-              <option
-                value="NOT WITHIN NEW YORK CITY"
-              >
-                NOT WITHIN NEW YORK CITY
-              </option>
-            </select>
-          </label>
-          <label>
-            Phone Number:
-             
-            <input
-              name="Phone"
-              onChange={[Function]}
-              onInvalid={[Function]}
-              required={true}
-              type="tel"
-              value=""
-            />
-          </label>
-          <label>
-            <input
-              checked={false}
-              name="testify"
-              onChange={[Function]}
-              type="checkbox"
-            />
-             
-            I'm willing to testify at a hearing, which can be done by phone.
-          </label>
-          <button
-            disabled={false}
-            type="submit"
-          >
-            Save
-          </button>
+                <option
+                  value="Bronx"
+                >
+                  Bronx
+                </option>
+                <option
+                  value="Brooklyn"
+                >
+                  Brooklyn
+                </option>
+                <option
+                  value="Manhattan"
+                >
+                  Manhattan
+                </option>
+                <option
+                  value="Queens"
+                >
+                  Queens
+                </option>
+                <option
+                  value="Staten Island"
+                >
+                  Staten Island
+                </option>
+                <option
+                  value="NOT WITHIN NEW YORK CITY"
+                >
+                  NOT WITHIN NEW YORK CITY
+                </option>
+              </select>
+            </label>
+            <label>
+              Phone Number:
+               
+              <input
+                name="Phone"
+                onChange={[Function]}
+                onInvalid={[Function]}
+                required={true}
+                type="tel"
+                value=""
+              />
+            </label>
+            <label>
+              <input
+                checked={false}
+                name="testify"
+                onChange={[Function]}
+                type="checkbox"
+              />
+               
+              I'm willing to testify at a hearing, which can be done by phone.
+            </label>
+            <button
+              disabled={false}
+              type="submit"
+            >
+              Save
+            </button>
+          </fieldset>
         </form>
       </details>
       <form
@@ -207,258 +211,262 @@ exports[`Home renders children correctly 1`] = `
           }
         }
       >
-        <div
-          className="_react-file-reader-input"
-          onClick={[Function]}
-          style={
-            Object {
-              "float": "left",
-              "margin": "1px",
-            }
-          }
+        <fieldset
+          disabled={false}
         >
-          <input
-            accept="image/*"
-            multiple={true}
-            onChange={[Function]}
-            onClick={[Function]}
-            style={
-              Object {
-                "position": "absolute",
-                "top": "-9999px",
-              }
-            }
-            type="file"
-          />
-          <button
-            type="button"
-          >
-            Add picture(s)
-          </button>
-        </div>
-        <div
-          className="_react-file-reader-input"
-          onClick={[Function]}
-          style={
-            Object {
-              "float": "left",
-              "margin": "1px",
-            }
-          }
-        >
-          <input
-            accept="video/*"
-            multiple={true}
-            onChange={[Function]}
-            onClick={[Function]}
-            style={
-              Object {
-                "position": "absolute",
-                "top": "-9999px",
-              }
-            }
-            type="file"
-          />
-          <button
-            type="button"
-          >
-            Add video(s)
-          </button>
-        </div>
-        <ol
-          style={
-            Object {
-              "clear": "both",
-            }
-          }
-        />
-        <label>
-          License/Medallion:
           <div
+            className="_react-file-reader-input"
+            onClick={[Function]}
             style={
               Object {
-                "display": "flex",
+                "float": "left",
+                "margin": "1px",
               }
             }
           >
             <input
-              disabled={false}
+              accept="image/*"
+              multiple={true}
               onChange={[Function]}
-              required={true}
-              type="text"
-              value=""
-            />
-             
-            <button
-              onClick={[Function]}
-              type="button"
-            >
-              Clear
-            </button>
-          </div>
-        </label>
-        <label>
-          I was:
-           
-          <select
-            name="typeofuser"
-            onChange={[Function]}
-            value="Cyclist"
-          >
-            <option
-              value="Cyclist"
-            >
-              Cyclist
-            </option>
-            <option
-              value="Walker"
-            >
-              Walker
-            </option>
-            <option
-              value="Passenger"
-            >
-              Passenger
-            </option>
-          </select>
-        </label>
-        <label>
-          Type:
-           
-          <select
-            name="typeofcomplaint"
-            onChange={[Function]}
-            value="Blocked the bike lane"
-          >
-            <option
-              value="Blocked the bike lane"
-            >
-              Blocked the bike lane
-            </option>
-            <option
-              value="Blocked the crosswalk"
-            >
-              Blocked the crosswalk
-            </option>
-            <option
-              value="Honked horn (no emergency)"
-            >
-              Honked horn (no emergency)
-            </option>
-            <option
-              value="Failed to yield to pedestrian"
-            >
-              Failed to yield to pedestrian
-            </option>
-            <option
-              value="Drove aggressively"
-            >
-              Drove aggressively
-            </option>
-            <option
-              value="Was on a cell phone while driving"
-            >
-              Was on a cell phone while driving
-            </option>
-            <option
-              value="Refused to pick me up"
-            >
-              Refused to pick me up
-            </option>
-            <option
-              value="Was courteous, kind or polite"
-            >
-              Was courteous, kind or polite
-            </option>
-            <option
-              value="Went above and beyond to help"
-            >
-              Went above and beyond to help
-            </option>
-          </select>
-        </label>
-        <details>
-          <summary
-            style={
-              Object {
-                "outline": "none",
-              }
-            }
-          >
-            Where: (click to edit)
-            <button
               onClick={[Function]}
               style={
                 Object {
-                  "float": "right",
+                  "position": "absolute",
+                  "top": "-9999px",
                 }
               }
+              type="file"
+            />
+            <button
               type="button"
             >
-              Here
+              Add picture(s)
             </button>
-            <br />
-            
-          </summary>
+          </div>
           <div
+            className="_react-file-reader-input"
+            onClick={[Function]}
             style={
               Object {
-                "height": "100%",
-              }
-            }
-          />
-        </details>
-        <label>
-          When:
-           
-          <div
-            style={
-              Object {
-                "display": "flex",
+                "float": "left",
+                "margin": "1px",
               }
             }
           >
             <input
-              name="CreateDate"
+              accept="video/*"
+              multiple={true}
               onChange={[Function]}
-              required={true}
-              type="datetime-local"
-              value="2016-11-17T20:00:00"
-            />
-             
-            <button
               onClick={[Function]}
+              style={
+                Object {
+                  "position": "absolute",
+                  "top": "-9999px",
+                }
+              }
+              type="file"
+            />
+            <button
               type="button"
             >
-              Now
+              Add video(s)
             </button>
           </div>
-        </label>
-        <label>
-          Description:
-           
-          <textarea
-            name="reportDescription"
-            onChange={[Function]}
-            value=""
+          <ol
+            style={
+              Object {
+                "clear": "both",
+              }
+            }
           />
-        </label>
-        <label>
-          <input
-            checked={false}
-            name="can_be_shared_publicly"
-            onChange={[Function]}
-            type="checkbox"
-          />
-           
-          Allow the photos/videos, description, category, and location to be publicly displayed
-        </label>
-        <button
-          disabled={false}
-          type="submit"
-        >
-          Submit
-        </button>
+          <label>
+            License/Medallion:
+            <div
+              style={
+                Object {
+                  "display": "flex",
+                }
+              }
+            >
+              <input
+                disabled={false}
+                onChange={[Function]}
+                required={true}
+                type="text"
+                value=""
+              />
+               
+              <button
+                onClick={[Function]}
+                type="button"
+              >
+                Clear
+              </button>
+            </div>
+          </label>
+          <label>
+            I was:
+             
+            <select
+              name="typeofuser"
+              onChange={[Function]}
+              value="Cyclist"
+            >
+              <option
+                value="Cyclist"
+              >
+                Cyclist
+              </option>
+              <option
+                value="Walker"
+              >
+                Walker
+              </option>
+              <option
+                value="Passenger"
+              >
+                Passenger
+              </option>
+            </select>
+          </label>
+          <label>
+            Type:
+             
+            <select
+              name="typeofcomplaint"
+              onChange={[Function]}
+              value="Blocked the bike lane"
+            >
+              <option
+                value="Blocked the bike lane"
+              >
+                Blocked the bike lane
+              </option>
+              <option
+                value="Blocked the crosswalk"
+              >
+                Blocked the crosswalk
+              </option>
+              <option
+                value="Honked horn (no emergency)"
+              >
+                Honked horn (no emergency)
+              </option>
+              <option
+                value="Failed to yield to pedestrian"
+              >
+                Failed to yield to pedestrian
+              </option>
+              <option
+                value="Drove aggressively"
+              >
+                Drove aggressively
+              </option>
+              <option
+                value="Was on a cell phone while driving"
+              >
+                Was on a cell phone while driving
+              </option>
+              <option
+                value="Refused to pick me up"
+              >
+                Refused to pick me up
+              </option>
+              <option
+                value="Was courteous, kind or polite"
+              >
+                Was courteous, kind or polite
+              </option>
+              <option
+                value="Went above and beyond to help"
+              >
+                Went above and beyond to help
+              </option>
+            </select>
+          </label>
+          <details>
+            <summary
+              style={
+                Object {
+                  "outline": "none",
+                }
+              }
+            >
+              Where: (click to edit)
+              <button
+                onClick={[Function]}
+                style={
+                  Object {
+                    "float": "right",
+                  }
+                }
+                type="button"
+              >
+                Here
+              </button>
+              <br />
+              
+            </summary>
+            <div
+              style={
+                Object {
+                  "height": "100%",
+                }
+              }
+            />
+          </details>
+          <label>
+            When:
+             
+            <div
+              style={
+                Object {
+                  "display": "flex",
+                }
+              }
+            >
+              <input
+                name="CreateDate"
+                onChange={[Function]}
+                required={true}
+                type="datetime-local"
+                value="2016-11-17T20:00:00"
+              />
+               
+              <button
+                onClick={[Function]}
+                type="button"
+              >
+                Now
+              </button>
+            </div>
+          </label>
+          <label>
+            Description:
+             
+            <textarea
+              name="reportDescription"
+              onChange={[Function]}
+              value=""
+            />
+          </label>
+          <label>
+            <input
+              checked={false}
+              name="can_be_shared_publicly"
+              onChange={[Function]}
+              type="checkbox"
+            />
+             
+            Allow the photos/videos, description, category, and location to be publicly displayed
+          </label>
+          <button
+            disabled={false}
+            type="submit"
+          >
+            Submit
+          </button>
+        </fieldset>
       </form>
       <br />
       <details

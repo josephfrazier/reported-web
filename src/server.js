@@ -436,9 +436,16 @@ app.use('/submit', (req, res) => {
       return submission.save(null);
     })
     .then(submission => {
-      console.info({ submission });
+      // Unwrap encoded Date objects into ISO strings
+      // before: { __type: 'Date', iso: '2018-05-26T23:17:22.000Z' }
+      // after: '2018-05-26T23:17:22.000Z'
+      const submissionValue = submission.toJSON();
+      submissionValue.timeofreport = submissionValue.timeofreport.iso;
+      submissionValue.timeofreported = submissionValue.timeofreported.iso;
 
-      res.json({ submission });
+      console.info({ submission: submissionValue });
+
+      res.json({ submission: submissionValue });
     })
     .catch(error => {
       console.error({ error });

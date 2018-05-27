@@ -409,27 +409,19 @@ app.use('/submit', upload.array('attachmentData[]'), (req, res) => {
       // upload attachments
       // http://docs.parseplatform.org/js/guide/#creating-a-parsefile
 
-      const images = attachmentData
-        .map(({ buffer: attachmentBuffer }) => {
+      const attachmentsWithFormats = attachmentData.map(
+        ({ buffer: attachmentBuffer }) => {
           const attachmentBytes = attachmentBuffer.toString('base64');
           return {
             attachmentBytes,
             attachmentBuffer,
             ext: fileType(attachmentBuffer).ext,
           };
-        })
-        .filter(isImage);
+        },
+      );
 
-      const videos = attachmentData
-        .map(({ buffer: attachmentBuffer }) => {
-          const attachmentBytes = attachmentBuffer.toString('base64');
-          return {
-            attachmentBytes,
-            attachmentBuffer,
-            ext: fileType(attachmentBuffer).ext,
-          };
-        })
-        .filter(isVideo);
+      const images = attachmentsWithFormats.filter(isImage);
+      const videos = attachmentsWithFormats.filter(isVideo);
 
       await Promise.all([
         ...images.slice(0, 3).map(async ({ attachmentBuffer, ext }, index) => {

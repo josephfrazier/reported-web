@@ -297,6 +297,7 @@ function orientImageBuffer({ attachmentBuffer }) {
     .rotate()
     .toBuffer()
     .catch(() => attachmentBuffer)
+    .then(buffer => Buffer.from(buffer))
     .then(buffer => {
       console.timeEnd(`orientImageBuffer`); // eslint-disable-line no-console
       return buffer;

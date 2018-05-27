@@ -36,6 +36,7 @@ import captureFrame from 'capture-frame';
 import pEvent from 'p-event';
 import omit from 'object.omit';
 import bufferToArrayBuffer from 'buffer-to-arraybuffer';
+import objectToFormData from 'object-to-formdata';
 
 import marx from 'marx-css/css/marx.css';
 import s from './Home.css';
@@ -607,17 +608,16 @@ class Home extends React.Component {
                   isSubmitting: true,
                 });
                 axios
-                  .post('/submit', {
-                    ...omit(this.state, (val, key) =>
-                      Object.keys(initialStatePerSubmission).includes(key),
-                    ),
-                    attachmentDataBase64: await Promise.all(
-                      this.state.attachmentData.map(attachmentFile =>
-                        blobUtil.blobToBase64String(attachmentFile),
+                  .post(
+                    '/submit',
+                    objectToFormData({
+                      ...omit(this.state, (val, key) =>
+                        Object.keys(initialStatePerSubmission).includes(key),
                       ),
-                    ),
-                    CreateDate: new Date(this.state.CreateDate).toISOString(),
-                  })
+                      attachmentData: this.state.attachmentData,
+                      CreateDate: new Date(this.state.CreateDate).toISOString(),
+                    }),
+                  )
                   .then(({ data }) => {
                     const { submission } = data;
                     window.scrollTo(0, 0);

@@ -304,7 +304,7 @@ function orientImageBuffer({ attachmentBuffer }) {
     });
 }
 
-app.use('/submit', (req, res) => {
+app.use('/submit', upload.array('attachmentData[]'), (req, res) => {
   const { body } = req;
 
   const {
@@ -317,20 +317,26 @@ app.use('/submit', (req, res) => {
     Apt,
     Borough,
     Phone,
-    testify,
+    testify: testifyString,
 
     plate,
     typeofuser,
     typeofreport = 'complaint',
     typeofcomplaint,
     reportDescription,
-    can_be_shared_publicly, // eslint-disable-line camelcase
-    latitude,
-    longitude,
+    can_be_shared_publicly: can_be_shared_publiclyString, // eslint-disable-line camelcase
+    latitude: latitudeString,
+    longitude: longitudeString,
     formatted_address, // eslint-disable-line camelcase
-    attachmentDataBase64 = [],
     CreateDate,
   } = body;
+
+  const testify = testifyString === 'true';
+  const can_be_shared_publicly = can_be_shared_publiclyString === 'true'; // eslint-disable-line camelcase
+  const latitude = Number(latitudeString);
+  const longitude = Number(longitudeString);
+
+  const attachmentData = req.files;
 
   const timeofreport = new Date(CreateDate);
   const timeofreported = timeofreport;
@@ -403,9 +409,9 @@ app.use('/submit', (req, res) => {
       // upload attachments
       // http://docs.parseplatform.org/js/guide/#creating-a-parsefile
 
-      const images = attachmentDataBase64
-        .map(attachmentBytes => {
-          const attachmentBuffer = Buffer.from(attachmentBytes, 'base64');
+      const images = attachmentData
+        .map(({ buffer: attachmentBuffer }) => {
+          const attachmentBytes = attachmentBuffer.toString('base64');
           return {
             attachmentBytes,
             attachmentBuffer,
@@ -414,9 +420,9 @@ app.use('/submit', (req, res) => {
         })
         .filter(isImage);
 
-      const videos = attachmentDataBase64
-        .map(attachmentBytes => {
-          const attachmentBuffer = Buffer.from(attachmentBytes, 'base64');
+      const videos = attachmentData
+        .map(({ buffer: attachmentBuffer }) => {
+          const attachmentBytes = attachmentBuffer.toString('base64');
           return {
             attachmentBytes,
             attachmentBuffer,

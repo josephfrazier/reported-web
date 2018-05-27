@@ -291,17 +291,15 @@ app.use('/requestPasswordReset', (req, res) => {
     });
 });
 
-function orientImageBase64({ attachmentBytes }) {
-  const attachmentBuffer = Buffer.from(attachmentBytes, 'base64');
-  console.time(`orientImageBase64`); // eslint-disable-line no-console
+function orientImageBuffer({ attachmentBuffer }) {
+  console.time(`orientImageBuffer`); // eslint-disable-line no-console
   return sharp(attachmentBuffer)
     .rotate()
     .toBuffer()
     .catch(() => attachmentBuffer)
     .then(buffer => {
-      console.timeEnd(`orientImageBase64`); // eslint-disable-line no-console
-      const attachmentBytesRotated = buffer.toString('base64');
-      return attachmentBytesRotated;
+      console.timeEnd(`orientImageBuffer`); // eslint-disable-line no-console
+      return buffer;
     });
 }
 
@@ -405,24 +403,36 @@ app.use('/submit', (req, res) => {
       // http://docs.parseplatform.org/js/guide/#creating-a-parsefile
 
       const images = attachmentDataBase64
-        .map(attachmentBytes => ({
-          attachmentBytes,
-          ext: fileType(Buffer.from(attachmentBytes, 'base64')).ext,
-        }))
+        .map(attachmentBytes => {
+          const attachmentBuffer = Buffer.from(attachmentBytes, 'base64');
+          return {
+            attachmentBytes,
+            attachmentBuffer,
+            ext: fileType(attachmentBuffer).ext,
+          };
+        })
         .filter(isImage);
 
       const videos = attachmentDataBase64
-        .map(attachmentBytes => ({
-          attachmentBytes,
-          ext: fileType(Buffer.from(attachmentBytes, 'base64')).ext,
-        }))
+        .map(attachmentBytes => {
+          const attachmentBuffer = Buffer.from(attachmentBytes, 'base64');
+          return {
+            attachmentBytes,
+            attachmentBuffer,
+            ext: fileType(attachmentBuffer).ext,
+          };
+        })
         .filter(isVideo);
 
       await Promise.all([
-        ...images.slice(0, 3).map(async ({ attachmentBytes, ext }, index) => {
+        ...images.slice(0, 3).map(async ({ attachmentBuffer, ext }, index) => {
+          const attachmentBytesRotated = (await orientImageBuffer({
+            attachmentBuffer,
+          })).toString('base64');
+
           const key = `photoData${index}`;
           const file = new Parse.File(`${key}.${ext}`, {
-            base64: await orientImageBase64({ attachmentBytes }),
+            base64: attachmentBytesRotated,
           });
           await file.save();
           submission.set(key, file);
@@ -467,12 +477,13 @@ app.use('/openalpr', upload.single('attachmentFile'), (req, res) => {
     prewarp: '',
   };
 
-  const attachmentBytes = req.file.buffer.toString('base64');
+  const attachmentBuffer = req.file.buffer;
   const api = new OpenalprApi.DefaultApi();
 
   const secretKey = process.env.OPENALPR_SECRET_KEY; // {String} The secret key used to authenticate your account. You can view your secret key by visiting https://cloud.openalpr.com/
 
-  orientImageBase64({ attachmentBytes })
+  orientImageBuffer({ attachmentBuffer })
+    .then(buffer => buffer.toString('base64'))
     .then(attachmentBytesRotated => {
       console.time(`/openalpr recognizeBytes`); // eslint-disable-line no-console
       return new Promise((resolve, reject) => {

@@ -421,23 +421,20 @@ app.use('/submit', upload.array('attachmentData[]'), (req, res) => {
 
       await Promise.all([
         ...images.slice(0, 3).map(async ({ attachmentBuffer, ext }, index) => {
-          const attachmentBytesRotated = (await orientImageBuffer({
+          const attachmentBufferRotated = await orientImageBuffer({
             attachmentBuffer,
-          })).toString('base64');
+          });
 
           const key = `photoData${index}`;
-          const file = new Parse.File(`${key}.${ext}`, {
-            base64: attachmentBytesRotated,
-          });
+          const file = new Parse.File(`${key}.${ext}`, [
+            ...attachmentBufferRotated,
+          ]);
           await file.save();
           submission.set(key, file);
         }),
         ...videos.slice(0, 3).map(async ({ attachmentBuffer, ext }, index) => {
-          const attachmentBytes = attachmentBuffer.toString('base64');
           const key = `videoData${index}`;
-          const file = new Parse.File(`${key}.${ext}`, {
-            base64: attachmentBytes,
-          });
+          const file = new Parse.File(`${key}.${ext}`, [...attachmentBuffer]);
           await file.save();
           submission.set(key, file.url());
         }),

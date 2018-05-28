@@ -410,14 +410,10 @@ app.use('/submit', upload.array('attachmentData[]'), (req, res) => {
       // http://docs.parseplatform.org/js/guide/#creating-a-parsefile
 
       const attachmentsWithFormats = attachmentData.map(
-        ({ buffer: attachmentBuffer }) => {
-          const attachmentBytes = attachmentBuffer.toString('base64');
-          return {
-            attachmentBytes,
-            attachmentBuffer,
-            ext: fileType(attachmentBuffer).ext,
-          };
-        },
+        ({ buffer: attachmentBuffer }) => ({
+          attachmentBuffer,
+          ext: fileType(attachmentBuffer).ext,
+        }),
       );
 
       const images = attachmentsWithFormats.filter(isImage);
@@ -436,7 +432,8 @@ app.use('/submit', upload.array('attachmentData[]'), (req, res) => {
           await file.save();
           submission.set(key, file);
         }),
-        ...videos.slice(0, 3).map(async ({ attachmentBytes, ext }, index) => {
+        ...videos.slice(0, 3).map(async ({ attachmentBuffer, ext }, index) => {
+          const attachmentBytes = attachmentBuffer.toString('base64');
           const key = `videoData${index}`;
           const file = new Parse.File(`${key}.${ext}`, {
             base64: attachmentBytes,

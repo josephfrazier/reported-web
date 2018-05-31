@@ -279,8 +279,7 @@ app.get('/srlookup/:reqnumber', (req, res) => {
 });
 
 app.use('/requestPasswordReset', (req, res) => {
-  const { body } = req;
-  const { email } = body;
+  const { email } = req.body;
 
   // http://docs.parseplatform.org/js/guide/#resetting-passwords
   Parse.User.requestPasswordReset(email)
@@ -305,8 +304,6 @@ function orientImageBuffer({ attachmentBuffer }) {
 }
 
 app.use('/submit', upload.array('attachmentData[]'), (req, res) => {
-  const { body } = req;
-
   const {
     email,
     password,
@@ -329,7 +326,7 @@ app.use('/submit', upload.array('attachmentData[]'), (req, res) => {
     longitude: longitudeString,
     formatted_address, // eslint-disable-line camelcase
     CreateDate,
-  } = body;
+  } = req.body;
 
   const testify = testifyString === 'true';
   const can_be_shared_publicly = can_be_shared_publiclyString === 'true'; // eslint-disable-line camelcase

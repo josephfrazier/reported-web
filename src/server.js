@@ -500,6 +500,47 @@ app.use('/openalpr', upload.single('attachmentFile'), (req, res) => {
     });
 });
 
+// ported from https://github.com/jeffrono/Reported/blob/19b588171315a3093d53986f9fb995059f5084b4/v2/enrich_functions.rb#L325-L346
+app.use('/getVehicleType/:licensePlate/:licenseState?', (req, res) => {
+  const { licensePlate = 'GNS7685', licenseState = 'NY' } = req.params;
+  const url = `https://www.searchquarry.com/vehicle_records/license-register?license_plates=${licensePlate}&state=${licenseState}`;
+
+  axios
+    .get(url)
+    .then(({ data }) => {
+      const vehicleYear = data.match(/>Year:.+?<span>(.+?)</s)[1].trim();
+      const vehicleMake = data.match(/>Make:.+?<span>(.+?)</s)[1].trim();
+      const vehicleModel = data.match(/>Model:.+?<span>(.+?)</s)[1].trim();
+      let vehicleBody;
+
+      try {
+        vehicleBody = data.match(/>Body:.+?><span>(.+?)</s)[1].trim();
+      } catch (err) {
+        console.error('no vehicle body');
+      }
+
+      if (vehicleYear === 'Try Members Area') {
+        const message = 'not found';
+        throw { message, licensePlate, licenseState }; // eslint-disable-line no-throw-literal
+      }
+
+      res.json({
+        result: {
+          vehicleYear,
+          vehicleMake,
+          vehicleModel,
+          vehicleBody,
+          licensePlate,
+          licenseState,
+        },
+      });
+    })
+    .catch(error => {
+      console.error({ error });
+      res.status(500).json({ error });
+    });
+});
+
 //
 // Register server-side rendering middleware
 // -----------------------------------------------------------------------------

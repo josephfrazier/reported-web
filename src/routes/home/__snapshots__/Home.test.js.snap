@@ -303,6 +303,7 @@ exports[`Home renders children correctly 1`] = `
                 Clear
               </button>
             </div>
+            <br />
           </label>
           <label>
             I was:

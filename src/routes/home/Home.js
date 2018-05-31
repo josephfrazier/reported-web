@@ -52,6 +52,11 @@ const debouncedReverseGeocode = debounce(async ({ latitude, longitude }) => {
   return data;
 }, 500);
 
+const debouncedGetVehicleType = debounce(
+  ({ plate }) => axios.get(`/getVehicleType/${plate}`),
+  500,
+);
+
 const typeofuserValues = ['Cyclist', 'Walker', 'Passenger'];
 const typeofcomplaintValues = [
   'Blocked the bike lane',
@@ -132,6 +137,7 @@ const initialStatePerSession = {
   isUserInfoSaving: false,
   isSubmitting: false,
   isLoadingPlate: false,
+  isVehicleLoaded: false,
   submissions: [],
 };
 
@@ -318,7 +324,24 @@ class Home extends React.Component {
   };
 
   setLicensePlate = ({ plate }) => {
-    this.setState({ plate });
+    this.setState({ plate, isVehicleLoaded: false });
+
+    debouncedGetVehicleType({ plate }).then(({ data }) => {
+      const {
+        vehicleYear,
+        vehicleMake,
+        vehicleModel,
+        vehicleBody,
+      } = data.result;
+
+      this.setState({
+        isVehicleLoaded: true,
+        vehicleYear,
+        vehicleMake,
+        vehicleModel,
+        vehicleBody,
+      });
+    });
   };
 
   // adapted from https://github.com/ngokevin/react-file-reader-input/tree/f970257f271b8c3bba9d529ffdbfa4f4731e0799#usage
@@ -780,6 +803,11 @@ class Home extends React.Component {
                       Clear
                     </button>
                   </div>
+                  {this.state.isVehicleLoaded ? (
+                    `Vehicle Info: ${this.state.vehicleYear} ${this.state.vehicleMake} ${this.state.vehicleModel} (${this.state.vehicleBody})` // prettier-ignore
+                  ) : (
+                    <br />
+                  )}
                 </label>
 
                 <label>

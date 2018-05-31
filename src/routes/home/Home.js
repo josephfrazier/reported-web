@@ -630,9 +630,9 @@ class Home extends React.Component {
                     );
                     this.setState({
                       attachmentData: [],
-                      plate: '',
                       submissions: [submission].concat(this.state.submissions),
                     });
+                    this.setLicensePlate({ plate: '' });
                     window.prompt(
                       'Submitted! objectId:',
                       data.submission.objectId,

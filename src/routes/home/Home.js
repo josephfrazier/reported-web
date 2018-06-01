@@ -382,8 +382,8 @@ class Home extends React.Component {
 
     try {
       if (this.attachmentPlates.has(attachmentFile)) {
-        const plate = this.attachmentPlates.get(attachmentFile);
-        return { plate };
+        const result = this.attachmentPlates.get(attachmentFile);
+        return result;
       }
 
       let { attachmentBuffer } = await blobToBuffer({ attachmentFile });
@@ -404,9 +404,9 @@ class Home extends React.Component {
       const formData = new window.FormData();
       formData.append('attachmentFile', attachmentBlob);
       const { data } = await axios.post('/openalpr', formData);
-      const { plate } = data.results[0];
-      this.attachmentPlates.set(attachmentFile, plate);
-      return { plate };
+      const result = data.results[0];
+      this.attachmentPlates.set(attachmentFile, result);
+      return result;
     } catch (err) {
       throw err;
     } finally {

@@ -505,9 +505,11 @@ app.use('/getVehicleType/:licensePlate/:licenseState?', (req, res) => {
   const { licensePlate = 'GNS7685', licenseState = 'NY' } = req.params;
   const url = `https://www.searchquarry.com/vehicle_records/license-register?license_plates=${licensePlate}&state=${licenseState}`;
 
+  console.time(url); // eslint-disable-line no-console
   axios
     .get(url)
     .then(({ data }) => {
+      console.timeEnd(url); // eslint-disable-line no-console
       const vehicleYear = data.match(/>Year:.+?<span>(.+?)</s)[1].trim();
       const vehicleMake = data.match(/>Make:.+?<span>(.+?)</s)[1].trim();
       const vehicleModel = data.match(/>Model:.+?<span>(.+?)</s)[1].trim();

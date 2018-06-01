@@ -37,6 +37,7 @@ import pEvent from 'p-event';
 import omit from 'object.omit';
 import bufferToArrayBuffer from 'buffer-to-arraybuffer';
 import objectToFormData from 'object-to-formdata';
+import usStateNames from 'datasets-us-states-abbr-names';
 
 import marx from 'marx-css/css/marx.css';
 import s from './Home.css';
@@ -53,7 +54,8 @@ const debouncedReverseGeocode = debounce(async ({ latitude, longitude }) => {
 }, 500);
 
 const debouncedGetVehicleType = debounce(
-  ({ plate }) => axios.get(`/getVehicleType/${plate}`),
+  ({ plate, licenseState }) =>
+    axios.get(`/getVehicleType/${plate}/${licenseState}`),
   500,
 );
 
@@ -116,6 +118,7 @@ const initialStatePerSubmission = {
   testify: false,
 
   plate: '',
+  licenseState: 'NY',
   typeofuser: typeofuserValues[0],
   typeofcomplaint: typeofcomplaintValues[0],
   reportDescription: '',
@@ -323,10 +326,11 @@ class Home extends React.Component {
     });
   };
 
-  setLicensePlate = ({ plate }) => {
-    this.setState({ plate, isVehicleLoaded: false });
+  setLicensePlate = ({ plate, licenseState }) => {
+    licenseState = licenseState || this.state.licenseState; // eslint-disable-line no-param-reassign
+    this.setState({ plate, licenseState, isVehicleLoaded: false });
 
-    debouncedGetVehicleType({ plate }).then(({ data }) => {
+    debouncedGetVehicleType({ plate, licenseState }).then(({ data }) => {
       const {
         vehicleYear,
         vehicleMake,
@@ -405,6 +409,7 @@ class Home extends React.Component {
       formData.append('attachmentFile', attachmentBlob);
       const { data } = await axios.post('/openalpr', formData);
       const result = data.results[0];
+      result.licenseState = result.region.toUpperCase();
       this.attachmentPlates.set(attachmentFile, result);
       return result;
     } catch (err) {
@@ -655,7 +660,7 @@ class Home extends React.Component {
                       attachmentData: [],
                       submissions: [submission].concat(this.state.submissions),
                     });
-                    this.setLicensePlate({ plate: '' });
+                    this.setLicensePlate({ plate: '', licenseState: 'NY' });
                     window.prompt(
                       'Submitted! objectId:',
                       data.submission.objectId,
@@ -794,10 +799,28 @@ class Home extends React.Component {
                       }}
                     />
                     &nbsp;
+                    <select
+                      value={this.state.licenseState}
+                      name="licenseState"
+                      disabled={this.state.isLoadingPlate}
+                      onChange={event => {
+                        this.setLicensePlate({
+                          plate: this.state.plate,
+                          licenseState: event.target.value,
+                        });
+                      }}
+                    >
+                      {Object.entries(usStateNames).map(([abbr, name]) => (
+                        <option key={abbr} value={abbr}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+                    &nbsp;
                     <button
                       type="button"
                       onClick={() => {
-                        this.setLicensePlate({ plate: '' });
+                        this.setLicensePlate({ plate: '', licenseState: 'NY' });
                       }}
                     >
                       Clear

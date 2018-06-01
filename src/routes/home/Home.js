@@ -140,7 +140,7 @@ const initialStatePerSession = {
   isUserInfoSaving: false,
   isSubmitting: false,
   isLoadingPlate: false,
-  isVehicleLoaded: false,
+  vehicleInfoComponent: <br />,
   submissions: [],
 };
 
@@ -328,24 +328,39 @@ class Home extends React.Component {
 
   setLicensePlate = ({ plate, licenseState }) => {
     licenseState = licenseState || this.state.licenseState; // eslint-disable-line no-param-reassign
-    this.setState({ plate, licenseState, isVehicleLoaded: false });
-
-    debouncedGetVehicleType({ plate, licenseState }).then(({ data }) => {
-      const {
-        vehicleYear,
-        vehicleMake,
-        vehicleModel,
-        vehicleBody,
-      } = data.result;
-
-      this.setState({
-        isVehicleLoaded: true,
-        vehicleYear,
-        vehicleMake,
-        vehicleModel,
-        vehicleBody,
-      });
+    this.setState({
+      plate,
+      licenseState,
+      vehicleInfoComponent: plate ? (
+        `Searching for ${plate} in ${usStateNames[licenseState]}`
+      ) : (
+        <br />
+      ),
     });
+
+    debouncedGetVehicleType({ plate, licenseState })
+      .then(({ data }) => {
+        const {
+          vehicleYear,
+          vehicleMake,
+          vehicleModel,
+          vehicleBody,
+        } = data.result;
+
+        this.setState({
+          vehicleInfoComponent: `Vehicle Info: ${vehicleYear} ${vehicleMake} ${vehicleModel} (${vehicleBody})` // prettier-ignore
+        });
+      })
+      .catch(err => {
+        console.error(err);
+        if (plate) {
+          this.setState({
+            vehicleInfoComponent: `Could not find ${plate} in ${
+              usStateNames[licenseState]
+            }`,
+          });
+        }
+      });
   };
 
   // adapted from https://github.com/ngokevin/react-file-reader-input/tree/f970257f271b8c3bba9d529ffdbfa4f4731e0799#usage
@@ -826,11 +841,7 @@ class Home extends React.Component {
                       Clear
                     </button>
                   </div>
-                  {this.state.isVehicleLoaded ? (
-                    `Vehicle Info: ${this.state.vehicleYear} ${this.state.vehicleMake} ${this.state.vehicleModel} (${this.state.vehicleBody})` // prettier-ignore
-                  ) : (
-                    <br />
-                  )}
+                  {this.state.vehicleInfoComponent}
                 </label>
 
                 <label>

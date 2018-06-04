@@ -99,6 +99,8 @@ module.exports = {
 
     // Don't disable any syntax
     'no-restricted-syntax': 'off',
+
+    'no-nested-ternary': 'off',
   },
 
   settings: {

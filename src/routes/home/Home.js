@@ -103,7 +103,8 @@ const geolocate = () =>
     return { coords: { latitude, longitude } };
   });
 
-const jsDateToCreateDate = jsDate => jsDate.toISOString().replace(/\..*/g, '');
+const jsDateToCreateDate = jsDate =>
+  jsDate.toISOString().replace(/:\d\d\..*/g, '');
 
 const initialStatePerSubmission = {
   email: '',
@@ -381,7 +382,12 @@ class Home extends React.Component {
 
   handleInputChange = event => {
     const { target } = event;
-    const value = target.type === 'checkbox' ? target.checked : target.value;
+    const value =
+      target.type === 'checkbox'
+        ? target.checked
+        : target.type === 'datetime-local'
+          ? target.value.slice(0, 'YYYY-MM-DDThh:mm'.length)
+          : target.value;
     const { name } = target;
 
     this.setState(

@@ -772,22 +772,6 @@ class Home extends React.Component {
                           ❌
                         </span>
                       </button>
-
-                      <button
-                        type="button"
-                        style={{
-                          margin: '1px',
-                        }}
-                        onClick={() => {
-                          extractLocationDate({ attachmentFile })
-                            .then(this.setLocationDate)
-                            .catch(err => {
-                              console.error(`Error: ${err.message}`);
-                            });
-                        }}
-                      >
-                        Read location and time
-                      </button>
                     </li>
                   ))}
                 </ol>

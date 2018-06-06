@@ -652,17 +652,6 @@ exports[`Home renders children correctly 1`] = `
               }
             >
               Where: (click to edit)
-              <button
-                onClick={[Function]}
-                style={
-                  Object {
-                    "float": "right",
-                  }
-                }
-                type="button"
-              >
-                Here
-              </button>
               <br />
               
             </summary>
@@ -677,28 +666,13 @@ exports[`Home renders children correctly 1`] = `
           <label>
             When:
              
-            <div
-              style={
-                Object {
-                  "display": "flex",
-                }
-              }
-            >
-              <input
-                name="CreateDate"
-                onChange={[Function]}
-                required={true}
-                type="datetime-local"
-                value="2016-11-17T20:00"
-              />
-               
-              <button
-                onClick={[Function]}
-                type="button"
-              >
-                Now
-              </button>
-            </div>
+            <input
+              name="CreateDate"
+              onChange={[Function]}
+              required={true}
+              type="datetime-local"
+              value="2016-11-17T20:00"
+            />
           </label>
           <label>
             Description:

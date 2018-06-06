@@ -887,24 +887,6 @@ class Home extends React.Component {
                     }}
                   >
                     Where: (click to edit)
-                    <button
-                      type="button"
-                      style={{
-                        float: 'right',
-                      }}
-                      onClick={() => {
-                        geolocate()
-                          .then(({ coords }) => {
-                            this.setCoords(coords);
-                          })
-                          .catch(err => {
-                            window.alert(err.message);
-                            console.error(err);
-                          });
-                      }}
-                    >
-                      Here
-                    </button>
                     <br />
                     {this.state.formatted_address
                       .split(', ')
@@ -953,24 +935,13 @@ class Home extends React.Component {
 
                 <label>
                   When:{' '}
-                  <div style={{ display: 'flex' }}>
-                    <input
-                      required
-                      type="datetime-local"
-                      value={this.state.CreateDate}
-                      name="CreateDate"
-                      onChange={this.handleInputChange}
-                    />
-                    &nbsp;
-                    <button
-                      type="button"
-                      onClick={() => {
-                        this.setCreateDate(Date.now());
-                      }}
-                    >
-                      Now
-                    </button>
-                  </div>
+                  <input
+                    required
+                    type="datetime-local"
+                    value={this.state.CreateDate}
+                    name="CreateDate"
+                    onChange={this.handleInputChange}
+                  />
                 </label>
 
                 <label>

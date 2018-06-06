@@ -374,10 +374,15 @@ class Home extends React.Component {
     });
 
     for (const attachmentFile of attachmentData) {
-      // eslint-disable-next-line no-await-in-loop
-      await extractLocationDate({ attachmentFile })
-        .then(this.setLocationDate)
-        .catch(err => console.error(`Error: ${err.message}`));
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        await Promise.all([
+          this.extractPlate({ attachmentFile }),
+          extractLocationDate({ attachmentFile }).then(this.setLocationDate),
+        ]);
+      } catch (err) {
+        console.error(`Error: ${err.message}`);
+      }
     }
   };
 
@@ -432,6 +437,9 @@ class Home extends React.Component {
       const { data } = await axios.post('/openalpr', formData);
       const result = data.results[0];
       result.licenseState = result.region.toUpperCase();
+      if (this.state.plate === '') {
+        this.setLicensePlate(result);
+      }
       this.setState({
         plateSuggestion: result.plate,
       });
@@ -812,12 +820,7 @@ class Home extends React.Component {
                     <input
                       required
                       type="text"
-                      disabled={this.state.isLoadingPlate}
-                      value={
-                        this.state.isLoadingPlate
-                          ? 'Reading...'
-                          : this.state.plate
-                      }
+                      value={this.state.plate}
                       list="plateSuggestion"
                       onChange={event => {
                         this.setLicensePlate({
@@ -834,7 +837,6 @@ class Home extends React.Component {
                     <select
                       value={this.state.licenseState}
                       name="licenseState"
-                      disabled={this.state.isLoadingPlate}
                       onChange={event => {
                         this.setLicensePlate({
                           plate: this.state.plate,

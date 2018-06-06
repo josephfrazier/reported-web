@@ -140,7 +140,6 @@ const initialStatePerSession = {
 
   isUserInfoSaving: false,
   isSubmitting: false,
-  isLoadingPlate: false,
   plateSuggestion: '',
   vehicleInfoComponent: <br />,
   submissions: [],
@@ -409,7 +408,6 @@ class Home extends React.Component {
   // adapted from https://github.com/openalpr/cloudapi/tree/8141c1ba57f03df4f53430c6e5e389b39714d0e0/javascript#getting-started
   extractPlate = async ({ attachmentFile }) => {
     console.time('extractPlate'); // eslint-disable-line no-console
-    this.setState({ isLoadingPlate: true });
 
     try {
       if (this.attachmentPlates.has(attachmentFile)) {
@@ -448,7 +446,6 @@ class Home extends React.Component {
     } catch (err) {
       throw err;
     } finally {
-      this.setState({ isLoadingPlate: false });
       console.timeEnd('extractPlate'); // eslint-disable-line no-console
     }
   };
@@ -790,25 +787,6 @@ class Home extends React.Component {
                         }}
                       >
                         Read location and time
-                      </button>
-
-                      <button
-                        type="button"
-                        style={{
-                          margin: '1px',
-                        }}
-                        onClick={() => {
-                          this.extractPlate({ attachmentFile })
-                            .then(this.setLicensePlate)
-                            .catch(err => {
-                              console.error(`Error: ${err.message}`);
-                            });
-                        }}
-                        disabled={this.state.isLoadingPlate}
-                      >
-                        {this.state.isLoadingPlate
-                          ? 'Reading...'
-                          : 'Read plate'}
                       </button>
                     </li>
                   ))}

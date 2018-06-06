@@ -9751,7 +9751,7 @@ react-loadable@^5.4.0:
 
 "react-localstorage@https://github.com/josephfrazier/react-localstorage#higher-ordered-component":
   version "1.0.0"
-  resolved "https://github.com/josephfrazier/react-localstorage#075790da00749a514c801ce8b2458728b0c03716"
+  resolved "https://github.com/josephfrazier/react-localstorage#2246673451a7691f8407e61b6fe8c8e3d44563c5"
 
 react-social-icons@^2.8.1:
   version "2.8.1"

@@ -141,6 +141,7 @@ const initialStatePerSession = {
   isUserInfoSaving: false,
   isSubmitting: false,
   isLoadingPlate: false,
+  plateSuggestion: '',
   vehicleInfoComponent: <br />,
   submissions: [],
 };
@@ -431,6 +432,9 @@ class Home extends React.Component {
       const { data } = await axios.post('/openalpr', formData);
       const result = data.results[0];
       result.licenseState = result.region.toUpperCase();
+      this.setState({
+        plateSuggestion: result.plate,
+      });
       this.attachmentPlates.set(attachmentFile, result);
       return result;
     } catch (err) {
@@ -680,6 +684,7 @@ class Home extends React.Component {
                     this.setState({
                       attachmentData: [],
                       submissions: [submission].concat(this.state.submissions),
+                      plateSuggestion: '',
                     });
                     this.setLicensePlate({ plate: '', licenseState: 'NY' });
                     window.prompt(
@@ -813,12 +818,18 @@ class Home extends React.Component {
                           ? 'Reading...'
                           : this.state.plate
                       }
+                      list="plateSuggestion"
                       onChange={event => {
                         this.setLicensePlate({
                           plate: event.target.value.toUpperCase(),
                         });
                       }}
                     />
+                    <datalist id="plateSuggestion">
+                      {this.state.plateSuggestion && (
+                        <option value={this.state.plateSuggestion} />
+                      )}
+                    </datalist>
                     &nbsp;
                     <select
                       value={this.state.licenseState}

@@ -99,6 +99,11 @@ app.use(bodyParser.json({ limit: '80mb' }));
 // * Base64 encoding adds 1/3 to the file size: https://stackoverflow.com/questions/4715415/base64-what-is-the-worst-possible-increase-in-space-usage/4715480#4715480
 // (10mb * 6) * (4/3) = 80mb
 
+const handlePromiseRejection = res => error => {
+  console.error({ error });
+  res.status(500).json({ error });
+};
+
 //
 // Authentication
 // -----------------------------------------------------------------------------
@@ -232,10 +237,7 @@ async function saveUser({
 app.use('/saveUser', (req, res) => {
   saveUser(req.body)
     .then(user => res.json(user))
-    .catch(error => {
-      console.error({ error });
-      res.status(500).json({ error });
-    });
+    .catch(handlePromiseRejection(res));
 });
 
 app.use('/submissions', (req, res) => {
@@ -258,10 +260,7 @@ app.use('/submissions', (req, res) => {
       }));
       res.json({ submissions });
     })
-    .catch(error => {
-      console.error({ error });
-      res.status(500).json({ error });
-    });
+    .catch(handlePromiseRejection(res));
 });
 
 app.get('/srlookup/:reqnumber', (req, res) => {
@@ -272,10 +271,7 @@ app.get('/srlookup/:reqnumber', (req, res) => {
     .then(({ data }) => {
       res.json(data);
     })
-    .catch(error => {
-      console.error({ error });
-      res.status(500).json({ error });
-    });
+    .catch(handlePromiseRejection(res));
 });
 
 app.use('/requestPasswordReset', (req, res) => {
@@ -284,10 +280,7 @@ app.use('/requestPasswordReset', (req, res) => {
   // http://docs.parseplatform.org/js/guide/#resetting-passwords
   Parse.User.requestPasswordReset(email)
     .then(() => res.end())
-    .catch(error => {
-      console.error({ error });
-      res.status(500).json({ error });
-    });
+    .catch(handlePromiseRejection(res));
 });
 
 function orientImageBuffer({ attachmentBuffer }) {
@@ -450,10 +443,7 @@ app.use('/submit', upload.array('attachmentData[]'), (req, res) => {
 
       res.json({ submission: submissionValue });
     })
-    .catch(error => {
-      console.error({ error });
-      res.status(500).json({ error });
-    });
+    .catch(handlePromiseRejection(res));
 });
 
 // adapted from https://github.com/openalpr/cloudapi/tree/8141c1ba57f03df4f53430c6e5e389b39714d0e0/javascript#getting-started
@@ -494,10 +484,7 @@ app.use('/openalpr', upload.single('attachmentFile'), (req, res) => {
       });
     })
     .then(data => res.json(data))
-    .catch(error => {
-      console.error({ error });
-      res.status(500).json({ error });
-    });
+    .catch(handlePromiseRejection(res));
 });
 
 // ported from https://github.com/jeffrono/Reported/blob/19b588171315a3093d53986f9fb995059f5084b4/v2/enrich_functions.rb#L325-L346
@@ -537,10 +524,7 @@ app.use('/getVehicleType/:licensePlate/:licenseState?', (req, res) => {
         },
       });
     })
-    .catch(error => {
-      console.error({ error });
-      res.status(500).json({ error });
-    });
+    .catch(handlePromiseRejection(res));
 });
 
 //

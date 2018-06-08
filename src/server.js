@@ -376,6 +376,7 @@ app.use('/submit', upload.array('attachmentData[]'), (req, res) => {
 
         typeofreport,
         selectedReport: typeofreport === 'complaint' ? 1 : 0,
+        colorTaxi: 'Black', // see https://reportedcab.slack.com/messages/C852Q265V/p1528474895000562
         medallionNo: plate,
         typeofcomplaint,
         typeofuser: typeofuser.toLowerCase(),

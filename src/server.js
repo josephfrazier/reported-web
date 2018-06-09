@@ -211,14 +211,6 @@ async function saveUser({
     .signUp(null)
     .catch(() => Parse.User.logIn(username, password))
     .then(userAgain => {
-      userAgain.set(omit(fields, 'email')); // don't re-set email since that triggers a verification email
-      return userAgain.save(null, {
-        // sessionToken must be manually passed in:
-        // https://github.com/parse-community/parse-server/issues/1729#issuecomment-218932566
-        sessionToken: userAgain.get('sessionToken'),
-      });
-    })
-    .then(userAgain => {
       console.info({ user: userAgain });
       if (!userAgain.get('emailVerified')) {
         userAgain.set({ email }); // reset email to trigger a verification email
@@ -231,6 +223,14 @@ async function saveUser({
         throw { message }; // eslint-disable-line no-throw-literal
       }
       return userAgain;
+    })
+    .then(userAgain => {
+      userAgain.set(omit(fields, 'email')); // don't re-set email since that triggers a verification email
+      return userAgain.save(null, {
+        // sessionToken must be manually passed in:
+        // https://github.com/parse-community/parse-server/issues/1729#issuecomment-218932566
+        sessionToken: userAgain.get('sessionToken'),
+      });
     });
 }
 

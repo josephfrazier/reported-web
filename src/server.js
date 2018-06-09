@@ -23,7 +23,6 @@ import ReactDOM from 'react-dom/server';
 import PrettyError from 'pretty-error';
 import OpenalprApi from 'openalpr_api';
 import Parse from 'parse/node';
-import omit from 'object.omit';
 import fileType from 'file-type-es5';
 import sharp from 'sharp';
 import axios from 'axios';
@@ -161,6 +160,36 @@ app.use(
   })),
 );
 
+async function logIn({ email, password }) {
+  // adapted from http://docs.parseplatform.org/js/guide/#signing-up
+  const user = new Parse.User();
+  const username = email;
+  const fields = {
+    username,
+    email,
+    password,
+  };
+  user.set(fields);
+
+  return user
+    .signUp(null)
+    .catch(() => Parse.User.logIn(username, password))
+    .then(userAgain => {
+      console.info({ user: userAgain });
+      if (!userAgain.get('emailVerified')) {
+        userAgain.set({ email }); // reset email to trigger a verification email
+        userAgain.save(null, {
+          // sessionToken must be manually passed in:
+          // https://github.com/parse-community/parse-server/issues/1729#issuecomment-218932566
+          sessionToken: userAgain.get('sessionToken'),
+        });
+        const message = `Please verify ${email} and try again. You should have received a message.`;
+        throw { message }; // eslint-disable-line no-throw-literal
+      }
+      return userAgain;
+    });
+}
+
 async function saveUser({
   email,
   password,
@@ -187,15 +216,9 @@ async function saveUser({
     }
   });
 
-  // adapted from http://docs.parseplatform.org/js/guide/#signing-up
-  const user = new Parse.User();
-  const username = email;
   const useremail = email;
   const fields = {
-    username,
     useremail,
-    email,
-    password,
     FirstName,
     LastName,
     Building,
@@ -205,33 +228,15 @@ async function saveUser({
     Phone,
     testify,
   };
-  user.set(fields);
 
-  return user
-    .signUp(null)
-    .catch(() => Parse.User.logIn(username, password))
-    .then(userAgain => {
-      console.info({ user: userAgain });
-      if (!userAgain.get('emailVerified')) {
-        userAgain.set({ email }); // reset email to trigger a verification email
-        userAgain.save(null, {
-          // sessionToken must be manually passed in:
-          // https://github.com/parse-community/parse-server/issues/1729#issuecomment-218932566
-          sessionToken: userAgain.get('sessionToken'),
-        });
-        const message = `Please verify ${email} and try again. You should have received a message.`;
-        throw { message }; // eslint-disable-line no-throw-literal
-      }
-      return userAgain;
-    })
-    .then(userAgain => {
-      userAgain.set(omit(fields, 'email')); // don't re-set email since that triggers a verification email
-      return userAgain.save(null, {
-        // sessionToken must be manually passed in:
-        // https://github.com/parse-community/parse-server/issues/1729#issuecomment-218932566
-        sessionToken: userAgain.get('sessionToken'),
-      });
+  return logIn({ email, password }).then(userAgain => {
+    userAgain.set(fields);
+    return userAgain.save(null, {
+      // sessionToken must be manually passed in:
+      // https://github.com/parse-community/parse-server/issues/1729#issuecomment-218932566
+      sessionToken: userAgain.get('sessionToken'),
     });
+  });
 }
 
 app.use('/saveUser', (req, res) => {

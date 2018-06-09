@@ -33,6 +33,7 @@
     "express": "^4.16.3",
     "express-graphql": "^0.6.12",
     "express-jwt": "^5.3.1",
+    "file-extension": "^4.0.5",
     "file-type-es5": "^6.2.1",
     "force-ssl-heroku": "^1.0.2",
     "graphql": "^0.13.2",

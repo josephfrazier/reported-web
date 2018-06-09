@@ -38,6 +38,7 @@ import omit from 'object.omit';
 import bufferToArrayBuffer from 'buffer-to-arraybuffer';
 import objectToFormData from 'object-to-formdata';
 import usStateNames from 'datasets-us-states-abbr-names';
+import fileExtension from 'file-extension';
 
 import marx from 'marx-css/css/marx.css';
 import s from './Home.css';
@@ -732,49 +733,63 @@ class Home extends React.Component {
                   <button type="button">Add video(s)</button>
                 </FileReaderInput>
 
-                <ol
+                <div
                   style={{
                     clear: 'both',
                   }}
                 >
-                  {this.state.attachmentData.map(attachmentFile => (
-                    <li key={attachmentFile.name}>
-                      <a
-                        href={getBlobUrl(attachmentFile)}
-                        target="_blank"
-                        rel="noopener"
+                  {this.state.attachmentData.map(attachmentFile => {
+                    const { name } = attachmentFile;
+                    const ext = fileExtension(name);
+                    const isImg = isImage({ ext });
+                    const src = getBlobUrl(attachmentFile);
+
+                    return (
+                      <div
+                        key={name}
+                        style={{
+                          float: 'left',
+                          width: '33%',
+                          margin: '0.1%',
+                          position: 'relative',
+                        }}
                       >
+                        <a href={src} target="_blank" rel="noopener">
+                          {isImg ? (
+                            <img src={src} alt={name} />
+                          ) : (
+                            /* eslint-disable-next-line jsx-a11y/media-has-caption */
+                            <video src={src} alt={name} />
+                          )}
+                        </a>
+
                         <button
                           type="button"
                           style={{
+                            position: 'absolute',
+                            top: 0,
+                            right: 0,
+                            padding: 0,
                             margin: '1px',
+                            color: 'red', // Ubuntu Chrome shows black otherwise
+                          }}
+                          onClick={() => {
+                            this.setState({
+                              attachmentData: this.state.attachmentData.filter(
+                                file => file.name !== name,
+                              ),
+                            });
                           }}
                         >
-                          View
+                          <span role="img" aria-label="Delete photo/video">
+                            ❌
+                          </span>
                         </button>
-                      </a>
-
-                      <button
-                        type="button"
-                        style={{
-                          margin: '1px',
-                          color: 'red', // Ubuntu Chrome shows black otherwise
-                        }}
-                        onClick={() => {
-                          this.setState({
-                            attachmentData: this.state.attachmentData.filter(
-                              file => file.name !== attachmentFile.name,
-                            ),
-                          });
-                        }}
-                      >
-                        <span role="img" aria-label="Delete photo/video">
-                          ❌
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ol>
+                      </div>
+                    );
+                  })}
+                  <div style={{ clear: 'both' }} />
+                </div>
 
                 <label>
                   License/Medallion:

@@ -272,13 +272,21 @@ exports[`Home renders children correctly 1`] = `
               Add video(s)
             </button>
           </div>
-          <ol
+          <div
             style={
               Object {
                 "clear": "both",
               }
             }
-          />
+          >
+            <div
+              style={
+                Object {
+                  "clear": "both",
+                }
+              }
+            />
+          </div>
           <label>
             License/Medallion:
             <div

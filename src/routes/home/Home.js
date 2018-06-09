@@ -736,6 +736,8 @@ class Home extends React.Component {
                 <div
                   style={{
                     clear: 'both',
+                    display: 'flex',
+                    flexWrap: 'wrap',
                   }}
                 >
                   {this.state.attachmentData.map(attachmentFile => {
@@ -748,9 +750,9 @@ class Home extends React.Component {
                       <div
                         key={name}
                         style={{
-                          float: 'left',
                           width: '33%',
                           margin: '0.1%',
+                          flexGrow: 1,
                           position: 'relative',
                         }}
                       >
@@ -788,7 +790,6 @@ class Home extends React.Component {
                       </div>
                     );
                   })}
-                  <div style={{ clear: 'both' }} />
                 </div>
 
                 <label>

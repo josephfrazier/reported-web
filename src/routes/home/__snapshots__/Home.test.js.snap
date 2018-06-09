@@ -276,17 +276,11 @@ exports[`Home renders children correctly 1`] = `
             style={
               Object {
                 "clear": "both",
+                "display": "flex",
+                "flexWrap": "wrap",
               }
             }
-          >
-            <div
-              style={
-                Object {
-                  "clear": "both",
-                }
-              }
-            />
-          </div>
+          />
           <label>
             License/Medallion:
             <div

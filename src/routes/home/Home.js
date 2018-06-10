@@ -350,7 +350,7 @@ class Home extends React.Component {
         } = data.result;
 
         this.setState({
-          vehicleInfoComponent: `Vehicle Info: ${vehicleYear} ${vehicleMake} ${vehicleModel} (${vehicleBody})` // prettier-ignore
+          vehicleInfoComponent: `${plate} in ${usStateNames[licenseState]}: ${vehicleYear} ${vehicleMake} ${vehicleModel} (${vehicleBody})` // prettier-ignore
         });
       })
       .catch(err => {

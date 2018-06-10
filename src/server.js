@@ -160,6 +160,19 @@ app.use(
   })),
 );
 
+// adapted from https://github.com/parse-community/Parse-SDK-JS/issues/393#issuecomment-291438921
+function logOut({ sessionToken }) {
+  return axios({
+    method: 'POST',
+    url: `${process.env.PARSE_SERVER_URL}/logout`,
+    headers: {
+      'X-Parse-Application-Id': process.env.PARSE_APP_ID,
+      'X-Parse-REST-API-Key': process.env.PARSE_REST_API_KEY,
+      'X-Parse-Session-Token': sessionToken,
+    },
+  });
+}
+
 async function logIn({ email, password }) {
   // adapted from http://docs.parseplatform.org/js/guide/#signing-up
   const user = new Parse.User();

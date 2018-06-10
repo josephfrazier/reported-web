@@ -24,6 +24,10 @@
   max-width: var(--max-content-width);
 }
 
+summary {
+  outline: none;
+}
+
 label {
   display: block;
   margin: 1em 0;

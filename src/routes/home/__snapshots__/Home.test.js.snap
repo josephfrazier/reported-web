@@ -12,13 +12,7 @@ exports[`Home renders children correctly 1`] = `
         onToggle={[Function]}
         open={true}
       >
-        <summary
-          style={
-            Object {
-              "outline": "none",
-            }
-          }
-        >
+        <summary>
           Create/Edit User (click to expand)
         </summary>
         <form
@@ -650,13 +644,7 @@ exports[`Home renders children correctly 1`] = `
             </select>
           </label>
           <details>
-            <summary
-              style={
-                Object {
-                  "outline": "none",
-                }
-              }
-            >
+            <summary>
               Where: (click to edit)
               <br />
               

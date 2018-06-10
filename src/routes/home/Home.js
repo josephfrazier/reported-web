@@ -465,13 +465,7 @@ class Home extends React.Component {
                 });
               }}
             >
-              <summary
-                style={{
-                  outline: 'none',
-                }}
-              >
-                Create/Edit User (click to expand)
-              </summary>
+              <summary>Create/Edit User (click to expand)</summary>
 
               <form
                 onSubmit={e => {
@@ -872,11 +866,7 @@ class Home extends React.Component {
                 </label>
 
                 <details>
-                  <summary
-                    style={{
-                      outline: 'none',
-                    }}
-                  >
+                  <summary>
                     Where: (click to edit)
                     <br />
                     {this.state.formatted_address

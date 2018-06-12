@@ -768,6 +768,7 @@ class Home extends React.Component {
                             padding: 0,
                             margin: '1px',
                             color: 'red', // Ubuntu Chrome shows black otherwise
+                            background: 'white',
                           }}
                           onClick={() => {
                             this.setState({

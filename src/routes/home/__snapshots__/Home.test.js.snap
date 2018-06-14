@@ -594,7 +594,7 @@ exports[`Home renders children correctly 1`] = `
             <select
               name="typeofcomplaint"
               onChange={[Function]}
-              value="Blocked the bike lane"
+              value={false}
             >
               <option
                 value="Blocked the bike lane"
@@ -627,19 +627,14 @@ exports[`Home renders children correctly 1`] = `
                 Was on a cell phone while driving
               </option>
               <option
-                value="Refused to pick me up"
+                value="Was on a cell phone"
               >
-                Refused to pick me up
+                Was on a cell phone
               </option>
               <option
-                value="Was courteous, kind or polite"
+                value="Drove recklessly"
               >
-                Was courteous, kind or polite
-              </option>
-              <option
-                value="Went above and beyond to help"
-              >
-                Went above and beyond to help
+                Drove recklessly
               </option>
             </select>
           </label>

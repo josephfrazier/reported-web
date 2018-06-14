@@ -39,6 +39,7 @@ import bufferToArrayBuffer from 'buffer-to-arraybuffer';
 import objectToFormData from 'object-to-formdata';
 import usStateNames from 'datasets-us-states-abbr-names';
 import fileExtension from 'file-extension';
+import sortBy from 'lodash.sortby';
 
 import marx from 'marx-css/css/marx.css';
 import s from './Home.css';
@@ -61,6 +62,7 @@ const debouncedGetVehicleType = debounce(
 );
 
 const typeofuserValues = ['Cyclist', 'Walker', 'Passenger'];
+// note that this is included in `state`, where it is later updated from the server
 const typeofcomplaintValues = [
   'Blocked the bike lane',
   'Blocked the crosswalk',
@@ -68,9 +70,8 @@ const typeofcomplaintValues = [
   'Failed to yield to pedestrian',
   'Drove aggressively',
   'Was on a cell phone while driving',
-  'Refused to pick me up',
-  'Was courteous, kind or polite',
-  'Went above and beyond to help',
+  'Was on a cell phone',
+  'Drove recklessly',
 ];
 
 // copied from https://github.com/jeffrono/Reported-Android/blob/f92949014678f8847ef83a9e5746a9d97d4db87f/app/src/main/res/values/strings.xml#L105-L112
@@ -122,7 +123,7 @@ const initialStatePerSubmission = {
   plate: '',
   licenseState: 'NY',
   typeofuser: typeofuserValues[0],
-  typeofcomplaint: typeofcomplaintValues[0],
+  typeofcomplaint: false,
   reportDescription: '',
   can_be_shared_publicly: false,
   latitude: defaultLatitude,
@@ -140,6 +141,7 @@ const initialStatePerSession = {
   attachmentData: [],
 
   isUserInfoSaving: false,
+  typeofcomplaintValues,
   isSubmitting: false,
   plateSuggestion: '',
   vehicleInfoComponent: <br />,
@@ -292,6 +294,19 @@ class Home extends React.Component {
       }
     });
     this.forceUpdate(); // force "Create/Edit User" fields to render persisted value after load
+
+    // update complaint categories from server
+    axios.get('/categories').then(({ data }) => {
+      const { categories } = data;
+      const values = sortBy(categories, 'createdAt').map(({ text }) => text);
+      const { typeofcomplaint } = this.state;
+      this.setState({
+        typeofcomplaint: values.includes(typeofcomplaint)
+          ? typeofcomplaint
+          : values[0],
+        typeofcomplaintValues: values,
+      });
+    });
   }
 
   setLocationDate = ([coords, millisecondsSinceEpoch]) => {
@@ -858,7 +873,7 @@ class Home extends React.Component {
                     name="typeofcomplaint"
                     onChange={this.handleInputChange}
                   >
-                    {typeofcomplaintValues.map(typeofcomplaint => (
+                    {this.state.typeofcomplaintValues.map(typeofcomplaint => (
                       <option key={typeofcomplaint} value={typeofcomplaint}>
                         {typeofcomplaint}
                       </option>

@@ -253,6 +253,21 @@ app.use('/saveUser', (req, res) => {
     .catch(handlePromiseRejection(res));
 });
 
+app.use('/categories', (req, res) => {
+  const Category = Parse.Object.extend('Category');
+  const query = new Parse.Query(Category);
+  query
+    .find()
+    .then(results => {
+      const categories = results.map(({ id, attributes }) => ({
+        objectId: id,
+        ...attributes,
+      }));
+      res.json({ categories });
+    })
+    .catch(handlePromiseRejection(res));
+});
+
 app.use('/submissions', (req, res) => {
   saveUser(req.body)
     .then(user => {

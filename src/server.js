@@ -51,14 +51,22 @@ process.on('unhandledRejection', (reason, p) => {
   process.exit(1);
 });
 
-const { HEROKU_APP_NAME } = process.env;
+const {
+  HEROKU_APP_NAME,
+  PARSE_APP_ID,
+  PARSE_JAVASCRIPT_KEY,
+  PARSE_SERVER_URL,
+  HEROKU_RELEASE_VERSION,
+  OPENALPR_SECRET_KEY,
+} = process.env;
+
 require('heroku-self-ping')(`https://${HEROKU_APP_NAME}.herokuapp.com/`, {
   verbose: true,
 });
 
 // http://docs.parseplatform.org/js/guide/#getting-started
-Parse.initialize(process.env.PARSE_APP_ID, process.env.PARSE_JAVASCRIPT_KEY);
-Parse.serverURL = process.env.PARSE_SERVER_URL;
+Parse.initialize(PARSE_APP_ID, PARSE_JAVASCRIPT_KEY);
+Parse.serverURL = PARSE_SERVER_URL;
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -398,7 +406,7 @@ app.use('/submit', upload.array('attachmentData[]'), (req, res) => {
         can_be_shared_publicly,
         status: 0,
         operating_system: 'web',
-        version_number: Number(process.env.HEROKU_RELEASE_VERSION.slice(1)),
+        version_number: Number(HEROKU_RELEASE_VERSION.slice(1)),
         reqnumber: 'N/A until submitted to 311',
       });
 
@@ -466,7 +474,7 @@ app.use('/openalpr', upload.single('attachmentFile'), (req, res) => {
   const attachmentBuffer = req.file.buffer;
   const api = new OpenalprApi.DefaultApi();
 
-  const secretKey = process.env.OPENALPR_SECRET_KEY; // {String} The secret key used to authenticate your account. You can view your secret key by visiting https://cloud.openalpr.com/
+  const secretKey = OPENALPR_SECRET_KEY; // {String} The secret key used to authenticate your account. You can view your secret key by visiting https://cloud.openalpr.com/
 
   orientImageBuffer({ attachmentBuffer })
     .then(buffer => buffer.toString('base64'))

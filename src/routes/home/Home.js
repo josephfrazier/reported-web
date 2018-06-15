@@ -39,7 +39,6 @@ import bufferToArrayBuffer from 'buffer-to-arraybuffer';
 import objectToFormData from 'object-to-formdata';
 import usStateNames from 'datasets-us-states-abbr-names';
 import fileExtension from 'file-extension';
-import sortBy from 'lodash.sortby';
 
 import marx from 'marx-css/css/marx.css';
 import s from './Home.css';
@@ -96,51 +95,6 @@ const geolocate = () =>
 
 const jsDateToCreateDate = jsDate =>
   jsDate.toISOString().replace(/:\d\d\..*/g, '');
-
-const initialStatePerSubmission = {
-  email: '',
-  password: '',
-  FirstName: '',
-  LastName: '',
-  Building: '',
-  StreetName: '',
-  Apt: '',
-  Borough: boroughValues[0],
-  Phone: '',
-  testify: false,
-
-  plate: '',
-  licenseState: 'NY',
-  typeofuser: typeofuserValues[0],
-  typeofcomplaint: false,
-  reportDescription: '',
-  can_be_shared_publicly: false,
-  latitude: defaultLatitude,
-  longitude: defaultLongitude,
-  formatted_address: '',
-  CreateDate: jsDateToCreateDate(new Date()),
-};
-
-const initialStatePersistent = {
-  ...initialStatePerSubmission,
-  isUserInfoOpen: true,
-  typeofcomplaintValues: [],
-};
-
-const initialStatePerSession = {
-  attachmentData: [],
-
-  isUserInfoSaving: false,
-  isSubmitting: false,
-  plateSuggestion: '',
-  vehicleInfoComponent: <br />,
-  submissions: [],
-};
-
-const initialState = {
-  ...initialStatePersistent,
-  ...initialStatePerSession,
-};
 
 async function blobToBuffer({ attachmentFile }) {
   console.time(`blobUtil.blobToArrayBuffer(attachmentFile)`); // eslint-disable-line no-console
@@ -262,10 +216,59 @@ async function getVideoScreenshot({ attachmentFile }) {
 }
 
 class Home extends React.Component {
-  static defaultProps = {
-    stateFilterKeys: Object.keys(initialStatePersistent),
-  };
-  state = initialState;
+  constructor(props) {
+    super(props);
+
+    const { typeofcomplaintValues } = props;
+
+    const initialStatePerSubmission = {
+      email: '',
+      password: '',
+      FirstName: '',
+      LastName: '',
+      Building: '',
+      StreetName: '',
+      Apt: '',
+      Borough: boroughValues[0],
+      Phone: '',
+      testify: false,
+
+      plate: '',
+      licenseState: 'NY',
+      typeofuser: typeofuserValues[0],
+      typeofcomplaint: typeofcomplaintValues[0],
+      reportDescription: '',
+      can_be_shared_publicly: false,
+      latitude: defaultLatitude,
+      longitude: defaultLongitude,
+      formatted_address: '',
+      CreateDate: jsDateToCreateDate(new Date()),
+    };
+
+    const initialStatePersistent = {
+      ...initialStatePerSubmission,
+      isUserInfoOpen: true,
+    };
+
+    const initialStatePerSession = {
+      attachmentData: [],
+
+      isUserInfoSaving: false,
+      isSubmitting: false,
+      plateSuggestion: '',
+      vehicleInfoComponent: <br />,
+      submissions: [],
+    };
+
+    const initialState = {
+      ...initialStatePersistent,
+      ...initialStatePerSession,
+    };
+
+    this.state = initialState;
+    this.initialStatePerSubmission = initialStatePerSubmission;
+    this.initialStatePersistent = initialStatePersistent;
+  }
 
   componentDidMount() {
     // if there's no attachments or a time couldn't be extracted, just use now
@@ -283,19 +286,10 @@ class Home extends React.Component {
       }
     });
     this.forceUpdate(); // force "Create/Edit User" fields to render persisted value after load
+  }
 
-    // update complaint categories from server
-    axios.get('/categories').then(({ data }) => {
-      const { categories } = data;
-      const values = sortBy(categories, 'createdAt').map(({ text }) => text);
-      const { typeofcomplaint } = this.state;
-      this.setState({
-        typeofcomplaint: values.includes(typeofcomplaint)
-          ? typeofcomplaint
-          : values[0],
-        typeofcomplaintValues: values,
-      });
-    });
+  getStateFilterKeys() {
+    return Object.keys(this.initialStatePersistent);
   }
 
   setLocationDate = ([coords, millisecondsSinceEpoch]) => {
@@ -669,7 +663,9 @@ class Home extends React.Component {
                     '/submit',
                     objectToFormData({
                       ...omit(this.state, (val, key) =>
-                        Object.keys(initialStatePerSubmission).includes(key),
+                        Object.keys(this.initialStatePerSubmission).includes(
+                          key,
+                        ),
                       ),
                       attachmentData: this.state.attachmentData,
                       CreateDate: new Date(this.state.CreateDate).toISOString(),
@@ -862,7 +858,7 @@ class Home extends React.Component {
                     name="typeofcomplaint"
                     onChange={this.handleInputChange}
                   >
-                    {this.state.typeofcomplaintValues.map(typeofcomplaint => (
+                    {this.props.typeofcomplaintValues.map(typeofcomplaint => (
                       <option key={typeofcomplaint} value={typeofcomplaint}>
                         {typeofcomplaint}
                       </option>
@@ -1003,6 +999,10 @@ class Home extends React.Component {
     );
   }
 }
+
+Home.propTypes = {
+  typeofcomplaintValues: PropTypes.arrayOf(PropTypes.string).isRequired,
+};
 
 // eslint-disable-next-line react/no-multi-comp
 class SubmissionDetails extends React.Component {

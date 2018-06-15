@@ -8,16 +8,24 @@
  */
 
 import React from 'react';
+import sortBy from 'lodash.sortby';
 import Home from './Home';
 import Layout from '../../components/Layout';
 
-async function action() {
+async function action({ fetch }) {
+  // get complaint categories from server
+  const resp = await fetch('/api/categories');
+  const { categories } = await resp.json();
+  const typeofcomplaintValues = sortBy(categories, 'createdAt').map(
+    ({ text }) => text,
+  );
+
   return {
     title: 'Reported',
     chunks: ['home'],
     component: (
       <Layout>
-        <Home />
+        <Home typeofcomplaintValues={typeofcomplaintValues} />
       </Layout>
     ),
   };

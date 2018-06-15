@@ -1,8 +1,6 @@
 language: node_js
 node_js:
   - 'stable'
-  - '8'
-  - '6'
 env:
   - CXX=g++-4.8
 addons:
@@ -11,6 +9,9 @@ addons:
       - ubuntu-toolchain-r-test
     packages:
       - g++-4.8
+before_install:
+  - curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.7.0
+  - export PATH=$HOME/.yarn/bin:$PATH
 script:
   - yarn lint
   - yarn test

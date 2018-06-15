@@ -124,13 +124,13 @@ const initialStatePerSubmission = {
 const initialStatePersistent = {
   ...initialStatePerSubmission,
   isUserInfoOpen: true,
+  typeofcomplaintValues: [],
 };
 
 const initialStatePerSession = {
   attachmentData: [],
 
   isUserInfoSaving: false,
-  typeofcomplaintValues: [],
   isSubmitting: false,
   plateSuggestion: '',
   vehicleInfoComponent: <br />,

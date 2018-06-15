@@ -16,6 +16,7 @@ import renderer from 'react-test-renderer';
 import App from '../../components/App';
 import Home from './Home';
 
+require('timezone-mock').register('US/Eastern');
 require('jest-mock-now')();
 
 describe('Home', () => {

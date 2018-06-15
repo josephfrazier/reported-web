@@ -62,17 +62,6 @@ const debouncedGetVehicleType = debounce(
 );
 
 const typeofuserValues = ['Cyclist', 'Walker', 'Passenger'];
-// note that this is included in `state`, where it is later updated from the server
-const typeofcomplaintValues = [
-  'Blocked the bike lane',
-  'Blocked the crosswalk',
-  'Honked horn (no emergency)',
-  'Failed to yield to pedestrian',
-  'Drove aggressively',
-  'Was on a cell phone while driving',
-  'Was on a cell phone',
-  'Drove recklessly',
-];
 
 // copied from https://github.com/jeffrono/Reported-Android/blob/f92949014678f8847ef83a9e5746a9d97d4db87f/app/src/main/res/values/strings.xml#L105-L112
 const boroughValues = [
@@ -141,7 +130,7 @@ const initialStatePerSession = {
   attachmentData: [],
 
   isUserInfoSaving: false,
-  typeofcomplaintValues,
+  typeofcomplaintValues: [],
   isSubmitting: false,
   plateSuggestion: '',
   vehicleInfoComponent: <br />,

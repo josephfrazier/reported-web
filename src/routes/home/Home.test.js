@@ -21,10 +21,22 @@ require('jest-mock-now')();
 
 describe('Home', () => {
   test('renders children correctly', () => {
+    const typeofcomplaintValues = [
+      'Blocked the bike lane',
+      'Blocked the crosswalk',
+      'Honked horn (no emergency)',
+      'Failed to yield to pedestrian',
+      'Drove aggressively',
+      'Was on a cell phone while driving',
+      'Refused to pick me up',
+      'Was courteous, kind or polite',
+      'Went above and beyond to help',
+    ];
+
     const wrapper = renderer
       .create(
         <App context={{ insertCss: () => {}, fetch: () => {}, pathname: '' }}>
-          <Home />
+          <Home typeofcomplaintValues={typeofcomplaintValues} />
         </App>,
       )
       .toJSON();

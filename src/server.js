@@ -253,7 +253,7 @@ app.use('/saveUser', (req, res) => {
     .catch(handlePromiseRejection(res));
 });
 
-app.use('/categories', (req, res) => {
+app.use('/api/categories', (req, res) => {
   const Category = Parse.Object.extend('Category');
   const query = new Parse.Query(Category);
   query

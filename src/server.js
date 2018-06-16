@@ -291,11 +291,14 @@ app.use('/submissions', (req, res) => {
     .catch(handlePromiseRejection(res));
 });
 
+function srlookup({ reqnumber }) {
+  return axios.get(`http://www1.nyc.gov/apps/311api/srlookup/${reqnumber}`);
+}
+
 app.get('/srlookup/:reqnumber', (req, res) => {
   const { reqnumber } = req.params;
 
-  axios
-    .get(`http://www1.nyc.gov/apps/311api/srlookup/${reqnumber}`)
+  srlookup({ reqnumber })
     .then(({ data }) => {
       res.json(data);
     })

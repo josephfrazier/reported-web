@@ -253,6 +253,7 @@ class Home extends React.Component {
     const initialStatePerSession = {
       attachmentData: [],
 
+      isPasswordRevealed: false,
       isUserInfoSaving: false,
       isSubmitting: false,
       plateSuggestion: '',

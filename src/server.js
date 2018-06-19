@@ -61,7 +61,22 @@ require('heroku-self-ping')(`https://${HEROKU_APP_NAME}.herokuapp.com/`, {
 Parse.initialize(PARSE_APP_ID, PARSE_JAVASCRIPT_KEY);
 Parse.serverURL = PARSE_SERVER_URL;
 
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1000 * 1000, // 10MB
+    files: 6,
+  },
+});
+// Here's the logic for the above `limits`:
+// * Back4App has a per-file limit of 10mb: https://docs.back4app.com/docs/faq-parse-back4app/can-i-store-files-larger-than-10-mb-can-i-pay-to-remove-this-limit/
+// * Up to 6 files can be included with each submission to Back4App:
+//   * photoData0
+//   * photoData1
+//   * photoData2
+//   * videoData0
+//   * videoData1
+//   * videoData2
 
 //
 // Tell any CSS tooling (such as Material UI) to use all vendor prefixes if the
@@ -87,17 +102,7 @@ app.use(express.static(path.resolve(__dirname, 'public')));
 app.use(cookieParser());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json({ limit: '80mb' }));
-// Here's the logic for 80mb:
-// * Back4App has a per-file limit of 10mb: https://docs.back4app.com/docs/faq-parse-back4app/can-i-store-files-larger-than-10-mb-can-i-pay-to-remove-this-limit/
-// * Up to 6 files can be included with each submission to Back4App:
-//   * photoData0
-//   * photoData1
-//   * photoData2
-//   * videoData0
-//   * videoData1
-//   * videoData2
-// * Base64 encoding adds 1/3 to the file size: https://stackoverflow.com/questions/4715415/base64-what-is-the-worst-possible-increase-in-space-usage/4715480#4715480
-// (10mb * 6) * (4/3) = 80mb
+// attachments are no longer sent as base64 JSON, but bodyParser still tries to parse non-JSON bodies, so this 80mb `limit` needs to be here to avoid errors
 
 const handlePromiseRejection = res => error => {
   console.error({ error });
@@ -263,155 +268,172 @@ function orientImageBuffer({ attachmentBuffer }) {
     });
 }
 
-app.use('/submit', upload.array('attachmentData[]'), (req, res) => {
-  const {
-    email,
-    password,
-    FirstName,
-    LastName,
-    Building,
-    StreetName,
-    Apt,
-    Borough,
-    Phone,
-    testify: testifyString,
+app.use('/submit', (req, res) => {
+  // Call upload.array directly to intercept errors and repond with JSON, see the following:
+  // https://github.com/expressjs/multer/tree/80ee2f52432cc0c81c93b03c6b0b448af1f626e5#error-handling
+  upload.array('attachmentData[]')(req, res, error => {
+    if (error) {
+      // Make error.message enumerable so it gets sent to the client
+      const { message } = error;
+      handlePromiseRejection(res)({ ...error, message });
+      return;
+    }
 
-    plate,
-    typeofuser,
-    typeofreport = 'complaint',
-    typeofcomplaint,
-    reportDescription,
-    can_be_shared_publicly: can_be_shared_publiclyString, // eslint-disable-line camelcase
-    latitude: latitudeString,
-    longitude: longitudeString,
-    formatted_address, // eslint-disable-line camelcase
-    CreateDate,
-  } = req.body;
+    const {
+      email,
+      password,
+      FirstName,
+      LastName,
+      Building,
+      StreetName,
+      Apt,
+      Borough,
+      Phone,
+      testify: testifyString,
 
-  const testify = testifyString === 'true';
-  const can_be_shared_publicly = can_be_shared_publiclyString === 'true'; // eslint-disable-line camelcase
-  const latitude = Number(latitudeString);
-  const longitude = Number(longitudeString);
+      plate,
+      typeofuser,
+      typeofreport = 'complaint',
+      typeofcomplaint,
+      reportDescription,
+      can_be_shared_publicly: can_be_shared_publiclyString, // eslint-disable-line camelcase
+      latitude: latitudeString,
+      longitude: longitudeString,
+      formatted_address, // eslint-disable-line camelcase
+      CreateDate,
+    } = req.body;
 
-  const attachmentData = req.files;
+    const testify = testifyString === 'true';
+    const can_be_shared_publicly = can_be_shared_publiclyString === 'true'; // eslint-disable-line camelcase
+    const latitude = Number(latitudeString);
+    const longitude = Number(longitudeString);
 
-  const timeofreport = new Date(CreateDate);
-  const timeofreported = timeofreport;
+    const attachmentData = req.files;
 
-  saveUser({
-    email,
-    password,
-    FirstName,
-    LastName,
-    Building,
-    StreetName,
-    Apt,
-    Borough,
-    Phone,
-    testify,
-  })
-    .then(async user => {
-      // make sure all required fields are present
-      Object.entries({
-        plate,
-        typeofuser,
-        typeofcomplaint,
-        latitude,
-        longitude,
-        CreateDate,
-      }).forEach(([key, value]) => {
-        if (!value) {
-          throw { message: `${key} is required` }; // eslint-disable-line no-throw-literal
-        }
-      });
+    const timeofreport = new Date(CreateDate);
+    const timeofreported = timeofreport;
 
-      const Submission = Parse.Object.extend('submission');
-      const submission = new Submission();
-      submission.set({
-        user,
+    saveUser({
+      email,
+      password,
+      FirstName,
+      LastName,
+      Building,
+      StreetName,
+      Apt,
+      Borough,
+      Phone,
+      testify,
+    })
+      .then(async user => {
+        // make sure all required fields are present
+        Object.entries({
+          plate,
+          typeofuser,
+          typeofcomplaint,
+          latitude,
+          longitude,
+          CreateDate,
+        }).forEach(([key, value]) => {
+          if (!value) {
+            throw { message: `${key} is required` }; // eslint-disable-line no-throw-literal
+          }
+        });
 
-        FirstName,
-        LastName,
-        Phone,
-        Borough,
-        Building,
-        Apt,
-        testify,
-        StreetName,
+        const Submission = Parse.Object.extend('submission');
+        const submission = new Submission();
+        submission.set({
+          user,
 
-        Username: email,
+          FirstName,
+          LastName,
+          Phone,
+          Borough,
+          Building,
+          Apt,
+          testify,
+          StreetName,
 
-        typeofreport,
-        selectedReport: typeofreport === 'complaint' ? 1 : 0,
-        colorTaxi: 'Black', // see https://reportedcab.slack.com/messages/C852Q265V/p1528474895000562
-        medallionNo: plate,
-        typeofcomplaint,
-        typeofuser: typeofuser.toLowerCase(),
-        passenger: typeofuser.toLowerCase() === 'passenger',
-        locationNumber: 1,
-        latitude: latitude.toString(),
-        longitude: longitude.toString(),
-        latitude1: latitude,
-        longitude1: longitude,
-        loc1_address: formatted_address,
-        timeofreport,
-        timeofreported,
-        reportDescription,
-        can_be_shared_publicly,
-        status: 0,
-        operating_system: 'web',
-        version_number: Number(HEROKU_RELEASE_VERSION.slice(1)),
-        reqnumber: 'N/A until submitted to 311',
-      });
+          Username: email,
 
-      // upload attachments
-      // http://docs.parseplatform.org/js/guide/#creating-a-parsefile
+          typeofreport,
+          selectedReport: typeofreport === 'complaint' ? 1 : 0,
+          colorTaxi: 'Black', // see https://reportedcab.slack.com/messages/C852Q265V/p1528474895000562
+          medallionNo: plate,
+          typeofcomplaint,
+          typeofuser: typeofuser.toLowerCase(),
+          passenger: typeofuser.toLowerCase() === 'passenger',
+          locationNumber: 1,
+          latitude: latitude.toString(),
+          longitude: longitude.toString(),
+          latitude1: latitude,
+          longitude1: longitude,
+          loc1_address: formatted_address,
+          timeofreport,
+          timeofreported,
+          reportDescription,
+          can_be_shared_publicly,
+          status: 0,
+          operating_system: 'web',
+          version_number: Number(HEROKU_RELEASE_VERSION.slice(1)),
+          reqnumber: 'N/A until submitted to 311',
+        });
 
-      const attachmentsWithFormats = attachmentData.map(
-        ({ buffer: attachmentBuffer }) => ({
-          attachmentBuffer,
-          ext: fileType(attachmentBuffer).ext,
-        }),
-      );
+        // upload attachments
+        // http://docs.parseplatform.org/js/guide/#creating-a-parsefile
 
-      const images = attachmentsWithFormats.filter(isImage);
-      const videos = attachmentsWithFormats.filter(isVideo);
-
-      await Promise.all([
-        ...images.slice(0, 3).map(async ({ attachmentBuffer, ext }, index) => {
-          const attachmentBufferRotated = await orientImageBuffer({
+        const attachmentsWithFormats = attachmentData.map(
+          ({ buffer: attachmentBuffer }) => ({
             attachmentBuffer,
-          });
+            ext: fileType(attachmentBuffer).ext,
+          }),
+        );
 
-          const key = `photoData${index}`;
-          const file = new Parse.File(`${key}.${ext}`, [
-            ...attachmentBufferRotated,
-          ]);
-          await file.save();
-          submission.set(key, file);
-        }),
-        ...videos.slice(0, 3).map(async ({ attachmentBuffer, ext }, index) => {
-          const key = `videoData${index}`;
-          const file = new Parse.File(`${key}.${ext}`, [...attachmentBuffer]);
-          await file.save();
-          submission.set(key, file.url());
-        }),
-      ]);
-      return submission.save(null);
-    })
-    .then(submission => {
-      // Unwrap encoded Date objects into ISO strings
-      // before: { __type: 'Date', iso: '2018-05-26T23:17:22.000Z' }
-      // after: '2018-05-26T23:17:22.000Z'
-      const submissionValue = submission.toJSON();
-      submissionValue.timeofreport = submissionValue.timeofreport.iso;
-      submissionValue.timeofreported = submissionValue.timeofreported.iso;
+        const images = attachmentsWithFormats.filter(isImage);
+        const videos = attachmentsWithFormats.filter(isVideo);
 
-      console.info({ submission: submissionValue });
+        await Promise.all([
+          ...images
+            .slice(0, 3)
+            .map(async ({ attachmentBuffer, ext }, index) => {
+              const attachmentBufferRotated = await orientImageBuffer({
+                attachmentBuffer,
+              });
 
-      res.json({ submission: submissionValue });
-    })
-    .catch(handlePromiseRejection(res));
+              const key = `photoData${index}`;
+              const file = new Parse.File(`${key}.${ext}`, [
+                ...attachmentBufferRotated,
+              ]);
+              await file.save();
+              submission.set(key, file);
+            }),
+          ...videos
+            .slice(0, 3)
+            .map(async ({ attachmentBuffer, ext }, index) => {
+              const key = `videoData${index}`;
+              const file = new Parse.File(`${key}.${ext}`, [
+                ...attachmentBuffer,
+              ]);
+              await file.save();
+              submission.set(key, file.url());
+            }),
+        ]);
+        return submission.save(null);
+      })
+      .then(submission => {
+        // Unwrap encoded Date objects into ISO strings
+        // before: { __type: 'Date', iso: '2018-05-26T23:17:22.000Z' }
+        // after: '2018-05-26T23:17:22.000Z'
+        const submissionValue = submission.toJSON();
+        submissionValue.timeofreport = submissionValue.timeofreport.iso;
+        submissionValue.timeofreported = submissionValue.timeofreported.iso;
+
+        console.info({ submission: submissionValue });
+
+        res.json({ submission: submissionValue });
+      })
+      .catch(handlePromiseRejection(res));
+  });
 });
 
 // adapted from https://github.com/openalpr/cloudapi/tree/8141c1ba57f03df4f53430c6e5e389b39714d0e0/javascript#getting-started

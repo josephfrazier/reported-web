@@ -270,6 +270,7 @@ class Home extends React.Component {
     this.state = initialState;
     this.initialStatePerSubmission = initialStatePerSubmission;
     this.initialStatePersistent = initialStatePersistent;
+    this.userFormSubmitRef = React.createRef();
   }
 
   componentDidMount() {
@@ -559,6 +560,64 @@ class Home extends React.Component {
                     </div>
                   </label>
 
+                  <button
+                    type="button"
+                    disabled={this.state.isUserInfoSaving}
+                    onClick={async () => {
+                      this.setState({ isUserInfoSaving: true });
+
+                      const { data } = await axios
+                        .post('/logIn', this.state)
+                        .catch(handleAxiosError)
+                        .then(user => {
+                          this.setState({ isUserInfoSaving: false });
+                          return user;
+                        });
+
+                      const {
+                        FirstName,
+                        LastName,
+                        Building,
+                        StreetName,
+                        Apt,
+                        Borough,
+                        Phone,
+                        testify,
+                      } = data;
+
+                      this.setState(
+                        {
+                          FirstName,
+                          LastName,
+                          Building,
+                          StreetName,
+                          Apt,
+                          Borough,
+                          Phone,
+                          testify,
+
+                          // TODO decide between this and the TODO below
+                          // // if all required fields are present, go to the submission UI
+                          // isUserInfoOpen: !(
+                          //   FirstName &&
+                          //   LastName &&
+                          //   Building &&
+                          //   StreetName &&
+                          //   Borough &&
+                          //   Phone
+                          // ),
+                        },
+                        () => {
+                          this.saveStateToLocalStorage();
+                          // TODO decide between this and the TODO above
+                          this.userFormSubmitRef.current.click();
+                        },
+                      );
+                    }}
+                  >
+                    Sign Up / Log In
+                  </button>
+
                   <label>
                     First Name:{' '}
                     <input
@@ -656,7 +715,11 @@ class Home extends React.Component {
                     }
                   </label>
 
-                  <button type="submit" disabled={this.state.isUserInfoSaving}>
+                  <button
+                    type="submit"
+                    disabled={this.state.isUserInfoSaving}
+                    ref={this.userFormSubmitRef}
+                  >
                     {this.state.isUserInfoSaving ? 'Saving...' : 'Save'}
                   </button>
                 </fieldset>

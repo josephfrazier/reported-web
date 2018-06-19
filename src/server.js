@@ -269,7 +269,7 @@ function orientImageBuffer({ attachmentBuffer }) {
 }
 
 app.use('/submit', (req, res) => {
-  // Call upload.array directly to intercept errors and repond with JSON, see the following:
+  // Call upload.array directly to intercept errors and respond with JSON, see the following:
   // https://github.com/expressjs/multer/tree/80ee2f52432cc0c81c93b03c6b0b448af1f626e5#error-handling
   upload.array('attachmentData[]')(req, res, error => {
     if (error) {

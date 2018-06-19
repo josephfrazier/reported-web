@@ -127,7 +127,7 @@ async function logIn({ email, password }) {
           // https://github.com/parse-community/parse-server/issues/1729#issuecomment-218932566
           sessionToken: userAgain.get('sessionToken'),
         });
-        const message = `Please verify ${email} and try again. You should have received a message.`;
+        const message = `Please confirm your email address and try again.`;
         throw { message }; // eslint-disable-line no-throw-literal
       }
       return userAgain;

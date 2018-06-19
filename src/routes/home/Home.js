@@ -39,6 +39,7 @@ import bufferToArrayBuffer from 'buffer-to-arraybuffer';
 import objectToFormData from 'object-to-formdata';
 import usStateNames from 'datasets-us-states-abbr-names';
 import fileExtension from 'file-extension';
+import niceware from 'niceware';
 
 import marx from 'marx-css/css/marx.css';
 import s from './Home.css';
@@ -286,6 +287,18 @@ class Home extends React.Component {
         this.setCoords(coords);
       }
     });
+
+    // generate a random passphrase for first-time users and show it to them
+    if (!this.state.password) {
+      // async so that test snapshots don't change
+      setTimeout(() => {
+        this.setState({
+          password: niceware.generatePassphrase(10).join(' '),
+          isPasswordRevealed: true,
+        });
+      });
+    }
+
     this.forceUpdate(); // force "Create/Edit User" fields to render persisted value after load
   }
 

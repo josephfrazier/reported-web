@@ -40,6 +40,7 @@ import objectToFormData from 'object-to-formdata';
 import usStateNames from 'datasets-us-states-abbr-names';
 import fileExtension from 'file-extension';
 import niceware from 'niceware';
+import Modal from 'react-modal';
 
 import marx from 'marx-css/css/marx.css';
 import s from './Home.css';
@@ -244,6 +245,7 @@ class Home extends React.Component {
     const initialStatePerSession = {
       attachmentData: [],
 
+      modalText: null,
       isPasswordRevealed: false,
       isUserInfoSaving: false,
       isSubmitting: false,
@@ -456,17 +458,29 @@ class Home extends React.Component {
   handleAxiosError = error =>
     Promise.reject(error)
       .catch(err => {
-        window.alert(`Error: ${err.response.data.error.message}`);
+        this.alert(`Error: ${err.response.data.error.message}`);
       })
       .catch(err => {
         console.error(err);
       });
+
+  alert = modalText => this.setState({ modalText });
+  closeAlert = () => this.setState({ modalText: null });
 
   render() {
     return (
       <div className={s.root}>
         <div className={s.container}>
           <main>
+            <Modal
+              isOpen={!!this.state.modalText}
+              onRequestClose={this.closeAlert}
+            >
+              {this.state.modalText}
+              <br />
+              <button onClick={this.closeAlert}>Close</button>
+            </Modal>
+
             {/* TODO use tabbed interface instead of toggling <details> ? */}
             <details
               open={this.state.isUserInfoOpen}
@@ -548,7 +562,7 @@ class Home extends React.Component {
                             })
                             .then(() => {
                               const message = `Please check ${email} to reset your password.`;
-                              window.alert(message);
+                              this.alert(message);
                             })
                             .catch(this.handleAxiosError);
                         }}
@@ -701,7 +715,7 @@ class Home extends React.Component {
                       reportDescription: '',
                     });
                     this.setLicensePlate({ plate: '', licenseState: 'NY' });
-                    window.alert(
+                    this.alert(
                       `Submitted! objectId: ${data.submission.objectId}`,
                     );
                   })

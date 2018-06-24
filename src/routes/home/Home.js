@@ -1199,7 +1199,7 @@ const MyMapComponent = compose(
           style={{
             boxSizing: `border-box`,
             border: `1px solid transparent`,
-            width: `240px`,
+            width: `calc(100% - 50px)`,
             height: `32px`,
             marginTop: `6px`,
             padding: `0 12px`,

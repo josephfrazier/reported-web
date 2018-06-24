@@ -581,7 +581,7 @@ class Home extends React.Component {
                       this.setState({ isUserInfoSaving: true });
 
                       const { data } = await axios
-                        .post('/logIn', this.state)
+                        .post('/api/logIn', this.state)
                         .catch(err => {
                           this.handleAxiosError(err);
                           return { data: false };

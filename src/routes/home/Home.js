@@ -716,7 +716,17 @@ class Home extends React.Component {
                     });
                     this.setLicensePlate({ plate: '', licenseState: 'NY' });
                     this.alert(
-                      `Submitted! objectId: ${data.submission.objectId}`,
+                      <React.Fragment>
+                        <p>Thanks for your submission!</p>
+                        <p>
+                          Your information has been submitted to Reported. It
+                          may take up to 24 hours for it to be processed.
+                        </p>
+
+                        {/*
+                        <p>objectId: {data.submission.objectId}</p>
+                        */}
+                      </React.Fragment>,
                     );
                   })
                   .catch(this.handleAxiosError)

@@ -643,14 +643,21 @@ exports[`Home renders children correctly 1`] = `
               </option>
             </select>
           </label>
-          <button
-            onClick={[Function]}
-            type="button"
-          >
-            Where: (click to edit)
+          <label>
+            Where:
             <br />
-            
-          </button>
+            <button
+              onClick={[Function]}
+              style={
+                Object {
+                  "width": "100%",
+                }
+              }
+              type="button"
+            >
+              
+            </button>
+          </label>
           <label>
             When:
              

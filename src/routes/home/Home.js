@@ -904,17 +904,22 @@ class Home extends React.Component {
                   </select>
                 </label>
 
-                <button
-                  type="button"
-                  onClick={() => this.setState({ isMapOpen: true })}
-                >
-                  Where: (click to edit)
+                <label>
+                  Where:
                   <br />
-                  {this.state.formatted_address
-                    .split(', ')
-                    .slice(0, 2)
-                    .join(', ')}
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => this.setState({ isMapOpen: true })}
+                    style={{
+                      width: '100%',
+                    }}
+                  >
+                    {this.state.formatted_address
+                      .split(', ')
+                      .slice(0, 2)
+                      .join(', ')}
+                  </button>
+                </label>
 
                 <Modal
                   isOpen={this.state.isMapOpen}

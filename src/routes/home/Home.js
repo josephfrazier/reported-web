@@ -702,9 +702,8 @@ class Home extends React.Component {
                       reportDescription: '',
                     });
                     this.setLicensePlate({ plate: '', licenseState: 'NY' });
-                    window.prompt(
-                      'Submitted! objectId:',
-                      data.submission.objectId,
+                    window.alert(
+                      `Submitted! objectId: ${data.submission.objectId}`,
                     );
                   })
                   .catch(handleAxiosError)

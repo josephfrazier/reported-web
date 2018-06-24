@@ -182,16 +182,6 @@ async function extractLocationDate({ attachmentFile }) {
   });
 }
 
-function handleAxiosError(error) {
-  return Promise.reject(error)
-    .catch(err => {
-      window.alert(`Error: ${err.response.data.error.message}`);
-    })
-    .catch(err => {
-      console.error(err);
-    });
-}
-
 // derived from https://github.com/feross/capture-frame/tree/06b8f5eac78fea305f7f577d1697ee3b6999c9a8#complete-example
 async function getVideoScreenshot({ attachmentFile }) {
   const src = getBlobUrl(attachmentFile);
@@ -463,6 +453,15 @@ class Home extends React.Component {
     }
   };
 
+  handleAxiosError = error =>
+    Promise.reject(error)
+      .catch(err => {
+        window.alert(`Error: ${err.response.data.error.message}`);
+      })
+      .catch(err => {
+        console.error(err);
+      });
+
   render() {
     return (
       <div className={s.root}>
@@ -489,7 +488,7 @@ class Home extends React.Component {
                       this.setState({ isUserInfoOpen: false });
                       window.scrollTo(0, 0);
                     })
-                    .catch(handleAxiosError)
+                    .catch(this.handleAxiosError)
                     .then(() => {
                       this.setState({ isUserInfoSaving: false });
                     });
@@ -551,7 +550,7 @@ class Home extends React.Component {
                               const message = `Please check ${email} to reset your password.`;
                               window.alert(message);
                             })
-                            .catch(handleAxiosError);
+                            .catch(this.handleAxiosError);
                         }}
                       >
                         Reset
@@ -706,7 +705,7 @@ class Home extends React.Component {
                       `Submitted! objectId: ${data.submission.objectId}`,
                     );
                   })
-                  .catch(handleAxiosError)
+                  .catch(this.handleAxiosError)
                   .then(() => {
                     this.setState({
                       isSubmitting: false,
@@ -979,7 +978,7 @@ class Home extends React.Component {
                     const { submissions } = data;
                     this.setState({ submissions });
                   })
-                  .catch(handleAxiosError);
+                  .catch(this.handleAxiosError);
               }}
             >
               <summary>Previous Submissions</summary>

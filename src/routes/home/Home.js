@@ -605,15 +605,17 @@ class Home extends React.Component {
                       } = data;
 
                       this.setState(
+                        // If a new user clicks the button after filling all the fields,
+                        // don't override them with empty data from the server.
                         {
-                          FirstName,
-                          LastName,
-                          Building,
-                          StreetName,
-                          Apt,
-                          Borough,
-                          Phone,
-                          testify,
+                          FirstName: FirstName || this.state.FirstName,
+                          LastName: LastName || this.state.LastName,
+                          Building: Building || this.state.Building,
+                          StreetName: StreetName || this.state.StreetName,
+                          Apt: Apt || this.state.Apt,
+                          Borough: Borough || this.state.Borough,
+                          Phone: Phone || this.state.Phone,
+                          testify: testify || this.state.testify,
                         },
                         () => {
                           this.saveStateToLocalStorage();

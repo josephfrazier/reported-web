@@ -240,6 +240,7 @@ class Home extends React.Component {
     const initialStatePersistent = {
       ...initialStatePerSubmission,
       isUserInfoOpen: true,
+      isMapOpen: false,
     };
 
     const initialStatePerSession = {
@@ -903,16 +904,27 @@ class Home extends React.Component {
                   </select>
                 </label>
 
-                <details>
-                  <summary>
-                    Where: (click to edit)
-                    <br />
-                    {this.state.formatted_address
-                      .split(', ')
-                      .slice(0, 2)
-                      .join(', ')}
-                  </summary>
+                <button
+                  type="button"
+                  onClick={() => this.setState({ isMapOpen: true })}
+                >
+                  Where: (click to edit)
+                  <br />
+                  {this.state.formatted_address
+                    .split(', ')
+                    .slice(0, 2)
+                    .join(', ')}
+                </button>
 
+                <Modal
+                  isOpen={this.state.isMapOpen}
+                  onRequestClose={() => this.setState({ isMapOpen: false })}
+                  style={{
+                    content: {
+                      padding: 0,
+                    },
+                  }}
+                >
                   <MyMapComponent
                     key="map"
                     position={{
@@ -950,7 +962,7 @@ class Home extends React.Component {
                       });
                     }}
                   />
-                </details>
+                </Modal>
 
                 <label>
                   When:{' '}
@@ -1171,7 +1183,7 @@ const MyMapComponent = compose(
   withProps({
     googleMapURL: `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&v=3.exp&libraries=geometry,drawing,places`,
     loadingElement: <div style={{ height: `100%` }} />,
-    containerElement: <div style={{ height: `75vh` }} />,
+    containerElement: <div style={{ height: `100%` }} />,
     mapElement: <div style={{ height: `100%` }} />,
   }),
   withScriptjs,

@@ -292,6 +292,7 @@ app.use('/submit', (req, res) => {
       testify: testifyString,
 
       plate,
+      licenseState,
       typeofuser,
       typeofreport = 'complaint',
       typeofcomplaint,
@@ -329,6 +330,7 @@ app.use('/submit', (req, res) => {
         // make sure all required fields are present
         Object.entries({
           plate,
+          licenseState,
           typeofuser,
           typeofcomplaint,
           latitude,
@@ -360,6 +362,8 @@ app.use('/submit', (req, res) => {
           selectedReport: typeofreport === 'complaint' ? 1 : 0,
           colorTaxi: 'Black', // see https://reportedcab.slack.com/messages/C852Q265V/p1528474895000562
           medallionNo: plate,
+          license: plate, // https://github.com/josephfrazier/Reported-Web/issues/23
+          state: licenseState, // https://github.com/josephfrazier/Reported-Web/issues/23
           typeofcomplaint,
           typeofuser: typeofuser.toLowerCase(),
           passenger: typeofuser.toLowerCase() === 'passenger',

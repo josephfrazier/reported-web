@@ -139,6 +139,12 @@ async function logIn({ email, password }) {
     });
 }
 
+app.use('/api/logIn', (req, res) => {
+  logIn(req.body)
+    .then(user => res.json(user))
+    .catch(handlePromiseRejection(res));
+});
+
 async function saveUser({
   email,
   password,

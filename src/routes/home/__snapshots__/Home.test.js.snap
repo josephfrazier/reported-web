@@ -68,6 +68,13 @@ exports[`Home renders children correctly 1`] = `
                 </button>
               </div>
             </label>
+            <button
+              disabled={false}
+              onClick={[Function]}
+              type="button"
+            >
+              Sign Up / Log In
+            </button>
             <label>
               First Name:
                

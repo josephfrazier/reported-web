@@ -610,21 +610,9 @@ class Home extends React.Component {
                           Borough,
                           Phone,
                           testify,
-
-                          // TODO decide between this and the TODO below
-                          // // if all required fields are present, go to the submission UI
-                          // isUserInfoOpen: !(
-                          //   FirstName &&
-                          //   LastName &&
-                          //   Building &&
-                          //   StreetName &&
-                          //   Borough &&
-                          //   Phone
-                          // ),
                         },
                         () => {
                           this.saveStateToLocalStorage();
-                          // TODO decide between this and the TODO above
                           this.userFormSubmitRef.current.click();
                         },
                       );

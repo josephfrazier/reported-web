@@ -134,7 +134,9 @@ function extractLocation({ exifData }) {
 }
 
 function extractDate({ exifData }) {
-  const { exif: { CreateDate } } = exifData;
+  const {
+    exif: { CreateDate },
+  } = exifData;
   const millisecondsSinceEpoch = new Date(
     CreateDate.replace(':', '/').replace(':', '/'),
   ).getTime();
@@ -846,7 +848,7 @@ class Home extends React.Component {
                           position: 'relative',
                         }}
                       >
-                        <a href={src} target="_blank" rel="noopener">
+                        <a href={src} target="_blank" rel="noopener noreferrer">
                           {isImg ? (
                             <img src={src} alt={name} />
                           ) : (
@@ -1146,7 +1148,7 @@ class SubmissionDetails extends React.Component {
         .map((photoData, i) => {
           const { url } = photoData;
           return (
-            <a href={url} target="_blank">
+            <a href={url} target="_blank" rel="noopener noreferrer">
               <img key={url} src={url} alt={`#${i}`} />
             </a>
           );
@@ -1157,7 +1159,7 @@ class SubmissionDetails extends React.Component {
         .map((videoData, i) => {
           const url = videoData;
           return (
-            <a href={url} target="_blank">
+            <a href={url} target="_blank" rel="noopener noreferrer">
               {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
               <video key={url} src={url} alt={`#${i}`} />
             </a>

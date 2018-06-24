@@ -635,6 +635,7 @@ class Home extends React.Component {
                       required
                       onInvalid={() => this.setState({ isUserInfoOpen: true })}
                       type="text"
+                      autoComplete="given-name"
                       value={this.state.FirstName}
                       name="FirstName"
                       onChange={this.handleInputChange}
@@ -647,6 +648,7 @@ class Home extends React.Component {
                       required
                       onInvalid={() => this.setState({ isUserInfoOpen: true })}
                       type="text"
+                      autoComplete="family-name"
                       value={this.state.LastName}
                       name="LastName"
                       onChange={this.handleInputChange}
@@ -708,6 +710,7 @@ class Home extends React.Component {
                       required
                       onInvalid={() => this.setState({ isUserInfoOpen: true })}
                       type="tel"
+                      autoComplete="tel"
                       value={this.state.Phone}
                       name="Phone"
                       onChange={this.handleInputChange}

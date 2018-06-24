@@ -79,6 +79,7 @@ exports[`Home renders children correctly 1`] = `
               First Name:
                
               <input
+                autoComplete="given-name"
                 name="FirstName"
                 onChange={[Function]}
                 onInvalid={[Function]}
@@ -91,6 +92,7 @@ exports[`Home renders children correctly 1`] = `
               Last Name:
                
               <input
+                autoComplete="family-name"
                 name="LastName"
                 onChange={[Function]}
                 onInvalid={[Function]}
@@ -177,6 +179,7 @@ exports[`Home renders children correctly 1`] = `
               Phone Number:
                
               <input
+                autoComplete="tel"
                 name="Phone"
                 onChange={[Function]}
                 onInvalid={[Function]}

@@ -580,14 +580,18 @@ class Home extends React.Component {
                     onClick={async () => {
                       this.setState({ isUserInfoSaving: true });
 
-                      // TODO this throws when creating new user, improve error handling
                       const { data } = await axios
                         .post('/logIn', this.state)
-                        .catch(this.handleAxiosError)
-                        .then(user => {
-                          this.setState({ isUserInfoSaving: false });
-                          return user;
+                        .catch(err => {
+                          this.handleAxiosError(err);
+                          return { data: false };
                         });
+
+                      this.setState({ isUserInfoSaving: false });
+
+                      if (!data) {
+                        return;
+                      }
 
                       const {
                         FirstName,

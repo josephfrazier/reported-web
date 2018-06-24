@@ -40,6 +40,7 @@ import objectToFormData from 'object-to-formdata';
 import usStateNames from 'datasets-us-states-abbr-names';
 import fileExtension from 'file-extension';
 import niceware from 'niceware';
+import Modal from 'react-modal';
 
 import marx from 'marx-css/css/marx.css';
 import s from './Home.css';
@@ -182,16 +183,6 @@ async function extractLocationDate({ attachmentFile }) {
   });
 }
 
-function handleAxiosError(error) {
-  return Promise.reject(error)
-    .catch(err => {
-      window.alert(`Error: ${err.response.data.error.message}`);
-    })
-    .catch(err => {
-      console.error(err);
-    });
-}
-
 // derived from https://github.com/feross/capture-frame/tree/06b8f5eac78fea305f7f577d1697ee3b6999c9a8#complete-example
 async function getVideoScreenshot({ attachmentFile }) {
   const src = getBlobUrl(attachmentFile);
@@ -249,11 +240,13 @@ class Home extends React.Component {
     const initialStatePersistent = {
       ...initialStatePerSubmission,
       isUserInfoOpen: true,
+      isMapOpen: false,
     };
 
     const initialStatePerSession = {
       attachmentData: [],
 
+      modalText: null,
       isPasswordRevealed: false,
       isUserInfoSaving: false,
       isSubmitting: false,
@@ -464,11 +457,32 @@ class Home extends React.Component {
     }
   };
 
+  handleAxiosError = error =>
+    Promise.reject(error)
+      .catch(err => {
+        this.alert(`Error: ${err.response.data.error.message}`);
+      })
+      .catch(err => {
+        console.error(err);
+      });
+
+  alert = modalText => this.setState({ modalText });
+  closeAlert = () => this.setState({ modalText: null });
+
   render() {
     return (
       <div className={s.root}>
         <div className={s.container}>
           <main>
+            <Modal
+              isOpen={!!this.state.modalText}
+              onRequestClose={this.closeAlert}
+            >
+              {this.state.modalText}
+              <br />
+              <button onClick={this.closeAlert}>Close</button>
+            </Modal>
+
             {/* TODO use tabbed interface instead of toggling <details> ? */}
             <details
               open={this.state.isUserInfoOpen}
@@ -490,7 +504,7 @@ class Home extends React.Component {
                       this.setState({ isUserInfoOpen: false });
                       window.scrollTo(0, 0);
                     })
-                    .catch(handleAxiosError)
+                    .catch(this.handleAxiosError)
                     .then(() => {
                       this.setState({ isUserInfoSaving: false });
                     });
@@ -550,9 +564,9 @@ class Home extends React.Component {
                             })
                             .then(() => {
                               const message = `Please check ${email} to reset your password.`;
-                              window.alert(message);
+                              this.alert(message);
                             })
-                            .catch(handleAxiosError);
+                            .catch(this.handleAxiosError);
                         }}
                       >
                         Reset
@@ -568,7 +582,7 @@ class Home extends React.Component {
 
                       const { data } = await axios
                         .post('/logIn', this.state)
-                        .catch(handleAxiosError)
+                        .catch(this.handleAxiosError)
                         .then(user => {
                           this.setState({ isUserInfoSaving: false });
                           return user;
@@ -762,14 +776,24 @@ class Home extends React.Component {
                       attachmentData: [],
                       submissions: [submission].concat(this.state.submissions),
                       plateSuggestion: '',
+                      reportDescription: '',
                     });
                     this.setLicensePlate({ plate: '', licenseState: 'NY' });
-                    window.prompt(
-                      'Submitted! objectId:',
-                      data.submission.objectId,
+                    this.alert(
+                      <React.Fragment>
+                        <p>Thanks for your submission!</p>
+                        <p>
+                          Your information has been submitted to Reported. It
+                          may take up to 24 hours for it to be processed.
+                        </p>
+
+                        {/*
+                        <p>objectId: {data.submission.objectId}</p>
+                        */}
+                      </React.Fragment>,
                     );
                   })
-                  .catch(handleAxiosError)
+                  .catch(this.handleAxiosError)
                   .then(() => {
                     this.setState({
                       isSubmitting: false,
@@ -943,16 +967,32 @@ class Home extends React.Component {
                   </select>
                 </label>
 
-                <details>
-                  <summary>
-                    Where: (click to edit)
-                    <br />
+                <label>
+                  Where:
+                  <br />
+                  <button
+                    type="button"
+                    onClick={() => this.setState({ isMapOpen: true })}
+                    style={{
+                      width: '100%',
+                    }}
+                  >
                     {this.state.formatted_address
                       .split(', ')
                       .slice(0, 2)
                       .join(', ')}
-                  </summary>
+                  </button>
+                </label>
 
+                <Modal
+                  isOpen={this.state.isMapOpen}
+                  onRequestClose={() => this.setState({ isMapOpen: false })}
+                  style={{
+                    content: {
+                      padding: 0,
+                    },
+                  }}
+                >
                   <MyMapComponent
                     key="map"
                     position={{
@@ -990,7 +1030,7 @@ class Home extends React.Component {
                       });
                     }}
                   />
-                </details>
+                </Modal>
 
                 <label>
                   When:{' '}
@@ -1042,7 +1082,7 @@ class Home extends React.Component {
                     const { submissions } = data;
                     this.setState({ submissions });
                   })
-                  .catch(handleAxiosError);
+                  .catch(this.handleAxiosError);
               }}
             >
               <summary>Previous Submissions</summary>
@@ -1211,7 +1251,7 @@ const MyMapComponent = compose(
   withProps({
     googleMapURL: `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&v=3.exp&libraries=geometry,drawing,places`,
     loadingElement: <div style={{ height: `100%` }} />,
-    containerElement: <div style={{ height: `75vh` }} />,
+    containerElement: <div style={{ height: `100%` }} />,
     mapElement: <div style={{ height: `100%` }} />,
   }),
   withScriptjs,
@@ -1239,7 +1279,7 @@ const MyMapComponent = compose(
           style={{
             boxSizing: `border-box`,
             border: `1px solid transparent`,
-            width: `240px`,
+            width: `calc(100% - 50px)`,
             height: `32px`,
             marginTop: `6px`,
             padding: `0 12px`,

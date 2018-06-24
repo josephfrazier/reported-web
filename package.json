@@ -58,6 +58,7 @@
     "react-google-maps": "^9.4.5",
     "react-loadable": "^5.4.0",
     "react-localstorage": "https://github.com/josephfrazier/react-localstorage#higher-ordered-component",
+    "react-modal": "^3.4.5",
     "react-social-icons": "^2.8.1",
     "recompose": "^0.26.0",
     "serialize-javascript": "^1.4.0",

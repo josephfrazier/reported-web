@@ -1123,9 +1123,15 @@ Home.propTypes = {
 
 // eslint-disable-next-line react/no-multi-comp
 class SubmissionDetails extends React.Component {
-  state = {
-    isDetailsOpen: false,
-  };
+  constructor(props) {
+    super(props);
+
+    const { isDetailsOpen } = props;
+
+    this.state = {
+      isDetailsOpen,
+    };
+  }
 
   render() {
     const {
@@ -1231,6 +1237,7 @@ class SubmissionDetails extends React.Component {
 }
 
 SubmissionDetails.propTypes = {
+  isDetailsOpen: PropTypes.bool,
   submission: PropTypes.shape({
     reqnumber: PropTypes.string,
     medallionNo: PropTypes.string,
@@ -1245,6 +1252,10 @@ SubmissionDetails.propTypes = {
     videoData1: PropTypes.string,
     videoData2: PropTypes.string,
   }).isRequired,
+};
+
+SubmissionDetails.defaultProps = {
+  isDetailsOpen: false,
 };
 
 const MyMapComponent = compose(

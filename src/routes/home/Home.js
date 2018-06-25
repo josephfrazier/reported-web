@@ -1268,7 +1268,13 @@ const MyMapComponent = compose(
   withScriptjs,
   withGoogleMap,
 )(props => {
-  const { position, onRef, onCenterChanged } = props;
+  const {
+    position,
+    onRef,
+    onCenterChanged,
+    onSearchBoxMounted,
+    onPlacesChanged,
+  } = props;
 
   return (
     <GoogleMap
@@ -1280,9 +1286,9 @@ const MyMapComponent = compose(
     >
       <Marker position={position} />
       <SearchBox
-        ref={props.onSearchBoxMounted}
+        ref={onSearchBoxMounted}
         controlPosition={window.google.maps.ControlPosition.TOP_LEFT}
-        onPlacesChanged={props.onPlacesChanged}
+        onPlacesChanged={onPlacesChanged}
       >
         <input
           type="text"

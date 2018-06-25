@@ -1307,3 +1307,4 @@ const MyMapComponent = compose(
 });
 
 export default withStyles(marx, s)(withLocalStorage(Home));
+export { SubmissionDetails };

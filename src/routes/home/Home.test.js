@@ -14,7 +14,7 @@ import '@babel/polyfill';
 import React from 'react';
 import renderer from 'react-test-renderer';
 import App from '../../components/App';
-import Home from './Home';
+import Home, { SubmissionDetails } from './Home';
 
 require('timezone-mock').register('US/Eastern');
 require('jest-mock-now')();
@@ -37,6 +37,35 @@ describe('Home', () => {
       .create(
         <App context={{ insertCss: () => {}, fetch: () => {}, pathname: '' }}>
           <Home typeofcomplaintValues={typeofcomplaintValues} />
+        </App>,
+      )
+      .toJSON();
+
+    expect(wrapper).toMatchSnapshot();
+  });
+});
+
+describe('SubmissionDetails', () => {
+  test('renders children correctly', () => {
+    const submission = {
+      reqnumber: 'reqnumber',
+      medallionNo: 'medallionNo',
+      typeofcomplaint: 'typeofcomplaint',
+      timeofreport: new Date(Date.now()).toISOString(),
+
+      photoData0: { url: 'photoData0.url' },
+      photoData1: { url: 'photoData1.url' },
+      photoData2: { url: 'photoData2.url' },
+
+      videoData0: 'videoData0',
+      videoData1: 'videoData1',
+      videoData2: 'videoData2',
+    };
+
+    const wrapper = renderer
+      .create(
+        <App context={{ insertCss: () => {}, fetch: () => {}, pathname: '' }}>
+          <SubmissionDetails isDetailsOpen submission={submission} />
         </App>,
       )
       .toJSON();

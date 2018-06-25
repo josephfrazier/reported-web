@@ -1258,16 +1258,7 @@ SubmissionDetails.defaultProps = {
   isDetailsOpen: false,
 };
 
-const MyMapComponent = compose(
-  withProps({
-    googleMapURL: `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&v=3.exp&libraries=geometry,drawing,places`,
-    loadingElement: <div style={{ height: `100%` }} />,
-    containerElement: <div style={{ height: `100%` }} />,
-    mapElement: <div style={{ height: `100%` }} />,
-  }),
-  withScriptjs,
-  withGoogleMap,
-)(props => {
+const MyMapComponentPure = props => {
   const {
     position,
     onRef,
@@ -1310,7 +1301,30 @@ const MyMapComponent = compose(
       </SearchBox>
     </GoogleMap>
   );
-});
+};
+
+MyMapComponentPure.propTypes = {
+  position: PropTypes.shape({
+    lat: PropTypes.number.isRequired,
+    lng: PropTypes.number.isRequired,
+  }).isRequired,
+
+  onRef: PropTypes.func.isRequired,
+  onCenterChanged: PropTypes.func.isRequired,
+  onSearchBoxMounted: PropTypes.func.isRequired,
+  onPlacesChanged: PropTypes.func.isRequired,
+};
+
+const MyMapComponent = compose(
+  withProps({
+    googleMapURL: `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&v=3.exp&libraries=geometry,drawing,places`,
+    loadingElement: <div style={{ height: `100%` }} />,
+    containerElement: <div style={{ height: `100%` }} />,
+    mapElement: <div style={{ height: `100%` }} />,
+  }),
+  withScriptjs,
+  withGoogleMap,
+)(MyMapComponentPure);
 
 export default withStyles(marx, s)(withLocalStorage(Home));
 export { SubmissionDetails };

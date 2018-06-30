@@ -521,7 +521,16 @@ class Home extends React.Component {
                       autoComplete="email"
                       value={this.state.email}
                       name="email"
-                      onChange={this.handleInputChange}
+                      onChange={event => {
+                        this.handleInputChange({
+                          target: {
+                            name: event.target.name,
+                            value: event.target.value.replace(/@.*/, atDomain =>
+                              atDomain.toLowerCase(),
+                            ),
+                          },
+                        });
+                      }}
                     />
                   </label>
 

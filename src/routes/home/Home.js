@@ -376,6 +376,10 @@ class Home extends React.Component {
   handleAttachmentInput = async (_, results) => {
     const attachmentData = results.map(([, attachmentFile]) => attachmentFile);
 
+    return this.handleAttachmentData({ attachmentData });
+  };
+
+  handleAttachmentData = async ({ attachmentData }) => {
     this.setState({
       attachmentData: this.state.attachmentData.concat(attachmentData),
     });

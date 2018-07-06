@@ -294,6 +294,17 @@ class Home extends React.Component {
       });
     }
 
+    // Allow users to paste image data
+    // adapted from https://github.com/charliewilco/react-gluejar/blob/b69d7cfa9d08bfb34d8eb6815e4b548528218883/src/index.js#L85
+    window.addEventListener('paste', clipboardEvent => {
+      const { items } = clipboardEvent.clipboardData;
+      // [].map.call because `items` isn't an array
+      const attachmentData = [].map
+        .call(items, item => item.getAsFile())
+        .filter(file => !!file);
+      this.handleAttachmentData({ attachmentData });
+    });
+
     this.forceUpdate(); // force "Create/Edit User" fields to render persisted value after load
   }
 
@@ -376,6 +387,10 @@ class Home extends React.Component {
   handleAttachmentInput = async (_, results) => {
     const attachmentData = results.map(([, attachmentFile]) => attachmentFile);
 
+    return this.handleAttachmentData({ attachmentData });
+  };
+
+  handleAttachmentData = async ({ attachmentData }) => {
     this.setState({
       attachmentData: this.state.attachmentData.concat(attachmentData),
     });

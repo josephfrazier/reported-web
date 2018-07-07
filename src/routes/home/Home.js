@@ -1058,6 +1058,15 @@ class Home extends React.Component {
                       });
                     }}
                   />
+
+                  <button
+                    onClick={() => this.setState({ isMapOpen: false })}
+                    style={{
+                      float: 'right',
+                    }}
+                  >
+                    Close
+                  </button>
                 </Modal>
 
                 <label>
@@ -1210,7 +1219,9 @@ const MyMapComponent = compose(
   withProps({
     googleMapURL: `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&v=3.exp&libraries=geometry,drawing,places`,
     loadingElement: <div style={{ height: `100%` }} />,
-    containerElement: <div style={{ height: `100%` }} />,
+    containerElement: (
+      <div style={{ height: `calc(100% - (18px + 1.5rem))` }} />
+    ),
     mapElement: <div style={{ height: `100%` }} />,
   }),
   withScriptjs,

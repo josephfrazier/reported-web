@@ -297,6 +297,7 @@ exports[`Home renders children correctly 1`] = `
               <input
                 list="plateSuggestion"
                 onChange={[Function]}
+                placeholder=""
                 required={true}
                 type="text"
                 value=""

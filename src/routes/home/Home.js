@@ -1060,6 +1060,25 @@ class Home extends React.Component {
                   />
 
                   <button
+                    type="button"
+                    style={{
+                      float: 'left',
+                    }}
+                    onClick={() => {
+                      geolocate()
+                        .then(({ coords }) => {
+                          this.setCoords(coords);
+                        })
+                        .catch(err => {
+                          this.alert(err.message);
+                          console.error(err);
+                        });
+                    }}
+                  >
+                    Use current location
+                  </button>
+
+                  <button
                     onClick={() => this.setState({ isMapOpen: false })}
                     style={{
                       float: 'right',

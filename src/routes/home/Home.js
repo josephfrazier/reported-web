@@ -265,6 +265,7 @@ class Home extends React.Component {
     this.initialStatePerSubmission = initialStatePerSubmission;
     this.initialStatePersistent = initialStatePersistent;
     this.userFormSubmitRef = React.createRef();
+    this.plateRef = React.createRef();
   }
 
   componentDidMount() {
@@ -458,7 +459,10 @@ class Home extends React.Component {
       const { data } = await axios.post('/openalpr', formData);
       const result = data.results[0];
       result.licenseState = result.region.toUpperCase();
-      if (this.state.plate === '') {
+      if (
+        this.state.plate === '' &&
+        document.activeElement !== this.plateRef.current
+      ) {
         this.setLicensePlate(result);
       }
       this.setState({
@@ -919,6 +923,7 @@ class Home extends React.Component {
                       type="text"
                       value={this.state.plate}
                       list="plateSuggestion"
+                      ref={this.plateRef}
                       onChange={event => {
                         this.setLicensePlate({
                           plate: event.target.value.toUpperCase(),

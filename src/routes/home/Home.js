@@ -924,6 +924,7 @@ class Home extends React.Component {
                       value={this.state.plate}
                       list="plateSuggestion"
                       ref={this.plateRef}
+                      placeholder={this.state.plateSuggestion}
                       onChange={event => {
                         this.setLicensePlate({
                           plate: event.target.value.toUpperCase(),

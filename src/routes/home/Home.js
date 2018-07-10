@@ -788,6 +788,31 @@ class Home extends React.Component {
                       attachmentData: this.state.attachmentData,
                       CreateDate: new Date(this.state.CreateDate).toISOString(),
                     }),
+                    {
+                      onUploadProgress: progressEvent => {
+                        const {
+                          loaded: submitProgressValue,
+                          total: submitProgressMax,
+                        } = progressEvent;
+
+                        this.setState({
+                          submitProgressValue,
+                          submitProgressMax,
+                        });
+                      },
+
+                      onDownloadProgress: progressEvent => {
+                        const {
+                          loaded: submitProgressValue,
+                          total: submitProgressMax,
+                        } = progressEvent;
+
+                        this.setState({
+                          submitProgressValue,
+                          submitProgressMax,
+                        });
+                      },
+                    },
                   )
                   .then(({ data }) => {
                     const { submission } = data;
@@ -1123,6 +1148,19 @@ class Home extends React.Component {
                 <button type="submit" disabled={this.state.isSubmitting}>
                   {this.state.isSubmitting ? 'Submitting...' : 'Submit'}
                 </button>
+
+                {this.state.isSubmitting && (
+                  <div>
+                    <progress
+                      max={this.state.submitProgressMax}
+                      value={this.state.submitProgressValue}
+                    >
+                      {this.state.submitProgressValue}
+                      /
+                      {this.state.submitProgressMax}
+                    </progress>
+                  </div>
+                )}
               </fieldset>
             </form>
 

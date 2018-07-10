@@ -1146,11 +1146,7 @@ class Home extends React.Component {
                 </label>
 
                 <button type="submit" disabled={this.state.isSubmitting}>
-                  {this.state.isSubmitting ? 'Submitting...' : 'Submit'}
-                </button>
-
-                {this.state.isSubmitting && (
-                  <div>
+                  {this.state.isSubmitting ? (
                     <progress
                       max={this.state.submitProgressMax}
                       value={this.state.submitProgressValue}
@@ -1159,8 +1155,10 @@ class Home extends React.Component {
                       /
                       {this.state.submitProgressMax}
                     </progress>
-                  </div>
-                )}
+                  ) : (
+                    'Submit'
+                  )}
+                </button>
               </fieldset>
             </form>
 

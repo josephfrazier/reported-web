@@ -788,6 +788,31 @@ class Home extends React.Component {
                       attachmentData: this.state.attachmentData,
                       CreateDate: new Date(this.state.CreateDate).toISOString(),
                     }),
+                    {
+                      onUploadProgress: progressEvent => {
+                        const {
+                          loaded: submitProgressValue,
+                          total: submitProgressMax,
+                        } = progressEvent;
+
+                        this.setState({
+                          submitProgressValue,
+                          submitProgressMax,
+                        });
+                      },
+
+                      onDownloadProgress: progressEvent => {
+                        const {
+                          loaded: submitProgressValue,
+                          total: submitProgressMax,
+                        } = progressEvent;
+
+                        this.setState({
+                          submitProgressValue,
+                          submitProgressMax,
+                        });
+                      },
+                    },
                   )
                   .then(({ data }) => {
                     const { submission } = data;
@@ -1120,9 +1145,29 @@ class Home extends React.Component {
                   to be publicly displayed
                 </label>
 
-                <button type="submit" disabled={this.state.isSubmitting}>
-                  {this.state.isSubmitting ? 'Submitting...' : 'Submit'}
-                </button>
+                {this.state.isSubmitting ? (
+                  <progress
+                    max={this.state.submitProgressMax}
+                    value={this.state.submitProgressValue}
+                    style={{
+                      width: '100%',
+                    }}
+                  >
+                    {this.state.submitProgressValue}
+                    /
+                    {this.state.submitProgressMax}
+                  </progress>
+                ) : (
+                  <button
+                    type="submit"
+                    disabled={this.state.isSubmitting}
+                    style={{
+                      width: '100%',
+                    }}
+                  >
+                    Submit
+                  </button>
+                )}
               </fieldset>
             </form>
 

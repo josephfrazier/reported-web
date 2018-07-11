@@ -701,6 +701,11 @@ exports[`Home renders children correctly 1`] = `
           </label>
           <button
             disabled={false}
+            style={
+              Object {
+                "width": "100%",
+              }
+            }
             type="submit"
           >
             Submit

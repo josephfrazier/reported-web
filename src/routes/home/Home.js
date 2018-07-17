@@ -849,6 +849,8 @@ class Home extends React.Component {
                   .then(() => {
                     this.setState({
                       isSubmitting: false,
+                      submitProgressValue: null,
+                      submitProgressMax: null,
                     });
                   });
               }}

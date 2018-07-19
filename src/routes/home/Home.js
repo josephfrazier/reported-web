@@ -494,6 +494,17 @@ class Home extends React.Component {
       <div className={s.root}>
         <div className={s.container}>
           <main>
+            <h1>
+              <a
+                href="https://reportedly.weebly.com/"
+                style={{
+                  textDecoration: 'underline',
+                }}
+              >
+                Reported
+              </a>
+            </h1>
+
             <Modal
               isOpen={!!this.state.modalText}
               onRequestClose={this.closeAlert}

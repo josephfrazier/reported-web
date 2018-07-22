@@ -8,6 +8,18 @@ exports[`Home renders children correctly 1`] = `
     className="container"
   >
     <main>
+      <h1>
+        <a
+          href="https://reportedly.weebly.com/"
+          style={
+            Object {
+              "textDecoration": "underline",
+            }
+          }
+        >
+          Reported
+        </a>
+      </h1>
       <details
         onToggle={[Function]}
         open={true}

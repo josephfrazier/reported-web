@@ -45,7 +45,6 @@ process.on('unhandledRejection', (reason, p) => {
 });
 
 const {
-  HEROKU_APP_NAME,
   PARSE_APP_ID,
   PARSE_JAVASCRIPT_KEY,
   PARSE_SERVER_URL,
@@ -53,7 +52,7 @@ const {
   OPENALPR_SECRET_KEY,
 } = process.env;
 
-require('heroku-self-ping')(`https://${HEROKU_APP_NAME}.herokuapp.com`, {
+require('heroku-self-ping')(config.api.serverUrl, {
   verbose: true,
 });
 

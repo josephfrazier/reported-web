@@ -53,7 +53,7 @@ const {
   OPENALPR_SECRET_KEY,
 } = process.env;
 
-require('heroku-self-ping')(`https://${HEROKU_APP_NAME}.herokuapp.com/`, {
+require('heroku-self-ping')(`https://${HEROKU_APP_NAME}.herokuapp.com`, {
   verbose: true,
 });
 

@@ -835,6 +835,13 @@
     lodash "^4.17.5"
     to-fast-properties "^2.0.0"
 
+"@josephfrazier/react-dropzone@4.2.13-development":
+  version "4.2.13-development"
+  resolved "https://registry.yarnpkg.com/@josephfrazier/react-dropzone/-/react-dropzone-4.2.13-development.tgz#93d70bf13e09aef21f0eca9fe96d6a742ea5b782"
+  dependencies:
+    attr-accept "^1.0.3"
+    prop-types "^15.5.7"
+
 "@mrmlnc/readdir-enhanced@^2.2.1":
   version "2.2.1"
   resolved "https://registry.yarnpkg.com/@mrmlnc/readdir-enhanced/-/readdir-enhanced-2.2.1.tgz#524af240d1a360527b730475ecfa1344aa540dde"
@@ -9866,13 +9873,6 @@ react-dom@^16.4.1:
     loose-envify "^1.1.0"
     object-assign "^4.1.1"
     prop-types "^15.6.0"
-
-react-dropzone@^4.2.13:
-  version "4.2.13"
-  resolved "https://registry.yarnpkg.com/react-dropzone/-/react-dropzone-4.2.13.tgz#31393c079b4e5ddcc176c095cebc3545d1248b9d"
-  dependencies:
-    attr-accept "^1.0.3"
-    prop-types "^15.5.7"
 
 react-error-overlay@^4.0.0:
   version "4.0.0"

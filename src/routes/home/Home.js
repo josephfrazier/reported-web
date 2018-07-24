@@ -39,7 +39,7 @@ import usStateNames from 'datasets-us-states-abbr-names';
 import fileExtension from 'file-extension';
 import niceware from 'niceware';
 import Modal from 'react-modal';
-import Dropzone from 'react-dropzone';
+import Dropzone from '@josephfrazier/react-dropzone';
 
 import marx from 'marx-css/css/marx.css';
 import s from './Home.css';

@@ -879,6 +879,9 @@ class Home extends React.Component {
                       submitProgressValue: null,
                       submitProgressMax: null,
                     });
+                  })
+                  .then(() => {
+                    this.saveStateToLocalStorage();
                   });
               }}
             >

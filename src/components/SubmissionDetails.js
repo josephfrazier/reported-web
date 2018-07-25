@@ -20,6 +20,7 @@ class SubmissionDetails extends React.Component {
       reqnumber,
       medallionNo,
       typeofcomplaint,
+      loc1_address, // eslint-disable-line camelcase
       timeofreport,
 
       photoData0,
@@ -99,7 +100,9 @@ class SubmissionDetails extends React.Component {
         }}
       >
         <summary>
-          {medallionNo} {typeofcomplaint} on {humanTimeString}
+          {medallionNo} {typeofcomplaint} near{' '}
+          {/* eslint-disable-next-line camelcase */}
+          {(loc1_address || '').split(',')[0]} on {humanTimeString}
         </summary>
 
         {this.state.isDetailsOpen && (
@@ -124,6 +127,7 @@ SubmissionDetails.propTypes = {
     reqnumber: PropTypes.string,
     medallionNo: PropTypes.string,
     typeofcomplaint: PropTypes.string,
+    loc1_address: PropTypes.string,
     timeofreport: PropTypes.string,
 
     photoData0: PropTypes.object,

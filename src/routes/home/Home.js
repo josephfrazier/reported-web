@@ -977,7 +977,7 @@ class Home extends React.Component {
                   <div style={{ display: 'flex' }}>
                     <input
                       required
-                      type="text"
+                      type="search"
                       value={this.state.plate}
                       list="plateSuggestion"
                       ref={this.plateRef}
@@ -1010,15 +1010,6 @@ class Home extends React.Component {
                         </option>
                       ))}
                     </select>
-                    &nbsp;
-                    <button
-                      type="button"
-                      onClick={() => {
-                        this.setLicensePlate({ plate: '', licenseState: 'NY' });
-                      }}
-                    >
-                      Clear
-                    </button>
                   </div>
                   {this.state.vehicleInfoComponent}
                 </label>

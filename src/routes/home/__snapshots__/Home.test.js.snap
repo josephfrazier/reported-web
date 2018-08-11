@@ -328,7 +328,7 @@ exports[`Home renders children correctly 1`] = `
                 onChange={[Function]}
                 placeholder=""
                 required={true}
-                type="text"
+                type="search"
                 value=""
               />
               <datalist
@@ -593,13 +593,6 @@ exports[`Home renders children correctly 1`] = `
                   Wyoming
                 </option>
               </select>
-               
-              <button
-                onClick={[Function]}
-                type="button"
-              >
-                Clear
-              </button>
             </div>
             <br />
           </label>

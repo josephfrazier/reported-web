@@ -39,6 +39,7 @@ import usStateNames from 'datasets-us-states-abbr-names';
 import fileExtension from 'file-extension';
 import niceware from 'niceware';
 import Modal from 'react-modal';
+import Dropzone from '@josephfrazier/react-dropzone';
 
 import marx from 'marx-css/css/marx.css';
 import s from './Home.css';
@@ -491,7 +492,22 @@ class Home extends React.Component {
 
   render() {
     return (
-      <div className={s.root}>
+      <Dropzone
+        className={s.root}
+        onDrop={attachmentData => {
+          this.handleAttachmentData({ attachmentData });
+        }}
+        accept="image/*, video/*"
+        style={{
+          position: 'fixed',
+          top: 0,
+          right: 0,
+          bottom: 0,
+          left: 0,
+          overflowY: 'scroll',
+        }}
+        disableClick
+      >
         <div className={s.container}>
           <main>
             <h1>
@@ -863,6 +879,9 @@ class Home extends React.Component {
                       submitProgressValue: null,
                       submitProgressMax: null,
                     });
+                  })
+                  .then(() => {
+                    this.saveStateToLocalStorage();
                   });
               }}
             >
@@ -958,7 +977,7 @@ class Home extends React.Component {
                   <div style={{ display: 'flex' }}>
                     <input
                       required
-                      type="text"
+                      type="search"
                       value={this.state.plate}
                       list="plateSuggestion"
                       ref={this.plateRef}
@@ -991,15 +1010,6 @@ class Home extends React.Component {
                         </option>
                       ))}
                     </select>
-                    &nbsp;
-                    <button
-                      type="button"
-                      onClick={() => {
-                        this.setLicensePlate({ plate: '', licenseState: 'NY' });
-                      }}
-                    >
-                      Clear
-                    </button>
                   </div>
                   {this.state.vehicleInfoComponent}
                 </label>
@@ -1227,7 +1237,7 @@ class Home extends React.Component {
             </div>
           </main>
         </div>
-      </div>
+      </Dropzone>
     );
   }
 }

@@ -753,6 +753,7 @@ exports[`Home renders children correctly 1`] = `
         }
       >
         <a
+          aria-label="github"
           className="social-icon"
           href="https://github.com/josephfrazier/Reported-Web"
           rel="noopener"
@@ -853,6 +854,7 @@ exports[`Home renders children correctly 1`] = `
         </a>
          
         <a
+          aria-label="twitter"
           className="social-icon"
           href="https://twitter.com/Reported_NYC"
           rel="noopener"

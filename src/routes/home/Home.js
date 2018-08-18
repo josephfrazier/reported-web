@@ -49,10 +49,11 @@ import { isImage, isVideo } from '../../isImage.js';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyDlwm2ykA0ohTXeVepQYvkcmdjz2M2CKEI';
 
-const debouncedReverseGeocode = debounce(async ({ latitude, longitude }) => {
-  const { data } = await axios.get(
-    `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${GOOGLE_MAPS_API_KEY}`,
-  );
+const debouncedValidateLocation = debounce(async ({ latitude, longitude }) => {
+  const { data } = await axios.post('/api/validate_location', {
+    lat: latitude,
+    long: longitude,
+  });
   return data;
 }, 500);
 
@@ -329,8 +330,10 @@ class Home extends React.Component {
       longitude,
       formatted_address: 'Finding Address...',
     });
-    debouncedReverseGeocode({ latitude, longitude }).then(data => {
-      this.setState({ formatted_address: data.results[0].formatted_address });
+    debouncedValidateLocation({ latitude, longitude }).then(data => {
+      this.setState({
+        formatted_address: data.google_response.results[0].formatted_address,
+      });
     });
   };
 

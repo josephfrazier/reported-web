@@ -299,6 +299,9 @@ async function validateLocation({ lat, long }) {
 
 app.use('/api/validate_location', (req, res) => {
   const { lat, long } = req.body;
+  if (!lat || !long) {
+    res.status(400).end();
+  }
   validateLocation({ lat, long })
     .then(body => res.json(body))
     .catch(handlePromiseRejection(res));

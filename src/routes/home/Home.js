@@ -977,43 +977,43 @@ class Home extends React.Component {
 
                 <label>
                   License/Medallion:
-                  <div style={{ display: 'flex' }}>
-                    <input
-                      required
-                      type="search"
-                      value={this.state.plate}
-                      list="plateSuggestion"
-                      ref={this.plateRef}
-                      placeholder={this.state.plateSuggestion}
-                      onChange={event => {
-                        this.setLicensePlate({
-                          plate: event.target.value.toUpperCase(),
-                        });
-                      }}
-                    />
-                    <datalist id="plateSuggestion">
-                      {this.state.plateSuggestion && (
-                        <option value={this.state.plateSuggestion} />
-                      )}
-                    </datalist>
-                    &nbsp;
-                    <select
-                      value={this.state.licenseState}
-                      name="licenseState"
-                      onChange={event => {
-                        this.setLicensePlate({
-                          plate: this.state.plate,
-                          licenseState: event.target.value,
-                        });
-                      }}
-                    >
-                      {Object.entries(usStateNames).map(([abbr, name]) => (
-                        <option key={abbr} value={abbr}>
-                          {name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  <input
+                    required
+                    type="search"
+                    value={this.state.plate}
+                    list="plateSuggestion"
+                    ref={this.plateRef}
+                    placeholder={this.state.plateSuggestion}
+                    onChange={event => {
+                      this.setLicensePlate({
+                        plate: event.target.value.toUpperCase(),
+                      });
+                    }}
+                  />
+                  <datalist id="plateSuggestion">
+                    {this.state.plateSuggestion && (
+                      <option value={this.state.plateSuggestion} />
+                    )}
+                  </datalist>
+                  <select
+                    style={{
+                      marginTop: '0.5rem',
+                    }}
+                    value={this.state.licenseState}
+                    name="licenseState"
+                    onChange={event => {
+                      this.setLicensePlate({
+                        plate: this.state.plate,
+                        licenseState: event.target.value,
+                      });
+                    }}
+                  >
+                    {Object.entries(usStateNames).map(([abbr, name]) => (
+                      <option key={abbr} value={abbr}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
                   {this.state.vehicleInfoComponent}
                 </label>
 

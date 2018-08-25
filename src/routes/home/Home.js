@@ -308,6 +308,18 @@ class Home extends React.Component {
       this.handleAttachmentData({ attachmentData });
     });
 
+    window.addEventListener('beforeunload', beforeUnloadEvent => {
+      if (this.state.attachmentData.length === 0) {
+        return '';
+      }
+
+      const confirmationMessage = 'Are you sure?';
+
+      // eslint-disable-next-line no-param-reassign
+      (beforeUnloadEvent || window.event).returnValue = confirmationMessage; // Gecko + IE
+      return confirmationMessage; // Webkit, Safari, Chrome etc.
+    });
+
     this.forceUpdate(); // force "Create/Edit User" fields to render persisted value after load
   }
 

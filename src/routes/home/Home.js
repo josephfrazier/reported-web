@@ -49,8 +49,8 @@ import { isImage, isVideo } from '../../isImage.js';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyDlwm2ykA0ohTXeVepQYvkcmdjz2M2CKEI';
 
-const debouncedValidateLocation = debounce(async ({ latitude, longitude }) => {
-  const { data } = await axios.post('/api/validate_location', {
+const debouncedProcessValidation = debounce(async ({ latitude, longitude }) => {
+  const { data } = await axios.post('/api/process_validation', {
     lat: latitude,
     long: longitude,
   });
@@ -342,7 +342,7 @@ class Home extends React.Component {
       longitude,
       formatted_address: 'Finding Address...',
     });
-    debouncedValidateLocation({ latitude, longitude }).then(data => {
+    debouncedProcessValidation({ latitude, longitude }).then(data => {
       this.setState({
         formatted_address: data.google_response.results[0].formatted_address,
       });

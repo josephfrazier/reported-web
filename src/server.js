@@ -307,6 +307,73 @@ app.use('/api/validate_location', (req, res) => {
     .catch(handlePromiseRejection(res));
 });
 
+// takes lat long
+// spirals around that point, calling validateLocation until it succeeds
+// returns hash with google response, geoclient response, and status
+// ported from `process_validation` at https://github.com/jeffrono/Reported/blob/19b588171315a3093d53986f9fb995059f5084b4/v2/enrich_functions.rb#L48-L88
+async function processValidation({ lat, long }) {
+  const RADIUS = 0.0002; // https://github.com/jeffrono/Reported/blob/19b588171315a3093d53986f9fb995059f5084b4/v2/keys%20(template).rb#L35
+
+  const response = [];
+
+  // validate the location
+  for (let i = 0; i <= 10; i += 1) {
+    let r;
+    // test version 1
+    // eslint-disable-next-line no-await-in-loop
+    r = await validateLocation({
+      lat: lat + i * RADIUS,
+      long,
+    });
+    if (r.valid) {
+      response.push(r);
+      break;
+    }
+
+    // eslint-disable-next-line no-await-in-loop
+    r = await validateLocation({
+      lat: lat - i * RADIUS,
+      long,
+    });
+    if (r.valid) {
+      response.push(r);
+      break;
+    }
+
+    // eslint-disable-next-line no-await-in-loop
+    r = await validateLocation({
+      lat,
+      long: long + i * RADIUS,
+    });
+    if (r.valid) {
+      response.push(r);
+      break;
+    }
+
+    // eslint-disable-next-line no-await-in-loop
+    r = await validateLocation({
+      lat,
+      long: long - i * RADIUS,
+    });
+    if (r.valid) {
+      response.push(r);
+      break;
+    }
+  }
+
+  return response[0];
+}
+
+app.use('/api/process_validation', (req, res) => {
+  const { lat, long } = req.body;
+  if (!lat || !long) {
+    res.status(400).end();
+  }
+  processValidation({ lat, long })
+    .then(body => res.json(body))
+    .catch(handlePromiseRejection(res));
+});
+
 app.use('/submissions', (req, res) => {
   saveUser(req.body)
     .then(user => {

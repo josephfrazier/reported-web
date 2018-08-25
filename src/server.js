@@ -361,7 +361,7 @@ async function processValidation({ lat, long }) {
     }
   }
 
-  return response;
+  return response[0];
 }
 
 app.use('/api/process_validation', (req, res) => {

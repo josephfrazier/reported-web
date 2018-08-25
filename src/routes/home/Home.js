@@ -54,8 +54,7 @@ const debouncedProcessValidation = debounce(async ({ latitude, longitude }) => {
     lat: latitude,
     long: longitude,
   });
-
-  return data[0];
+  return data;
 }, 500);
 
 const debouncedGetVehicleType = debounce(
@@ -343,13 +342,11 @@ class Home extends React.Component {
       longitude,
       formatted_address: 'Finding Address...',
     });
-    debouncedProcessValidation({ latitude, longitude })
-      .then(data => {
-        this.setState({
-          formatted_address: data.google_response.results[0].formatted_address,
-        });
-      })
-      .catch(() => {});
+    debouncedProcessValidation({ latitude, longitude }).then(data => {
+      this.setState({
+        formatted_address: data.google_response.results[0].formatted_address,
+      });
+    });
   };
 
   setCreateDate = millisecondsSinceEpoch => {

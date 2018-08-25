@@ -23,6 +23,7 @@ import fileType from 'file-type-es5';
 import sharp from 'sharp';
 import axios from 'axios';
 import multer from 'multer';
+import stringify from 'json-stringify-safe';
 
 import { isImage, isVideo } from './isImage.js';
 
@@ -108,7 +109,7 @@ app.use(bodyParser.json({ limit: '80mb' }));
 
 const handlePromiseRejection = res => error => {
   console.error({ error });
-  res.status(500).json({ error });
+  res.status(500).json(JSON.parse(stringify({ error })));
 };
 
 async function logIn({ email, password }) {

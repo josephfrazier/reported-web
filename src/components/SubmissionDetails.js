@@ -103,6 +103,8 @@ class SubmissionDetails extends React.Component {
           {medallionNo} {typeofcomplaint} near{' '}
           {/* eslint-disable-next-line camelcase */}
           {(loc1_address || '').split(',')[0]} on {humanTimeString}
+          <br />
+          TLC Service Request Number: {reqnumber}
         </summary>
 
         {this.state.isDetailsOpen && (

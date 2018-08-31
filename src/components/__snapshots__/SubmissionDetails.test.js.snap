@@ -14,6 +14,9 @@ exports[`SubmissionDetails renders children correctly 1`] = `
     82 Reade St
      on 
     Mockday 2016-11-18T00:00:00.000Z GMT-0500 (MockDate)
+    <br />
+    TLC Service Request Number: 
+    reqnumber
   </summary>
   <a
     href="photoData0.url"

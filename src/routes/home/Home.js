@@ -320,6 +320,13 @@ class Home extends React.Component {
       return confirmationMessage; // Webkit, Safari, Chrome etc.
     });
 
+    window.history.replaceState({ isMapOpen: false }, '', '.');
+    window.addEventListener('popstate', popStateEvent => {
+      if (popStateEvent.state.isMapOpen === false) {
+        this.setState({ isMapOpen: false });
+      }
+    });
+
     this.forceUpdate(); // force "Create/Edit User" fields to render persisted value after load
   }
 
@@ -1064,7 +1071,10 @@ class Home extends React.Component {
                   <br />
                   <button
                     type="button"
-                    onClick={() => this.setState({ isMapOpen: true })}
+                    onClick={() => {
+                      this.setState({ isMapOpen: true });
+                      window.history.pushState({ isMapOpen: true }, '', '.');
+                    }}
                     style={{
                       width: '100%',
                     }}
@@ -1078,7 +1088,10 @@ class Home extends React.Component {
 
                 <Modal
                   isOpen={this.state.isMapOpen}
-                  onRequestClose={() => this.setState({ isMapOpen: false })}
+                  onRequestClose={() => {
+                    this.setState({ isMapOpen: false });
+                    window.history.replaceState({ isMapOpen: false }, '', '.');
+                  }}
                   style={{
                     content: {
                       padding: 0,
@@ -1143,7 +1156,14 @@ class Home extends React.Component {
                   </button>
 
                   <button
-                    onClick={() => this.setState({ isMapOpen: false })}
+                    onClick={() => {
+                      this.setState({ isMapOpen: false });
+                      window.history.replaceState(
+                        { isMapOpen: false },
+                        '',
+                        '.',
+                      );
+                    }}
                     style={{
                       float: 'right',
                     }}

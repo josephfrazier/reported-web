@@ -27,6 +27,7 @@ import stringify from 'json-stringify-safe';
 
 import { isImage, isVideo } from './isImage.js';
 import { validateLocation, processValidation } from './geoclient.js';
+import { submit_311_illegal_parking_report } from './311.js'; // eslint-disable-line camelcase
 
 import App from './components/App';
 import Html from './components/Html';

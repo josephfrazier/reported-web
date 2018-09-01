@@ -1,6 +1,18 @@
 // Derived from https://github.com/pwa-builder/serviceworkers/blob/5b9128ec9232556171f0969bc2aa9c6039054ed6/serviceWorker1/pwabuilder-sw.js
 
-const offlineBody = 'You need to be online to use Reported.';
+const offlineBody = `
+  <h1>
+    <a href=".">
+      You need to be online to use Reported.
+      <br/>
+      Click here to retry.
+    </a>
+  </h1>
+`;
+
+const offlineHeaders = {
+  headers: { 'Content-Type': 'text/html' },
+};
 
 // If any fetch fails, it will show `offlineBody`
 // Maybe this should be limited to HTML documents?
@@ -21,7 +33,7 @@ self.addEventListener('fetch', event => {
         message: `[PWA Builder] Network request Failed. Serving offline page ${error}`,
         event,
       });
-      return new Response(offlineBody);
+      return new Response(offlineBody, offlineHeaders);
     }),
   );
 });

@@ -19,9 +19,7 @@ import s from './ElectriCitibikes.css';
 if (!global.window) {
   global.window = require('global/window'); // eslint-disable-line global-require
 }
-// import streamdataio from 'streamdataio-js-sdk'
 const streamdataio = require('streamdataio-js-sdk'); // eslint-disable-line global-require
-// import jsonpatch from 'fast-json-patch'
 const jsonpatch = require('fast-json-patch'); // eslint-disable-line global-require
 
 class ElectriCitibikes extends React.Component {
@@ -36,16 +34,12 @@ class ElectriCitibikes extends React.Component {
   };
 
   componentDidMount() {
-    let eventSource = null;
-
     const appToken = 'OTY5YTM3ZmItNTA2Ni00ZThhLWJmNzItYjVmM2QwYzZlMmYy';
 
-    // create the StreamdataEventSource Object
-    eventSource = streamdataio.createEventSource(
+    const eventSource = streamdataio.createEventSource(
       'https://bikeangels-api.citibikenyc.com/map/v1/nyc/stations',
       appToken,
     );
-    // eventSource = streamdataio.createEventSource("https://feeds.citibikenyc.com/stations/stations.json", appToken);
 
     eventSource
       .onOpen(() => {
@@ -58,8 +52,6 @@ class ElectriCitibikes extends React.Component {
       .onPatch(patch => {
         console.info({ patch });
 
-        // use json patch library to apply the patch (patch)
-        // to the original snapshot (data)
         const data = jsonpatch.deepClone(this.state.data);
         jsonpatch.applyPatch(data, patch);
         this.updateData({ data });
@@ -75,7 +67,6 @@ class ElectriCitibikes extends React.Component {
         });
       })
       .onError(error => {
-        // displays the error message
         console.error(error.getMessage());
       });
 

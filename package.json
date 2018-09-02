@@ -29,6 +29,7 @@
     "execall": "^1.0.0",
     "exif": "https://github.com/josephfrazier/node-exif#isbuffer",
     "express": "^4.16.3",
+    "fast-json-patch": "^2.0.7",
     "file-extension": "^4.0.5",
     "file-type-es5": "^6.2.1",
     "force-ssl-heroku": "^1.0.2",

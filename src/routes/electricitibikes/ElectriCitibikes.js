@@ -12,6 +12,7 @@ import PropTypes from 'prop-types';
 import promisedLocation from 'promised-location';
 import humanizeDistance from 'humanize-distance';
 import 'intl/locale-data/jsonp/en.js'; // https://github.com/andyearnshaw/Intl.js/issues/271#issuecomment-292233493
+import strftime from 'strftime';
 
 import withStyles from 'isomorphic-style-loader/lib/withStyles';
 import s from './ElectriCitibikes.css';
@@ -110,11 +111,12 @@ class ElectriCitibikes extends React.Component {
     const ebikeStations = stations.filter(
       station => station.ebikes_available > 0,
     );
+    const humanDate = strftime('at %r', new Date(this.state.updatedAt));
     return (
       <div className={s.root}>
         <div className={s.container}>
           <h1>{this.props.title}</h1>
-          Updated at {new Date(this.state.updatedAt).toString()}
+          Updated {humanDate}
           <ul>
             {ebikeStations.map(station => (
               <li key={station.name} style={{ margin: '1rem 0' }}>

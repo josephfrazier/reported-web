@@ -14,7 +14,7 @@ import humanizeDistance from 'humanize-distance';
 import 'intl/locale-data/jsonp/en.js'; // https://github.com/andyearnshaw/Intl.js/issues/271#issuecomment-292233493
 
 import withStyles from 'isomorphic-style-loader/lib/withStyles';
-import s from './Contact.css';
+import s from './ElectriCitibikes.css';
 
 if (!global.window) {
   global.window = require('global/window'); // eslint-disable-line global-require
@@ -24,7 +24,7 @@ const streamdataio = require('streamdataio-js-sdk'); // eslint-disable-line glob
 // import jsonpatch from 'fast-json-patch'
 const jsonpatch = require('fast-json-patch'); // eslint-disable-line global-require
 
-class Contact extends React.Component {
+class ElectriCitibikes extends React.Component {
   static propTypes = {
     title: PropTypes.string.isRequired,
   };
@@ -143,4 +143,4 @@ class Contact extends React.Component {
   }
 }
 
-export default withStyles(s)(Contact);
+export default withStyles(s)(ElectriCitibikes);

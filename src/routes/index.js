@@ -20,8 +20,9 @@ const routes = {
       load: () => import(/* webpackChunkName: 'home' */ './home'),
     },
     {
-      path: '/contact',
-      load: () => import(/* webpackChunkName: 'contact' */ './contact'),
+      path: '/electricitibikes',
+      load: () =>
+        import(/* webpackChunkName: 'electricitibikes' */ './electricitibikes'),
     },
     {
       path: '/login',

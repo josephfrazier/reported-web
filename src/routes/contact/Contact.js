@@ -61,11 +61,11 @@ class Contact extends React.Component {
         jsonpatch.applyPatch(data, patch);
         this.setState({ data });
 
-        const changedEbikes = patch.filter(hunk =>
-          hunk.path.includes('ebikes_available'),
+        const changedEbikes = patch.filter(operation =>
+          operation.path.includes('ebikes_available'),
         );
-        changedEbikes.forEach(hunk => {
-          const { op, path, value } = hunk;
+        changedEbikes.forEach(operation => {
+          const { op, path, value } = operation;
           const changedStation = data.features[path.split('/')[2]].properties;
           const ebikeCount = op === 'remove' ? 0 : value;
           console.info(`${ebikeCount} ebikes at ${changedStation.name}`);

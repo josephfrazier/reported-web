@@ -116,15 +116,18 @@ class ElectriCitibikes extends React.Component {
           <ul>
             {ebikeStations.map(station => (
               <li key={station.name}>
-                {station.ebikes_available} @ {station.name} (<a
+                {station.ebikes_available} @&nbsp;
+                <a
                   target="_blank"
                   rel="noopener noreferrer"
                   href={`https://www.google.com/maps?hl=en&q=${
                     station.latitude
                   },${station.longitude}`}
                 >
-                  {station.dist} away
-                </a>)
+                  {station.name}
+                </a>
+                <br />
+                ({station.dist} away)
               </li>
             ))}
           </ul>

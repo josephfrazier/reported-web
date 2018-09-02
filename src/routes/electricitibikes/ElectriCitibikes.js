@@ -115,7 +115,7 @@ class ElectriCitibikes extends React.Component {
           <h1>{this.props.title}</h1>
           <ul>
             {ebikeStations.map(station => (
-              <li key={station.name}>
+              <li key={station.name} style={{ margin: '1rem 0' }}>
                 {station.ebikes_available} @&nbsp;
                 <a
                   target="_blank"

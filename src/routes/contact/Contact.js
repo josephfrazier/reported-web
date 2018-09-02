@@ -9,6 +9,9 @@
 
 import React from 'react';
 import PropTypes from 'prop-types';
+import promisedLocation from 'promised-location';
+import humanizeDistance from 'humanize-distance';
+import 'intl/locale-data/jsonp/en.js'; // https://github.com/andyearnshaw/Intl.js/issues/271#issuecomment-292233493
 
 import withStyles from 'isomorphic-style-loader/lib/withStyles';
 import s from './Contact.css';
@@ -50,7 +53,7 @@ class Contact extends React.Component {
       })
       .onData(data => {
         console.info({ data });
-        this.setState({ data });
+        this.updateData({ data });
       })
       .onPatch(patch => {
         console.info({ patch });
@@ -59,7 +62,7 @@ class Contact extends React.Component {
         // to the original snapshot (data)
         const data = jsonpatch.deepClone(this.state.data);
         jsonpatch.applyPatch(data, patch);
-        this.setState({ data });
+        this.updateData({ data });
 
         const changedEbikes = patch.filter(operation =>
           operation.path.includes('ebikes_available'),
@@ -80,15 +83,35 @@ class Contact extends React.Component {
     eventSource.open();
   }
 
+  async updateData({ data }) {
+    this.setState({ data });
+
+    promisedLocation().then(({ coords: { latitude, longitude } }) =>
+      this.setState({ latitude, longitude }),
+    );
+  }
+
   render() {
     const stations = this.state.data.features.map(f => {
       const {
         coordinates: [longitude, latitude],
       } = f.geometry;
+
+      const start = {
+        latitude: this.state.latitude,
+        longitude: this.state.longitude,
+      };
+      const end = { latitude, longitude };
+      let dist = 'unknown distance';
+      if (start.latitude && start.longitude) {
+        dist = humanizeDistance(start, end, 'en-US', 'us');
+      }
+
       return {
         ...f.properties,
         latitude,
         longitude,
+        dist,
       };
     });
 
@@ -102,8 +125,8 @@ class Contact extends React.Component {
           <ul>
             {ebikeStations.map(station => (
               <li key={station.name}>
-                {station.ebikes_available} @ {station.name} ({station.latitude},{' '}
-                {station.longitude})
+                {station.ebikes_available} @ {station.name} ({station.dist}{' '}
+                away)
               </li>
             ))}
           </ul>

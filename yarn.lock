@@ -5731,6 +5731,12 @@ https-proxy-agent@^2.2.1:
     agent-base "^4.1.0"
     debug "^3.1.0"
 
+humanize-distance@^1.0.9:
+  version "1.0.9"
+  resolved "https://registry.yarnpkg.com/humanize-distance/-/humanize-distance-1.0.9.tgz#bb62f78edd687f1cb19ddc7d34f9969db670ca3b"
+  dependencies:
+    intl "1.2.5"
+
 humanize-string@^1.0.2:
   version "1.0.2"
   resolved "https://registry.yarnpkg.com/humanize-string/-/humanize-string-1.0.2.tgz#fef0a8bc9b1b857ca4013bbfaea75071736988f6"
@@ -5899,6 +5905,10 @@ inquirer@3.3.0, inquirer@^3.0.6:
 intersect@1.0.1:
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/intersect/-/intersect-1.0.1.tgz#332650e10854d8c0ac58c192bdc27a8bf7e7a30c"
+
+intl@1.2.5, intl@^1.2.5:
+  version "1.2.5"
+  resolved "https://registry.yarnpkg.com/intl/-/intl-1.2.5.tgz#82244a2190c4e419f8371f5aa34daa3420e2abde"
 
 invariant@^2.2.0, invariant@^2.2.1, invariant@^2.2.2:
   version "2.2.4"

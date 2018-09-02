@@ -81,7 +81,17 @@ class Contact extends React.Component {
   }
 
   render() {
-    const stations = this.state.data.features.map(f => f.properties);
+    const stations = this.state.data.features.map(f => {
+      const {
+        coordinates: [longitude, latitude],
+      } = f.geometry;
+      return {
+        ...f.properties,
+        latitude,
+        longitude,
+      };
+    });
+
     const ebikeStations = stations.filter(
       station => station.ebikes_available > 0,
     );
@@ -92,7 +102,8 @@ class Contact extends React.Component {
           <ul>
             {ebikeStations.map(station => (
               <li key={station.name}>
-                {station.ebikes_available} @ {station.name}
+                {station.ebikes_available} @ {station.name} ({station.latitude},{' '}
+                {station.longitude})
               </li>
             ))}
           </ul>

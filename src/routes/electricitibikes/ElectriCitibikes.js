@@ -75,7 +75,8 @@ class ElectriCitibikes extends React.Component {
   }
 
   async updateData({ data }) {
-    this.setState({ data });
+    const updatedAt = Date.now();
+    this.setState({ data, updatedAt });
 
     promisedLocation().then(({ coords: { latitude, longitude } }) =>
       this.setState({ latitude, longitude }),
@@ -113,6 +114,7 @@ class ElectriCitibikes extends React.Component {
       <div className={s.root}>
         <div className={s.container}>
           <h1>{this.props.title}</h1>
+          Updated at {new Date(this.state.updatedAt).toString()}
           <ul>
             {ebikeStations.map(station => (
               <li key={station.name} style={{ margin: '1rem 0' }}>

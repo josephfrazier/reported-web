@@ -11,6 +11,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import promisedLocation from 'promised-location';
 import humanizeDistance from 'humanize-distance';
+import geodist from 'geodist';
 import 'intl/locale-data/jsonp/en.js'; // https://github.com/andyearnshaw/Intl.js/issues/271#issuecomment-292233493
 import strftime from 'strftime';
 
@@ -96,8 +97,10 @@ class ElectriCitibikes extends React.Component {
       };
       const end = { latitude, longitude };
       let dist = 'unknown distance';
+      let distSortable;
       if (start.latitude && start.longitude) {
         dist = humanizeDistance(start, end, 'en-US', 'us');
+        distSortable = geodist(start, end, { exact: true });
       }
 
       return {
@@ -105,12 +108,14 @@ class ElectriCitibikes extends React.Component {
         latitude,
         longitude,
         dist,
+        distSortable,
       };
     });
 
     const ebikeStations = stations.filter(
       station => station.ebikes_available > 0,
     );
+    ebikeStations.sort((a, b) => a.distSortable - b.distSortable);
     const humanDate = strftime('at %r', new Date(this.state.updatedAt));
     return (
       <div className={s.root}>

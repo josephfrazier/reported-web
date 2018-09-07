@@ -67,13 +67,13 @@ class ElectriCitibikes extends React.Component {
           const ebikeCount = op === 'remove' ? 0 : value;
           console.info(`${ebikeCount} ebikes at ${changedStation.name}`);
         });
-      })
-      .onError(error => {
-        console.error(error.getMessage());
       });
 
     // open the data stream to the REST service through streamdata.io proxy
-    eventSource.open();
+    // eslint-disable-next-line no-underscore-dangle
+    eventSource.open()._sse.addErrorListener(() => {
+      window.location.reload();
+    });
   }
 
   async updateData({ data }) {

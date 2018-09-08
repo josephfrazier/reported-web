@@ -15,6 +15,8 @@ async function submit_311_illegal_parking_report({
   submission_timestamp,
   formal_description,
   photo_url_0,
+  // photo_url_1,
+  // photo_url_2,
   firstBoroughName,
   houseNumberIn,
   streetName1In,
@@ -45,7 +47,7 @@ async function submit_311_illegal_parking_report({
   });
 
   await page.waitForNavigation();
-  // await new Promise(resolve => setTimeout(resolve, 5000)) // TODO uncomment
+  await new Promise(resolve => setTimeout(resolve, 5000));
 
   const humanDate = strftime('%a, %b %d at %I:%M %p', submission_date);
   const formDate = strftime('%D %r', submission_date);
@@ -109,7 +111,7 @@ async function submit_311_illegal_parking_report({
   );
 
   await page.waitForNavigation();
-  // await new Promise(resolve => setTimeout(resolve, 5000)) // TODO uncomment
+  await new Promise(resolve => setTimeout(resolve, 5000));
 
   await page.evaluate(
     async ({
@@ -150,7 +152,7 @@ async function submit_311_illegal_parking_report({
   );
 
   await page.waitForNavigation();
-  // await new Promise(resolve => setTimeout(resolve, 5000)) // TODO uncomment
+  await new Promise(resolve => setTimeout(resolve, 5000));
 
   await page.evaluate(
     async ({
@@ -196,7 +198,7 @@ async function submit_311_illegal_parking_report({
   );
 
   await page.waitForNavigation();
-  await new Promise(resolve => setTimeout(resolve, 5000)); // TODO uncomment
+  await new Promise(resolve => setTimeout(resolve, 5000));
 
   // XXX the following code submits the form!
   // /*

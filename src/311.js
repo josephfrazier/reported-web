@@ -220,7 +220,8 @@ async function submit_311_illegal_parking_report({
   // console.log({ bodyHtml });
 
   let serviceRequestNumber = bodyHtml.match(/\d-\d-\d{10}/);
-  serviceRequestNumber = serviceRequestNumber && serviceRequestNumber[0];
+  serviceRequestNumber =
+    (serviceRequestNumber && serviceRequestNumber[0]) || 'Emailed by 311';
 
   return { serviceRequestNumber };
   // */

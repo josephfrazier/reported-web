@@ -54,6 +54,8 @@ async function submit_311_illegal_parking_report({
     document.querySelector('#nextPage').click();
   });
 
+  console.info('starting form');
+
   await page.waitForNavigation();
   await new Promise(resolve => setTimeout(resolve, 5000));
 
@@ -118,6 +120,8 @@ async function submit_311_illegal_parking_report({
     },
   );
 
+  console.info('filled complaint type/datetime/license/photo');
+
   await page.waitForNavigation();
   await new Promise(resolve => setTimeout(resolve, 5000));
 
@@ -154,6 +158,8 @@ async function submit_311_illegal_parking_report({
       boroughDropdownValues,
     },
   );
+
+  console.info('filled complaint location');
 
   await page.waitForNavigation();
   await new Promise(resolve => setTimeout(resolve, 5000));
@@ -196,6 +202,8 @@ async function submit_311_illegal_parking_report({
       boroughDropdownValues,
     },
   );
+
+  console.info('filled contact info');
 
   await page.waitForNavigation();
   await new Promise(resolve => setTimeout(resolve, 5000));

@@ -32,6 +32,10 @@ async function submit_311_illegal_parking_report({
 
   const browser = await puppeteer.launch({ headless: false }); // TODO change to true
   const page = await browser.newPage();
+  page.setViewport({
+    width: 1000,
+    height: 1000,
+  });
   await page.goto(
     'http://www1.nyc.gov/apps/311universalintake/form.htm?serviceName=NYPD+Parking',
   );
@@ -116,7 +120,7 @@ async function submit_311_illegal_parking_report({
       longitude,
     }) => {
       // set location
-      document.querySelector('#locationType').value = '1-KZ6-7'; // (Street/Sidewalk)
+      document.querySelector('#locationType').value = '1-6VO-1630'; // (Street/Sidewalk)
 
       // TODO dedupe with below
       document.querySelector('#incidentBorough6').value = {
@@ -192,9 +196,7 @@ async function submit_311_illegal_parking_report({
   );
 
   await page.waitForNavigation();
-  // await new Promise(resolve => setTimeout(resolve, 5000)) // TODO uncomment
-
-  // TODO next: https://github.com/jeffrono/Reported/blob/8cdc7efe6532aa0fd8b83ef0bcba083a14bcf52b/v2/task_311_illegal_parking_submission.rb#L86
+  await new Promise(resolve => setTimeout(resolve, 5000)) // TODO uncomment
 
   // XXX the following code submits the form!
   /*
@@ -202,15 +204,22 @@ async function submit_311_illegal_parking_report({
     document.querySelector('#CONFIRMATION').click();
   });
 
-  console.log('submitted, waiting 20 seconds for result');
-  await new Promise(resolve => setTimeout(resolve, 20000));
+  console.log('submitted, waiting for result');
+  await page.waitForFunction(function () {
+    return document.querySelector('.green_bold').innerText.includes('Your Service Request was submitted')
+  })
 
   // make sure to dump the html from the submitted page so you can regex it
   // https://reportedcab.slack.com/archives/C85007FUY/p1534693301000100
   // https://github.com/GoogleChrome/puppeteer/issues/331#issuecomment-323018788
-  let bodyHTML = await page.evaluate(() => document.body.innerHTML);
-  console.log(bodyHTML)
-  */
+  const bodyHtml = await page.evaluate(() => document.body.innerHTML);
+  console.log({ bodyHtml })
+
+  let serviceRequestNumber = bodyHtml.match(/\d-\d-\d{10}/);
+  serviceRequestNumber = serviceRequestNumber && serviceRequestNumber[0]
+
+  return { serviceRequestNumber }
+  // */
 }
 
 module.exports = {

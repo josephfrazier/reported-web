@@ -196,29 +196,31 @@ async function submit_311_illegal_parking_report({
   );
 
   await page.waitForNavigation();
-  await new Promise(resolve => setTimeout(resolve, 5000)) // TODO uncomment
+  await new Promise(resolve => setTimeout(resolve, 5000)); // TODO uncomment
 
   // XXX the following code submits the form!
-  /*
+  // /*
   await page.evaluate(async () => {
     document.querySelector('#CONFIRMATION').click();
   });
 
-  console.log('submitted, waiting for result');
-  await page.waitForFunction(function () {
-    return document.querySelector('.green_bold').innerText.includes('Your Service Request was submitted')
-  })
+  // console.log('submitted, waiting for result');
+  await page.waitForFunction(() =>
+    document
+      .querySelector('.green_bold')
+      .innerText.includes('Your Service Request was submitted'),
+  );
 
   // make sure to dump the html from the submitted page so you can regex it
   // https://reportedcab.slack.com/archives/C85007FUY/p1534693301000100
   // https://github.com/GoogleChrome/puppeteer/issues/331#issuecomment-323018788
   const bodyHtml = await page.evaluate(() => document.body.innerHTML);
-  console.log({ bodyHtml })
+  // console.log({ bodyHtml });
 
   let serviceRequestNumber = bodyHtml.match(/\d-\d-\d{10}/);
-  serviceRequestNumber = serviceRequestNumber && serviceRequestNumber[0]
+  serviceRequestNumber = serviceRequestNumber && serviceRequestNumber[0];
 
-  return { serviceRequestNumber }
+  return { serviceRequestNumber };
   // */
 }
 

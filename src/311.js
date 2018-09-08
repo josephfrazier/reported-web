@@ -206,7 +206,7 @@ async function submit_311_illegal_parking_report({
     document.querySelector('#CONFIRMATION').click();
   });
 
-  // console.log('submitted, waiting for result');
+  console.info('submitted, waiting for result');
   await page.waitForFunction(() =>
     document
       .querySelector('.green_bold')
@@ -217,7 +217,7 @@ async function submit_311_illegal_parking_report({
   // https://reportedcab.slack.com/archives/C85007FUY/p1534693301000100
   // https://github.com/GoogleChrome/puppeteer/issues/331#issuecomment-323018788
   const bodyHtml = await page.evaluate(() => document.body.innerHTML);
-  // console.log({ bodyHtml });
+  console.info({ bodyHtml });
 
   let serviceRequestNumber = bodyHtml.match(/\d-\d-\d{10}/);
   serviceRequestNumber =

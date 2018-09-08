@@ -7,6 +7,14 @@
 const puppeteer = require('puppeteer');
 const strftime = require('strftime');
 
+const boroughDropdownValues = {
+  BRONX: '1-4X9-313',
+  BROOKLYN: '1-4X9-314',
+  MANHATTAN: '1-4X9-316',
+  QUEENS: '1-4X9-315',
+  'STATEN ISLAND': '1-4X9-318',
+};
+
 // ported from https://github.com/jeffrono/Reported/blob/8cdc7efe6532aa0fd8b83ef0bcba083a14bcf52b/v2/task_311_illegal_parking_submission.rb
 async function submit_311_illegal_parking_report({
   Username, // email
@@ -120,18 +128,13 @@ async function submit_311_illegal_parking_report({
       streetName1In,
       latitude,
       longitude,
+      boroughDropdownValues,
     }) => {
       // set location
       document.querySelector('#locationType').value = '1-6VO-1630'; // (Street/Sidewalk)
 
-      // TODO dedupe with below
-      document.querySelector('#incidentBorough6').value = {
-        BRONX: '1-4X9-313',
-        BROOKLYN: '1-4X9-314',
-        MANHATTAN: '1-4X9-316',
-        QUEENS: '1-4X9-315',
-        'STATEN ISLAND': '1-4X9-318',
-      }[firstBoroughName.toUpperCase()];
+      document.querySelector('#incidentBorough6').value =
+        boroughDropdownValues[firstBoroughName.toUpperCase()];
 
       document.querySelector('#incidentAddressNumber').value = houseNumberIn;
       document.querySelector('#incidentStreetName').value = streetName1In;
@@ -148,6 +151,7 @@ async function submit_311_illegal_parking_report({
       streetName1In,
       latitude,
       longitude,
+      boroughDropdownValues,
     },
   );
 
@@ -164,20 +168,15 @@ async function submit_311_illegal_parking_report({
       Building,
       StreetName,
       Apt,
+      boroughDropdownValues,
     }) => {
       document.querySelector('#contactEmailAddress').value = Username;
       document.querySelector('#contactFirstName').value = FirstName;
       document.querySelector('#contactLastName').value = LastName;
       document.querySelector('#contactDaytimePhone').value = Phone;
 
-      // TODO dedupe with above
-      document.querySelector('#contactBorough').value = {
-        BRONX: '1-4X9-313',
-        BROOKLYN: '1-4X9-314',
-        MANHATTAN: '1-4X9-316',
-        QUEENS: '1-4X9-315',
-        'STATEN ISLAND': '1-4X9-318',
-      }[Borough.toUpperCase()];
+      document.querySelector('#contactBorough').value =
+        boroughDropdownValues[Borough.toUpperCase()];
 
       document.querySelector('#contactAddressNumber').value = Building;
       document.querySelector('#contactStreetName').value = StreetName;
@@ -194,6 +193,7 @@ async function submit_311_illegal_parking_report({
       Building,
       StreetName,
       Apt,
+      boroughDropdownValues,
     },
   );
 

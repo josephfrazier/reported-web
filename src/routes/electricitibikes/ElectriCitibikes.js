@@ -137,6 +137,14 @@ class ElectriCitibikes extends React.Component {
                 </a>
                 <br />
                 ({station.dist} away)
+                <ul>
+                  {station.ebikes &&
+                    station.ebikes.map(ebike => (
+                      <li key={ebike.bike_number}>
+                        {`#${ebike.bike_number}`} has {ebike.charge}/4 charge
+                      </li>
+                    ))}
+                </ul>
               </li>
             ))}
           </ul>

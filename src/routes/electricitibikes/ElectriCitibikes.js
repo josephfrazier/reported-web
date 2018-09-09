@@ -122,9 +122,9 @@ class ElectriCitibikes extends React.Component {
         <div className={s.container}>
           <h1>{this.props.title}</h1>
           Updated {humanDate}
-          <ul>
-            {ebikeStations.map(station => (
-              <li key={station.name} style={{ margin: '1rem 0' }}>
+          {ebikeStations.map(station => (
+            <details key={station.name} style={{ margin: '1rem 0' }}>
+              <summary>
                 {station.ebikes_available} @&nbsp;
                 <a
                   target="_blank"
@@ -137,17 +137,17 @@ class ElectriCitibikes extends React.Component {
                 </a>
                 <br />
                 ({station.dist} away)
-                <ul>
-                  {station.ebikes &&
-                    station.ebikes.map(ebike => (
-                      <li key={ebike.bike_number}>
-                        {`#${ebike.bike_number}`} has {ebike.charge}/4 charge
-                      </li>
-                    ))}
-                </ul>
-              </li>
-            ))}
-          </ul>
+              </summary>
+              <ul>
+                {station.ebikes &&
+                  station.ebikes.map(ebike => (
+                    <li key={ebike.bike_number}>
+                      {`#${ebike.bike_number}`} has {ebike.charge}/4 charge
+                    </li>
+                  ))}
+              </ul>
+            </details>
+          ))}
         </div>
       </div>
     );

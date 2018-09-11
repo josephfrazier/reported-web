@@ -117,11 +117,14 @@ class ElectriCitibikes extends React.Component {
     );
     ebikeStations.sort((a, b) => a.distSortable - b.distSortable);
     const humanDate = strftime('%r', new Date(this.state.updatedAt));
+    const totalEbikesAvailable = ebikeStations
+      .map(station => station.ebikes_available)
+      .reduce((a, b) => a + b, 0);
     return (
       <div className={s.root}>
         <div className={s.container}>
           <h1>{this.props.title}</h1>
-          Updated at {humanDate}
+          {totalEbikesAvailable} available as of {humanDate}
           {ebikeStations.map(station => (
             <details key={station.name} style={{ margin: '1rem 0' }}>
               <summary>

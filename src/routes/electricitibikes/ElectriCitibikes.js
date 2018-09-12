@@ -86,14 +86,15 @@ class ElectriCitibikes extends React.Component {
   }
 
   render() {
-    const stations = this.state.data.features.map(f => {
+    const { state } = this;
+    const stations = state.data.features.map(f => {
       const {
         coordinates: [longitude, latitude],
       } = f.geometry;
 
       const start = {
-        latitude: this.state.latitude,
-        longitude: this.state.longitude,
+        latitude: state.latitude,
+        longitude: state.longitude,
       };
       const end = { latitude, longitude };
       let dist = 'unknown distance';
@@ -116,7 +117,7 @@ class ElectriCitibikes extends React.Component {
       station => station.ebikes_available > 0,
     );
     ebikeStations.sort((a, b) => a.distSortable - b.distSortable);
-    const humanDate = strftime('%r', new Date(this.state.updatedAt));
+    const humanDate = strftime('%r', new Date(state.updatedAt));
     const totalEbikesAvailable = ebikeStations
       .map(station => station.ebikes_available)
       .reduce((a, b) => a + b, 0);

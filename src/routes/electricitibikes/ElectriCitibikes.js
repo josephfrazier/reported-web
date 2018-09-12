@@ -125,37 +125,53 @@ class ElectriCitibikes extends React.Component {
       <div className={s.root}>
         <div className={s.container}>
           <h1>{this.props.title}</h1>
-          {totalEbikesAvailable} available as of {humanDate}
-          {ebikeStations.map(station => (
-            <details key={station.name} style={{ margin: '1rem 0' }}>
-              <summary>
-                {station.ebikes_available} @&nbsp;
-                <a
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  href={`https://www.google.com/maps?hl=en&q=${
-                    station.latitude
-                  },${station.longitude}`}
-                >
-                  {station.name}
-                </a>
-                <br />
-                ({station.dist} away)
-              </summary>
-              <ul>
-                {station.ebikes &&
-                  station.ebikes.map(ebike => (
-                    <li key={ebike.bike_number}>
-                      {`#${ebike.bike_number}`} has {ebike.charge}/4 charge
-                    </li>
-                  ))}
-              </ul>
-            </details>
-          ))}
+          <ElectriCitibikeList
+            totalEbikesAvailable={totalEbikesAvailable}
+            humanDate={humanDate}
+            ebikeStations={ebikeStations}
+          />
         </div>
       </div>
     );
   }
+}
+
+function ElectriCitibikeList({
+  totalEbikesAvailable,
+  humanDate,
+  ebikeStations,
+}) {
+  return (
+    <>
+      {totalEbikesAvailable} available as of {humanDate}
+      {ebikeStations.map(station => (
+        <details key={station.name} style={{ margin: '1rem 0' }}>
+          <summary>
+            {station.ebikes_available} @&nbsp;
+            <a
+              target="_blank"
+              rel="noopener noreferrer"
+              href={`https://www.google.com/maps?hl=en&q=${station.latitude},${
+                station.longitude
+              }`}
+            >
+              {station.name}
+            </a>
+            <br />
+            ({station.dist} away)
+          </summary>
+          <ul>
+            {station.ebikes &&
+              station.ebikes.map(ebike => (
+                <li key={ebike.bike_number}>
+                  {`#${ebike.bike_number}`} has {ebike.charge}/4 charge
+                </li>
+              ))}
+          </ul>
+        </details>
+      ))}
+    </>
+  );
 }
 
 export default withStyles(s)(ElectriCitibikes);

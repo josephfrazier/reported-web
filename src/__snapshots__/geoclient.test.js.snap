@@ -187,6 +187,10 @@ New York, NY 10007",
     },
   },
   "google_response": Object {
+    "plus_code": Object {
+      "compound_code": "PX7V+4H New York, NY, USA",
+      "global_code": "87G7PX7V+4H",
+    },
     "results": Array [
       Object {
         "address_components": Array [
@@ -202,14 +206,6 @@ New York, NY 10007",
             "short_name": "Broadway",
             "types": Array [
               "route",
-            ],
-          },
-          Object {
-            "long_name": "Civic Center",
-            "short_name": "Civic Center",
-            "types": Array [
-              "neighborhood",
-              "political",
             ],
           },
           Object {
@@ -280,6 +276,10 @@ New York, NY 10007",
           },
         },
         "place_id": "ChIJVzXOjBhawokRSp5VqCM4F9Q",
+        "plus_code": Object {
+          "compound_code": "PX7V+3J New York, United States",
+          "global_code": "87G7PX7V+3J",
+        },
         "types": Array [
           "street_address",
         ],
@@ -480,6 +480,10 @@ New York, NY 10007",
     },
   },
   "google_response": Object {
+    "plus_code": Object {
+      "compound_code": "PX7V+4H New York, NY, USA",
+      "global_code": "87G7PX7V+4H",
+    },
     "results": Array [
       Object {
         "address_components": Array [
@@ -495,14 +499,6 @@ New York, NY 10007",
             "short_name": "Broadway",
             "types": Array [
               "route",
-            ],
-          },
-          Object {
-            "long_name": "Civic Center",
-            "short_name": "Civic Center",
-            "types": Array [
-              "neighborhood",
-              "political",
             ],
           },
           Object {
@@ -573,6 +569,10 @@ New York, NY 10007",
           },
         },
         "place_id": "ChIJVzXOjBhawokRSp5VqCM4F9Q",
+        "plus_code": Object {
+          "compound_code": "PX7V+3J New York, United States",
+          "global_code": "87G7PX7V+3J",
+        },
         "types": Array [
           "street_address",
         ],

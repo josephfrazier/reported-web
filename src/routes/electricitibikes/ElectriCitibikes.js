@@ -86,49 +86,18 @@ class ElectriCitibikes extends React.Component {
   }
 
   render() {
-    const { state } = this;
-    const stations = state.data.features.map(f => {
-      const {
-        coordinates: [longitude, latitude],
-      } = f.geometry;
-
-      const start = {
-        latitude: state.latitude,
-        longitude: state.longitude,
-      };
-      const end = { latitude, longitude };
-      let dist = 'unknown distance';
-      let distSortable;
-      if (start.latitude && start.longitude) {
-        dist = humanizeDistance(start, end, 'en-US', 'us');
-        distSortable = geodist(start, end, { exact: true });
-      }
-
-      return {
-        ...f.properties,
-        latitude,
-        longitude,
-        dist,
-        distSortable,
-      };
-    });
-
-    const ebikeStations = stations.filter(
-      station => station.ebikes_available > 0,
-    );
-    ebikeStations.sort((a, b) => a.distSortable - b.distSortable);
-    const humanDate = strftime('%r', new Date(state.updatedAt));
-    const totalEbikesAvailable = ebikeStations
-      .map(station => station.ebikes_available)
-      .reduce((a, b) => a + b, 0);
+    const {
+      state: { data, latitude, longitude, updatedAt },
+    } = this;
     return (
       <div className={s.root}>
         <div className={s.container}>
           <h1>{this.props.title}</h1>
           <ElectriCitibikeList
-            totalEbikesAvailable={totalEbikesAvailable}
-            humanDate={humanDate}
-            ebikeStations={ebikeStations}
+            data={data}
+            latitude={latitude}
+            longitude={longitude}
+            updatedAt={updatedAt}
           />
         </div>
       </div>
@@ -136,11 +105,38 @@ class ElectriCitibikes extends React.Component {
   }
 }
 
-function ElectriCitibikeList({
-  totalEbikesAvailable,
-  humanDate,
-  ebikeStations,
-}) {
+function ElectriCitibikeList({ data, latitude, longitude, updatedAt }) {
+  const stations = data.features.map(f => {
+    const { coordinates } = f.geometry;
+    const start = { latitude, longitude };
+    const end = {
+      latitude: coordinates[1],
+      longitude: coordinates[0],
+    };
+    let dist = 'unknown distance';
+    let distSortable;
+    if (start.latitude && start.longitude) {
+      dist = humanizeDistance(start, end, 'en-US', 'us');
+      distSortable = geodist(start, end, { exact: true });
+    }
+
+    return {
+      ...f.properties,
+      latitude,
+      longitude,
+      dist,
+      distSortable,
+    };
+  });
+
+  const ebikeStations = stations.filter(
+    station => station.ebikes_available > 0,
+  );
+  ebikeStations.sort((a, b) => a.distSortable - b.distSortable);
+  const humanDate = strftime('%r', new Date(updatedAt));
+  const totalEbikesAvailable = ebikeStations
+    .map(station => station.ebikes_available)
+    .reduce((a, b) => a + b, 0);
   return (
     <>
       {totalEbikesAvailable} available as of {humanDate}

@@ -114,10 +114,10 @@ export function ElectriCitibikeList({ data, latitude, longitude, updatedAt }) {
       longitude: coordinates[0],
     };
     let dist = 'unknown distance';
-    let distSortable;
+    let distMeters;
     if (start.latitude && start.longitude) {
       dist = humanizeDistance(start, end, 'en-US', 'us');
-      distSortable = geodist(start, end, { exact: true });
+      distMeters = geodist(start, end, { unit: 'meters', exact: true });
     }
 
     return {
@@ -125,14 +125,14 @@ export function ElectriCitibikeList({ data, latitude, longitude, updatedAt }) {
       latitude,
       longitude,
       dist,
-      distSortable,
+      distMeters,
     };
   });
 
   const ebikeStations = stations.filter(
     station => station.ebikes_available > 0,
   );
-  ebikeStations.sort((a, b) => a.distSortable - b.distSortable);
+  ebikeStations.sort((a, b) => a.distMeters - b.distMeters);
   const humanDate = strftime('%r', new Date(updatedAt));
   const totalEbikesAvailable = ebikeStations
     .map(station => station.ebikes_available)
@@ -154,7 +154,7 @@ export function ElectriCitibikeList({ data, latitude, longitude, updatedAt }) {
               {station.name}
             </a>
             <br />
-            ({station.dist} away)
+            ({station.dist} (~{Math.ceil(station.distMeters / 80)} blocks) away)
           </summary>
           <ul>
             {station.ebikes &&

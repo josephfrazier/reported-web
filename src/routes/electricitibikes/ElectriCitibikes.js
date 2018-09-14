@@ -154,7 +154,8 @@ export function ElectriCitibikeList({ data, latitude, longitude, updatedAt }) {
               {station.name}
             </a>
             <br />
-            ({station.dist} (~{Math.ceil(station.distMeters / 80)} blocks) away)
+            ({station.dist} away, about {Math.ceil(station.distMeters / 80)}{' '}
+            blocks)
           </summary>
           <ul>
             {station.ebikes &&

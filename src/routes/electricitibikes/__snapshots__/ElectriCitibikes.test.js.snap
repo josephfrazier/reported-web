@@ -1,0 +1,453 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`ElectriCitibikeList renders children correctly 1`] = `
+Array [
+  "15",
+  " available as of ",
+  "07:50:57 PM",
+  <details
+    style={
+      Object {
+        "margin": "1rem 0",
+      }
+    }
+  >
+    <summary>
+      1
+       @ 
+      <a
+        href="https://www.google.com/maps?hl=en&q=40.7128,-74.006"
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        Bank St & Washington St
+      </a>
+      <br />
+      (
+      1.6 mi
+       away)
+    </summary>
+    <ul />
+  </details>,
+  <details
+    style={
+      Object {
+        "margin": "1rem 0",
+      }
+    }
+  >
+    <summary>
+      1
+       @ 
+      <a
+        href="https://www.google.com/maps?hl=en&q=40.7128,-74.006"
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        DeKalb Ave & Hudson Ave
+      </a>
+      <br />
+      (
+      2.1 mi
+       away)
+    </summary>
+    <ul>
+      <li>
+        #70027
+         has 
+        3
+        /4 charge
+      </li>
+    </ul>
+  </details>,
+  <details
+    style={
+      Object {
+        "margin": "1rem 0",
+      }
+    }
+  >
+    <summary>
+      1
+       @ 
+      <a
+        href="https://www.google.com/maps?hl=en&q=40.7128,-74.006"
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        Carlton Ave & Park Ave
+      </a>
+      <br />
+      (
+      2.1 mi
+       away)
+    </summary>
+    <ul>
+      <li>
+        #70021
+         has 
+        3
+        /4 charge
+      </li>
+    </ul>
+  </details>,
+  <details
+    style={
+      Object {
+        "margin": "1rem 0",
+      }
+    }
+  >
+    <summary>
+      1
+       @ 
+      <a
+        href="https://www.google.com/maps?hl=en&q=40.7128,-74.006"
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        Clermont Ave & Park Ave
+      </a>
+      <br />
+      (
+      2.2 mi
+       away)
+    </summary>
+    <ul>
+      <li>
+        #65015
+         has 
+        3
+        /4 charge
+      </li>
+    </ul>
+  </details>,
+  <details
+    style={
+      Object {
+        "margin": "1rem 0",
+      }
+    }
+  >
+    <summary>
+      1
+       @ 
+      <a
+        href="https://www.google.com/maps?hl=en&q=40.7128,-74.006"
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        8 Ave & W 31 St
+      </a>
+      <br />
+      (
+      2.7 mi
+       away)
+    </summary>
+    <ul>
+      <li>
+        #70081
+         has 
+        4
+        /4 charge
+      </li>
+    </ul>
+  </details>,
+  <details
+    style={
+      Object {
+        "margin": "1rem 0",
+      }
+    }
+  >
+    <summary>
+      1
+       @ 
+      <a
+        href="https://www.google.com/maps?hl=en&q=40.7128,-74.006"
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        Meserole Ave & Manhattan Ave
+      </a>
+      <br />
+      (
+      2.9 mi
+       away)
+    </summary>
+    <ul>
+      <li>
+        #51037
+         has 
+        1
+        /4 charge
+      </li>
+    </ul>
+  </details>,
+  <details
+    style={
+      Object {
+        "margin": "1rem 0",
+      }
+    }
+  >
+    <summary>
+      1
+       @ 
+      <a
+        href="https://www.google.com/maps?hl=en&q=40.7128,-74.006"
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        Bayard St & Leonard St
+      </a>
+      <br />
+      (
+      3 mi
+       away)
+    </summary>
+    <ul>
+      <li>
+        #70084
+         has 
+        3
+        /4 charge
+      </li>
+    </ul>
+  </details>,
+  <details
+    style={
+      Object {
+        "margin": "1rem 0",
+      }
+    }
+  >
+    <summary>
+      1
+       @ 
+      <a
+        href="https://www.google.com/maps?hl=en&q=40.7128,-74.006"
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        Throop Ave & Myrtle Ave
+      </a>
+      <br />
+      (
+      3.5 mi
+       away)
+    </summary>
+    <ul>
+      <li>
+        #70127
+         has 
+        3
+        /4 charge
+      </li>
+    </ul>
+  </details>,
+  <details
+    style={
+      Object {
+        "margin": "1rem 0",
+      }
+    }
+  >
+    <summary>
+      1
+       @ 
+      <a
+        href="https://www.google.com/maps?hl=en&q=40.7128,-74.006"
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        14 St & 7 Ave
+      </a>
+      <br />
+      (
+      3.6 mi
+       away)
+    </summary>
+    <ul />
+  </details>,
+  <details
+    style={
+      Object {
+        "margin": "1rem 0",
+      }
+    }
+  >
+    <summary>
+      1
+       @ 
+      <a
+        href="https://www.google.com/maps?hl=en&q=40.7128,-74.006"
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        Broadway & W 60 St
+      </a>
+      <br />
+      (
+      4.1 mi
+       away)
+    </summary>
+    <ul>
+      <li>
+        #65004
+         has 
+        1
+        /4 charge
+      </li>
+    </ul>
+  </details>,
+  <details
+    style={
+      Object {
+        "margin": "1rem 0",
+      }
+    }
+  >
+    <summary>
+      1
+       @ 
+      <a
+        href="https://www.google.com/maps?hl=en&q=40.7128,-74.006"
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        E 74 St & 1 Ave
+      </a>
+      <br />
+      (
+      4.7 mi
+       away)
+    </summary>
+    <ul>
+      <li>
+        #70071
+         has 
+        3
+        /4 charge
+      </li>
+    </ul>
+  </details>,
+  <details
+    style={
+      Object {
+        "margin": "1rem 0",
+      }
+    }
+  >
+    <summary>
+      1
+       @ 
+      <a
+        href="https://www.google.com/maps?hl=en&q=40.7128,-74.006"
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        Riverside Dr & W 72 St
+      </a>
+      <br />
+      (
+      4.8 mi
+       away)
+    </summary>
+    <ul />
+  </details>,
+  <details
+    style={
+      Object {
+        "margin": "1rem 0",
+      }
+    }
+  >
+    <summary>
+      1
+       @ 
+      <a
+        href="https://www.google.com/maps?hl=en&q=40.7128,-74.006"
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        W 84 St & Columbus Ave
+      </a>
+      <br />
+      (
+      5.3 mi
+       away)
+    </summary>
+    <ul>
+      <li>
+        #70208
+         has 
+        1
+        /4 charge
+      </li>
+    </ul>
+  </details>,
+  <details
+    style={
+      Object {
+        "margin": "1rem 0",
+      }
+    }
+  >
+    <summary>
+      1
+       @ 
+      <a
+        href="https://www.google.com/maps?hl=en&q=40.7128,-74.006"
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        W 88 St & West End Ave
+      </a>
+      <br />
+      (
+      5.6 mi
+       away)
+    </summary>
+    <ul>
+      <li>
+        #65020
+         has 
+        1
+        /4 charge
+      </li>
+    </ul>
+  </details>,
+  <details
+    style={
+      Object {
+        "margin": "1rem 0",
+      }
+    }
+  >
+    <summary>
+      1
+       @ 
+      <a
+        href="https://www.google.com/maps?hl=en&q=40.7128,-74.006"
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        W 95 St & Broadway
+      </a>
+      <br />
+      (
+      5.9 mi
+       away)
+    </summary>
+    <ul>
+      <li>
+        #51012
+         has 
+        1
+        /4 charge
+      </li>
+    </ul>
+  </details>,
+]
+`;

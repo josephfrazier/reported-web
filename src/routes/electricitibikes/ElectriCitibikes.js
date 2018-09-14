@@ -105,7 +105,7 @@ class ElectriCitibikes extends React.Component {
   }
 }
 
-function ElectriCitibikeList({ data, latitude, longitude, updatedAt }) {
+export function ElectriCitibikeList({ data, latitude, longitude, updatedAt }) {
   const stations = data.features.map(f => {
     const { coordinates } = f.geometry;
     const start = { latitude, longitude };

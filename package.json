@@ -34,6 +34,7 @@
     "file-type-es5": "^6.2.1",
     "force-ssl-heroku": "^1.0.2",
     "geodist": "^0.2.1",
+    "geolib": "^2.0.24",
     "global": "^4.3.2",
     "heroku-self-ping": "^1.1.4",
     "history": "^4.7.2",

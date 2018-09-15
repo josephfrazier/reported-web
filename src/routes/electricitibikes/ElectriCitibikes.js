@@ -15,6 +15,7 @@ import geodist from 'geodist';
 import 'intl/locale-data/jsonp/en.js'; // https://github.com/andyearnshaw/Intl.js/issues/271#issuecomment-292233493
 import strftime from 'strftime';
 import PolygonLookup from 'polygon-lookup';
+import geolib from 'geolib';
 
 import withStyles from 'isomorphic-style-loader/lib/withStyles';
 import s from './ElectriCitibikes.css';
@@ -143,9 +144,11 @@ export function ElectriCitibikeList({
     };
     let dist = 'unknown distance';
     let distMeters;
+    let compassBearing;
     if (start.latitude && start.longitude) {
       dist = humanizeDistance(start, end, 'en-US', 'us');
       distMeters = geodist(start, end, { unit: 'meters', exact: true });
+      compassBearing = geolib.getCompassDirection(start, end).exact;
     }
 
     const boroughPolygon = lookup.search(end.longitude, end.latitude);
@@ -157,6 +160,7 @@ export function ElectriCitibikeList({
       dist,
       distMeters,
       boroughPolygon,
+      compassBearing,
     };
   });
 
@@ -185,8 +189,8 @@ export function ElectriCitibikeList({
               {station.name}, {station.boroughPolygon.properties.BoroName}
             </a>
             <br />
-            ({station.dist} away, about {Math.ceil(station.distMeters / 80)}{' '}
-            blocks)
+            ({station.dist} {station.compassBearing} from you, about{' '}
+            {Math.ceil(station.distMeters / 80)} blocks)
           </summary>
           <ul>
             {station.ebikes &&

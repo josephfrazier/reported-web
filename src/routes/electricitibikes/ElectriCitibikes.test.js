@@ -6,7 +6,13 @@ import React from 'react';
 import renderer from 'react-test-renderer';
 import { ElectriCitibikeList } from './ElectriCitibikes.js';
 
-import { data, latitude, longitude, updatedAt } from './test_state.json';
+import {
+  data,
+  latitude,
+  longitude,
+  updatedAt,
+  boroughBoundariesFeatureCollection,
+} from './test_state.json';
 
 require('timezone-mock').register('US/Eastern');
 
@@ -19,6 +25,9 @@ describe('ElectriCitibikeList', () => {
           latitude={latitude}
           longitude={longitude}
           updatedAt={updatedAt}
+          boroughBoundariesFeatureCollection={
+            boroughBoundariesFeatureCollection
+          }
         />,
       )
       .toJSON();

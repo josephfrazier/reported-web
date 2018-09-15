@@ -126,7 +126,13 @@ class ElectriCitibikes extends React.Component {
   }
 }
 
-function getMapUrl({ station }) {
+function getMapUrl({ station, latitude, longitude }) {
+  if (latitude && longitude) {
+    return `https://www.google.com/maps/dir/?api=1&travelmode=bicycling&origin=${latitude}%2C${longitude}&destination=${
+      station.latitude
+    }%2C${station.longitude}`;
+  }
+
   return `https://www.google.com/maps/search/?api=1&query=${
     station.latitude
   }%2C${station.longitude}`;
@@ -188,7 +194,7 @@ export function ElectriCitibikeList({
             <a
               target="_blank"
               rel="noopener noreferrer"
-              href={getMapUrl({ station })}
+              href={getMapUrl({ station, latitude, longitude })}
             >
               {station.name}, {station.boroughPolygon.properties.BoroName}
             </a>

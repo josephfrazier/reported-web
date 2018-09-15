@@ -14,6 +14,7 @@ import humanizeDistance from 'humanize-distance';
 import geodist from 'geodist';
 import 'intl/locale-data/jsonp/en.js'; // https://github.com/andyearnshaw/Intl.js/issues/271#issuecomment-292233493
 import strftime from 'strftime';
+import PolygonLookup from 'polygon-lookup';
 
 import withStyles from 'isomorphic-style-loader/lib/withStyles';
 import s from './ElectriCitibikes.css';
@@ -74,6 +75,16 @@ class ElectriCitibikes extends React.Component {
     eventSource.open()._sse.addErrorListener(() => {
       window.location.reload();
     });
+
+    fetch(
+      'https://services5.arcgis.com/GfwWNkhOj9bNBqoJ/arcgis/rest/services/nybb/FeatureServer/0/query?where=1=1&outFields=*&outSR=4326&f=geojson',
+    )
+      .then(response => response.json())
+      .then(boroughBoundariesFeatureCollection => {
+        this.setState({
+          boroughBoundariesFeatureCollection,
+        });
+      });
   }
 
   async updateData({ data }) {
@@ -87,7 +98,13 @@ class ElectriCitibikes extends React.Component {
 
   render() {
     const {
-      state: { data, latitude, longitude, updatedAt },
+      state: {
+        data,
+        latitude,
+        longitude,
+        updatedAt,
+        boroughBoundariesFeatureCollection,
+      },
     } = this;
     return (
       <div className={s.root}>
@@ -98,6 +115,9 @@ class ElectriCitibikes extends React.Component {
             latitude={latitude}
             longitude={longitude}
             updatedAt={updatedAt}
+            boroughBoundariesFeatureCollection={
+              boroughBoundariesFeatureCollection
+            }
           />
         </div>
       </div>
@@ -105,7 +125,15 @@ class ElectriCitibikes extends React.Component {
   }
 }
 
-export function ElectriCitibikeList({ data, latitude, longitude, updatedAt }) {
+export function ElectriCitibikeList({
+  data,
+  latitude,
+  longitude,
+  updatedAt,
+  boroughBoundariesFeatureCollection,
+}) {
+  const lookup = new PolygonLookup(boroughBoundariesFeatureCollection);
+
   const stations = data.features.map(f => {
     const { coordinates } = f.geometry;
     const start = { latitude, longitude };
@@ -120,12 +148,15 @@ export function ElectriCitibikeList({ data, latitude, longitude, updatedAt }) {
       distMeters = geodist(start, end, { unit: 'meters', exact: true });
     }
 
+    const boroughPolygon = lookup.search(end.longitude, end.latitude);
+
     return {
       ...f.properties,
       latitude: end.latitude,
       longitude: end.longitude,
       dist,
       distMeters,
+      boroughPolygon,
     };
   });
 
@@ -151,7 +182,7 @@ export function ElectriCitibikeList({ data, latitude, longitude, updatedAt }) {
                 station.longitude
               }`}
             >
-              {station.name}
+              {station.name}, {station.boroughPolygon.properties.BoroName}
             </a>
             <br />
             ({station.dist} away, about {Math.ceil(station.distMeters / 80)}{' '}

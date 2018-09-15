@@ -122,8 +122,8 @@ export function ElectriCitibikeList({ data, latitude, longitude, updatedAt }) {
 
     return {
       ...f.properties,
-      latitude,
-      longitude,
+      latitude: end.latitude,
+      longitude: end.longitude,
       dist,
       distMeters,
     };

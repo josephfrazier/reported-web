@@ -18,6 +18,9 @@ exports[`SubmissionDetails renders children correctly 1`] = `
     TLC Service Request Number: 
     reqnumber
   </summary>
+  <p>
+    reportDescription
+  </p>
   <a
     href="photoData0.url"
     rel="noopener noreferrer"

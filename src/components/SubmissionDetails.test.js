@@ -18,6 +18,7 @@ describe('SubmissionDetails', () => {
       typeofcomplaint: 'typeofcomplaint',
       loc1_address: '82 Reade St, New York, NY 10007, USA',
       timeofreport: new Date(Date.now()).toISOString(),
+      reportDescription: 'reportDescription',
 
       photoData0: { url: 'photoData0.url' },
       photoData1: { url: 'photoData1.url' },

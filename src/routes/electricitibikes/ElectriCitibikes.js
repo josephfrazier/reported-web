@@ -127,9 +127,9 @@ class ElectriCitibikes extends React.Component {
 }
 
 function getMapUrl({ station }) {
-  return `https://www.google.com/maps?hl=en&q=${station.latitude},${
-    station.longitude
-  }`;
+  return `https://www.google.com/maps/search/?api=1&query=${
+    station.latitude
+  }%2C${station.longitude}`;
 }
 
 export function ElectriCitibikeList({

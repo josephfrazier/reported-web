@@ -145,7 +145,10 @@ export function ElectriCitibikeList({
   updatedAt,
   boroughBoundariesFeatureCollection,
 }) {
-  const lookup = new PolygonLookup(boroughBoundariesFeatureCollection);
+  let lookup;
+  if (boroughBoundariesFeatureCollection) {
+    lookup = new PolygonLookup(boroughBoundariesFeatureCollection);
+  }
 
   const stations = data.features.map(f => {
     const { coordinates } = f.geometry;
@@ -163,7 +166,12 @@ export function ElectriCitibikeList({
       compassBearing = geolib.getCompassDirection(start, end).exact;
     }
 
-    const boroughPolygon = lookup.search(end.longitude, end.latitude);
+    const boroughPolygon = (lookup &&
+      lookup.search(end.longitude, end.latitude)) || {
+      properties: {
+        BoroName: '(unknown borough)',
+      },
+    };
 
     return {
       ...f.properties,

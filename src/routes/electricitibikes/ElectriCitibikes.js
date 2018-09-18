@@ -16,6 +16,7 @@ import 'intl/locale-data/jsonp/en.js'; // https://github.com/andyearnshaw/Intl.j
 import strftime from 'strftime';
 import PolygonLookup from 'polygon-lookup';
 import geolib from 'geolib';
+import d2d from 'degrees-to-direction';
 
 import withStyles from 'isomorphic-style-loader/lib/withStyles';
 import s from './ElectriCitibikes.css';
@@ -130,7 +131,7 @@ export function ElectriCitibikeList({
     if (start.latitude && start.longitude) {
       dist = humanizeDistance(start, end, 'en-US', 'us');
       distMeters = geodist(start, end, { unit: 'meters', exact: true });
-      compassBearing = geolib.getCompassDirection(start, end).exact;
+      compassBearing = d2d(geolib.getRhumbLineBearing(start, end));
     }
 
     const boroughPolygon = (lookup &&

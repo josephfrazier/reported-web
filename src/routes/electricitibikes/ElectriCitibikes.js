@@ -18,6 +18,7 @@ import PolygonLookup from 'polygon-lookup';
 import geolib from 'geolib';
 
 import withStyles from 'isomorphic-style-loader/lib/withStyles';
+import marx from 'marx-css/css/marx.css';
 import s from './ElectriCitibikes.css';
 
 class ElectriCitibikes extends React.Component {
@@ -191,4 +192,4 @@ export function ElectriCitibikeList({
   );
 }
 
-export default withStyles(s)(ElectriCitibikes);
+export default withStyles(marx, s)(ElectriCitibikes);

@@ -32,8 +32,6 @@ class ElectriCitibikes extends React.Component {
   };
 
   componentDidMount() {
-    const pollInterval = 5000;
-    window.setInterval(this.pollData, pollInterval);
     this.pollData();
 
     fetch(
@@ -53,6 +51,8 @@ class ElectriCitibikes extends React.Component {
     ).then(r => r.json());
     console.info({ data });
     await this.updateData({ data });
+    const pollInterval = 5000;
+    window.setTimeout(this.pollData, pollInterval);
   };
 
   async updateData({ data }) {

@@ -20,12 +20,6 @@ import geolib from 'geolib';
 import withStyles from 'isomorphic-style-loader/lib/withStyles';
 import s from './ElectriCitibikes.css';
 
-if (!global.window) {
-  global.window = require('global/window'); // eslint-disable-line global-require
-}
-const streamdataio = require('streamdataio-js-sdk'); // eslint-disable-line global-require
-const jsonpatch = require('fast-json-patch'); // eslint-disable-line global-require
-
 class ElectriCitibikes extends React.Component {
   static propTypes = {
     title: PropTypes.string.isRequired,
@@ -38,44 +32,9 @@ class ElectriCitibikes extends React.Component {
   };
 
   componentDidMount() {
-    const appToken = 'OTY5YTM3ZmItNTA2Ni00ZThhLWJmNzItYjVmM2QwYzZlMmYy';
-
-    const eventSource = streamdataio.createEventSource(
-      'https://bikeangels-api.citibikenyc.com/map/v1/nyc/stations',
-      appToken,
-    );
-
-    eventSource
-      .onOpen(() => {
-        console.info('streamdata Event Source connected.');
-      })
-      .onData(data => {
-        console.info({ data });
-        this.updateData({ data });
-      })
-      .onPatch(patch => {
-        console.info({ patch });
-
-        const data = jsonpatch.deepClone(this.state.data);
-        jsonpatch.applyPatch(data, patch);
-        this.updateData({ data });
-
-        const changedEbikes = patch.filter(operation =>
-          operation.path.includes('ebikes_available'),
-        );
-        changedEbikes.forEach(operation => {
-          const { op, path, value } = operation;
-          const changedStation = data.features[path.split('/')[2]].properties;
-          const ebikeCount = op === 'remove' ? 0 : value;
-          console.info(`${ebikeCount} ebikes at ${changedStation.name}`);
-        });
-      });
-
-    // open the data stream to the REST service through streamdata.io proxy
-    // eslint-disable-next-line no-underscore-dangle
-    eventSource.open()._sse.addErrorListener(() => {
-      window.location.reload();
-    });
+    const pollInterval = 5000;
+    window.setInterval(this.pollData, pollInterval);
+    this.pollData();
 
     fetch(
       'https://services5.arcgis.com/GfwWNkhOj9bNBqoJ/arcgis/rest/services/nybb/FeatureServer/0/query?where=1=1&outFields=*&outSR=4326&f=geojson',
@@ -87,6 +46,14 @@ class ElectriCitibikes extends React.Component {
         });
       });
   }
+
+  pollData = async () => {
+    const data = await fetch(
+      'https://bikeangels-api.citibikenyc.com/map/v1/nyc/stations',
+    ).then(r => r.json());
+    console.info({ data });
+    await this.updateData({ data });
+  };
 
   async updateData({ data }) {
     const updatedAt = Date.now();

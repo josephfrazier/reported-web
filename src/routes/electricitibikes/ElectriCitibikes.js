@@ -34,7 +34,7 @@ class ElectriCitibikes extends React.Component {
   };
 
   componentDidMount() {
-    this.pollData();
+    this.updateData();
 
     fetch(
       'https://services5.arcgis.com/GfwWNkhOj9bNBqoJ/arcgis/rest/services/nybb/FeatureServer/0/query?where=1=1&outFields=*&outSR=4326&f=geojson',
@@ -47,24 +47,18 @@ class ElectriCitibikes extends React.Component {
       });
   }
 
-  pollData = async () => {
+  updateData = async () => {
     const data = await fetch(
       'https://bikeangels-api.citibikenyc.com/map/v1/nyc/stations',
     ).then(r => r.json());
     console.info({ data });
-    await this.updateData({ data });
-    const pollInterval = 5000;
-    window.setTimeout(this.pollData, pollInterval);
-  };
-
-  async updateData({ data }) {
     const updatedAt = Date.now();
     this.setState({ data, updatedAt });
 
     promisedLocation().then(({ coords: { latitude, longitude } }) =>
       this.setState({ latitude, longitude }),
     );
-  }
+  };
 
   render() {
     const {
@@ -80,6 +74,11 @@ class ElectriCitibikes extends React.Component {
       <div className={s.root}>
         <div className={s.container}>
           <h1>{this.props.title}</h1>
+          <p>
+            <button style={{ width: '100%' }} onClick={this.updateData}>
+              Refresh
+            </button>
+          </p>
           <ElectriCitibikeList
             data={data}
             latitude={latitude}

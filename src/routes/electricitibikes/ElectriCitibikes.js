@@ -117,9 +117,19 @@ function getBoroName({ lookup, end }) {
   return boroughPolygon.properties.BoroName;
 }
 
-function getCompassBearing({ start, end }) {
-  const rhumbLineBearing = geolib.getRhumbLineBearing(start, end);
-  const compassBearing = d2d(rhumbLineBearing);
+function getCompassBearing({ lookup, start, end }) {
+  let rhumbLineBearing = geolib.getRhumbLineBearing(start, end);
+  const startBoroName = getBoroName({ lookup, end: start });
+  const endBoroName = getBoroName({ lookup, end });
+  const useManhattanCompass =
+    startBoroName === endBoroName && endBoroName === 'Manhattan';
+  if (useManhattanCompass) {
+    rhumbLineBearing -= 29; // http://gothamist.com/2006/03/30/map_of_the_day_41.php
+  }
+  let compassBearing = d2d(rhumbLineBearing);
+  if (useManhattanCompass) {
+    compassBearing = `"Manhattan ${compassBearing}"`;
+  }
   return compassBearing;
 }
 
@@ -148,7 +158,7 @@ export function ElectriCitibikeList({
     if (start.latitude && start.longitude) {
       dist = humanizeDistance(start, end, 'en-US', 'us');
       distMeters = geodist(start, end, { unit: 'meters', exact: true });
-      compassBearing = getCompassBearing({ start, end });
+      compassBearing = getCompassBearing({ lookup, start, end });
     }
 
     const BoroName = getBoroName({ lookup, end });

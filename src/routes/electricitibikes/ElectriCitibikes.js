@@ -118,7 +118,8 @@ function getBoroName({ lookup, end }) {
 }
 
 function getCompassBearing({ start, end }) {
-  const compassBearing = d2d(geolib.getRhumbLineBearing(start, end));
+  const rhumbLineBearing = geolib.getRhumbLineBearing(start, end);
+  const compassBearing = d2d(rhumbLineBearing);
   return compassBearing;
 }
 

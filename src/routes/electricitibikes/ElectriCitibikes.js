@@ -106,6 +106,17 @@ function getMapUrl({ station, latitude, longitude }) {
   }%2C${station.longitude}`;
 }
 
+function getBoroName({ lookup, end }) {
+  const boroughPolygon = (lookup &&
+    lookup.search(end.longitude, end.latitude)) || {
+    properties: {
+      BoroName: '(unknown borough)',
+    },
+  };
+
+  return boroughPolygon.properties.BoroName;
+}
+
 export function ElectriCitibikeList({
   data,
   latitude,
@@ -134,12 +145,7 @@ export function ElectriCitibikeList({
       compassBearing = d2d(geolib.getRhumbLineBearing(start, end));
     }
 
-    const boroughPolygon = (lookup &&
-      lookup.search(end.longitude, end.latitude)) || {
-      properties: {
-        BoroName: '(unknown borough)',
-      },
-    };
+    const BoroName = getBoroName({ lookup, end });
 
     return {
       ...f.properties,
@@ -147,7 +153,7 @@ export function ElectriCitibikeList({
       longitude: end.longitude,
       dist,
       distMeters,
-      boroughPolygon,
+      BoroName,
       compassBearing,
     };
   });
@@ -172,7 +178,7 @@ export function ElectriCitibikeList({
               rel="noopener noreferrer"
               href={getMapUrl({ station, latitude, longitude })}
             >
-              {station.name}, {station.boroughPolygon.properties.BoroName}
+              {station.name}, {station.BoroName}
             </a>
             <br />
             ({station.dist} {station.compassBearing} from you, about{' '}

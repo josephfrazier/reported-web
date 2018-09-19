@@ -16,6 +16,7 @@ import 'intl/locale-data/jsonp/en.js'; // https://github.com/andyearnshaw/Intl.j
 import strftime from 'strftime';
 import PolygonLookup from 'polygon-lookup';
 import geolib from 'geolib';
+import d2d from 'degrees-to-direction';
 
 import withStyles from 'isomorphic-style-loader/lib/withStyles';
 import s from './ElectriCitibikes.css';
@@ -105,6 +106,33 @@ function getMapUrl({ station, latitude, longitude }) {
   }%2C${station.longitude}`;
 }
 
+function getBoroName({ lookup, end }) {
+  const boroughPolygon = (lookup &&
+    lookup.search(end.longitude, end.latitude)) || {
+    properties: {
+      BoroName: '(unknown borough)',
+    },
+  };
+
+  return boroughPolygon.properties.BoroName;
+}
+
+function getCompassBearing({ lookup, start, end }) {
+  let rhumbLineBearing = geolib.getRhumbLineBearing(start, end);
+  const startBoroName = getBoroName({ lookup, end: start });
+  const endBoroName = getBoroName({ lookup, end });
+  const useManhattanCompass =
+    startBoroName === endBoroName && endBoroName === 'Manhattan';
+  if (useManhattanCompass) {
+    rhumbLineBearing -= 29; // http://gothamist.com/2006/03/30/map_of_the_day_41.php
+  }
+  let compassBearing = d2d(rhumbLineBearing);
+  if (useManhattanCompass) {
+    compassBearing = `"Manhattan ${compassBearing}"`;
+  }
+  return compassBearing;
+}
+
 export function ElectriCitibikeList({
   data,
   latitude,
@@ -130,15 +158,10 @@ export function ElectriCitibikeList({
     if (start.latitude && start.longitude) {
       dist = humanizeDistance(start, end, 'en-US', 'us');
       distMeters = geodist(start, end, { unit: 'meters', exact: true });
-      compassBearing = geolib.getCompassDirection(start, end).exact;
+      compassBearing = getCompassBearing({ lookup, start, end });
     }
 
-    const boroughPolygon = (lookup &&
-      lookup.search(end.longitude, end.latitude)) || {
-      properties: {
-        BoroName: '(unknown borough)',
-      },
-    };
+    const BoroName = getBoroName({ lookup, end });
 
     return {
       ...f.properties,
@@ -146,7 +169,7 @@ export function ElectriCitibikeList({
       longitude: end.longitude,
       dist,
       distMeters,
-      boroughPolygon,
+      BoroName,
       compassBearing,
     };
   });
@@ -171,7 +194,7 @@ export function ElectriCitibikeList({
               rel="noopener noreferrer"
               href={getMapUrl({ station, latitude, longitude })}
             >
-              {station.name}, {station.boroughPolygon.properties.BoroName}
+              {station.name}, {station.BoroName}
             </a>
             <br />
             ({station.dist} {station.compassBearing} from you, about{' '}

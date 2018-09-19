@@ -117,6 +117,11 @@ function getBoroName({ lookup, end }) {
   return boroughPolygon.properties.BoroName;
 }
 
+function getCompassBearing({ start, end }) {
+  const compassBearing = d2d(geolib.getRhumbLineBearing(start, end));
+  return compassBearing;
+}
+
 export function ElectriCitibikeList({
   data,
   latitude,
@@ -142,7 +147,7 @@ export function ElectriCitibikeList({
     if (start.latitude && start.longitude) {
       dist = humanizeDistance(start, end, 'en-US', 'us');
       distMeters = geodist(start, end, { unit: 'meters', exact: true });
-      compassBearing = d2d(geolib.getRhumbLineBearing(start, end));
+      compassBearing = getCompassBearing({ start, end });
     }
 
     const BoroName = getBoroName({ lookup, end });

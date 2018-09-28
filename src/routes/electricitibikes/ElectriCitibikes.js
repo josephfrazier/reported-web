@@ -142,7 +142,9 @@ export function ElectriCitibikeList({
 }) {
   let lookup;
   if (boroughBoundariesFeatureCollection) {
+    console.time('new PolygonLookup'); // eslint-disable-line no-console
     lookup = new PolygonLookup(boroughBoundariesFeatureCollection);
+    console.timeEnd('new PolygonLookup'); // eslint-disable-line no-console
   }
 
   const stations = data.features.map(f => {

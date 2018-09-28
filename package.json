@@ -118,6 +118,7 @@
     "jest": "^23.1.0",
     "jest-mock-now": "^1.2.0",
     "lint-staged": "^7.2.0",
+    "localtunnel": "^1.9.1",
     "markdown-it": "^8.4.1",
     "mkdirp": "^0.5.1",
     "mongodb-runner": "^3.6.1",
@@ -208,6 +209,7 @@
     "deploy": "babel-node tools/run deploy",
     "render": "babel-node tools/run render",
     "serve": "babel-node tools/run runServer",
-    "start": "babel-node tools/run start --inspect"
+    "start": "babel-node tools/run start --inspect",
+    "localtunnel": "while true; do yarn lt --port 3000 --subdomain reported-web; done"
   }
 }

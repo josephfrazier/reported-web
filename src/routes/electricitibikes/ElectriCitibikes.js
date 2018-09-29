@@ -17,6 +17,7 @@ import strftime from 'strftime';
 import PolygonLookup from 'polygon-lookup';
 import geolib from 'geolib';
 import d2d from 'degrees-to-direction';
+import mem from 'mem';
 
 import withStyles from 'isomorphic-style-loader/lib/withStyles';
 import marx from 'marx-css/css/marx.css';
@@ -117,10 +118,14 @@ function getBoroName({ lookup, end }) {
   return boroughPolygon.properties.BoroName;
 }
 
+const getBoroNameMemoized = mem(getBoroName, {
+  cacheKey: ({ lookup, end }) => !!lookup + JSON.stringify(end),
+});
+
 function getCompassBearing({ lookup, start, end }) {
   let rhumbLineBearing = geolib.getRhumbLineBearing(start, end);
-  const startBoroName = getBoroName({ lookup, end: start });
-  const endBoroName = getBoroName({ lookup, end });
+  const startBoroName = getBoroNameMemoized({ lookup, end: start });
+  const endBoroName = getBoroNameMemoized({ lookup, end });
   const useManhattanCompass =
     startBoroName === endBoroName && endBoroName === 'Manhattan';
   if (useManhattanCompass) {
@@ -163,7 +168,7 @@ export function ElectriCitibikeList({
       compassBearing = getCompassBearing({ lookup, start, end });
     }
 
-    const BoroName = getBoroName({ lookup, end });
+    const BoroName = getBoroNameMemoized({ lookup, end });
 
     return {
       ...f.properties,

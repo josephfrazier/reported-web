@@ -152,38 +152,37 @@ export function ElectriCitibikeList({
     console.timeEnd('new PolygonLookup'); // eslint-disable-line no-console
   }
 
-  const stations = data.features.map(f => {
-    const { coordinates } = f.geometry;
-    const start = { latitude, longitude };
-    const end = {
-      latitude: coordinates[1],
-      longitude: coordinates[0],
-    };
-    let dist = 'unknown distance';
-    let distMeters;
-    let compassBearing;
-    if (start.latitude && start.longitude) {
-      dist = humanizeDistance(start, end, 'en-US', 'us');
-      distMeters = geodist(start, end, { unit: 'meters', exact: true });
-      compassBearing = getCompassBearing({ lookup, start, end });
-    }
+  const ebikeStations = data.features
+    .filter(f => f.properties.ebikes_available > 0)
+    .map(f => {
+      const { coordinates } = f.geometry;
+      const start = { latitude, longitude };
+      const end = {
+        latitude: coordinates[1],
+        longitude: coordinates[0],
+      };
+      let dist = 'unknown distance';
+      let distMeters;
+      let compassBearing;
+      if (start.latitude && start.longitude) {
+        dist = humanizeDistance(start, end, 'en-US', 'us');
+        distMeters = geodist(start, end, { unit: 'meters', exact: true });
+        compassBearing = getCompassBearing({ lookup, start, end });
+      }
 
-    const BoroName = getBoroNameMemoized({ lookup, end });
+      const BoroName = getBoroNameMemoized({ lookup, end });
 
-    return {
-      ...f.properties,
-      latitude: end.latitude,
-      longitude: end.longitude,
-      dist,
-      distMeters,
-      BoroName,
-      compassBearing,
-    };
-  });
+      return {
+        ...f.properties,
+        latitude: end.latitude,
+        longitude: end.longitude,
+        dist,
+        distMeters,
+        BoroName,
+        compassBearing,
+      };
+    });
 
-  const ebikeStations = stations.filter(
-    station => station.ebikes_available > 0,
-  );
   ebikeStations.sort((a, b) => a.distMeters - b.distMeters);
   const humanDate = strftime('%r', new Date(updatedAt));
   const totalEbikesAvailable = ebikeStations

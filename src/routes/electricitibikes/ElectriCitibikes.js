@@ -49,12 +49,13 @@ class ElectriCitibikes extends React.Component {
   }
 
   updateData = async () => {
+    this.setState({ isRefreshing: true });
     const data = await fetch(
       'https://bikeangels-api.citibikenyc.com/map/v1/nyc/stations',
     ).then(r => r.json());
     console.info({ data });
     const updatedAt = Date.now();
-    this.setState({ data, updatedAt });
+    this.setState({ isRefreshing: false, data, updatedAt });
 
     promisedLocation().then(({ coords: { latitude, longitude } }) =>
       this.setState({ latitude, longitude }),
@@ -76,8 +77,12 @@ class ElectriCitibikes extends React.Component {
         <div className={s.container}>
           <h1>{this.props.title}</h1>
           <p>
-            <button style={{ width: '100%' }} onClick={this.updateData}>
-              Refresh
+            <button
+              style={{ width: '100%' }}
+              onClick={this.updateData}
+              disabled={this.state.isRefreshing}
+            >
+              {this.state.isRefreshing ? 'Loading...' : 'Refresh'}
             </button>
           </p>
           <ElectriCitibikeList

@@ -210,6 +210,11 @@ export function ElectriCitibikeList({
             <br />
             ({station.dist} {station.compassBearing} from you, about{' '}
             {Math.ceil(station.distMeters / 80)} blocks)
+            <br />
+            Max Charge:{' '}
+            {Math.max(
+              (station.ebikes || [{ charge: 0 }]).map(ebike => ebike.charge),
+            ) || '?'}/4
           </summary>
           <ul>
             {station.ebikes &&

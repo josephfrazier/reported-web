@@ -213,7 +213,7 @@ export function ElectriCitibikeList({
             <br />
             Max Charge:{' '}
             {Math.max(
-              (station.ebikes || [{ charge: 0 }]).map(ebike => ebike.charge),
+              ...(station.ebikes || [{ charge: 0 }]).map(ebike => ebike.charge),
             ) || '?'}/4
           </summary>
           <ul>

@@ -2,9 +2,62 @@
 
 exports[`ElectriCitibikeList renders children correctly 1`] = `
 Array [
-  "15",
+  "18",
   " available as of ",
   "07:50:57 PM",
+  <details
+    style={
+      Object {
+        "margin": "1rem 0",
+      }
+    }
+  >
+    <summary>
+      3
+       @ 
+      <a
+        href="https://www.google.com/maps/dir/?api=1&travelmode=bicycling&origin=40.7128%2C-74.006&destination=40.69760127%2C-73.99344559"
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        Clark St & Henry St
+        , 
+        Brooklyn
+      </a>
+      <br />
+      (about 
+      25
+       blocks
+       
+      SSE
+       of you)
+      <br />
+      Max Charge:
+       
+      ?
+      /4
+    </summary>
+    <ul>
+      <li>
+        #70201
+         has 
+        4
+        /4 charge
+      </li>
+      <li>
+        #70005
+         has 
+        4
+        /4 charge
+      </li>
+      <li>
+        #70169
+         has 
+        4
+        /4 charge
+      </li>
+    </ul>
+  </details>,
   <details
     style={
       Object {

@@ -208,8 +208,8 @@ export function ElectriCitibikeList({
               {station.name}, {station.BoroName}
             </a>
             <br />
-            ({station.dist} {station.compassBearing} from you, about{' '}
-            {Math.ceil(station.distMeters / 80)} blocks)
+            (about {Math.ceil(station.distMeters / 80)} blocks{' '}
+            {station.compassBearing} of you)
             <br />
             Max Charge:{' '}
             {Math.max(

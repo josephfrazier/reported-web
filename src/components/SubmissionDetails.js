@@ -22,6 +22,7 @@ class SubmissionDetails extends React.Component {
       typeofcomplaint,
       loc1_address, // eslint-disable-line camelcase
       timeofreport,
+      reportDescription,
 
       photoData0,
       photoData1,
@@ -109,6 +110,7 @@ class SubmissionDetails extends React.Component {
 
         {this.state.isDetailsOpen && (
           <React.Fragment>
+            <p>{reportDescription}</p>
             <ImagesAndVideos />
 
             {!reqnumber.startsWith('N/A') && (
@@ -131,6 +133,7 @@ SubmissionDetails.propTypes = {
     typeofcomplaint: PropTypes.string,
     loc1_address: PropTypes.string,
     timeofreport: PropTypes.string,
+    reportDescription: PropTypes.string,
 
     photoData0: PropTypes.object,
     photoData1: PropTypes.object,

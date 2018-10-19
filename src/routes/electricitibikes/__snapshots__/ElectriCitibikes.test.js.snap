@@ -1,0 +1,656 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`ElectriCitibikeList renders children correctly 1`] = `
+Array [
+  "18",
+  " available as of ",
+  "07:50:57 PM",
+  <details
+    style={
+      Object {
+        "margin": "1rem 0",
+      }
+    }
+  >
+    <summary>
+      3
+       @ 
+      <a
+        href="https://www.google.com/maps/dir/?api=1&travelmode=bicycling&origin=40.7128%2C-74.006&destination=40.69760127%2C-73.99344559"
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        Clark St & Henry St
+        , 
+        Brooklyn
+      </a>
+      <br />
+      (about 
+      25
+       blocks
+       
+      SSE
+       of you)
+      <br />
+      Max Charge:
+       
+      4
+      /4
+    </summary>
+    <ul>
+      <li>
+        #70201
+         has 
+        4
+        /4 charge
+      </li>
+      <li>
+        #70005
+         has 
+        4
+        /4 charge
+      </li>
+      <li>
+        #70169
+         has 
+        4
+        /4 charge
+      </li>
+    </ul>
+  </details>,
+  <details
+    style={
+      Object {
+        "margin": "1rem 0",
+      }
+    }
+  >
+    <summary>
+      1
+       @ 
+      <a
+        href="https://www.google.com/maps/dir/?api=1&travelmode=bicycling&origin=40.7128%2C-74.006&destination=40.7361967%2C-74.00859207"
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        Bank St & Washington St
+        , 
+        Manhattan
+      </a>
+      <br />
+      (about 
+      33
+       blocks
+       
+      "Manhattan NW"
+       of you)
+      <br />
+      Max Charge:
+       
+      ?
+      /4
+    </summary>
+    <ul />
+  </details>,
+  <details
+    style={
+      Object {
+        "margin": "1rem 0",
+      }
+    }
+  >
+    <summary>
+      1
+       @ 
+      <a
+        href="https://www.google.com/maps/dir/?api=1&travelmode=bicycling&origin=40.7128%2C-74.006&destination=40.689888%2C-73.981013"
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        DeKalb Ave & Hudson Ave
+        , 
+        Brooklyn
+      </a>
+      <br />
+      (about 
+      42
+       blocks
+       
+      SE
+       of you)
+      <br />
+      Max Charge:
+       
+      3
+      /4
+    </summary>
+    <ul>
+      <li>
+        #70027
+         has 
+        3
+        /4 charge
+      </li>
+    </ul>
+  </details>,
+  <details
+    style={
+      Object {
+        "margin": "1rem 0",
+      }
+    }
+  >
+    <summary>
+      1
+       @ 
+      <a
+        href="https://www.google.com/maps/dir/?api=1&travelmode=bicycling&origin=40.7128%2C-74.006&destination=40.69580705%2C-73.97355569"
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        Carlton Ave & Park Ave
+        , 
+        Brooklyn
+      </a>
+      <br />
+      (about 
+      42
+       blocks
+       
+      SE
+       of you)
+      <br />
+      Max Charge:
+       
+      3
+      /4
+    </summary>
+    <ul>
+      <li>
+        #70021
+         has 
+        3
+        /4 charge
+      </li>
+    </ul>
+  </details>,
+  <details
+    style={
+      Object {
+        "margin": "1rem 0",
+      }
+    }
+  >
+    <summary>
+      1
+       @ 
+      <a
+        href="https://www.google.com/maps/dir/?api=1&travelmode=bicycling&origin=40.7128%2C-74.006&destination=40.69573398%2C-73.97129668"
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        Clermont Ave & Park Ave
+        , 
+        Brooklyn
+      </a>
+      <br />
+      (about 
+      44
+       blocks
+       
+      ESE
+       of you)
+      <br />
+      Max Charge:
+       
+      3
+      /4
+    </summary>
+    <ul>
+      <li>
+        #65015
+         has 
+        3
+        /4 charge
+      </li>
+    </ul>
+  </details>,
+  <details
+    style={
+      Object {
+        "margin": "1rem 0",
+      }
+    }
+  >
+    <summary>
+      1
+       @ 
+      <a
+        href="https://www.google.com/maps/dir/?api=1&travelmode=bicycling&origin=40.7128%2C-74.006&destination=40.7505853470215%2C-73.9946848154068"
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        8 Ave & W 31 St
+        , 
+        Manhattan
+      </a>
+      <br />
+      (about 
+      54
+       blocks
+       
+      "Manhattan N"
+       of you)
+      <br />
+      Max Charge:
+       
+      4
+      /4
+    </summary>
+    <ul>
+      <li>
+        #70081
+         has 
+        4
+        /4 charge
+      </li>
+    </ul>
+  </details>,
+  <details
+    style={
+      Object {
+        "margin": "1rem 0",
+      }
+    }
+  >
+    <summary>
+      1
+       @ 
+      <a
+        href="https://www.google.com/maps/dir/?api=1&travelmode=bicycling&origin=40.7128%2C-74.006&destination=40.72708584%2C-73.95299117"
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        Meserole Ave & Manhattan Ave
+        , 
+        Brooklyn
+      </a>
+      <br />
+      (about 
+      60
+       blocks
+       
+      ENE
+       of you)
+      <br />
+      Max Charge:
+       
+      1
+      /4
+    </summary>
+    <ul>
+      <li>
+        #51037
+         has 
+        1
+        /4 charge
+      </li>
+    </ul>
+  </details>,
+  <details
+    style={
+      Object {
+        "margin": "1rem 0",
+      }
+    }
+  >
+    <summary>
+      1
+       @ 
+      <a
+        href="https://www.google.com/maps/dir/?api=1&travelmode=bicycling&origin=40.7128%2C-74.006&destination=40.71915571696044%2C-73.94885390996933"
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        Bayard St & Leonard St
+        , 
+        Brooklyn
+      </a>
+      <br />
+      (about 
+      61
+       blocks
+       
+      E
+       of you)
+      <br />
+      Max Charge:
+       
+      3
+      /4
+    </summary>
+    <ul>
+      <li>
+        #70084
+         has 
+        3
+        /4 charge
+      </li>
+    </ul>
+  </details>,
+  <details
+    style={
+      Object {
+        "margin": "1rem 0",
+      }
+    }
+  >
+    <summary>
+      1
+       @ 
+      <a
+        href="https://www.google.com/maps/dir/?api=1&travelmode=bicycling&origin=40.7128%2C-74.006&destination=40.69622937%2C-73.94371094"
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        Throop Ave & Myrtle Ave
+        , 
+        Brooklyn
+      </a>
+      <br />
+      (about 
+      70
+       blocks
+       
+      ESE
+       of you)
+      <br />
+      Max Charge:
+       
+      3
+      /4
+    </summary>
+    <ul>
+      <li>
+        #70127
+         has 
+        3
+        /4 charge
+      </li>
+    </ul>
+  </details>,
+  <details
+    style={
+      Object {
+        "margin": "1rem 0",
+      }
+    }
+  >
+    <summary>
+      1
+       @ 
+      <a
+        href="https://www.google.com/maps/dir/?api=1&travelmode=bicycling&origin=40.7128%2C-74.006&destination=40.663779%2C-73.98396846"
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        14 St & 7 Ave
+        , 
+        Brooklyn
+      </a>
+      <br />
+      (about 
+      72
+       blocks
+       
+      SSE
+       of you)
+      <br />
+      Max Charge:
+       
+      ?
+      /4
+    </summary>
+    <ul />
+  </details>,
+  <details
+    style={
+      Object {
+        "margin": "1rem 0",
+      }
+    }
+  >
+    <summary>
+      1
+       @ 
+      <a
+        href="https://www.google.com/maps/dir/?api=1&travelmode=bicycling&origin=40.7128%2C-74.006&destination=40.76915505%2C-73.98191841"
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        Broadway & W 60 St
+        , 
+        Manhattan
+      </a>
+      <br />
+      (about 
+      83
+       blocks
+       
+      "Manhattan N"
+       of you)
+      <br />
+      Max Charge:
+       
+      1
+      /4
+    </summary>
+    <ul>
+      <li>
+        #65004
+         has 
+        1
+        /4 charge
+      </li>
+    </ul>
+  </details>,
+  <details
+    style={
+      Object {
+        "margin": "1rem 0",
+      }
+    }
+  >
+    <summary>
+      1
+       @ 
+      <a
+        href="https://www.google.com/maps/dir/?api=1&travelmode=bicycling&origin=40.7128%2C-74.006&destination=40.7689738%2C-73.95482273"
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        E 74 St & 1 Ave
+        , 
+        Manhattan
+      </a>
+      <br />
+      (about 
+      95
+       blocks
+       
+      "Manhattan N"
+       of you)
+      <br />
+      Max Charge:
+       
+      3
+      /4
+    </summary>
+    <ul>
+      <li>
+        #70071
+         has 
+        3
+        /4 charge
+      </li>
+    </ul>
+  </details>,
+  <details
+    style={
+      Object {
+        "margin": "1rem 0",
+      }
+    }
+  >
+    <summary>
+      1
+       @ 
+      <a
+        href="https://www.google.com/maps/dir/?api=1&travelmode=bicycling&origin=40.7128%2C-74.006&destination=40.78057799010334%2C-73.98562431335449"
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        Riverside Dr & W 72 St
+        , 
+        Manhattan
+      </a>
+      <br />
+      (about 
+      97
+       blocks
+       
+      "Manhattan N"
+       of you)
+      <br />
+      Max Charge:
+       
+      ?
+      /4
+    </summary>
+    <ul />
+  </details>,
+  <details
+    style={
+      Object {
+        "margin": "1rem 0",
+      }
+    }
+  >
+    <summary>
+      1
+       @ 
+      <a
+        href="https://www.google.com/maps/dir/?api=1&travelmode=bicycling&origin=40.7128%2C-74.006&destination=40.78499979%2C-73.97283406"
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        W 84 St & Columbus Ave
+        , 
+        Manhattan
+      </a>
+      <br />
+      (about 
+      107
+       blocks
+       
+      "Manhattan N"
+       of you)
+      <br />
+      Max Charge:
+       
+      1
+      /4
+    </summary>
+    <ul>
+      <li>
+        #70208
+         has 
+        1
+        /4 charge
+      </li>
+    </ul>
+  </details>,
+  <details
+    style={
+      Object {
+        "margin": "1rem 0",
+      }
+    }
+  >
+    <summary>
+      1
+       @ 
+      <a
+        href="https://www.google.com/maps/dir/?api=1&travelmode=bicycling&origin=40.7128%2C-74.006&destination=40.79025417330419%2C-73.97718340158461"
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        W 88 St & West End Ave
+        , 
+        Manhattan
+      </a>
+      <br />
+      (about 
+      112
+       blocks
+       
+      "Manhattan N"
+       of you)
+      <br />
+      Max Charge:
+       
+      1
+      /4
+    </summary>
+    <ul>
+      <li>
+        #65020
+         has 
+        1
+        /4 charge
+      </li>
+    </ul>
+  </details>,
+  <details
+    style={
+      Object {
+        "margin": "1rem 0",
+      }
+    }
+  >
+    <summary>
+      1
+       @ 
+      <a
+        href="https://www.google.com/maps/dir/?api=1&travelmode=bicycling&origin=40.7128%2C-74.006&destination=40.7937704%2C-73.971888"
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        W 95 St & Broadway
+        , 
+        Manhattan
+      </a>
+      <br />
+      (about 
+      119
+       blocks
+       
+      "Manhattan N"
+       of you)
+      <br />
+      Max Charge:
+       
+      1
+      /4
+    </summary>
+    <ul>
+      <li>
+        #51012
+         has 
+        1
+        /4 charge
+      </li>
+    </ul>
+  </details>,
+]
+`;

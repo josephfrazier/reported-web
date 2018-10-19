@@ -2,7 +2,7 @@
 
 const offlineBody = `
   <h1>
-    <a href=".">
+    <a href="javascript:window.location.reload()">
       You need to be online to use Reported.
       <br/>
       Click here to retry.

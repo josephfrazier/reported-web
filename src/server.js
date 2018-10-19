@@ -543,6 +543,14 @@ app.use('/getVehicleType/:licensePlate/:licenseState?', (req, res) => {
     .catch(handlePromiseRejection(res));
 });
 
+app.use('/api/submit_311_illegal_parking_report', (req, res) => {
+  submit_311_illegal_parking_report(req.body)
+    .then(result => {
+      res.json({ result });
+    })
+    .catch(handlePromiseRejection(res));
+});
+
 //
 // Register server-side rendering middleware
 // -----------------------------------------------------------------------------

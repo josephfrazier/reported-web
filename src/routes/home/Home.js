@@ -1249,6 +1249,20 @@ class Home extends React.Component {
                 url="https://twitter.com/Reported_NYC"
                 rel="noopener"
               />
+              &nbsp;
+              <a
+                href="/electricitibikes"
+                style={{
+                  background: 'black',
+                  border: '1em solid black',
+                  borderRadius: '2em',
+                  textDecoration: 'none',
+                }}
+              >
+                <span role="img" aria-label="high voltage">
+                  ⚡
+                </span>
+              </a>
             </div>
           </main>
         </div>

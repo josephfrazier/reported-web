@@ -1232,7 +1232,31 @@ class Home extends React.Component {
                   ? 'Loading submissions...'
                   : this.state.submissions.map(submission => (
                       <li key={submission.objectId}>
-                        <SubmissionDetails submission={submission} />
+                        <SubmissionDetails
+                          submission={submission}
+                          onDeleteSubmission={({ objectId }) => {
+                            const confirmationMessage = `Are you sure you want to delete this submission? (objectId: ${objectId})`;
+                            if (!window.confirm(confirmationMessage)) {
+                              return;
+                            }
+                            axios
+                              .post('/api/deleteSubmission', {
+                                ...omit(this.state, (val, key) =>
+                                  Object.keys(
+                                    this.initialStatePerSubmission,
+                                  ).includes(key),
+                                ),
+                                objectId,
+                              })
+                              .then(() => {
+                                this.setState({
+                                  submissions: this.state.submissions.filter(
+                                    sub => sub.objectId !== objectId,
+                                  ),
+                                });
+                              });
+                          }}
+                        />
                       </li>
                     ))}
               </ul>

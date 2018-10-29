@@ -31,6 +31,8 @@ class SubmissionDetails extends React.Component {
       videoData0,
       videoData1,
       videoData2,
+
+      objectId,
     } = this.props.submission;
 
     const humanTimeString = new Date(timeofreport).toLocaleString();
@@ -113,10 +115,27 @@ class SubmissionDetails extends React.Component {
             <p>{reportDescription}</p>
             <ImagesAndVideos />
 
-            {!reqnumber.startsWith('N/A') && (
+            {(!reqnumber.startsWith('N/A') && (
               <div>
                 <LoadableServiceRequestStatus />
               </div>
+            )) || (
+              <button
+                type="button"
+                style={{
+                  margin: '1px',
+                  color: 'red', // Ubuntu Chrome shows black otherwise
+                  background: 'white',
+                }}
+                onClick={() => {
+                  this.props.onDeleteSubmission({ objectId });
+                }}
+              >
+                <span role="img" aria-label="Delete Submission">
+                  ❌
+                </span>
+                Delete Submission
+              </button>
             )}
           </React.Fragment>
         )}
@@ -127,6 +146,7 @@ class SubmissionDetails extends React.Component {
 
 SubmissionDetails.propTypes = {
   isDetailsOpen: PropTypes.bool,
+  onDeleteSubmission: PropTypes.func.isRequired,
   submission: PropTypes.shape({
     reqnumber: PropTypes.string,
     medallionNo: PropTypes.string,
@@ -142,6 +162,8 @@ SubmissionDetails.propTypes = {
     videoData0: PropTypes.string,
     videoData1: PropTypes.string,
     videoData2: PropTypes.string,
+
+    objectId: PropTypes.string,
   }).isRequired,
 };
 

@@ -8,6 +8,7 @@
  */
 
 import path from 'path';
+import assert from 'assert';
 import express from 'express';
 import forceSsl from 'force-ssl-heroku';
 import compression from 'compression';
@@ -230,8 +231,8 @@ app.use('/api/process_validation', (req, res) => {
     .catch(handlePromiseRejection(res));
 });
 
-app.use('/submissions', (req, res) => {
-  saveUser(req.body)
+async function getSubmissions(req) {
+  return saveUser(req.body)
     .then(user => {
       const Submission = Parse.Object.extend('submission');
       const query = new Parse.Query(Submission);
@@ -244,11 +245,32 @@ app.use('/submissions', (req, res) => {
       return query.find();
     })
     .then(results => {
-      const submissions = results.map(({ id, attributes }) => ({
+      const submissions = results.map(({ id, attributes, destroy }) => ({
         objectId: id,
         ...attributes,
+        destroy
       }));
+      return submissions;
+    });
+}
+
+app.use('/submissions', (req, res) => {
+  getSubmissions(req)
+    .then(submissions => {
       res.json({ submissions });
+    })
+    .catch(handlePromiseRejection(res));
+});
+
+app.use('/api/deleteSubmission', (req, res) => {
+  const { objectId } = req.body;
+  getSubmissions(req)
+    .then(submissions => {
+      const submission = submissions.find(sub => sub.objectId === objectId);
+      assert(submission);
+      return submission.destroy().then(() => {
+        res.json({ submission });
+      })
     })
     .catch(handlePromiseRejection(res));
 });

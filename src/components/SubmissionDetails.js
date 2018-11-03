@@ -93,6 +93,30 @@ class SubmissionDetails extends React.Component {
       loading: () => 'Loading Service Request Status...',
     });
 
+    const srStatusOrDeleteButton = () =>
+      (!reqnumber.startsWith('N/A') && (
+        <div>
+          <LoadableServiceRequestStatus />
+        </div>
+      )) || (
+        <button
+          type="button"
+          style={{
+            margin: '1px',
+            color: 'red', // Ubuntu Chrome shows black otherwise
+            background: 'white',
+          }}
+          onClick={() => {
+            this.props.onDeleteSubmission({ objectId });
+          }}
+        >
+          <span role="img" aria-label="Delete Submission">
+            ❌
+          </span>
+          Delete Submission
+        </button>
+      );
+
     return (
       <details
         open={this.state.isDetailsOpen}
@@ -115,28 +139,7 @@ class SubmissionDetails extends React.Component {
             <p>{reportDescription}</p>
             <ImagesAndVideos />
 
-            {(!reqnumber.startsWith('N/A') && (
-              <div>
-                <LoadableServiceRequestStatus />
-              </div>
-            )) || (
-              <button
-                type="button"
-                style={{
-                  margin: '1px',
-                  color: 'red', // Ubuntu Chrome shows black otherwise
-                  background: 'white',
-                }}
-                onClick={() => {
-                  this.props.onDeleteSubmission({ objectId });
-                }}
-              >
-                <span role="img" aria-label="Delete Submission">
-                  ❌
-                </span>
-                Delete Submission
-              </button>
-            )}
+            {srStatusOrDeleteButton({ reqnumber })}
           </React.Fragment>
         )}
       </details>

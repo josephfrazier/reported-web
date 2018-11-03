@@ -330,9 +330,7 @@ class Home extends React.Component {
     }
     axios
       .post('/api/deleteSubmission', {
-        ...omit(this.state, (val, key) =>
-          Object.keys(this.initialStatePerSubmission).includes(key),
-        ),
+        ...this.getPerSubmissionState(),
         objectId,
       })
       .then(() => {
@@ -343,6 +341,12 @@ class Home extends React.Component {
         });
       });
   };
+
+  getPerSubmissionState() {
+    return omit(this.state, (val, key) =>
+      Object.keys(this.initialStatePerSubmission).includes(key),
+    );
+  }
 
   getStateFilterKeys() {
     return Object.keys(this.initialStatePersistent);
@@ -843,11 +847,7 @@ class Home extends React.Component {
                   .post(
                     '/submit',
                     objectToFormData({
-                      ...omit(this.state, (val, key) =>
-                        Object.keys(this.initialStatePerSubmission).includes(
-                          key,
-                        ),
-                      ),
+                      ...this.getPerSubmissionState(),
                       attachmentData: this.state.attachmentData,
                       CreateDate: new Date(this.state.CreateDate).toISOString(),
                     }),

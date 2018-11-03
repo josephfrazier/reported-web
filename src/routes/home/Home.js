@@ -410,7 +410,19 @@ class Home extends React.Component {
         } = data.result;
 
         this.setState({
-          vehicleInfoComponent: `${plate} in ${usStateNames[licenseState]}: ${vehicleYear} ${vehicleMake} ${vehicleModel} (${vehicleBody})` // prettier-ignore
+          vehicleInfoComponent: (
+            <React.Fragment>
+              {plate} in {usStateNames[licenseState]}: {vehicleYear}{' '}
+              {vehicleMake} {vehicleModel} ({vehicleBody})
+              <img
+                src={`https://logo.clearbit.com/${vehicleMake}.com`}
+                alt={`${vehicleMake} logo`}
+                style={{
+                  display: 'block',
+                }}
+              />
+            </React.Fragment>
+          ),
         });
       })
       .catch(err => {

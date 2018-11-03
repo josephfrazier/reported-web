@@ -323,6 +323,27 @@ class Home extends React.Component {
     this.forceUpdate(); // force "Create/Edit User" fields to render persisted value after load
   }
 
+  onDeleteSubmission = ({ objectId }) => {
+    const confirmationMessage = `Are you sure you want to delete this submission? (objectId: ${objectId})`;
+    if (!window.confirm(confirmationMessage)) {
+      return;
+    }
+    axios
+      .post('/api/deleteSubmission', {
+        ...omit(this.state, (val, key) =>
+          Object.keys(this.initialStatePerSubmission).includes(key),
+        ),
+        objectId,
+      })
+      .then(() => {
+        this.setState({
+          submissions: this.state.submissions.filter(
+            sub => sub.objectId !== objectId,
+          ),
+        });
+      });
+  };
+
   getStateFilterKeys() {
     return Object.keys(this.initialStatePersistent);
   }
@@ -1234,28 +1255,7 @@ class Home extends React.Component {
                       <li key={submission.objectId}>
                         <SubmissionDetails
                           submission={submission}
-                          onDeleteSubmission={({ objectId }) => {
-                            const confirmationMessage = `Are you sure you want to delete this submission? (objectId: ${objectId})`;
-                            if (!window.confirm(confirmationMessage)) {
-                              return;
-                            }
-                            axios
-                              .post('/api/deleteSubmission', {
-                                ...omit(this.state, (val, key) =>
-                                  Object.keys(
-                                    this.initialStatePerSubmission,
-                                  ).includes(key),
-                                ),
-                                objectId,
-                              })
-                              .then(() => {
-                                this.setState({
-                                  submissions: this.state.submissions.filter(
-                                    sub => sub.objectId !== objectId,
-                                  ),
-                                });
-                              });
-                          }}
+                          onDeleteSubmission={this.onDeleteSubmission}
                         />
                       </li>
                     ))}

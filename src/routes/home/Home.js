@@ -323,6 +323,31 @@ class Home extends React.Component {
     this.forceUpdate(); // force "Create/Edit User" fields to render persisted value after load
   }
 
+  onDeleteSubmission = ({ objectId }) => {
+    const confirmationMessage = `Are you sure you want to delete this submission? (objectId: ${objectId})`;
+    if (!window.confirm(confirmationMessage)) {
+      return;
+    }
+    axios
+      .post('/api/deleteSubmission', {
+        ...this.getPerSubmissionState(),
+        objectId,
+      })
+      .then(() => {
+        this.setState({
+          submissions: this.state.submissions.filter(
+            sub => sub.objectId !== objectId,
+          ),
+        });
+      });
+  };
+
+  getPerSubmissionState() {
+    return omit(this.state, (val, key) =>
+      Object.keys(this.initialStatePerSubmission).includes(key),
+    );
+  }
+
   getStateFilterKeys() {
     return Object.keys(this.initialStatePersistent);
   }
@@ -822,11 +847,7 @@ class Home extends React.Component {
                   .post(
                     '/submit',
                     objectToFormData({
-                      ...omit(this.state, (val, key) =>
-                        Object.keys(this.initialStatePerSubmission).includes(
-                          key,
-                        ),
-                      ),
+                      ...this.getPerSubmissionState(),
                       attachmentData: this.state.attachmentData,
                       CreateDate: new Date(this.state.CreateDate).toISOString(),
                     }),
@@ -1232,7 +1253,10 @@ class Home extends React.Component {
                   ? 'Loading submissions...'
                   : this.state.submissions.map(submission => (
                       <li key={submission.objectId}>
-                        <SubmissionDetails submission={submission} />
+                        <SubmissionDetails
+                          submission={submission}
+                          onDeleteSubmission={this.onDeleteSubmission}
+                        />
                       </li>
                     ))}
               </ul>

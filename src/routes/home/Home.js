@@ -415,7 +415,7 @@ class Home extends React.Component {
               {plate} in {usStateNames[licenseState]}: {vehicleYear}{' '}
               {vehicleMake} {vehicleModel} ({vehicleBody})
               <img
-                src={`https://logo.clearbit.com/${vehicleMake}.com`}
+                src={this.getVehicleMakeLogoUrl({ vehicleMake })}
                 alt={`${vehicleMake} logo`}
                 style={{
                   display: 'block',
@@ -435,6 +435,13 @@ class Home extends React.Component {
           });
         }
       });
+  };
+
+  getVehicleMakeLogoUrl = function({ vehicleMake }) {
+    if (vehicleMake === 'Nissan') {
+      return 'https://logo.clearbit.com/Nissanusa.com';
+    }
+    return `https://logo.clearbit.com/${vehicleMake}.com`;
   };
 
   // adapted from https://github.com/ngokevin/react-file-reader-input/tree/f970257f271b8c3bba9d529ffdbfa4f4731e0799#usage

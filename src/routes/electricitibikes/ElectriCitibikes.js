@@ -35,7 +35,13 @@ class ElectriCitibikes extends React.Component {
   };
 
   componentDidMount() {
-    this.updateData();
+    const pollInterval = 10000;
+    const doPoll = function() {
+      this.updateData();
+      setTimeout(doPoll, pollInterval);
+    }.bind(this);
+
+    doPoll();
 
     fetch(
       'https://services5.arcgis.com/GfwWNkhOj9bNBqoJ/arcgis/rest/services/nybb/FeatureServer/0/query?where=1=1&outFields=*&outSR=4326&f=geojson',

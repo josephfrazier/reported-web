@@ -18,6 +18,7 @@ import PolygonLookup from 'polygon-lookup';
 import geolib from 'geolib';
 import d2d from 'degrees-to-direction';
 import mem from 'mem';
+import groupBy from 'lodash.groupby';
 
 import withStyles from 'isomorphic-style-loader/lib/withStyles';
 import marx from 'marx-css/css/marx.css';
@@ -189,6 +190,11 @@ export function ElectriCitibikeList({
     });
 
   ebikeStations.sort((a, b) => a.distMeters - b.distMeters);
+  const ebikeStationsByBoroName = groupBy(
+    ebikeStations,
+    station => station.BoroName,
+  );
+  const BoroNames = Object.keys(ebikeStationsByBoroName);
   const humanDate = strftime('%r', new Date(updatedAt));
   const totalEbikesAvailable = ebikeStations
     .map(station => station.ebikes_available)
@@ -196,34 +202,41 @@ export function ElectriCitibikeList({
   return (
     <>
       {totalEbikesAvailable} available as of {humanDate}
-      {ebikeStations.map(station => (
-        <details key={station.name} style={{ margin: '1rem 0' }}>
-          <summary>
-            {station.ebikes_available} @&nbsp;
-            <a
-              target="_blank"
-              rel="noopener noreferrer"
-              href={getMapUrl({ station, latitude, longitude })}
-            >
-              {station.name}, {station.BoroName}
-            </a>
-            <br />
-            (about {Math.ceil(station.distMeters / 80)} blocks{' '}
-            {station.compassBearing} of you)
-            <br />
-            Max Charge:{' '}
-            {Math.max(
-              ...(station.ebikes || [{ charge: 0 }]).map(ebike => ebike.charge),
-            ) || '?'}/4
-          </summary>
-          <ul>
-            {station.ebikes &&
-              station.ebikes.map(ebike => (
-                <li key={ebike.bike_number}>
-                  {`#${ebike.bike_number}`} has {ebike.charge}/4 charge
-                </li>
-              ))}
-          </ul>
+      {BoroNames.map(BoroName => (
+        <details key={BoroName} style={{ margin: '1rem 0' }}>
+          <summary>{BoroName}</summary>
+          {ebikeStationsByBoroName[BoroName].map(station => (
+            <details key={station.name} style={{ margin: '1rem 0' }}>
+              <summary>
+                {station.ebikes_available} @&nbsp;
+                <a
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  href={getMapUrl({ station, latitude, longitude })}
+                >
+                  {station.name}, {station.BoroName}
+                </a>
+                <br />
+                (about {Math.ceil(station.distMeters / 80)} blocks{' '}
+                {station.compassBearing} of you)
+                <br />
+                Max Charge:{' '}
+                {Math.max(
+                  ...(station.ebikes || [{ charge: 0 }]).map(
+                    ebike => ebike.charge,
+                  ),
+                ) || '?'}/4
+              </summary>
+              <ul>
+                {station.ebikes &&
+                  station.ebikes.map(ebike => (
+                    <li key={ebike.bike_number}>
+                      {`#${ebike.bike_number}`} has {ebike.charge}/4 charge
+                    </li>
+                  ))}
+              </ul>
+            </details>
+          ))}
         </details>
       ))}
     </>

@@ -44,6 +44,7 @@
     "intl": "^1.2.5",
     "isomorphic-style-loader": "^4.0.0",
     "json-stringify-safe": "^5.0.1",
+    "lodash.groupby": "^4.6.0",
     "lodash.sortby": "^4.7.0",
     "marx-css": "^3.0.3",
     "mem": "^4.0.0",

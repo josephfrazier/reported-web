@@ -36,10 +36,10 @@ class ElectriCitibikes extends React.Component {
 
   componentDidMount() {
     const pollInterval = 10000;
-    const doPoll = function() {
+    const doPoll = () => {
       this.updateData();
       setTimeout(doPoll, pollInterval);
-    }.bind(this);
+    };
 
     doPoll();
 

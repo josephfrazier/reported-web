@@ -409,6 +409,11 @@ class Home extends React.Component {
           vehicleBody,
         } = data.result;
 
+        if (plate !== this.state.plate) {
+          console.info('ignoring stale plate:', plate);
+          return;
+        }
+
         this.setState({
           vehicleInfoComponent: (
             <React.Fragment>

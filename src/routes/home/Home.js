@@ -325,6 +325,7 @@ class Home extends React.Component {
 
   onDeleteSubmission = ({ objectId }) => {
     const confirmationMessage = `Are you sure you want to delete this submission? (objectId: ${objectId})`;
+    // eslint-disable-next-line no-alert
     if (!window.confirm(confirmationMessage)) {
       return;
     }

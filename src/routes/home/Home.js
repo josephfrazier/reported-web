@@ -443,7 +443,7 @@ class Home extends React.Component {
       });
   };
 
-  getVehicleMakeLogoUrl = function({ vehicleMake }) {
+  getVehicleMakeLogoUrl = function getVehicleMakeLogoUrl({ vehicleMake }) {
     if (vehicleMake === 'Nissan') {
       return 'https://logo.clearbit.com/Nissanusa.com';
     }

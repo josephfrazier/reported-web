@@ -446,6 +446,8 @@ class Home extends React.Component {
   getVehicleMakeLogoUrl = function getVehicleMakeLogoUrl({ vehicleMake }) {
     if (vehicleMake === 'Nissan') {
       return 'https://logo.clearbit.com/Nissanusa.com';
+    } else if (vehicleMake === 'Toyota') {
+      return 'https://logo.clearbit.com/toyota.com';
     }
     return `https://logo.clearbit.com/${vehicleMake}.com`;
   };

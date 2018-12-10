@@ -32,7 +32,11 @@ describe('SubmissionDetails', () => {
     const wrapper = renderer
       .create(
         <App context={{ insertCss: () => {}, fetch: () => {}, pathname: '' }}>
-          <SubmissionDetails isDetailsOpen submission={submission} />
+          <SubmissionDetails
+            isDetailsOpen
+            submission={submission}
+            onDeleteSubmission={() => {}}
+          />
         </App>,
       )
       .toJSON();

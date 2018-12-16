@@ -439,6 +439,13 @@ class Home extends React.Component {
               usStateNames[licenseState]
             }`,
           });
+
+          if (plate.match(/1\d\d\d\d\d\dC/)) {
+            this.setLicensePlate({
+              plate: plate.replace('1', 'T'),
+              licenseState,
+            });
+          }
         }
       });
   };

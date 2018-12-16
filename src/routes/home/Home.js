@@ -433,6 +433,12 @@ class Home extends React.Component {
       })
       .catch(err => {
         console.error(err);
+
+        if (plate !== this.state.plate) {
+          console.info('ignoring stale plate:', plate);
+          return;
+        }
+
         if (plate) {
           this.setState({
             vehicleInfoComponent: `Could not find ${plate} in ${

@@ -150,7 +150,10 @@ async function submit_311_illegal_parking_report({
     }) => {
       // set location
       const locationType = document.querySelector('#locationType');
-      locationType.value = locationType.children[1].value; // (Street/Sidewalk)
+      const locationTypeValue = Array.from(locationType.children).find(
+        c => c.innerText === 'Street/Sidewalk',
+      ).value;
+      locationType.value = locationTypeValue;
 
       document.querySelector('#incidentBorough6').value =
         boroughDropdownValues[firstBoroughName.toUpperCase()];

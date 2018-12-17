@@ -323,6 +323,32 @@ class Home extends React.Component {
     this.forceUpdate(); // force "Create/Edit User" fields to render persisted value after load
   }
 
+  onDeleteSubmission = ({ objectId }) => {
+    const confirmationMessage = `Are you sure you want to delete this submission? (objectId: ${objectId})`;
+    // eslint-disable-next-line no-alert
+    if (!window.confirm(confirmationMessage)) {
+      return;
+    }
+    axios
+      .post('/api/deleteSubmission', {
+        ...this.getPerSubmissionState(),
+        objectId,
+      })
+      .then(() => {
+        this.setState({
+          submissions: this.state.submissions.filter(
+            sub => sub.objectId !== objectId,
+          ),
+        });
+      });
+  };
+
+  getPerSubmissionState() {
+    return omit(this.state, (val, key) =>
+      Object.keys(this.initialStatePerSubmission).includes(key),
+    );
+  }
+
   getStateFilterKeys() {
     return Object.keys(this.initialStatePersistent);
   }
@@ -384,20 +410,59 @@ class Home extends React.Component {
           vehicleBody,
         } = data.result;
 
+        if (plate !== this.state.plate) {
+          console.info('ignoring stale plate:', plate);
+          return;
+        }
+
         this.setState({
-          vehicleInfoComponent: `${plate} in ${usStateNames[licenseState]}: ${vehicleYear} ${vehicleMake} ${vehicleModel} (${vehicleBody})` // prettier-ignore
+          vehicleInfoComponent: (
+            <React.Fragment>
+              {plate} in {usStateNames[licenseState]}: {vehicleYear}{' '}
+              {vehicleMake} {vehicleModel} ({vehicleBody})
+              <img
+                src={this.getVehicleMakeLogoUrl({ vehicleMake })}
+                alt={`${vehicleMake} logo`}
+                style={{
+                  display: 'block',
+                }}
+              />
+            </React.Fragment>
+          ),
         });
       })
       .catch(err => {
         console.error(err);
+
+        if (plate !== this.state.plate) {
+          console.info('ignoring stale plate:', plate);
+          return;
+        }
+
         if (plate) {
           this.setState({
             vehicleInfoComponent: `Could not find ${plate} in ${
               usStateNames[licenseState]
             }`,
           });
+
+          if (plate.match(/1\d\d\d\d\d\dC/)) {
+            this.setLicensePlate({
+              plate: plate.replace('1', 'T'),
+              licenseState,
+            });
+          }
         }
       });
+  };
+
+  getVehicleMakeLogoUrl = function getVehicleMakeLogoUrl({ vehicleMake }) {
+    if (vehicleMake === 'Nissan') {
+      return 'https://logo.clearbit.com/Nissanusa.com';
+    } else if (vehicleMake === 'Toyota') {
+      return 'https://logo.clearbit.com/toyota.com';
+    }
+    return `https://logo.clearbit.com/${vehicleMake}.com`;
   };
 
   // adapted from https://github.com/ngokevin/react-file-reader-input/tree/f970257f271b8c3bba9d529ffdbfa4f4731e0799#usage
@@ -822,11 +887,7 @@ class Home extends React.Component {
                   .post(
                     '/submit',
                     objectToFormData({
-                      ...omit(this.state, (val, key) =>
-                        Object.keys(this.initialStatePerSubmission).includes(
-                          key,
-                        ),
-                      ),
+                      ...this.getPerSubmissionState(),
                       attachmentData: this.state.attachmentData,
                       CreateDate: new Date(this.state.CreateDate).toISOString(),
                     }),
@@ -1232,7 +1293,10 @@ class Home extends React.Component {
                   ? 'Loading submissions...'
                   : this.state.submissions.map(submission => (
                       <li key={submission.objectId}>
-                        <SubmissionDetails submission={submission} />
+                        <SubmissionDetails
+                          submission={submission}
+                          onDeleteSubmission={this.onDeleteSubmission}
+                        />
                       </li>
                     ))}
               </ul>
@@ -1249,6 +1313,20 @@ class Home extends React.Component {
                 url="https://twitter.com/Reported_NYC"
                 rel="noopener"
               />
+              &nbsp;
+              <a
+                href="/electricitibikes"
+                style={{
+                  background: 'black',
+                  border: '1em solid black',
+                  borderRadius: '2em',
+                  textDecoration: 'none',
+                }}
+              >
+                <span role="img" aria-label="high voltage">
+                  ⚡
+                </span>
+              </a>
             </div>
           </main>
         </div>

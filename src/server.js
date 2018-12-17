@@ -8,6 +8,7 @@
  */
 
 import path from 'path';
+import assert from 'assert';
 import express from 'express';
 import forceSsl from 'force-ssl-heroku';
 import compression from 'compression';
@@ -134,7 +135,7 @@ async function logIn({ email, password }) {
           // https://github.com/parse-community/parse-server/issues/1729#issuecomment-218932566
           sessionToken: userAgain.get('sessionToken'),
         });
-        const message = `Please confirm your email address and try again.`;
+        const message = `We just sent you an email with a link to confirm your address, please find and click that.`;
         throw { message }; // eslint-disable-line no-throw-literal
       }
       return userAgain;
@@ -231,25 +232,44 @@ app.use('/api/process_validation', (req, res) => {
     .catch(handlePromiseRejection(res));
 });
 
+async function getSubmissions(req) {
+  return saveUser(req.body).then(user => {
+    const Submission = Parse.Object.extend('submission');
+    const query = new Parse.Query(Submission);
+    // Search by "Username" (email address) to show submissions made by all
+    // users with the same email, since the web and mobile clients create
+    // separate users
+    query.equalTo('Username', user.get('username'));
+    query.descending('timeofreport');
+    query.limit(Number.MAX_SAFE_INTEGER);
+    return query.find();
+  });
+}
+
 app.use('/submissions', (req, res) => {
-  saveUser(req.body)
-    .then(user => {
-      const Submission = Parse.Object.extend('submission');
-      const query = new Parse.Query(Submission);
-      // Search by "Username" (email address) to show submissions made by all
-      // users with the same email, since the web and mobile clients create
-      // separate users
-      query.equalTo('Username', user.get('username'));
-      query.descending('timeofreport');
-      query.limit(Number.MAX_SAFE_INTEGER);
-      return query.find();
-    })
+  getSubmissions(req)
     .then(results => {
       const submissions = results.map(({ id, attributes }) => ({
         objectId: id,
         ...attributes,
       }));
+      return submissions;
+    })
+    .then(submissions => {
       res.json({ submissions });
+    })
+    .catch(handlePromiseRejection(res));
+});
+
+app.use('/api/deleteSubmission', (req, res) => {
+  const { objectId } = req.body;
+  getSubmissions(req)
+    .then(submissions => {
+      const submission = submissions.find(sub => sub.id === objectId);
+      assert(submission); // TODO make it obvious that this is necessary
+      return submission.destroy().then(() => {
+        res.json({ objectId });
+      });
     })
     .catch(handlePromiseRejection(res));
 });

@@ -149,7 +149,8 @@ async function submit_311_illegal_parking_report({
       boroughDropdownValues,
     }) => {
       // set location
-      document.querySelector('#locationType').value = '1-KZ6-7'; // (Street/Sidewalk)
+      const locationType = document.querySelector('#locationType');
+      locationType.value = locationType.children[1].value; // (Street/Sidewalk)
 
       document.querySelector('#incidentBorough6').value =
         boroughDropdownValues[firstBoroughName.toUpperCase()];

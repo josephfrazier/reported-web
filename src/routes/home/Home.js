@@ -451,6 +451,11 @@ class Home extends React.Component {
               plate: plate.replace('1', 'T'),
               licenseState,
             });
+          } else if (licenseState !== 'NY') {
+            this.setLicensePlate({
+              plate,
+              licenseState: 'NY',
+            });
           }
         }
       });

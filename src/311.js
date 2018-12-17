@@ -7,14 +7,6 @@
 const puppeteer = require('puppeteer');
 const strftime = require('strftime');
 
-const boroughDropdownValues = {
-  BRONX: '1-4X9-313',
-  BROOKLYN: '1-4X9-314',
-  MANHATTAN: '1-4X9-316',
-  QUEENS: '1-4X9-315',
-  'STATEN ISLAND': '1-4X9-318',
-};
-
 // ported from https://github.com/jeffrono/Reported/blob/8cdc7efe6532aa0fd8b83ef0bcba083a14bcf52b/v2/task_311_illegal_parking_submission.rb
 async function submit_311_illegal_parking_report({
   Username, // email
@@ -88,9 +80,17 @@ async function submit_311_illegal_parking_report({
     }) => {
       // select from list  (blocked bike lane, others)
       if (typeofcomplaint === 'Parked illegally') {
-        document.querySelector('#descriptor1').value = '1-6VN-6'; // (Posted Parking Sign Violation)
+        const dropdownElement = document.querySelector('#descriptor1');
+        const dropdownValue = Array.from(dropdownElement.children).find(
+          c => c.innerText === 'Posted Parking Sign Violation',
+        ).value;
+        dropdownElement.value = dropdownValue;
       } else {
-        document.querySelector('#descriptor1').value = '1-KZ5-3'; // (Blocked Bike Lane)
+        const dropdownElement = document.querySelector('#descriptor1');
+        const dropdownValue = Array.from(dropdownElement.children).find(
+          c => c.innerText === 'Blocked Bike Lane',
+        ).value;
+        dropdownElement.value = dropdownValue;
       }
 
       // fill in description of complaint
@@ -146,7 +146,6 @@ async function submit_311_illegal_parking_report({
       streetName1In,
       latitude,
       longitude,
-      boroughDropdownValues,
     }) => {
       // set location
       const locationType = document.querySelector('#locationType');
@@ -155,8 +154,11 @@ async function submit_311_illegal_parking_report({
       ).value;
       locationType.value = locationTypeValue;
 
-      document.querySelector('#incidentBorough6').value =
-        boroughDropdownValues[firstBoroughName.toUpperCase()];
+      const incidentBorough6 = document.querySelector('#incidentBorough6');
+      const incidentBorough6Value = Array.from(incidentBorough6.children).find(
+        c => c.innerText === firstBoroughName.toUpperCase(),
+      ).value;
+      incidentBorough6.value = incidentBorough6Value;
 
       document.querySelector('#incidentAddressNumber').value = houseNumberIn;
       document.querySelector('#incidentStreetName').value = streetName1In;
@@ -173,7 +175,6 @@ async function submit_311_illegal_parking_report({
       streetName1In,
       latitude,
       longitude,
-      boroughDropdownValues,
     },
   );
 
@@ -192,15 +193,17 @@ async function submit_311_illegal_parking_report({
       Building,
       StreetName,
       Apt,
-      boroughDropdownValues,
     }) => {
       document.querySelector('#contactEmailAddress').value = Username;
       document.querySelector('#contactFirstName').value = FirstName;
       document.querySelector('#contactLastName').value = LastName;
       document.querySelector('#contactDaytimePhone').value = Phone;
 
-      document.querySelector('#contactBorough').value =
-        boroughDropdownValues[Borough.toUpperCase()];
+      const contactBorough = document.querySelector('#contactBorough');
+      const contactBoroughValue = Array.from(contactBorough.children).find(
+        c => c.innerText === Borough.toUpperCase(),
+      ).value;
+      contactBorough.value = contactBoroughValue;
 
       document.querySelector('#contactAddressNumber').value = Building;
       document.querySelector('#contactStreetName').value = StreetName;
@@ -217,7 +220,6 @@ async function submit_311_illegal_parking_report({
       Building,
       StreetName,
       Apt,
-      boroughDropdownValues,
     },
   );
 

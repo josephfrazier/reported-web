@@ -495,6 +495,16 @@ class Home extends React.Component {
           extractLocationDate({ attachmentFile }).then(this.setLocationDate),
         ]);
       } catch (err) {
+        this.alert(
+          <React.Fragment>
+            <p>
+              Could not extract plate/location/date from image. Please
+              enter/confirm them manually.
+            </p>
+
+            <p>(Error message: {err.message})</p>
+          </React.Fragment>,
+        );
         console.error(`Error: ${err.message}`);
       }
     }

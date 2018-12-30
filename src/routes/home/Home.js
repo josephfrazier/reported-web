@@ -902,6 +902,15 @@ class Home extends React.Component {
               }}
               onSubmit={async e => {
                 e.preventDefault();
+
+                if (
+                  this.state.latitude === defaultLatitude &&
+                  this.state.longitude === defaultLongitude
+                ) {
+                  this.alert('Please provide the location of the incident');
+                  return;
+                }
+
                 this.setState({
                   isSubmitting: true,
                 });

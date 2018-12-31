@@ -592,6 +592,16 @@ class Home extends React.Component {
   alert = modalText => this.setState({ modalText });
   closeAlert = () => this.setState({ modalText: null });
 
+  loadPreviousSubmissions = () => {
+    axios
+      .post('/submissions', this.state)
+      .then(({ data }) => {
+        const { submissions } = data;
+        this.setState({ submissions });
+      })
+      .catch(this.handleAxiosError);
+  };
+
   render() {
     return (
       <Dropzone
@@ -1299,13 +1309,7 @@ class Home extends React.Component {
                 if (!evt.target.open) {
                   return;
                 }
-                axios
-                  .post('/submissions', this.state)
-                  .then(({ data }) => {
-                    const { submissions } = data;
-                    this.setState({ submissions });
-                  })
-                  .catch(this.handleAxiosError);
+                this.loadPreviousSubmissions();
               }}
             >
               <summary>Previous Submissions</summary>

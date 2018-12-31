@@ -320,6 +320,8 @@ class Home extends React.Component {
       return confirmationMessage; // Webkit, Safari, Chrome etc.
     });
 
+    this.loadPreviousSubmissions();
+
     this.forceUpdate(); // force "Create/Edit User" fields to render persisted value after load
   }
 

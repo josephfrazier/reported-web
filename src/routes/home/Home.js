@@ -299,12 +299,23 @@ class Home extends React.Component {
 
     // Allow users to paste image data
     // adapted from https://github.com/charliewilco/react-gluejar/blob/b69d7cfa9d08bfb34d8eb6815e4b548528218883/src/index.js#L85
-    window.addEventListener('paste', clipboardEvent => {
+    window.addEventListener('paste', async clipboardEvent => {
       const { items } = clipboardEvent.clipboardData;
       // [].map.call because `items` isn't an array
-      const attachmentData = [].map
-        .call(items, item => item.getAsFile())
-        .filter(file => !!file);
+      const attachmentData = (await Promise.all(
+        [].map.call(
+          items,
+          item =>
+            item.getAsFile() ||
+            new Promise(resolve => item.getAsString(resolve))
+              .then(url =>
+                axios.get(`https://cors-anywhere.herokuapp.com/${url}`, {
+                  responseType: 'blob',
+                }),
+              )
+              .then(response => response.data),
+        ),
+      )).filter(file => !!file);
       this.handleAttachmentData({ attachmentData });
     });
 
@@ -1044,9 +1055,10 @@ class Home extends React.Component {
                   }}
                 >
                   {this.state.attachmentData.map(attachmentFile => {
-                    const { name } = attachmentFile;
+                    // TODO move name/ext/type logic into isImage?
+                    const { name, type } = attachmentFile;
                     const ext = fileExtension(name);
-                    const isImg = isImage({ ext });
+                    const isImg = type === 'image/jpeg' || isImage({ ext });
                     const src = getBlobUrl(attachmentFile);
 
                     return (

@@ -417,6 +417,20 @@ class Home extends React.Component {
           return;
         }
 
+        if (
+          this.state.submissions.some(
+            submission =>
+              submission.license === plate && submission.state === licenseState,
+          )
+        ) {
+          this.alert(
+            <p>
+              You have already submitted a report for {plate} in {licenseState},
+              are you sure you want to submit another?
+            </p>,
+          );
+        }
+
         this.setState({
           vehicleInfoComponent: (
             <React.Fragment>

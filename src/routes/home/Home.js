@@ -320,6 +320,8 @@ class Home extends React.Component {
       return confirmationMessage; // Webkit, Safari, Chrome etc.
     });
 
+    this.loadPreviousSubmissions();
+
     this.forceUpdate(); // force "Create/Edit User" fields to render persisted value after load
   }
 
@@ -413,6 +415,20 @@ class Home extends React.Component {
         if (plate !== this.state.plate) {
           console.info('ignoring stale plate:', plate);
           return;
+        }
+
+        if (
+          this.state.submissions.some(
+            submission =>
+              submission.license === plate && submission.state === licenseState,
+          )
+        ) {
+          this.alert(
+            <p>
+              You have already submitted a report for {plate} in {licenseState},
+              are you sure you want to submit another?
+            </p>,
+          );
         }
 
         this.setState({
@@ -591,6 +607,16 @@ class Home extends React.Component {
 
   alert = modalText => this.setState({ modalText });
   closeAlert = () => this.setState({ modalText: null });
+
+  loadPreviousSubmissions = () => {
+    axios
+      .post('/submissions', this.state)
+      .then(({ data }) => {
+        const { submissions } = data;
+        this.setState({ submissions });
+      })
+      .catch(this.handleAxiosError);
+  };
 
   render() {
     return (
@@ -1299,13 +1325,7 @@ class Home extends React.Component {
                 if (!evt.target.open) {
                   return;
                 }
-                axios
-                  .post('/submissions', this.state)
-                  .then(({ data }) => {
-                    const { submissions } = data;
-                    this.setState({ submissions });
-                  })
-                  .catch(this.handleAxiosError);
+                this.loadPreviousSubmissions();
               }}
             >
               <summary>Previous Submissions</summary>

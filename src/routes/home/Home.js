@@ -489,6 +489,8 @@ class Home extends React.Component {
       return 'https://logo.clearbit.com/toyota.com';
     } else if (vehicleMake === 'Honda') {
       return 'https://upload.wikimedia.org/wikipedia/commons/3/38/Honda.svg';
+    } else if (vehicleMake === 'Kia') {
+      return 'https://logo.clearbit.com/kia.com';
     }
     return `https://logo.clearbit.com/${vehicleMake}.com`;
   };

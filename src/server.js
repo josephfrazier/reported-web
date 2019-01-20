@@ -411,8 +411,7 @@ app.use('/submit', (req, res) => {
           locationNumber: 1,
           latitude: latitude.toString(),
           longitude: longitude.toString(),
-          latitude1: latitude,
-          longitude1: longitude,
+          location: new Parse.GeoPoint({latitude: latitude, longitude: longitude}),
           loc1_address: formatted_address,
           timeofreport,
           timeofreported,
@@ -423,6 +422,7 @@ app.use('/submit', (req, res) => {
           version_number: Number(HEROKU_RELEASE_VERSION.slice(1)),
           reqnumber: 'N/A until submitted to 311',
         });
+        submission.setACL(new Parse.ACL(user));
 
         // upload attachments
         // http://docs.parseplatform.org/js/guide/#creating-a-parsefile

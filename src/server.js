@@ -113,18 +113,21 @@ const handlePromiseRejection = res => error => {
 
 async function logIn({ email, password }) {
   // adapted from http://docs.parseplatform.org/js/guide/#signing-up
-  const user = new Parse.User();
-  const username = email;
-  const fields = {
-    username,
-    email,
-    password,
-  };
-  user.set(fields);
 
-  return user
-    .signUp(null)
-    .catch(() => Parse.User.logIn(username, password))
+  return Parse.User.logIn(username, password)
+    .catch(() => {
+      const username = email;
+      const useremail = email;
+      const user = new Parse.User();
+      const fields = {
+        username,
+        email,
+        password,
+        useremail,
+      };
+      user.set(fields);
+      return user.signUp();
+    }
     .then(userAgain => {
       console.info({ user: userAgain });
       if (!userAgain.get('emailVerified')) {

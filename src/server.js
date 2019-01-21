@@ -415,7 +415,6 @@ app.use('/submit', (req, res) => {
           longitude: longitude.toString(),
           latitude1: latitude,
           longitude1: longitude,
-          location: new Parse.GeoPoint({ latitude, longitude }),
           loc1_address: formatted_address,
           timeofreport,
           timeofreported,

@@ -50,6 +50,7 @@ process.on('unhandledRejection', (reason, p) => {
 const {
   PARSE_APP_ID,
   PARSE_JAVASCRIPT_KEY,
+  PARSE_MASTER_KEY,
   PARSE_SERVER_URL,
   HEROKU_RELEASE_VERSION,
   OPENALPR_SECRET_KEY,
@@ -60,7 +61,8 @@ require('heroku-self-ping')(config.api.serverUrl, {
 });
 
 // http://docs.parseplatform.org/js/guide/#getting-started
-Parse.initialize(PARSE_APP_ID, PARSE_JAVASCRIPT_KEY);
+Parse.initialize(PARSE_APP_ID, PARSE_JAVASCRIPT_KEY, PARSE_MASTER_KEY);
+Parse.Cloud.useMasterKey();
 Parse.serverURL = PARSE_SERVER_URL;
 
 const upload = multer({

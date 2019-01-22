@@ -23,6 +23,7 @@ class SubmissionDetails extends React.Component {
       loc1_address, // eslint-disable-line camelcase
       timeofreport,
       reportDescription,
+      status,
 
       photoData0,
       photoData1,
@@ -94,7 +95,7 @@ class SubmissionDetails extends React.Component {
     });
 
     const srStatusOrDeleteButton = () =>
-      (!reqnumber.startsWith('N/A') && (
+      (status !== 0 && (
         <div>
           <LoadableServiceRequestStatus />
         </div>
@@ -157,6 +158,7 @@ SubmissionDetails.propTypes = {
     loc1_address: PropTypes.string,
     timeofreport: PropTypes.string,
     reportDescription: PropTypes.string,
+    status: PropTypes.number,
 
     photoData0: PropTypes.object,
     photoData1: PropTypes.object,

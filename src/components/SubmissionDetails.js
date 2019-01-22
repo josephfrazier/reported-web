@@ -139,7 +139,7 @@ class SubmissionDetails extends React.Component {
             <p>{reportDescription}</p>
             <ImagesAndVideos />
 
-            {srStatusOrDeleteButton({ reqnumber })}
+            {srStatusOrDeleteButton()}
           </React.Fragment>
         )}
       </details>

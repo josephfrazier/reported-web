@@ -32,7 +32,10 @@ async function submit_311_illegal_parking_report({
 }) {
   const submission_date = new Date(submission_timestamp);
 
-  const browser = await puppeteer.launch({ headless: true });
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: ['--no-sandbox'],
+  });
   const page = await browser.newPage();
 
   // Don't bother loading images, styles, or fonts. https://github.com/GoogleChrome/puppeteer/issues/1913#issuecomment-361224733

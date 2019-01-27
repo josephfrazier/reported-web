@@ -38,6 +38,7 @@
     "global": "^4.3.2",
     "heroku-self-ping": "^1.1.4",
     "history": "^4.7.2",
+    "http-delayed-response": "^0.0.4",
     "humanize-distance": "^1.0.9",
     "humanize-string": "^1.0.2",
     "image-extensions": "^1.1.0",

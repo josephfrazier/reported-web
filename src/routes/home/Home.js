@@ -320,6 +320,8 @@ class Home extends React.Component {
       return confirmationMessage; // Webkit, Safari, Chrome etc.
     });
 
+    this.loadPreviousSubmissions();
+
     this.forceUpdate(); // force "Create/Edit User" fields to render persisted value after load
   }
 
@@ -415,6 +417,20 @@ class Home extends React.Component {
           return;
         }
 
+        if (
+          this.state.submissions.some(
+            submission =>
+              submission.license === plate && submission.state === licenseState,
+          )
+        ) {
+          this.alert(
+            <p>
+              You have already submitted a report for {plate} in {licenseState},
+              are you sure you want to submit another?
+            </p>,
+          );
+        }
+
         this.setState({
           vehicleInfoComponent: (
             <React.Fragment>
@@ -451,6 +467,16 @@ class Home extends React.Component {
               plate: plate.replace('1', 'T'),
               licenseState,
             });
+          } else if (plate.match(/^\d\d\d\d\d\dC$/)) {
+            this.setLicensePlate({
+              plate: `T${plate}`,
+              licenseState,
+            });
+          } else if (licenseState !== 'NY') {
+            this.setLicensePlate({
+              plate,
+              licenseState: 'NY',
+            });
           }
         }
       });
@@ -461,6 +487,10 @@ class Home extends React.Component {
       return 'https://logo.clearbit.com/Nissanusa.com';
     } else if (vehicleMake === 'Toyota') {
       return 'https://logo.clearbit.com/toyota.com';
+    } else if (vehicleMake === 'Honda') {
+      return 'https://upload.wikimedia.org/wikipedia/commons/3/38/Honda.svg';
+    } else if (vehicleMake === 'Kia') {
+      return 'https://logo.clearbit.com/kia.com';
     }
     return `https://logo.clearbit.com/${vehicleMake}.com`;
   };
@@ -485,6 +515,16 @@ class Home extends React.Component {
           extractLocationDate({ attachmentFile }).then(this.setLocationDate),
         ]);
       } catch (err) {
+        this.alert(
+          <React.Fragment>
+            <p>
+              Could not extract plate/location/date from image. Please
+              enter/confirm them manually.
+            </p>
+
+            <p>(Error message: {err.message})</p>
+          </React.Fragment>,
+        );
         console.error(`Error: ${err.message}`);
       }
     }
@@ -569,6 +609,16 @@ class Home extends React.Component {
 
   alert = modalText => this.setState({ modalText });
   closeAlert = () => this.setState({ modalText: null });
+
+  loadPreviousSubmissions = () => {
+    axios
+      .post('/submissions', this.state)
+      .then(({ data }) => {
+        const { submissions } = data;
+        this.setState({ submissions });
+      })
+      .catch(this.handleAxiosError);
+  };
 
   render() {
     return (
@@ -880,6 +930,15 @@ class Home extends React.Component {
               }}
               onSubmit={async e => {
                 e.preventDefault();
+
+                if (
+                  this.state.latitude === defaultLatitude &&
+                  this.state.longitude === defaultLongitude
+                ) {
+                  this.alert('Please provide the location of the incident');
+                  return;
+                }
+
                 this.setState({
                   isSubmitting: true,
                 });
@@ -1277,13 +1336,7 @@ class Home extends React.Component {
                 if (!evt.target.open) {
                   return;
                 }
-                axios
-                  .post('/submissions', this.state)
-                  .then(({ data }) => {
-                    const { submissions } = data;
-                    this.setState({ submissions });
-                  })
-                  .catch(this.handleAxiosError);
+                this.loadPreviousSubmissions();
               }}
             >
               <summary>Previous Submissions</summary>

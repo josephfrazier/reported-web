@@ -51,6 +51,7 @@ process.on('unhandledRejection', (reason, p) => {
 const {
   PARSE_APP_ID,
   PARSE_JAVASCRIPT_KEY,
+  PARSE_MASTER_KEY,
   PARSE_SERVER_URL,
   HEROKU_RELEASE_VERSION,
   OPENALPR_SECRET_KEY,
@@ -61,7 +62,8 @@ require('heroku-self-ping')(config.api.serverUrl, {
 });
 
 // http://docs.parseplatform.org/js/guide/#getting-started
-Parse.initialize(PARSE_APP_ID, PARSE_JAVASCRIPT_KEY);
+Parse.initialize(PARSE_APP_ID, PARSE_JAVASCRIPT_KEY, PARSE_MASTER_KEY);
+Parse.Cloud.useMasterKey();
 Parse.serverURL = PARSE_SERVER_URL;
 
 const upload = multer({
@@ -526,7 +528,7 @@ app.use('/openalpr', upload.single('attachmentFile'), (req, res) => {
 // ported from https://github.com/jeffrono/Reported/blob/19b588171315a3093d53986f9fb995059f5084b4/v2/enrich_functions.rb#L325-L346
 app.use('/getVehicleType/:licensePlate/:licenseState?', (req, res) => {
   const { licensePlate = 'GNS7685', licenseState = 'NY' } = req.params;
-  const url = `https://www.searchquarry.com/vehicle_records/license-register?license_plates=${licensePlate}&state=${licenseState}`;
+  const url = `https://www.searchquarry.com/vehicle_records/lregister-new?sqtb=license_plate&license_plates=${licensePlate}&trackstat=homepage-&state=${licenseState}`;
 
   console.time(url); // eslint-disable-line no-console
   axios

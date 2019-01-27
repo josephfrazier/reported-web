@@ -28,6 +28,7 @@ import stringify from 'json-stringify-safe';
 
 import { isImage, isVideo } from './isImage.js';
 import { validateLocation, processValidation } from './geoclient.js';
+import { submit_311_illegal_parking_report } from './311.js'; // eslint-disable-line camelcase
 
 import App from './components/App';
 import Html from './components/Html';
@@ -560,6 +561,14 @@ app.use('/getVehicleType/:licensePlate/:licenseState?', (req, res) => {
           licenseState,
         },
       });
+    })
+    .catch(handlePromiseRejection(res));
+});
+
+app.use('/api/submit_311_illegal_parking_report', (req, res) => {
+  submit_311_illegal_parking_report(req.body)
+    .then(result => {
+      res.json({ result });
     })
     .catch(handlePromiseRejection(res));
 });

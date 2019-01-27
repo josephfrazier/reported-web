@@ -25,6 +25,7 @@ import sharp from 'sharp';
 import axios from 'axios';
 import multer from 'multer';
 import stringify from 'json-stringify-safe';
+import DelayedResponse from 'http-delayed-response';
 
 import { isImage, isVideo } from './isImage.js';
 import { validateLocation, processValidation } from './geoclient.js';
@@ -566,9 +567,12 @@ app.use('/getVehicleType/:licensePlate/:licenseState?', (req, res) => {
 });
 
 app.use('/api/submit_311_illegal_parking_report', (req, res) => {
+  const delayed = new DelayedResponse(req, res);
+  delayed.json();
+  const delayedCallback = delayed.start();
   submit_311_illegal_parking_report(req.body)
     .then(result => {
-      res.json({ result });
+      delayedCallback(null, { result });
     })
     .catch(handlePromiseRejection(res));
 });

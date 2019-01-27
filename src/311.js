@@ -235,10 +235,12 @@ async function submit_311_illegal_parking_report({
   });
 
   console.info('submitted, waiting for result');
-  await page.waitForFunction(() =>
-    document
-      .querySelector('.green_bold')
-      .innerText.includes('Your Service Request was submitted'),
+  await page.waitForFunction(
+    () =>
+      document.querySelector('.green_bold') &&
+      document
+        .querySelector('.green_bold')
+        .innerText.includes('Your Service Request was submitted'),
   );
 
   // make sure to dump the html from the submitted page so you can regex it

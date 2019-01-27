@@ -58,7 +58,7 @@ async function submit_311_illegal_parking_report({
     'http://www1.nyc.gov/apps/311universalintake/form.htm?serviceName=NYPD+Parking',
   );
 
-  await page.evaluate(async () => {
+  await page.evaluate(() => {
     document.querySelector('#nextPage').click();
   });
 
@@ -70,7 +70,7 @@ async function submit_311_illegal_parking_report({
   const humanDate = strftime('%a, %b %d at %I:%M %p', submission_date);
   const formDate = strftime('%D %r', submission_date);
   await page.evaluate(
-    async ({
+    ({
       typeofcomplaint,
       humanDate,
       formDate,
@@ -142,7 +142,7 @@ async function submit_311_illegal_parking_report({
   await new Promise(resolve => setTimeout(resolve, 5000));
 
   await page.evaluate(
-    async ({
+    ({
       firstBoroughName,
       houseNumberIn,
       streetName1In,
@@ -186,7 +186,7 @@ async function submit_311_illegal_parking_report({
   await new Promise(resolve => setTimeout(resolve, 5000));
 
   await page.evaluate(
-    async ({
+    ({
       Username,
       FirstName,
       LastName,
@@ -230,7 +230,7 @@ async function submit_311_illegal_parking_report({
   await page.waitForNavigation();
   await new Promise(resolve => setTimeout(resolve, 5000));
 
-  await page.evaluate(async () => {
+  await page.evaluate(() => {
     document.querySelector('#CONFIRMATION').click();
   });
 

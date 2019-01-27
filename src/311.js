@@ -248,7 +248,7 @@ async function submit_311_illegal_parking_report({
   serviceRequestNumber =
     (serviceRequestNumber && serviceRequestNumber[0]) || 'Emailed by 311';
 
-  return { serviceRequestNumber };
+  return { serviceRequestNumber, bodyHtml };
 }
 
 module.exports = {

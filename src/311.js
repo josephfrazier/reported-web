@@ -32,11 +32,10 @@ async function submit_311_illegal_parking_report({
 }) {
   const submission_date = new Date(submission_timestamp);
 
-  const browser = await puppeteer.launch({ headless: false }); // TODO change to true
+  const browser = await puppeteer.launch({ headless: true });
   const page = await browser.newPage();
 
   // Don't bother loading images, styles, or fonts. https://github.com/GoogleChrome/puppeteer/issues/1913#issuecomment-361224733
-  // TODO test whether it still works
   await page.setRequestInterception(true);
   page.on('request', request => {
     if (
@@ -228,8 +227,6 @@ async function submit_311_illegal_parking_report({
   await page.waitForNavigation();
   await new Promise(resolve => setTimeout(resolve, 5000));
 
-  // XXX the following code submits the form!
-  // /*
   await page.evaluate(async () => {
     document.querySelector('#CONFIRMATION').click();
   });
@@ -252,7 +249,6 @@ async function submit_311_illegal_parking_report({
     (serviceRequestNumber && serviceRequestNumber[0]) || 'Emailed by 311';
 
   return { serviceRequestNumber };
-  // */
 }
 
 module.exports = {

@@ -157,8 +157,8 @@ export function ElectriCitibikeList({
     console.timeEnd('new PolygonLookup'); // eslint-disable-line no-console
   }
 
-  const ebikeStations = data.features
-    .filter(f => f.properties.ebikes_available > 0)
+  const bikeStations = data.features
+    .filter(f => f.properties.bikes_available > 0)
     .map(f => {
       const { coordinates } = f.geometry;
       const start = { latitude, longitude };
@@ -188,18 +188,18 @@ export function ElectriCitibikeList({
       };
     });
 
-  ebikeStations.sort((a, b) => a.distMeters - b.distMeters);
+  bikeStations.sort((a, b) => a.distMeters - b.distMeters);
   const humanDate = strftime('%r', new Date(updatedAt));
-  const totalEbikesAvailable = ebikeStations
-    .map(station => station.ebikes_available)
+  const totalbikesAvailable = bikeStations
+    .map(station => station.bikes_available)
     .reduce((a, b) => a + b, 0);
   return (
     <>
-      {totalEbikesAvailable} available as of {humanDate}
-      {ebikeStations.map(station => (
+      {totalbikesAvailable} available as of {humanDate}
+      {bikeStations.map(station => (
         <details key={station.name} style={{ margin: '1rem 0' }}>
           <summary>
-            {station.ebikes_available} @&nbsp;
+            {station.bikes_available} @&nbsp;
             <a
               target="_blank"
               rel="noopener noreferrer"
@@ -211,19 +211,7 @@ export function ElectriCitibikeList({
             (about {Math.ceil(station.distMeters / 80)} blocks{' '}
             {station.compassBearing} of you)
             <br />
-            Max Charge:{' '}
-            {Math.max(
-              ...(station.ebikes || [{ charge: 0 }]).map(ebike => ebike.charge),
-            ) || '?'}/4
           </summary>
-          <ul>
-            {station.ebikes &&
-              station.ebikes.map(ebike => (
-                <li key={ebike.bike_number}>
-                  {`#${ebike.bike_number}`} has {ebike.charge}/4 charge
-                </li>
-              ))}
-          </ul>
         </details>
       ))}
     </>

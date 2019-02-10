@@ -87,6 +87,9 @@ export async function validateLocation({ lat, long }) {
 // returns hash with google response, geoclient response, and status
 // ported from `process_validation` at https://github.com/jeffrono/Reported/blob/19b588171315a3093d53986f9fb995059f5084b4/v2/enrich_functions.rb#L48-L88
 export async function processValidation({ lat, long }) {
+  lat = Number(lat); // eslint-disable-line no-param-reassign
+  long = Number(long); // eslint-disable-line no-param-reassign
+
   const RADIUS = 0.0002; // https://github.com/jeffrono/Reported/blob/19b588171315a3093d53986f9fb995059f5084b4/v2/keys%20(template).rb#L35
 
   const response = [];

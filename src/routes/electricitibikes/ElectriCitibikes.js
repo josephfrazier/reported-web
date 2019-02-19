@@ -215,6 +215,8 @@ export function ElectriCitibikeList({
             {Math.max(
               ...(station.ebikes || [{ charge: 0 }]).map(ebike => ebike.charge),
             ) || '?'}/4
+            <br />
+            Empty Docks: {station.docks_available}
           </summary>
           <ul>
             {station.ebikes &&

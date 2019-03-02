@@ -5,7 +5,7 @@ const { GEO_APP_ID, GEO_APP_KEY, GOOGLE_API_KEY } = process.env;
 // ported from https://github.com/jeffrono/Reported/blob/19b588171315a3093d53986f9fb995059f5084b4/v2/enrich_functions.rb#L149-L154
 async function getCbData(id) {
   const url =
-    'https://raw.githubusercontent.com/codebutler/59boards/master/frontend/src/shared/data/districts-info.json';
+    'https://raw.githubusercontent.com/codebutler/59boards/fc7255aac18d67e08b4ae20c671540a6f80dc6e3/frontend/src/shared/data/districts-info.json';
   const { data: response } = await axios.get(url);
   return response[id];
 }

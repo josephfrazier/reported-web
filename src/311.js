@@ -22,13 +22,6 @@ async function submit_311_illegal_parking_report({
   streetName1In,
   latitude,
   longitude,
-  FirstName,
-  LastName,
-  Phone,
-  Borough,
-  Building,
-  StreetName,
-  Apt,
 }) {
   const submission_date = new Date(submission_timestamp);
 
@@ -186,42 +179,13 @@ async function submit_311_illegal_parking_report({
   await new Promise(resolve => setTimeout(resolve, 5000));
 
   await page.evaluate(
-    ({
-      Username,
-      FirstName,
-      LastName,
-      Phone,
-      Borough,
-      Building,
-      StreetName,
-      Apt,
-    }) => {
+    ({ Username }) => {
       document.querySelector('#contactEmailAddress').value = Username;
-      document.querySelector('#contactFirstName').value = FirstName;
-      document.querySelector('#contactLastName').value = LastName;
-      document.querySelector('#contactDaytimePhone').value = Phone;
-
-      const contactBorough = document.querySelector('#contactBorough');
-      const contactBoroughValue = Array.from(contactBorough.children).find(
-        c => c.innerText === Borough.toUpperCase(),
-      ).value;
-      contactBorough.value = contactBoroughValue;
-
-      document.querySelector('#contactAddressNumber').value = Building;
-      document.querySelector('#contactStreetName').value = StreetName;
-      document.querySelector('#contactApartment').value = Apt;
 
       document.querySelector('#nextPage').click();
     },
     {
       Username,
-      FirstName,
-      LastName,
-      Phone,
-      Borough,
-      Building,
-      StreetName,
-      Apt,
     },
   );
 

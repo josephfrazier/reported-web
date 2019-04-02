@@ -33,8 +33,14 @@ export async function validateLocation({ lat, long }) {
   const address = googleResponse.results[0];
   const building = address.address_components[0].short_name;
   const street = address.address_components[1].short_name;
-  const component3 = address.address_components[3].short_name;
-  const component2 = address.address_components[2].short_name;
+  const component3 = address.address_components[3].short_name.replace(
+    'The ',
+    '',
+  );
+  const component2 = address.address_components[2].short_name.replace(
+    'The ',
+    '',
+  );
   let borough;
 
   if (

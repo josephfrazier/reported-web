@@ -33,20 +33,22 @@ export async function validateLocation({ lat, long }) {
   const address = googleResponse.results[0];
   const building = address.address_components[0].short_name;
   const street = address.address_components[1].short_name;
+  const component3 = address.address_components[3].short_name;
+  const component2 = address.address_components[2].short_name;
   let borough;
 
   if (
     ['Brooklyn', 'Manhattan', 'Staten Island', 'Bronx', 'Queens'].includes(
-      address.address_components[3].short_name,
+      component3,
     )
   ) {
-    borough = address.address_components[3].short_name.toUpperCase();
+    borough = component3.toUpperCase();
   } else if (
     ['Brooklyn', 'Manhattan', 'Staten Island', 'Bronx', 'Queens'].includes(
-      address.address_components[2].short_name,
+      component2,
     )
   ) {
-    borough = address.address_components[2].short_name.toUpperCase();
+    borough = component2.toUpperCase();
   } else {
     borough = 'MANHATTAN';
   }

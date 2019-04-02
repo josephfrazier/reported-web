@@ -35,7 +35,7 @@ describe('processValidation', () => {
     expect(result).toMatchSnapshot();
   });
 
-  test.only('returns the right object around 3521-3501 Riverdale Ave, The Bronx, NY 10463', async () => {
+  test('returns the right object around 3521-3501 Riverdale Ave, The Bronx, NY 10463', async () => {
     const result = await processValidation({
       lat: 40.88067222222222,
       long: -73.91039722222223,

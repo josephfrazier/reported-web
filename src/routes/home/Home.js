@@ -1357,12 +1357,6 @@ class Home extends React.Component {
 
             <div style={{ float: 'right' }}>
               <SocialIcon
-                url="https://github.com/josephfrazier/Reported-Web"
-                color="black"
-                rel="noopener"
-              />
-              &nbsp;
-              <SocialIcon
                 url="https://twitter.com/Reported_NYC"
                 rel="noopener"
               />

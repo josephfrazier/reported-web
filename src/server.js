@@ -156,10 +156,6 @@ async function saveUser({
   password,
   FirstName,
   LastName,
-  Building,
-  StreetName,
-  Apt,
-  Borough,
   Phone,
   testify,
 }) {
@@ -167,9 +163,6 @@ async function saveUser({
   Object.entries({
     FirstName,
     LastName,
-    Building,
-    StreetName,
-    Borough,
     Phone,
   }).forEach(([key, value]) => {
     if (!value) {
@@ -182,10 +175,6 @@ async function saveUser({
     useremail,
     FirstName,
     LastName,
-    Building,
-    StreetName,
-    Apt,
-    Borough,
     Phone,
     testify,
   };
@@ -329,10 +318,6 @@ app.use('/submit', (req, res) => {
       password,
       FirstName,
       LastName,
-      Building,
-      StreetName,
-      Apt,
-      Borough,
       Phone,
       testify: testifyString,
 
@@ -364,10 +349,6 @@ app.use('/submit', (req, res) => {
       password,
       FirstName,
       LastName,
-      Building,
-      StreetName,
-      Apt,
-      Borough,
       Phone,
       testify,
     })
@@ -395,11 +376,7 @@ app.use('/submit', (req, res) => {
           FirstName,
           LastName,
           Phone,
-          Borough,
-          Building,
-          Apt,
           testify,
-          StreetName,
 
           Username: email,
 

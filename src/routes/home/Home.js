@@ -65,16 +65,6 @@ const debouncedGetVehicleType = debounce(
 
 const typeofuserValues = ['Cyclist', 'Walker', 'Passenger'];
 
-// copied from https://github.com/jeffrono/Reported-Android/blob/f92949014678f8847ef83a9e5746a9d97d4db87f/app/src/main/res/values/strings.xml#L105-L112
-const boroughValues = [
-  'Bronx',
-  'Brooklyn',
-  'Manhattan',
-  'Queens',
-  'Staten Island',
-  'NOT WITHIN NEW YORK CITY',
-];
-
 const defaultLatitude = 40.7128;
 const defaultLongitude = -74.006;
 
@@ -221,10 +211,6 @@ class Home extends React.Component {
       password: '',
       FirstName: '',
       LastName: '',
-      Building: '',
-      StreetName: '',
-      Apt: '',
-      Borough: boroughValues[0],
       Phone: '',
       testify: false,
 
@@ -779,16 +765,7 @@ class Home extends React.Component {
                         return;
                       }
 
-                      const {
-                        FirstName,
-                        LastName,
-                        Building,
-                        StreetName,
-                        Apt,
-                        Borough,
-                        Phone,
-                        testify,
-                      } = data;
+                      const { FirstName, LastName, Phone, testify } = data;
 
                       this.setState(
                         // If a new user clicks the button after filling all the fields,
@@ -796,10 +773,6 @@ class Home extends React.Component {
                         {
                           FirstName: FirstName || this.state.FirstName,
                           LastName: LastName || this.state.LastName,
-                          Building: Building || this.state.Building,
-                          StreetName: StreetName || this.state.StreetName,
-                          Apt: Apt || this.state.Apt,
-                          Borough: Borough || this.state.Borough,
                           Phone: Phone || this.state.Phone,
                           testify: testify || this.state.testify,
                         },
@@ -837,55 +810,6 @@ class Home extends React.Component {
                       name="LastName"
                       onChange={this.handleInputChange}
                     />
-                  </label>
-
-                  <label>
-                    Building Number:{' '}
-                    <input
-                      required
-                      onInvalid={() => this.setState({ isUserInfoOpen: true })}
-                      type="text"
-                      value={this.state.Building}
-                      name="Building"
-                      onChange={this.handleInputChange}
-                    />
-                  </label>
-
-                  <label>
-                    Street Name:{' '}
-                    <input
-                      required
-                      onInvalid={() => this.setState({ isUserInfoOpen: true })}
-                      type="text"
-                      value={this.state.StreetName}
-                      name="StreetName"
-                      onChange={this.handleInputChange}
-                    />
-                  </label>
-
-                  <label>
-                    Apartment Number:{' '}
-                    <input
-                      type="text"
-                      value={this.state.Apt}
-                      name="Apt"
-                      onChange={this.handleInputChange}
-                    />
-                  </label>
-
-                  <label>
-                    Borough:{' '}
-                    <select
-                      value={this.state.Borough}
-                      name="Borough"
-                      onChange={this.handleInputChange}
-                    >
-                      {boroughValues.map(borough => (
-                        <option key={borough} value={borough}>
-                          {borough}
-                        </option>
-                      ))}
-                    </select>
                   </label>
 
                   <label>

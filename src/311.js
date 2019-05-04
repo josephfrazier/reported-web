@@ -38,6 +38,11 @@ async function submit_311_illegal_parking_report({
   });
   const page = await browser.newPage();
 
+  let caughtError;
+  page.on('error', error => {
+    caughtError = error;
+  });
+
   // Don't bother loading images, styles, or fonts. https://github.com/GoogleChrome/puppeteer/issues/1913#issuecomment-361224733
   await page.setRequestInterception(true);
   page.on('request', request => {
@@ -251,6 +256,10 @@ async function submit_311_illegal_parking_report({
   let serviceRequestNumber = bodyHtml.match(/\d-\d-\d{10}/);
   serviceRequestNumber =
     (serviceRequestNumber && serviceRequestNumber[0]) || 'Emailed by 311';
+
+  if (caughtError) {
+    throw caughtError;
+  }
 
   return { serviceRequestNumber, bodyHtml };
 }

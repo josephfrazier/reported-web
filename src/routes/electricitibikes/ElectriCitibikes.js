@@ -211,6 +211,7 @@ export function ElectriCitibikeList({
             (about {Math.ceil(station.distMeters / 80)} blocks{' '}
             {station.compassBearing} of you)
             <br />
+            Empty Docks: {station.docks_available}
           </summary>
         </details>
       ))}

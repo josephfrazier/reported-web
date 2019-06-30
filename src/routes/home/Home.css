@@ -40,3 +40,21 @@ input[type='search'] {
 input[type='search']::-webkit-search-cancel-button {
   -webkit-appearance: searchfield-cancel-button;
 }
+
+.newsDesc h1,
+.newsDesc h2,
+.newsDesc h3,
+.newsDesc h4,
+.newsDesc h5,
+.newsDesc h6 {
+  font-size: 1.125rem;
+}
+
+.newsDesc pre {
+  white-space: pre-wrap;
+  font-size: 0.875rem;
+}
+
+.newsDesc img {
+  max-width: 100%;
+}

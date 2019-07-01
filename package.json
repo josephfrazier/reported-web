@@ -116,7 +116,7 @@
     "flow-bin": "^0.74.0",
     "front-matter": "^2.3.0",
     "glob": "^7.1.2",
-    "husky": "^0.14.3",
+    "husky": "^2.7.0",
     "identity-obj-proxy": "^3.0.0",
     "jest": "^23.1.0",
     "jest-mock-now": "^1.2.0",

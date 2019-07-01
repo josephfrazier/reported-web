@@ -524,13 +524,13 @@ async function submit_311_report({
     },
   );
 
-  return;
-
   console.info('filled complaint type/datetime/license/photo');
 
   await page.waitForNavigation();
   await new Promise(resolve => setTimeout(resolve, 5000));
 
+  await page.waitFor('#n311_additionallocationdetails');
+  // TODO set Pick-Up Location to e.g 94 ORCHARD STREET, NEW YORK
   await page.evaluate(
     ({
       firstBoroughName,
@@ -539,27 +539,16 @@ async function submit_311_report({
       latitude,
       longitude,
     }) => {
-      // set location
-      const locationType = document.querySelector('#locationType');
-      const locationTypeValue = Array.from(locationType.children).find(
-        c => c.innerText === 'Street/Sidewalk',
-      ).value;
-      locationType.value = locationTypeValue;
+      const locationText = `${houseNumberIn} ${streetName1In}, ${firstBoroughName}`.toUpperCase();
+      document.querySelectorAll('.address-picker-input')[1].value = locationText;
+      document.querySelector('#n311_pickuplocation_name').value = locationText;
 
-      const incidentBorough6 = document.querySelector('#incidentBorough6');
-      const incidentBorough6Value = Array.from(incidentBorough6.children).find(
-        c => c.innerText === firstBoroughName.toUpperCase(),
-      ).value;
-      incidentBorough6.value = incidentBorough6Value;
-
-      document.querySelector('#incidentAddressNumber').value = houseNumberIn;
-      document.querySelector('#incidentStreetName').value = streetName1In;
       document.querySelector(
-        '#locationDetails',
+        '#n311_additionallocationdetails',
       ).value = `Exact lat/lng of incident (the address submitted is approximate): ${latitude}, ${longitude}.`;
 
-      // click next
-      document.querySelector('#nextPage').click();
+      // TODO click next
+      // document.querySelector('#nextPage').click();
     },
     {
       firstBoroughName,
@@ -569,6 +558,8 @@ async function submit_311_report({
       longitude,
     },
   );
+
+  return
 
   console.info('filled complaint location');
 

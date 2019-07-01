@@ -401,8 +401,7 @@ function complaintUrls() {
 }
 
 // ported from https://github.com/jeffrono/Reported/blob/47d4c6b401d0bf63a21494a762c3e664c9523abd/v2/hashes.rb#L76
-const base_url =
-  'https://www1.nyc.gov/apps/311universalintake/form.htm?serviceName=';
+const base_url = 'https://portal.311.nyc.gov/article/?kanumber=KA-01244';
 
 // ported from https://github.com/jeffrono/Reported/blob/47d4c6b401d0bf63a21494a762c3e664c9523abd/v2/task_311_submission.rb#L3
 async function submit_311_report({
@@ -432,7 +431,7 @@ async function submit_311_report({
   const submission_date = new Date(submission_timestamp);
 
   const browser = await puppeteer.launch({
-    headless: true,
+    headless: false,
     args: ['--no-sandbox'],
   });
   const page = await browser.newPage();
@@ -453,33 +452,20 @@ async function submit_311_report({
     width: 1000,
     height: 1000,
   });
-  const url = base_url + complaintUrls()[colorTaxi][typeofcomplaint];
-  await page.goto(url);
+  await page.goto(base_url);
 
-  if (colorTaxi === 'Black') {
-    await page.evaluate(() => {
-      document
-        .querySelector('#char1_1___Withinthe5BoroughsofNewYorkCity')
-        .click();
-      document.querySelector('#licenseType_1-B3X-3').click();
-    });
-  } else {
-    await page.evaluate(
-      ({ passenger, colorTaxi }) => {
-        if (passenger === 'true') {
-          document.querySelector('#char1_1___Yes').click();
-        } else {
-          document.querySelector('#char1_1___No').click();
-        }
-        // TODO wtf? https://github.com/jeffrono/Reported/blob/47d4c6b401d0bf63a21494a762c3e664c9523abd/v2/task_311_submission.rb#L61
-        // browser.radio(:value => '__' + data["colorTaxi"]).set #set taxi color
-      },
-      {
-        passenger,
-        colorTaxi,
-      },
-    );
-  }
+  await page.evaluate(() => {
+    document
+      .querySelector(
+        '[value="Report reckless car service driving if you were NOT a passenger."]',
+      )
+      .click();
+  });
+
+  return;
+
+  await page.waitForNavigation();
+  await new Promise(resolve => setTimeout(resolve, 5000));
 
   const humanDate = strftime('%a, %b %d at %I:%M %p', submission_date);
   const formDate = strftime('%D %r', submission_date);

@@ -462,12 +462,12 @@ async function submit_311_report({
       .click();
   });
 
-  return;
-
   await page.waitForNavigation();
   await new Promise(resolve => setTimeout(resolve, 5000));
 
   const humanDate = strftime('%a, %b %d at %I:%M %p', submission_date);
+  // TODO format like 7/1/2019 3:03 AM
+  // https://stackoverflow.com/questions/904928/python-strftime-date-without-leading-0
   const formDate = strftime('%D %r', submission_date);
   await page.evaluate(
     ({
@@ -480,20 +480,8 @@ async function submit_311_report({
       // photo_url_1,
       // photo_url_2,
     }) => {
-      // select from list  (blocked bike lane, others)
-      if (typeofcomplaint === 'Parked illegally') {
-        const dropdownElement = document.querySelector('#descriptor1');
-        const dropdownValue = Array.from(dropdownElement.children).find(
-          c => c.innerText === 'Posted Parking Sign Violation',
-        ).value;
-        dropdownElement.value = dropdownValue;
-      } else {
-        const dropdownElement = document.querySelector('#descriptor1');
-        const dropdownValue = Array.from(dropdownElement.children).find(
-          c => c.innerText === 'Blocked Bike Lane',
-        ).value;
-        dropdownElement.value = dropdownValue;
-      }
+      document.querySelector('#n311_taximedallionnumber_name').value = medallionNo;
+      document.querySelector('#n311_attendhearing_1').click();
 
       // fill in description of complaint
 
@@ -517,12 +505,15 @@ async function submit_311_report({
       //   description += `Photo 3: ${photo_url_2}  `
       // }
 
-      document.querySelector('#complaintDetails').value = description;
+      document.querySelector('#n311_description').value = description;
 
       // set date time
-      document.querySelector('#dateTimeOfIncident').value = formDate;
+      document.querySelector('[aria-labelledby="n311_datetimeobserved_label"]').value = formDate;
 
-      document.querySelector('#nextPage').click();
+      document.querySelector('#n311_havecarservicenamephone').lastElementChild.selected=true
+
+      // TODO
+      // document.querySelector('#nextPage').click();
     },
     {
       typeofcomplaint,
@@ -535,6 +526,8 @@ async function submit_311_report({
       // photo_url_2,
     },
   );
+
+  return;
 
   console.info('filled complaint type/datetime/license/photo');
 

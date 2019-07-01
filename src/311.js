@@ -466,9 +466,8 @@ async function submit_311_report({
   await new Promise(resolve => setTimeout(resolve, 5000));
 
   const humanDate = strftime('%a, %b %d at %I:%M %p', submission_date);
-  // TODO format like 7/1/2019 3:03 AM
-  // https://stackoverflow.com/questions/904928/python-strftime-date-without-leading-0
   const formDate = strftime('%-m/%-d/%Y %-I:%M %p', submission_date);
+  await page.type('[aria-labelledby="n311_datetimeobserved_label"]', formDate)
   await page.evaluate(
     ({
       typeofcomplaint,
@@ -506,9 +505,6 @@ async function submit_311_report({
       // }
 
       document.querySelector('#n311_description').value = description;
-
-      // set date time
-      document.querySelector('[aria-labelledby="n311_datetimeobserved_label"]').value = formDate;
 
       document.querySelector('#n311_havecarservicenamephone').lastElementChild.selected=true
 

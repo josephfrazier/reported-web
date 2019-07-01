@@ -468,7 +468,7 @@ async function submit_311_report({
   const humanDate = strftime('%a, %b %d at %I:%M %p', submission_date);
   // TODO format like 7/1/2019 3:03 AM
   // https://stackoverflow.com/questions/904928/python-strftime-date-without-leading-0
-  const formDate = strftime('%D %r', submission_date);
+  const formDate = strftime('%-m/%-d/%Y %-I:%M %p', submission_date);
   await page.evaluate(
     ({
       typeofcomplaint,

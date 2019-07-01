@@ -487,6 +487,8 @@ async function submit_311_report({
       // identify the timestamp at top of description
       let description = `THIS OCCURRED ON ${humanDate} - `;
 
+      // TODO ensure `description` includes nature of violation (bike lane, cross walk, etc)
+
       // take first 400 characters
       description += formal_description.slice(0, 400);
       // .split.first().join(' ')
@@ -508,8 +510,7 @@ async function submit_311_report({
 
       document.querySelector('#n311_havecarservicenamephone').lastElementChild.selected=true
 
-      // TODO
-      // document.querySelector('#nextPage').click();
+      document.querySelector('#NextButton').click();
     },
     {
       typeofcomplaint,

@@ -567,45 +567,33 @@ async function submit_311_report({
   await page.waitForNavigation();
   await new Promise(resolve => setTimeout(resolve, 5000));
 
-  return;
-
   await page.evaluate(
-    ({
-      Username,
-      FirstName,
-      LastName,
-      Phone,
-      Borough,
-      Building,
-      StreetName,
-      Apt,
-    }) => {
-      document.querySelector('#contactEmailAddress').value = Username;
-      document.querySelector('#contactFirstName').value = FirstName;
-      document.querySelector('#contactLastName').value = LastName;
-      document.querySelector('#contactDaytimePhone').value = Phone;
+    ({ Username, FirstName, LastName, Phone }) => {
+      document.querySelector('#n311_contactemail').value = Username;
+      document.querySelector('#n311_contactfirstname').value = FirstName;
+      document.querySelector('#n311_contactlastname').value = LastName;
+      document.querySelector('#n311_contactphone').value = Phone;
 
-      const contactBorough = document.querySelector('#contactBorough');
+      const contactBorough = document.querySelector(
+        '#n311_portalcustomeraddressborough',
+      );
       const contactBoroughValue = Array.from(contactBorough.children).find(
-        c => c.innerText === Borough.toUpperCase(),
+        c => c.innerText.toUpperCase() === 'NOT WITHIN NEW YORK CITY',
       ).value;
       contactBorough.value = contactBoroughValue;
 
-      document.querySelector('#contactAddressNumber').value = Building;
-      document.querySelector('#contactStreetName').value = StreetName;
-      document.querySelector('#contactApartment').value = Apt;
+      document.querySelector('#n311_portalcustomeraddressline1').value = '-';
+      document.querySelector('#n311_portalcustomeraddressstate').value = '-';
+      document.querySelector('#n311_portalcustomeraddresscity').value = '-';
+      document.querySelector('#n311_portalcustomeraddresszip').value = '-';
 
-      document.querySelector('#nextPage').click();
+      document.querySelector('#NextButton').click();
     },
     {
       Username,
       FirstName,
       LastName,
       Phone,
-      Borough,
-      Building,
-      StreetName,
-      Apt,
     },
   );
 

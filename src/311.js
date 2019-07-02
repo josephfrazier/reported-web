@@ -437,16 +437,17 @@ async function submit_311_report({
   const page = await browser.newPage();
 
   // Don't bother loading images, styles, or fonts. https://github.com/GoogleChrome/puppeteer/issues/1913#issuecomment-361224733
-  await page.setRequestInterception(true);
-  page.on('request', request => {
-    if (
-      ['image', 'stylesheet', 'font'].indexOf(request.resourceType()) !== -1
-    ) {
-      request.abort();
-    } else {
-      request.continue();
-    }
-  });
+  // TODO uncomment?
+  // await page.setRequestInterception(true);
+  // page.on('request', request => {
+  //   if (
+  //     ['image', 'stylesheet', 'font'].indexOf(request.resourceType()) !== -1
+  //   ) {
+  //     request.abort();
+  //   } else {
+  //     request.continue();
+  //   }
+  // });
 
   page.setViewport({
     width: 1000,
@@ -467,7 +468,7 @@ async function submit_311_report({
 
   const humanDate = strftime('%a, %b %d at %I:%M %p', submission_date);
   const formDate = strftime('%-m/%-d/%Y %-I:%M %p', submission_date);
-  await page.type('[aria-labelledby="n311_datetimeobserved_label"]', formDate)
+  await page.type('[aria-labelledby="n311_datetimeobserved_label"]', formDate);
   await page.evaluate(
     ({
       typeofcomplaint,
@@ -479,7 +480,9 @@ async function submit_311_report({
       // photo_url_1,
       // photo_url_2,
     }) => {
-      document.querySelector('#n311_taximedallionnumber_name').value = medallionNo;
+      document.querySelector(
+        '#n311_taximedallionnumber_name',
+      ).value = medallionNo;
       document.querySelector('#n311_attendhearing_1').click();
 
       // fill in description of complaint
@@ -508,7 +511,9 @@ async function submit_311_report({
 
       document.querySelector('#n311_description').value = description;
 
-      document.querySelector('#n311_havecarservicenamephone').lastElementChild.selected=true
+      document.querySelector(
+        '#n311_havecarservicenamephone',
+      ).lastElementChild.selected = true;
 
       document.querySelector('#NextButton').click();
     },
@@ -530,41 +535,39 @@ async function submit_311_report({
   await new Promise(resolve => setTimeout(resolve, 5000));
 
   await page.waitFor('#n311_additionallocationdetails');
-  // TODO set Pick-Up Location to e.g 94 ORCHARD STREET, NEW YORK
+  await page.evaluate(() =>
+    document.querySelectorAll('.address-picker-btn.btn.btn-default')[1].click(),
+  );
+  const locationText = `${houseNumberIn} ${streetName1In}, ${firstBoroughName}`.toUpperCase();
+  await page.waitFor('#address-search-box-input');
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  await page.type('#address-search-box-input', locationText);
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await new Promise(resolve => setTimeout(resolve, 2000));
+  await page.evaluate(() => document.querySelector('#SelectButton').click());
+  await new Promise(resolve => setTimeout(resolve, 1000));
   await page.evaluate(
-    ({
-      firstBoroughName,
-      houseNumberIn,
-      streetName1In,
-      latitude,
-      longitude,
-    }) => {
-      const locationText = `${houseNumberIn} ${streetName1In}, ${firstBoroughName}`.toUpperCase();
-      document.querySelectorAll('.address-picker-input')[1].value = locationText;
-      document.querySelector('#n311_pickuplocation_name').value = locationText;
-
+    ({ latitude, longitude }) => {
       document.querySelector(
         '#n311_additionallocationdetails',
       ).value = `Exact lat/lng of incident (the address submitted is approximate): ${latitude}, ${longitude}.`;
 
-      // TODO click next
-      // document.querySelector('#nextPage').click();
+      document.querySelector('#NextButton').click();
     },
     {
-      firstBoroughName,
-      houseNumberIn,
-      streetName1In,
       latitude,
       longitude,
     },
   );
 
-  return
-
   console.info('filled complaint location');
 
   await page.waitForNavigation();
   await new Promise(resolve => setTimeout(resolve, 5000));
+
+  return;
 
   await page.evaluate(
     ({

@@ -603,16 +603,18 @@ async function submit_311_report({
   await new Promise(resolve => setTimeout(resolve, 5000));
 
   await page.evaluate(() => {
-    document.querySelector('#CONFIRMATION').click();
+    document.querySelector('#NextButton').click();
   });
 
   console.info('submitted, waiting for result');
   await page.waitForFunction(
     () =>
-      document.querySelector('.green_bold') &&
+      document.querySelector('#sr-completed-alert') &&
       document
-        .querySelector('.green_bold')
-        .innerText.includes('Your Service Request was submitted'),
+        .querySelector('#sr-completed-alert')
+        .innerText.includes(
+          'Your service request has been submitted successfully',
+        ),
   );
 
   // make sure to dump the html from the submitted page so you can regex it
@@ -620,9 +622,13 @@ async function submit_311_report({
   // https://github.com/GoogleChrome/puppeteer/issues/331#issuecomment-323018788
   const bodyHtml = await page.evaluate(() => document.body.innerHTML);
 
-  let serviceRequestNumber = bodyHtml.match(/\d-\d-\d{10}/);
-  serviceRequestNumber =
-    (serviceRequestNumber && serviceRequestNumber[0]) || 'Emailed by 311';
+  const serviceRequestNumber = await page.evaluate(() => {
+    try {
+      return document.querySelector('#n311_name').value;
+    } catch (error) {
+      return 'Emailed by 311';
+    }
+  });
 
   return { serviceRequestNumber, bodyHtml };
 }

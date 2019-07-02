@@ -431,7 +431,7 @@ async function submit_311_report({
   const submission_date = new Date(submission_timestamp);
 
   const browser = await puppeteer.launch({
-    headless: false,
+    headless: true,
     args: ['--no-sandbox'],
   });
   const page = await browser.newPage();

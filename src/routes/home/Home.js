@@ -65,16 +65,6 @@ const debouncedGetVehicleType = debounce(
 
 const typeofuserValues = ['Cyclist', 'Walker', 'Passenger'];
 
-// copied from https://github.com/jeffrono/Reported-Android/blob/f92949014678f8847ef83a9e5746a9d97d4db87f/app/src/main/res/values/strings.xml#L105-L112
-const boroughValues = [
-  'Bronx',
-  'Brooklyn',
-  'Manhattan',
-  'Queens',
-  'Staten Island',
-  'NOT WITHIN NEW YORK CITY',
-];
-
 const defaultLatitude = 40.7128;
 const defaultLongitude = -74.006;
 
@@ -221,10 +211,6 @@ class Home extends React.Component {
       password: '',
       FirstName: '',
       LastName: '',
-      Building: '',
-      StreetName: '',
-      Apt: '',
-      Borough: boroughValues[0],
       Phone: '',
       testify: false,
 
@@ -327,7 +313,35 @@ class Home extends React.Component {
       }
     });
 
+    this.loadPreviousSubmissions();
+
     this.forceUpdate(); // force "Create/Edit User" fields to render persisted value after load
+  }
+
+  onDeleteSubmission = ({ objectId }) => {
+    const confirmationMessage = `Are you sure you want to delete this submission? (objectId: ${objectId})`;
+    // eslint-disable-next-line no-alert
+    if (!window.confirm(confirmationMessage)) {
+      return;
+    }
+    axios
+      .post('/api/deleteSubmission', {
+        ...this.getPerSubmissionState(),
+        objectId,
+      })
+      .then(() => {
+        this.setState({
+          submissions: this.state.submissions.filter(
+            sub => sub.objectId !== objectId,
+          ),
+        });
+      });
+  };
+
+  getPerSubmissionState() {
+    return omit(this.state, (val, key) =>
+      Object.keys(this.initialStatePerSubmission).includes(key),
+    );
   }
 
   getStateFilterKeys() {
@@ -391,20 +405,87 @@ class Home extends React.Component {
           vehicleBody,
         } = data.result;
 
+        if (plate !== this.state.plate) {
+          console.info('ignoring stale plate:', plate);
+          return;
+        }
+
+        if (
+          this.state.submissions.some(
+            submission =>
+              submission.license === plate && submission.state === licenseState,
+          )
+        ) {
+          this.alert(
+            <p>
+              You have already submitted a report for {plate} in {licenseState},
+              are you sure you want to submit another?
+            </p>,
+          );
+        }
+
         this.setState({
-          vehicleInfoComponent: `${plate} in ${usStateNames[licenseState]}: ${vehicleYear} ${vehicleMake} ${vehicleModel} (${vehicleBody})` // prettier-ignore
+          vehicleInfoComponent: (
+            <React.Fragment>
+              {plate} in {usStateNames[licenseState]}: {vehicleYear}{' '}
+              {vehicleMake} {vehicleModel} ({vehicleBody})
+              <img
+                src={this.getVehicleMakeLogoUrl({ vehicleMake })}
+                alt={`${vehicleMake} logo`}
+                style={{
+                  display: 'block',
+                }}
+              />
+            </React.Fragment>
+          ),
         });
       })
       .catch(err => {
         console.error(err);
+
+        if (plate !== this.state.plate) {
+          console.info('ignoring stale plate:', plate);
+          return;
+        }
+
         if (plate) {
           this.setState({
             vehicleInfoComponent: `Could not find ${plate} in ${
               usStateNames[licenseState]
             }`,
           });
+
+          if (plate.match(/1\d\d\d\d\d\dC/)) {
+            this.setLicensePlate({
+              plate: plate.replace('1', 'T'),
+              licenseState,
+            });
+          } else if (plate.match(/^\d\d\d\d\d\dC$/)) {
+            this.setLicensePlate({
+              plate: `T${plate}`,
+              licenseState,
+            });
+          } else if (licenseState !== 'NY') {
+            this.setLicensePlate({
+              plate,
+              licenseState: 'NY',
+            });
+          }
         }
       });
+  };
+
+  getVehicleMakeLogoUrl = function getVehicleMakeLogoUrl({ vehicleMake }) {
+    if (vehicleMake === 'Nissan') {
+      return 'https://logo.clearbit.com/Nissanusa.com';
+    } else if (vehicleMake === 'Toyota') {
+      return 'https://logo.clearbit.com/toyota.com';
+    } else if (vehicleMake === 'Honda') {
+      return 'https://upload.wikimedia.org/wikipedia/commons/3/38/Honda.svg';
+    } else if (vehicleMake === 'Kia') {
+      return 'https://logo.clearbit.com/kia.com';
+    }
+    return `https://logo.clearbit.com/${vehicleMake}.com`;
   };
 
   // adapted from https://github.com/ngokevin/react-file-reader-input/tree/f970257f271b8c3bba9d529ffdbfa4f4731e0799#usage
@@ -427,6 +508,16 @@ class Home extends React.Component {
           extractLocationDate({ attachmentFile }).then(this.setLocationDate),
         ]);
       } catch (err) {
+        this.alert(
+          <React.Fragment>
+            <p>
+              Could not extract plate/location/date from image. Please
+              enter/confirm them manually.
+            </p>
+
+            <p>(Error message: {err.message})</p>
+          </React.Fragment>,
+        );
         console.error(`Error: ${err.message}`);
       }
     }
@@ -511,6 +602,16 @@ class Home extends React.Component {
 
   alert = modalText => this.setState({ modalText });
   closeAlert = () => this.setState({ modalText: null });
+
+  loadPreviousSubmissions = () => {
+    axios
+      .post('/submissions', this.state)
+      .then(({ data }) => {
+        const { submissions } = data;
+        this.setState({ submissions });
+      })
+      .catch(this.handleAxiosError);
+  };
 
   render() {
     return (
@@ -671,16 +772,7 @@ class Home extends React.Component {
                         return;
                       }
 
-                      const {
-                        FirstName,
-                        LastName,
-                        Building,
-                        StreetName,
-                        Apt,
-                        Borough,
-                        Phone,
-                        testify,
-                      } = data;
+                      const { FirstName, LastName, Phone, testify } = data;
 
                       this.setState(
                         // If a new user clicks the button after filling all the fields,
@@ -688,10 +780,6 @@ class Home extends React.Component {
                         {
                           FirstName: FirstName || this.state.FirstName,
                           LastName: LastName || this.state.LastName,
-                          Building: Building || this.state.Building,
-                          StreetName: StreetName || this.state.StreetName,
-                          Apt: Apt || this.state.Apt,
-                          Borough: Borough || this.state.Borough,
                           Phone: Phone || this.state.Phone,
                           testify: testify || this.state.testify,
                         },
@@ -729,55 +817,6 @@ class Home extends React.Component {
                       name="LastName"
                       onChange={this.handleInputChange}
                     />
-                  </label>
-
-                  <label>
-                    Building Number:{' '}
-                    <input
-                      required
-                      onInvalid={() => this.setState({ isUserInfoOpen: true })}
-                      type="text"
-                      value={this.state.Building}
-                      name="Building"
-                      onChange={this.handleInputChange}
-                    />
-                  </label>
-
-                  <label>
-                    Street Name:{' '}
-                    <input
-                      required
-                      onInvalid={() => this.setState({ isUserInfoOpen: true })}
-                      type="text"
-                      value={this.state.StreetName}
-                      name="StreetName"
-                      onChange={this.handleInputChange}
-                    />
-                  </label>
-
-                  <label>
-                    Apartment Number:{' '}
-                    <input
-                      type="text"
-                      value={this.state.Apt}
-                      name="Apt"
-                      onChange={this.handleInputChange}
-                    />
-                  </label>
-
-                  <label>
-                    Borough:{' '}
-                    <select
-                      value={this.state.Borough}
-                      name="Borough"
-                      onChange={this.handleInputChange}
-                    >
-                      {boroughValues.map(borough => (
-                        <option key={borough} value={borough}>
-                          {borough}
-                        </option>
-                      ))}
-                    </select>
                   </label>
 
                   <label>
@@ -822,6 +861,15 @@ class Home extends React.Component {
               }}
               onSubmit={async e => {
                 e.preventDefault();
+
+                if (
+                  this.state.latitude === defaultLatitude &&
+                  this.state.longitude === defaultLongitude
+                ) {
+                  this.alert('Please provide the location of the incident');
+                  return;
+                }
+
                 this.setState({
                   isSubmitting: true,
                 });
@@ -829,11 +877,7 @@ class Home extends React.Component {
                   .post(
                     '/submit',
                     objectToFormData({
-                      ...omit(this.state, (val, key) =>
-                        Object.keys(this.initialStatePerSubmission).includes(
-                          key,
-                        ),
-                      ),
+                      ...this.getPerSubmissionState(),
                       attachmentData: this.state.attachmentData,
                       CreateDate: new Date(this.state.CreateDate).toISOString(),
                     }),
@@ -1236,13 +1280,7 @@ class Home extends React.Component {
                 if (!evt.target.open) {
                   return;
                 }
-                axios
-                  .post('/submissions', this.state)
-                  .then(({ data }) => {
-                    const { submissions } = data;
-                    this.setState({ submissions });
-                  })
-                  .catch(this.handleAxiosError);
+                this.loadPreviousSubmissions();
               }}
             >
               <summary>Previous Submissions</summary>
@@ -1252,7 +1290,10 @@ class Home extends React.Component {
                   ? 'Loading submissions...'
                   : this.state.submissions.map(submission => (
                       <li key={submission.objectId}>
-                        <SubmissionDetails submission={submission} />
+                        <SubmissionDetails
+                          submission={submission}
+                          onDeleteSubmission={this.onDeleteSubmission}
+                        />
                       </li>
                     ))}
               </ul>
@@ -1260,15 +1301,23 @@ class Home extends React.Component {
 
             <div style={{ float: 'right' }}>
               <SocialIcon
-                url="https://github.com/josephfrazier/Reported-Web"
-                color="black"
-                rel="noopener"
-              />
-              &nbsp;
-              <SocialIcon
                 url="https://twitter.com/Reported_NYC"
                 rel="noopener"
               />
+              &nbsp;
+              <a
+                href="/electricitibikes"
+                style={{
+                  background: 'black',
+                  border: '1em solid black',
+                  borderRadius: '2em',
+                  textDecoration: 'none',
+                }}
+              >
+                <span role="img" aria-label="high voltage">
+                  ⚡
+                </span>
+              </a>
             </div>
           </main>
         </div>

@@ -22,6 +22,8 @@ class SubmissionDetails extends React.Component {
       typeofcomplaint,
       loc1_address, // eslint-disable-line camelcase
       timeofreport,
+      reportDescription,
+      status,
 
       photoData0,
       photoData1,
@@ -30,6 +32,8 @@ class SubmissionDetails extends React.Component {
       videoData0,
       videoData1,
       videoData2,
+
+      objectId,
     } = this.props.submission;
 
     const humanTimeString = new Date(timeofreport).toLocaleString();
@@ -90,6 +94,30 @@ class SubmissionDetails extends React.Component {
       loading: () => 'Loading Service Request Status...',
     });
 
+    const srStatusOrDeleteButton = () =>
+      (status !== 0 && (
+        <div>
+          <LoadableServiceRequestStatus />
+        </div>
+      )) || (
+        <button
+          type="button"
+          style={{
+            margin: '1px',
+            color: 'red', // Ubuntu Chrome shows black otherwise
+            background: 'white',
+          }}
+          onClick={() => {
+            this.props.onDeleteSubmission({ objectId });
+          }}
+        >
+          <span role="img" aria-label="Delete Submission">
+            ❌
+          </span>
+          Delete Submission
+        </button>
+      );
+
     return (
       <details
         open={this.state.isDetailsOpen}
@@ -109,13 +137,10 @@ class SubmissionDetails extends React.Component {
 
         {this.state.isDetailsOpen && (
           <React.Fragment>
+            <p>{reportDescription}</p>
             <ImagesAndVideos />
 
-            {!reqnumber.startsWith('N/A') && (
-              <div>
-                <LoadableServiceRequestStatus />
-              </div>
-            )}
+            {srStatusOrDeleteButton()}
           </React.Fragment>
         )}
       </details>
@@ -125,12 +150,15 @@ class SubmissionDetails extends React.Component {
 
 SubmissionDetails.propTypes = {
   isDetailsOpen: PropTypes.bool,
+  onDeleteSubmission: PropTypes.func.isRequired,
   submission: PropTypes.shape({
     reqnumber: PropTypes.string,
     medallionNo: PropTypes.string,
     typeofcomplaint: PropTypes.string,
     loc1_address: PropTypes.string,
     timeofreport: PropTypes.string,
+    reportDescription: PropTypes.string,
+    status: PropTypes.number,
 
     photoData0: PropTypes.object,
     photoData1: PropTypes.object,
@@ -139,6 +167,8 @@ SubmissionDetails.propTypes = {
     videoData0: PropTypes.string,
     videoData1: PropTypes.string,
     videoData2: PropTypes.string,
+
+    objectId: PropTypes.string,
   }).isRequired,
 };
 

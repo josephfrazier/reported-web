@@ -18,6 +18,9 @@ exports[`SubmissionDetails renders children correctly 1`] = `
     TLC Service Request Number: 
     reqnumber
   </summary>
+  <p>
+    reportDescription
+  </p>
   <a
     href="photoData0.url"
     rel="noopener noreferrer"
@@ -81,5 +84,108 @@ exports[`SubmissionDetails renders children correctly 1`] = `
   <div>
     Loading Service Request Status...
   </div>
+</details>
+`;
+
+exports[`SubmissionDetails renders delete button correctly 1`] = `
+<details
+  onToggle={[Function]}
+  open={true}
+>
+  <summary>
+    medallionNo
+     
+    typeofcomplaint
+     near
+     
+    82 Reade St
+     on 
+    Mockday 2016-11-18T00:00:00.000Z GMT-0500 (MockDate)
+    <br />
+    TLC Service Request Number: 
+    reqnumber
+  </summary>
+  <p>
+    reportDescription
+  </p>
+  <a
+    href="photoData0.url"
+    rel="noopener noreferrer"
+    target="_blank"
+  >
+    <img
+      alt="#0"
+      src="photoData0.url"
+    />
+  </a>
+  <a
+    href="photoData1.url"
+    rel="noopener noreferrer"
+    target="_blank"
+  >
+    <img
+      alt="#1"
+      src="photoData1.url"
+    />
+  </a>
+  <a
+    href="photoData2.url"
+    rel="noopener noreferrer"
+    target="_blank"
+  >
+    <img
+      alt="#2"
+      src="photoData2.url"
+    />
+  </a>
+  <a
+    href="videoData0"
+    rel="noopener noreferrer"
+    target="_blank"
+  >
+    <video
+      alt="#0"
+      src="videoData0"
+    />
+  </a>
+  <a
+    href="videoData1"
+    rel="noopener noreferrer"
+    target="_blank"
+  >
+    <video
+      alt="#1"
+      src="videoData1"
+    />
+  </a>
+  <a
+    href="videoData2"
+    rel="noopener noreferrer"
+    target="_blank"
+  >
+    <video
+      alt="#2"
+      src="videoData2"
+    />
+  </a>
+  <button
+    onClick={[Function]}
+    style={
+      Object {
+        "background": "white",
+        "color": "red",
+        "margin": "1px",
+      }
+    }
+    type="button"
+  >
+    <span
+      aria-label="Delete Submission"
+      role="img"
+    >
+      ❌
+    </span>
+    Delete Submission
+  </button>
 </details>
 `;

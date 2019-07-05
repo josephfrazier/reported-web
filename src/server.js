@@ -25,9 +25,11 @@ import sharp from 'sharp';
 import axios from 'axios';
 import multer from 'multer';
 import stringify from 'json-stringify-safe';
+import DelayedResponse from 'http-delayed-response';
 
 import { isImage, isVideo } from './isImage.js';
 import { validateLocation, processValidation } from './geoclient.js';
+import { submit_311_illegal_parking_report } from './311.js'; // eslint-disable-line camelcase
 
 import App from './components/App';
 import Html from './components/Html';
@@ -50,6 +52,7 @@ process.on('unhandledRejection', (reason, p) => {
 const {
   PARSE_APP_ID,
   PARSE_JAVASCRIPT_KEY,
+  PARSE_MASTER_KEY,
   PARSE_SERVER_URL,
   HEROKU_RELEASE_VERSION,
   OPENALPR_SECRET_KEY,
@@ -60,7 +63,8 @@ require('heroku-self-ping')(config.api.serverUrl, {
 });
 
 // http://docs.parseplatform.org/js/guide/#getting-started
-Parse.initialize(PARSE_APP_ID, PARSE_JAVASCRIPT_KEY);
+Parse.initialize(PARSE_APP_ID, PARSE_JAVASCRIPT_KEY, PARSE_MASTER_KEY);
+Parse.Cloud.useMasterKey();
 Parse.serverURL = PARSE_SERVER_URL;
 
 const upload = multer({
@@ -134,7 +138,7 @@ async function logIn({ email, password }) {
           // https://github.com/parse-community/parse-server/issues/1729#issuecomment-218932566
           sessionToken: userAgain.get('sessionToken'),
         });
-        const message = `Please confirm your email address and try again.`;
+        const message = `We just sent you an email with a link to confirm your address, please find and click that.`;
         throw { message }; // eslint-disable-line no-throw-literal
       }
       return userAgain;
@@ -152,10 +156,6 @@ async function saveUser({
   password,
   FirstName,
   LastName,
-  Building,
-  StreetName,
-  Apt,
-  Borough,
   Phone,
   testify,
 }) {
@@ -163,9 +163,6 @@ async function saveUser({
   Object.entries({
     FirstName,
     LastName,
-    Building,
-    StreetName,
-    Borough,
     Phone,
   }).forEach(([key, value]) => {
     if (!value) {
@@ -178,10 +175,6 @@ async function saveUser({
     useremail,
     FirstName,
     LastName,
-    Building,
-    StreetName,
-    Apt,
-    Borough,
     Phone,
     testify,
   };
@@ -325,10 +318,6 @@ app.use('/submit', (req, res) => {
       password,
       FirstName,
       LastName,
-      Building,
-      StreetName,
-      Apt,
-      Borough,
       Phone,
       testify: testifyString,
 
@@ -360,10 +349,6 @@ app.use('/submit', (req, res) => {
       password,
       FirstName,
       LastName,
-      Building,
-      StreetName,
-      Apt,
-      Borough,
       Phone,
       testify,
     })
@@ -391,11 +376,7 @@ app.use('/submit', (req, res) => {
           FirstName,
           LastName,
           Phone,
-          Borough,
-          Building,
-          Apt,
           testify,
-          StreetName,
 
           Username: email,
 
@@ -413,6 +394,7 @@ app.use('/submit', (req, res) => {
           longitude: longitude.toString(),
           latitude1: latitude,
           longitude1: longitude,
+          location: new Parse.GeoPoint({ latitude, longitude }),
           loc1_address: formatted_address,
           timeofreport,
           timeofreported,
@@ -423,6 +405,7 @@ app.use('/submit', (req, res) => {
           version_number: Number(HEROKU_RELEASE_VERSION.slice(1)),
           reqnumber: 'N/A until submitted to 311',
         });
+        submission.setACL(new Parse.ACL(user));
 
         // upload attachments
         // http://docs.parseplatform.org/js/guide/#creating-a-parsefile
@@ -525,7 +508,7 @@ app.use('/openalpr', upload.single('attachmentFile'), (req, res) => {
 // ported from https://github.com/jeffrono/Reported/blob/19b588171315a3093d53986f9fb995059f5084b4/v2/enrich_functions.rb#L325-L346
 app.use('/getVehicleType/:licensePlate/:licenseState?', (req, res) => {
   const { licensePlate = 'GNS7685', licenseState = 'NY' } = req.params;
-  const url = `https://www.searchquarry.com/vehicle_records/license-register?license_plates=${licensePlate}&state=${licenseState}`;
+  const url = `https://www.searchquarry.com/vehicle_records/lregister-new?sqtb=license_plate&license_plates=${licensePlate}&trackstat=homepage-&state=${licenseState}`;
 
   console.time(url); // eslint-disable-line no-console
   axios
@@ -558,6 +541,17 @@ app.use('/getVehicleType/:licensePlate/:licenseState?', (req, res) => {
           licenseState,
         },
       });
+    })
+    .catch(handlePromiseRejection(res));
+});
+
+app.use('/api/submit_311_illegal_parking_report', (req, res) => {
+  const delayed = new DelayedResponse(req, res);
+  delayed.json();
+  const delayedCallback = delayed.start();
+  submit_311_illegal_parking_report(req.body)
+    .then(result => {
+      delayedCallback(null, { result });
     })
     .catch(handlePromiseRejection(res));
 });

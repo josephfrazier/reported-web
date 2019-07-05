@@ -405,6 +405,7 @@ app.use('/submit', (req, res) => {
           version_number: Number(HEROKU_RELEASE_VERSION.slice(1)),
           reqnumber: 'N/A until submitted to 311',
         });
+        submission.setACL(new Parse.ACL(user));
 
         // upload attachments
         // http://docs.parseplatform.org/js/guide/#creating-a-parsefile

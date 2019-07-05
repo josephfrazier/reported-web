@@ -166,6 +166,9 @@
     "webpack-hot-middleware": "^2.22.2",
     "webpack-node-externals": "^1.7.2"
   },
+  "jest": {
+    "testURL": "https://reported-web.herokuapp.com"
+  },
   "lint-staged": {
     "ignore": [
       "package.json"

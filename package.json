@@ -149,7 +149,7 @@
     "prettier": "^1.13.5",
     "raw-loader": "^0.5.1",
     "react-deep-force-update": "^2.1.1",
-    "react-dev-utils": "^5.0.1",
+    "react-dev-utils": "^5.0.2",
     "react-error-overlay": "^4.0.0",
     "react-test-renderer": "^16.4.1",
     "rimraf": "^2.6.2",

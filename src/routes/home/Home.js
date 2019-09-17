@@ -1264,7 +1264,8 @@ class Home extends React.Component {
               }}
             >
               <summary>
-                Previous Submissions{this.state.submissions.length > 0 && ` (${this.state.submissions.length})`}
+                Previous Submissions{this.state.submissions.length > 0 &&
+                  ` (${this.state.submissions.length})`}
               </summary>
 
               <ul>

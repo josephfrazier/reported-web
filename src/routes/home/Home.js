@@ -1263,7 +1263,9 @@ class Home extends React.Component {
                 this.loadPreviousSubmissions();
               }}
             >
-              <summary>Previous Submissions</summary>
+              <summary>
+                Previous Submissions{this.state.submissions.length > 0 && ` (${this.state.submissions.length})`}
+              </summary>
 
               <ul>
                 {this.state.submissions.length === 0

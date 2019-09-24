@@ -101,8 +101,6 @@ module.exports = {
     'no-restricted-syntax': 'off',
 
     'no-nested-ternary': 'off',
-    'react/forbid-prop-types': 'off',
-    'react/destructuring-assignment': 'off',
   },
 
   settings: {

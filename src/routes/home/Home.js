@@ -162,7 +162,8 @@ async function extractLocationDate({ attachmentFile }) {
   const { ext } = fileType(attachmentBuffer);
   if (isVideo({ ext })) {
     return extractLocationDateFromVideo({ attachmentArrayBuffer });
-  } else if (!isImage({ ext })) {
+  }
+  if (!isImage({ ext })) {
     throw new Error(`${attachmentFile.name} is not an image/video`);
   }
 
@@ -471,11 +472,14 @@ class Home extends React.Component {
   getVehicleMakeLogoUrl = function getVehicleMakeLogoUrl({ vehicleMake }) {
     if (vehicleMake === 'Nissan') {
       return 'https://logo.clearbit.com/Nissanusa.com';
-    } else if (vehicleMake === 'Toyota') {
+    }
+    if (vehicleMake === 'Toyota') {
       return 'https://logo.clearbit.com/toyota.com';
-    } else if (vehicleMake === 'Honda') {
+    }
+    if (vehicleMake === 'Honda') {
       return 'https://upload.wikimedia.org/wikipedia/commons/3/38/Honda.svg';
-    } else if (vehicleMake === 'Kia') {
+    }
+    if (vehicleMake === 'Kia') {
       return 'https://logo.clearbit.com/kia.com';
     }
     return `https://logo.clearbit.com/${vehicleMake}.com`;
@@ -536,6 +540,7 @@ class Home extends React.Component {
 
   // adapted from https://www.bignerdranch.com/blog/dont-over-react/
   attachmentPlates = new WeakMap();
+
   // adapted from https://github.com/openalpr/cloudapi/tree/8141c1ba57f03df4f53430c6e5e389b39714d0e0/javascript#getting-started
   extractPlate = async ({ attachmentFile }) => {
     console.time('extractPlate'); // eslint-disable-line no-console
@@ -594,6 +599,7 @@ class Home extends React.Component {
       });
 
   alert = modalText => this.setState({ modalText });
+
   closeAlert = () => this.setState({ modalText: null });
 
   loadPreviousSubmissions = () => {
@@ -1235,8 +1241,7 @@ class Home extends React.Component {
                       width: '100%',
                     }}
                   >
-                    {this.state.submitProgressValue}
-                    /
+                    {this.state.submitProgressValue}/
                     {this.state.submitProgressMax}
                   </progress>
                 ) : (
@@ -1264,7 +1269,8 @@ class Home extends React.Component {
               }}
             >
               <summary>
-                Previous Submissions{this.state.submissions.length > 0 &&
+                Previous Submissions
+                {this.state.submissions.length > 0 &&
                   ` (${this.state.submissions.length})`}
               </summary>
 

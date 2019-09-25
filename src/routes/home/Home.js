@@ -680,7 +680,7 @@ class Home extends React.Component {
                 }}
               >
                 <fieldset disabled={this.state.isUserInfoSaving}>
-                  <label>
+                  <label htmlFor="email">
                     Email:{' '}
                     <input
                       required
@@ -702,7 +702,7 @@ class Home extends React.Component {
                     />
                   </label>
 
-                  <label>
+                  <label htmlFor="password">
                     {
                       "Password (this is saved on your device, so use a password you don't use anywhere else): "
                     }
@@ -792,7 +792,7 @@ class Home extends React.Component {
                     Sign Up / Log In
                   </button>
 
-                  <label>
+                  <label htmlFor="FirstName">
                     First Name:{' '}
                     <input
                       required
@@ -805,7 +805,7 @@ class Home extends React.Component {
                     />
                   </label>
 
-                  <label>
+                  <label htmlFor="LastName">
                     Last Name:{' '}
                     <input
                       required
@@ -818,7 +818,7 @@ class Home extends React.Component {
                     />
                   </label>
 
-                  <label>
+                  <label htmlFor="Phone">
                     Phone Number:{' '}
                     <input
                       required
@@ -831,7 +831,7 @@ class Home extends React.Component {
                     />
                   </label>
 
-                  <label>
+                  <label htmlFor="testify">
                     <input
                       type="checkbox"
                       checked={this.state.testify}
@@ -1037,12 +1037,13 @@ class Home extends React.Component {
                   })}
                 </div>
 
-                <label>
+                <label htmlFor="plate">
                   License/Medallion:
                   <input
                     required
                     type="search"
                     value={this.state.plate}
+                    name="plate"
                     list="plateSuggestion"
                     ref={this.plateRef}
                     placeholder={this.state.plateSuggestion}
@@ -1079,7 +1080,7 @@ class Home extends React.Component {
                   {this.state.vehicleInfoComponent}
                 </label>
 
-                <label>
+                <label htmlFor="typeofuser">
                   I was:{' '}
                   <select
                     value={this.state.typeofuser}
@@ -1094,7 +1095,7 @@ class Home extends React.Component {
                   </select>
                 </label>
 
-                <label>
+                <label htmlFor="typeofcomplaint">
                   Type:{' '}
                   <select
                     value={this.state.typeofcomplaint}
@@ -1109,11 +1110,12 @@ class Home extends React.Component {
                   </select>
                 </label>
 
-                <label>
+                <label htmlFor="where">
                   Where:
                   <br />
                   <button
                     type="button"
+                    name="where"
                     onClick={() => this.setState({ isMapOpen: true })}
                     style={{
                       width: '100%',
@@ -1202,7 +1204,7 @@ class Home extends React.Component {
                   </button>
                 </Modal>
 
-                <label>
+                <label htmlFor="CreateDate">
                   When:{' '}
                   <input
                     required
@@ -1213,7 +1215,7 @@ class Home extends React.Component {
                   />
                 </label>
 
-                <label>
+                <label htmlFor="reportDescription">
                   Description:{' '}
                   <textarea
                     value={this.state.reportDescription}
@@ -1222,7 +1224,7 @@ class Home extends React.Component {
                   />
                 </label>
 
-                <label>
+                <label htmlFor="can_be_shared_publicly">
                   <input
                     type="checkbox"
                     checked={this.state.can_be_shared_publicly}

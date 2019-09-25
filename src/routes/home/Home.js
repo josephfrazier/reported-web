@@ -162,7 +162,8 @@ async function extractLocationDate({ attachmentFile }) {
   const { ext } = fileType(attachmentBuffer);
   if (isVideo({ ext })) {
     return extractLocationDateFromVideo({ attachmentArrayBuffer });
-  } else if (!isImage({ ext })) {
+  }
+  if (!isImage({ ext })) {
     throw new Error(`${attachmentFile.name} is not an image/video`);
   }
 
@@ -201,6 +202,9 @@ async function getVideoScreenshot({ attachmentFile }) {
 }
 
 class Home extends React.Component {
+  // adapted from https://www.bignerdranch.com/blog/dont-over-react/
+  attachmentPlates = new WeakMap();
+
   constructor(props) {
     super(props);
 
@@ -323,11 +327,11 @@ class Home extends React.Component {
         objectId,
       })
       .then(() => {
-        this.setState({
-          submissions: this.state.submissions.filter(
+        this.setState(state => ({
+          submissions: state.submissions.filter(
             sub => sub.objectId !== objectId,
           ),
-        });
+        }));
       });
   };
 
@@ -471,11 +475,14 @@ class Home extends React.Component {
   getVehicleMakeLogoUrl = function getVehicleMakeLogoUrl({ vehicleMake }) {
     if (vehicleMake === 'Nissan') {
       return 'https://logo.clearbit.com/Nissanusa.com';
-    } else if (vehicleMake === 'Toyota') {
+    }
+    if (vehicleMake === 'Toyota') {
       return 'https://logo.clearbit.com/toyota.com';
-    } else if (vehicleMake === 'Honda') {
+    }
+    if (vehicleMake === 'Honda') {
       return 'https://upload.wikimedia.org/wikipedia/commons/3/38/Honda.svg';
-    } else if (vehicleMake === 'Kia') {
+    }
+    if (vehicleMake === 'Kia') {
       return 'https://logo.clearbit.com/kia.com';
     }
     return `https://logo.clearbit.com/${vehicleMake}.com`;
@@ -489,9 +496,9 @@ class Home extends React.Component {
   };
 
   handleAttachmentData = async ({ attachmentData }) => {
-    this.setState({
-      attachmentData: this.state.attachmentData.concat(attachmentData),
-    });
+    this.setState(state => ({
+      attachmentData: state.attachmentData.concat(attachmentData),
+    }));
 
     for (const attachmentFile of attachmentData) {
       try {
@@ -534,8 +541,6 @@ class Home extends React.Component {
     );
   };
 
-  // adapted from https://www.bignerdranch.com/blog/dont-over-react/
-  attachmentPlates = new WeakMap();
   // adapted from https://github.com/openalpr/cloudapi/tree/8141c1ba57f03df4f53430c6e5e389b39714d0e0/javascript#getting-started
   extractPlate = async ({ attachmentFile }) => {
     console.time('extractPlate'); // eslint-disable-line no-console
@@ -594,6 +599,7 @@ class Home extends React.Component {
       });
 
   alert = modalText => this.setState({ modalText });
+
   closeAlert = () => this.setState({ modalText: null });
 
   loadPreviousSubmissions = () => {
@@ -643,7 +649,9 @@ class Home extends React.Component {
             >
               {this.state.modalText}
               <br />
-              <button onClick={this.closeAlert}>Close</button>
+              <button type="button" onClick={this.closeAlert}>
+                Close
+              </button>
             </Modal>
 
             {/* TODO use tabbed interface instead of toggling <details> ? */}
@@ -674,7 +682,7 @@ class Home extends React.Component {
                 }}
               >
                 <fieldset disabled={this.state.isUserInfoSaving}>
-                  <label>
+                  <label htmlFor="email">
                     Email:{' '}
                     <input
                       required
@@ -696,7 +704,7 @@ class Home extends React.Component {
                     />
                   </label>
 
-                  <label>
+                  <label htmlFor="password">
                     {
                       "Password (this is saved on your device, so use a password you don't use anywhere else): "
                     }
@@ -718,9 +726,9 @@ class Home extends React.Component {
                       <button
                         type="button"
                         onClick={() => {
-                          this.setState({
-                            isPasswordRevealed: !this.state.isPasswordRevealed,
-                          });
+                          this.setState(state => ({
+                            isPasswordRevealed: !state.isPasswordRevealed,
+                          }));
                         }}
                       >
                         {this.state.isPasswordRevealed ? 'Hide' : 'Show'}
@@ -770,12 +778,12 @@ class Home extends React.Component {
                       this.setState(
                         // If a new user clicks the button after filling all the fields,
                         // don't override them with empty data from the server.
-                        {
-                          FirstName: FirstName || this.state.FirstName,
-                          LastName: LastName || this.state.LastName,
-                          Phone: Phone || this.state.Phone,
-                          testify: testify || this.state.testify,
-                        },
+                        state => ({
+                          FirstName: FirstName || state.FirstName,
+                          LastName: LastName || state.LastName,
+                          Phone: Phone || state.Phone,
+                          testify: testify || state.testify,
+                        }),
                         () => {
                           this.saveStateToLocalStorage();
                           this.userFormSubmitRef.current.click();
@@ -786,7 +794,7 @@ class Home extends React.Component {
                     Sign Up / Log In
                   </button>
 
-                  <label>
+                  <label htmlFor="FirstName">
                     First Name:{' '}
                     <input
                       required
@@ -799,7 +807,7 @@ class Home extends React.Component {
                     />
                   </label>
 
-                  <label>
+                  <label htmlFor="LastName">
                     Last Name:{' '}
                     <input
                       required
@@ -812,7 +820,7 @@ class Home extends React.Component {
                     />
                   </label>
 
-                  <label>
+                  <label htmlFor="Phone">
                     Phone Number:{' '}
                     <input
                       required
@@ -825,7 +833,7 @@ class Home extends React.Component {
                     />
                   </label>
 
-                  <label>
+                  <label htmlFor="testify">
                     <input
                       type="checkbox"
                       checked={this.state.testify}
@@ -910,12 +918,12 @@ class Home extends React.Component {
                         2,
                       )}`,
                     );
-                    this.setState({
+                    this.setState(state => ({
                       attachmentData: [],
-                      submissions: [submission].concat(this.state.submissions),
+                      submissions: [submission].concat(state.submissions),
                       plateSuggestion: '',
                       reportDescription: '',
-                    });
+                    }));
                     this.setLicensePlate({ plate: '', licenseState: 'NY' });
                     this.alert(
                       <React.Fragment>
@@ -1015,11 +1023,11 @@ class Home extends React.Component {
                             background: 'white',
                           }}
                           onClick={() => {
-                            this.setState({
-                              attachmentData: this.state.attachmentData.filter(
+                            this.setState(state => ({
+                              attachmentData: state.attachmentData.filter(
                                 file => file.name !== name,
                               ),
-                            });
+                            }));
                           }}
                         >
                           <span role="img" aria-label="Delete photo/video">
@@ -1031,12 +1039,13 @@ class Home extends React.Component {
                   })}
                 </div>
 
-                <label>
+                <label htmlFor="plate">
                   License/Medallion:
                   <input
                     required
                     type="search"
                     value={this.state.plate}
+                    name="plate"
                     list="plateSuggestion"
                     ref={this.plateRef}
                     placeholder={this.state.plateSuggestion}
@@ -1073,7 +1082,7 @@ class Home extends React.Component {
                   {this.state.vehicleInfoComponent}
                 </label>
 
-                <label>
+                <label htmlFor="typeofuser">
                   I was:{' '}
                   <select
                     value={this.state.typeofuser}
@@ -1088,7 +1097,7 @@ class Home extends React.Component {
                   </select>
                 </label>
 
-                <label>
+                <label htmlFor="typeofcomplaint">
                   Type:{' '}
                   <select
                     value={this.state.typeofcomplaint}
@@ -1103,11 +1112,12 @@ class Home extends React.Component {
                   </select>
                 </label>
 
-                <label>
+                <label htmlFor="where">
                   Where:
                   <br />
                   <button
                     type="button"
+                    name="where"
                     onClick={() => this.setState({ isMapOpen: true })}
                     style={{
                       width: '100%',
@@ -1187,6 +1197,7 @@ class Home extends React.Component {
                   </button>
 
                   <button
+                    type="button"
                     onClick={() => this.setState({ isMapOpen: false })}
                     style={{
                       float: 'right',
@@ -1196,7 +1207,7 @@ class Home extends React.Component {
                   </button>
                 </Modal>
 
-                <label>
+                <label htmlFor="CreateDate">
                   When:{' '}
                   <input
                     required
@@ -1207,7 +1218,7 @@ class Home extends React.Component {
                   />
                 </label>
 
-                <label>
+                <label htmlFor="reportDescription">
                   Description:{' '}
                   <textarea
                     value={this.state.reportDescription}
@@ -1216,7 +1227,7 @@ class Home extends React.Component {
                   />
                 </label>
 
-                <label>
+                <label htmlFor="can_be_shared_publicly">
                   <input
                     type="checkbox"
                     checked={this.state.can_be_shared_publicly}
@@ -1235,8 +1246,7 @@ class Home extends React.Component {
                       width: '100%',
                     }}
                   >
-                    {this.state.submitProgressValue}
-                    /
+                    {this.state.submitProgressValue}/
                     {this.state.submitProgressMax}
                   </progress>
                 ) : (
@@ -1264,7 +1274,8 @@ class Home extends React.Component {
               }}
             >
               <summary>
-                Previous Submissions{this.state.submissions.length > 0 &&
+                Previous Submissions
+                {this.state.submissions.length > 0 &&
                   ` (${this.state.submissions.length})`}
               </summary>
 

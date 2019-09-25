@@ -78,6 +78,7 @@ class ElectriCitibikes extends React.Component {
           <h1>{this.props.title}</h1>
           <p>
             <button
+              type="button"
               style={{ width: '100%' }}
               onClick={this.updateData}
               disabled={this.state.isRefreshing}

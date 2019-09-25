@@ -649,7 +649,9 @@ class Home extends React.Component {
             >
               {this.state.modalText}
               <br />
-              <button onClick={this.closeAlert}>Close</button>
+              <button type="button" onClick={this.closeAlert}>
+                Close
+              </button>
             </Modal>
 
             {/* TODO use tabbed interface instead of toggling <details> ? */}
@@ -1195,6 +1197,7 @@ class Home extends React.Component {
                   </button>
 
                   <button
+                    type="button"
                     onClick={() => this.setState({ isMapOpen: false })}
                     style={{
                       float: 'right',

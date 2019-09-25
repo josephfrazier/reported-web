@@ -324,11 +324,11 @@ class Home extends React.Component {
         objectId,
       })
       .then(() => {
-        this.setState({
-          submissions: this.state.submissions.filter(
+        this.setState(state => ({
+          submissions: state.submissions.filter(
             sub => sub.objectId !== objectId,
           ),
-        });
+        }));
       });
   };
 
@@ -493,9 +493,9 @@ class Home extends React.Component {
   };
 
   handleAttachmentData = async ({ attachmentData }) => {
-    this.setState({
-      attachmentData: this.state.attachmentData.concat(attachmentData),
-    });
+    this.setState(state => ({
+      attachmentData: state.attachmentData.concat(attachmentData),
+    }));
 
     for (const attachmentFile of attachmentData) {
       try {
@@ -724,9 +724,9 @@ class Home extends React.Component {
                       <button
                         type="button"
                         onClick={() => {
-                          this.setState({
-                            isPasswordRevealed: !this.state.isPasswordRevealed,
-                          });
+                          this.setState(state => ({
+                            isPasswordRevealed: !state.isPasswordRevealed,
+                          }));
                         }}
                       >
                         {this.state.isPasswordRevealed ? 'Hide' : 'Show'}
@@ -776,12 +776,12 @@ class Home extends React.Component {
                       this.setState(
                         // If a new user clicks the button after filling all the fields,
                         // don't override them with empty data from the server.
-                        {
-                          FirstName: FirstName || this.state.FirstName,
-                          LastName: LastName || this.state.LastName,
-                          Phone: Phone || this.state.Phone,
-                          testify: testify || this.state.testify,
-                        },
+                        state => ({
+                          FirstName: FirstName || state.FirstName,
+                          LastName: LastName || state.LastName,
+                          Phone: Phone || state.Phone,
+                          testify: testify || state.testify,
+                        }),
                         () => {
                           this.saveStateToLocalStorage();
                           this.userFormSubmitRef.current.click();
@@ -916,12 +916,12 @@ class Home extends React.Component {
                         2,
                       )}`,
                     );
-                    this.setState({
+                    this.setState(state => ({
                       attachmentData: [],
-                      submissions: [submission].concat(this.state.submissions),
+                      submissions: [submission].concat(state.submissions),
                       plateSuggestion: '',
                       reportDescription: '',
-                    });
+                    }));
                     this.setLicensePlate({ plate: '', licenseState: 'NY' });
                     this.alert(
                       <React.Fragment>
@@ -1021,11 +1021,11 @@ class Home extends React.Component {
                             background: 'white',
                           }}
                           onClick={() => {
-                            this.setState({
-                              attachmentData: this.state.attachmentData.filter(
+                            this.setState(state => ({
+                              attachmentData: state.attachmentData.filter(
                                 file => file.name !== name,
                               ),
-                            });
+                            }));
                           }}
                         >
                           <span role="img" aria-label="Delete photo/video">

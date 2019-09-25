@@ -50,7 +50,9 @@ exports[`Home renders children correctly 1`] = `
           <fieldset
             disabled={false}
           >
-            <label>
+            <label
+              htmlFor="email"
+            >
               Email:
                
               <input
@@ -63,7 +65,9 @@ exports[`Home renders children correctly 1`] = `
                 value=""
               />
             </label>
-            <label>
+            <label
+              htmlFor="password"
+            >
               Password (this is saved on your device, so use a password you don't use anywhere else): 
               <div
                 style={
@@ -104,7 +108,9 @@ exports[`Home renders children correctly 1`] = `
             >
               Sign Up / Log In
             </button>
-            <label>
+            <label
+              htmlFor="FirstName"
+            >
               First Name:
                
               <input
@@ -117,7 +123,9 @@ exports[`Home renders children correctly 1`] = `
                 value=""
               />
             </label>
-            <label>
+            <label
+              htmlFor="LastName"
+            >
               Last Name:
                
               <input
@@ -130,7 +138,9 @@ exports[`Home renders children correctly 1`] = `
                 value=""
               />
             </label>
-            <label>
+            <label
+              htmlFor="Phone"
+            >
               Phone Number:
                
               <input
@@ -143,7 +153,9 @@ exports[`Home renders children correctly 1`] = `
                 value=""
               />
             </label>
-            <label>
+            <label
+              htmlFor="testify"
+            >
               <input
                 checked={false}
                 name="testify"
@@ -240,10 +252,13 @@ exports[`Home renders children correctly 1`] = `
               }
             }
           />
-          <label>
+          <label
+            htmlFor="plate"
+          >
             License/Medallion:
             <input
               list="plateSuggestion"
+              name="plate"
               onChange={[Function]}
               placeholder=""
               required={true}
@@ -518,7 +533,9 @@ exports[`Home renders children correctly 1`] = `
             </select>
             <br />
           </label>
-          <label>
+          <label
+            htmlFor="typeofuser"
+          >
             I was:
              
             <select
@@ -543,7 +560,9 @@ exports[`Home renders children correctly 1`] = `
               </option>
             </select>
           </label>
-          <label>
+          <label
+            htmlFor="typeofcomplaint"
+          >
             Type:
              
             <select
@@ -598,10 +617,13 @@ exports[`Home renders children correctly 1`] = `
               </option>
             </select>
           </label>
-          <label>
+          <label
+            htmlFor="where"
+          >
             Where:
             <br />
             <button
+              name="where"
               onClick={[Function]}
               style={
                 Object {
@@ -613,7 +635,9 @@ exports[`Home renders children correctly 1`] = `
               
             </button>
           </label>
-          <label>
+          <label
+            htmlFor="CreateDate"
+          >
             When:
              
             <input
@@ -624,7 +648,9 @@ exports[`Home renders children correctly 1`] = `
               value="2016-11-17T20:00"
             />
           </label>
-          <label>
+          <label
+            htmlFor="reportDescription"
+          >
             Description:
              
             <textarea
@@ -633,7 +659,9 @@ exports[`Home renders children correctly 1`] = `
               value=""
             />
           </label>
-          <label>
+          <label
+            htmlFor="can_be_shared_publicly"
+          >
             <input
               checked={false}
               name="can_be_shared_publicly"

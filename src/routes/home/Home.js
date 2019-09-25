@@ -202,6 +202,9 @@ async function getVideoScreenshot({ attachmentFile }) {
 }
 
 class Home extends React.Component {
+  // adapted from https://www.bignerdranch.com/blog/dont-over-react/
+  attachmentPlates = new WeakMap();
+
   constructor(props) {
     super(props);
 
@@ -537,9 +540,6 @@ class Home extends React.Component {
       () => this.saveStateToLocalStorage(),
     );
   };
-
-  // adapted from https://www.bignerdranch.com/blog/dont-over-react/
-  attachmentPlates = new WeakMap();
 
   // adapted from https://github.com/openalpr/cloudapi/tree/8141c1ba57f03df4f53430c6e5e389b39714d0e0/javascript#getting-started
   extractPlate = async ({ attachmentFile }) => {

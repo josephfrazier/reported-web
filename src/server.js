@@ -468,7 +468,7 @@ app.use('/submit', (req, res) => {
 app.use('/openalpr', upload.single('attachmentFile'), (req, res) => {
   const country = 'us';
   const opts = {
-    recognizeVehicle: 0,
+    recognizeVehicle: 1,
     state: 'ny',
     returnImage: 0,
     topn: 10,

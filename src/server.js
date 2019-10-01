@@ -508,28 +508,33 @@ app.use('/openalpr', upload.single('attachmentFile'), (req, res) => {
 // ported from https://github.com/jeffrono/Reported/blob/19b588171315a3093d53986f9fb995059f5084b4/v2/enrich_functions.rb#L325-L346
 app.use('/getVehicleType/:licensePlate/:licenseState?', (req, res) => {
   const { licensePlate = 'GNS7685', licenseState = 'NY' } = req.params;
-  const url = `https://www.searchquarry.com/vehicle_records/lregister-new?sqtb=license_plate&license_plates=${licensePlate}&trackstat=homepage-&state=${licenseState}`;
+  const url = `https://findbyplate.com/US/${licenseState}/${licensePlate}/`;
 
   console.time(url); // eslint-disable-line no-console
   axios
     .get(url)
     .then(({ data }) => {
       console.timeEnd(url); // eslint-disable-line no-console
-      const vehicleYear = data.match(/>Year:.+?<span>(.+?)</s)[1].trim();
-      const vehicleMake = data.match(/>Make:.+?<span>(.+?)</s)[1].trim();
-      const vehicleModel = data.match(/>Model:.+?<span>(.+?)</s)[1].trim();
+      const vehicleSummary = data
+        .match(/<h2 class="vehicle-modal">(.+?)</s)[1]
+        .trim();
+      const components = vehicleSummary.split(' ');
+      const [vehicleYear, vehicleMake] = components;
+      const vehicleModel = components.slice(2).join(' ');
       let vehicleBody;
 
       try {
-        vehicleBody = data.match(/>Body:.+?><span>(.+?)</s)[1].trim();
+        vehicleBody = data
+          .match(/<div class="cell" data-title="BodyClass">(.+?)</s)[1]
+          .trim();
       } catch (err) {
         console.error('no vehicle body');
       }
 
-      if (vehicleYear === 'Try Members Area') {
-        const message = 'not found';
-        throw { message, licensePlate, licenseState }; // eslint-disable-line no-throw-literal
-      }
+      // if (vehicleYear === 'Try Members Area') {
+      //   const message = 'not found';
+      //   throw { message, licensePlate, licenseState }; // eslint-disable-line no-throw-literal
+      // }
 
       res.json({
         result: {

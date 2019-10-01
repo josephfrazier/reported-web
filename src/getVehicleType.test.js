@@ -12,6 +12,17 @@ describe('getVehicleType', () => {
       licenseState: 'NY',
     });
 
-    expect(result).toMatchSnapshot();
+    expect(result).toMatchInlineSnapshot(`
+Object {
+  "result": Object {
+    "licensePlate": "T716540C",
+    "licenseState": "NY",
+    "vehicleBody": "Sedan/Saloon",
+    "vehicleMake": "LINCOLN",
+    "vehicleModel": "Town Car",
+    "vehicleYear": "2009",
+  },
+}
+`);
   });
 });

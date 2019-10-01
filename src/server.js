@@ -29,6 +29,7 @@ import DelayedResponse from 'http-delayed-response';
 
 import { isImage, isVideo } from './isImage.js';
 import { validateLocation, processValidation } from './geoclient.js';
+import getVehicleType from './getVehicleType.js';
 import { submit_311_illegal_parking_report } from './311.js'; // eslint-disable-line camelcase
 
 import App from './components/App';
@@ -508,45 +509,8 @@ app.use('/openalpr', upload.single('attachmentFile'), (req, res) => {
 // ported from https://github.com/jeffrono/Reported/blob/19b588171315a3093d53986f9fb995059f5084b4/v2/enrich_functions.rb#L325-L346
 app.use('/getVehicleType/:licensePlate/:licenseState?', (req, res) => {
   const { licensePlate = 'GNS7685', licenseState = 'NY' } = req.params;
-  const url = `https://findbyplate.com/US/${licenseState}/${licensePlate}/`;
-
-  console.time(url); // eslint-disable-line no-console
-  axios
-    .get(url)
-    .then(({ data }) => {
-      console.timeEnd(url); // eslint-disable-line no-console
-      const vehicleSummary = data
-        .match(/<h2 class="vehicle-modal">(.+?)</s)[1]
-        .trim();
-      const components = vehicleSummary.split(' ');
-      const [vehicleYear, vehicleMake] = components;
-      const vehicleModel = components.slice(2).join(' ');
-      let vehicleBody;
-
-      try {
-        vehicleBody = data
-          .match(/<div class="cell" data-title="BodyClass">(.+?)</s)[1]
-          .trim();
-      } catch (err) {
-        console.error('no vehicle body');
-      }
-
-      // if (vehicleYear === 'Try Members Area') {
-      //   const message = 'not found';
-      //   throw { message, licensePlate, licenseState }; // eslint-disable-line no-throw-literal
-      // }
-
-      res.json({
-        result: {
-          vehicleYear,
-          vehicleMake,
-          vehicleModel,
-          vehicleBody,
-          licensePlate,
-          licenseState,
-        },
-      });
-    })
+  getVehicleType({ licensePlate, licenseState })
+    .then(({ result }) => res.json({ result }))
     .catch(handlePromiseRejection(res));
 });
 

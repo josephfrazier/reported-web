@@ -518,10 +518,9 @@ app.use('/getVehicleType/:licensePlate/:licenseState?', (req, res) => {
       const vehicleSummary = data
         .match(/<h2 class="vehicle-modal">(.+?)</s)[1]
         .trim();
-      const [vehicleYear, vehicleMake, vehicleModel] = vehicleSummary.split(
-        ' ',
-        3,
-      );
+      const components = vehicleSummary.split(' ');
+      const [vehicleYear, vehicleMake] = components;
+      const vehicleModel = components.slice(2).join(' ');
       let vehicleBody;
 
       try {

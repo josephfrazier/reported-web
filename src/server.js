@@ -515,19 +515,21 @@ app.use('/getVehicleType/:licensePlate/:licenseState?', (req, res) => {
     .get(url)
     .then(({ data }) => {
       console.timeEnd(url); // eslint-disable-line no-console
-      // const vehicleYear = data.match(/>Year:.+?<span>(.+?)</s)[1].trim();
-      // const vehicleMake = data.match(/>Make:.+?<span>(.+?)</s)[1].trim();
-      // const vehicleModel = data.match(/>Model:.+?<span>(.+?)</s)[1].trim();
-      const vehicleModel = data
+      const vehicleSummary = data
         .match(/<h2 class="vehicle-modal">(.+?)</s)[1]
         .trim();
-      // let vehicleBody;
+      const components = vehicleSummary.split(' ');
+      const [vehicleYear, vehicleMake] = components;
+      const vehicleModel = components.slice(2).join(' ');
+      let vehicleBody;
 
-      // try {
-      //   vehicleBody = data.match(/>Body:.+?><span>(.+?)</s)[1].trim();
-      // } catch (err) {
-      //   console.error('no vehicle body');
-      // }
+      try {
+        vehicleBody = data
+          .match(/<div class="cell" data-title="BodyClass">(.+?)</s)[1]
+          .trim();
+      } catch (err) {
+        console.error('no vehicle body');
+      }
 
       // if (vehicleYear === 'Try Members Area') {
       //   const message = 'not found';
@@ -536,10 +538,10 @@ app.use('/getVehicleType/:licensePlate/:licenseState?', (req, res) => {
 
       res.json({
         result: {
-          // vehicleYear,
-          // vehicleMake,
+          vehicleYear,
+          vehicleMake,
           vehicleModel,
-          // vehicleBody,
+          vehicleBody,
           licensePlate,
           licenseState,
         },

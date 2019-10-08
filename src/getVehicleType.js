@@ -11,7 +11,10 @@ export default function getVehicleType({ licensePlate, licenseState }) {
       .match(/<h2 class="vehicle-modal">(.+?)</s)[1]
       .trim();
     const components = vehicleSummary.split(' ');
-    const [vehicleYear, vehicleMake] = components;
+    const vehicleYear = components[0];
+    let vehicleMake = components[1];
+    vehicleMake =
+      vehicleMake.charAt(0).toUpperCase() + vehicleMake.slice(1).toLowerCase();
     const vehicleModel = components.slice(2).join(' ');
     let vehicleBody;
 

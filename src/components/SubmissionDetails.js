@@ -25,6 +25,7 @@ class SubmissionDetails extends React.Component {
       reportDescription,
       status,
 
+      photoData,
       photoData0,
       photoData1,
       photoData2,
@@ -39,10 +40,10 @@ class SubmissionDetails extends React.Component {
     const humanTimeString = new Date(timeofreport).toLocaleString();
 
     const ImagesAndVideos = () => {
-      const images = [photoData0, photoData1, photoData2]
+      const images = [photoData, photoData0, photoData1, photoData2]
         .filter(item => !!item)
-        .map((photoData, i) => {
-          const { url } = photoData;
+        .map((photoDataItem, i) => {
+          const { url } = photoDataItem;
           return (
             <a key={url} href={url} target="_blank" rel="noopener noreferrer">
               <img src={url} alt={`#${i}`} />
@@ -160,6 +161,7 @@ SubmissionDetails.propTypes = {
     reportDescription: PropTypes.string,
     status: PropTypes.number,
 
+    photoData: PropTypes.object,
     photoData0: PropTypes.object,
     photoData1: PropTypes.object,
     photoData2: PropTypes.object,

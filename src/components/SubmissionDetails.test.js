@@ -21,6 +21,7 @@ describe('SubmissionDetails', () => {
       reportDescription: 'reportDescription',
       status: 1,
 
+      photoData: { url: 'photoData.url' },
       photoData0: { url: 'photoData0.url' },
       photoData1: { url: 'photoData1.url' },
       photoData2: { url: 'photoData2.url' },
@@ -55,6 +56,7 @@ describe('SubmissionDetails', () => {
       reportDescription: 'reportDescription',
       status: 0,
 
+      photoData: { url: 'photoData.url' },
       photoData0: { url: 'photoData0.url' },
       photoData1: { url: 'photoData1.url' },
       photoData2: { url: 'photoData2.url' },

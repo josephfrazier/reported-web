@@ -22,12 +22,22 @@ exports[`SubmissionDetails renders children correctly 1`] = `
     reportDescription
   </p>
   <a
-    href="photoData0.url"
+    href="photoData.url"
     rel="noopener noreferrer"
     target="_blank"
   >
     <img
       alt="#0"
+      src="photoData.url"
+    />
+  </a>
+  <a
+    href="photoData0.url"
+    rel="noopener noreferrer"
+    target="_blank"
+  >
+    <img
+      alt="#1"
       src="photoData0.url"
     />
   </a>
@@ -37,7 +47,7 @@ exports[`SubmissionDetails renders children correctly 1`] = `
     target="_blank"
   >
     <img
-      alt="#1"
+      alt="#2"
       src="photoData1.url"
     />
   </a>
@@ -47,7 +57,7 @@ exports[`SubmissionDetails renders children correctly 1`] = `
     target="_blank"
   >
     <img
-      alt="#2"
+      alt="#3"
       src="photoData2.url"
     />
   </a>
@@ -109,12 +119,22 @@ exports[`SubmissionDetails renders delete button correctly 1`] = `
     reportDescription
   </p>
   <a
-    href="photoData0.url"
+    href="photoData.url"
     rel="noopener noreferrer"
     target="_blank"
   >
     <img
       alt="#0"
+      src="photoData.url"
+    />
+  </a>
+  <a
+    href="photoData0.url"
+    rel="noopener noreferrer"
+    target="_blank"
+  >
+    <img
+      alt="#1"
       src="photoData0.url"
     />
   </a>
@@ -124,7 +144,7 @@ exports[`SubmissionDetails renders delete button correctly 1`] = `
     target="_blank"
   >
     <img
-      alt="#1"
+      alt="#2"
       src="photoData1.url"
     />
   </a>
@@ -134,7 +154,7 @@ exports[`SubmissionDetails renders delete button correctly 1`] = `
     target="_blank"
   >
     <img
-      alt="#2"
+      alt="#3"
       src="photoData2.url"
     />
   </a>

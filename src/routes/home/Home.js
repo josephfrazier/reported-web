@@ -285,6 +285,8 @@ class Home extends React.Component {
           isPasswordRevealed: true,
         });
       });
+    } else if (this.state.email) {
+      this.loadPreviousSubmissions();
     }
 
     // Allow users to paste image data
@@ -309,8 +311,6 @@ class Home extends React.Component {
       (beforeUnloadEvent || window.event).returnValue = confirmationMessage; // Gecko + IE
       return confirmationMessage; // Webkit, Safari, Chrome etc.
     });
-
-    this.loadPreviousSubmissions();
 
     this.forceUpdate(); // force "Create/Edit User" fields to render persisted value after load
   }

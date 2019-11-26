@@ -281,6 +281,32 @@ app.get('/srlookup/:reqnumber', (req, res) => {
     .catch(handlePromiseRejection(res));
 });
 
+async function getTasks({ body, submissionId }) {
+  // return saveUser(req.body).then(user => {
+    const Task = Parse.Object.extend('tasks');
+    const query = new Parse.Query(Task);
+
+    // TODO ensure that the user owns the submission
+    // query.equalTo('Username', user.get('username'));
+
+    // see https://designingforscale.com/query-on-a-parse-pointer/
+    query.equalTo('submission', { "__type": "Pointer", "className": "submission", "objectId": submissionId });
+    query.descending('createdAt');
+    query.limit(Number.MAX_SAFE_INTEGER);
+    return query.find()
+  // });
+}
+
+app.get('/api/tasks/:submissionId', (req, res) => {
+  const { submissionId } = req.params;
+
+  getTasks({ submissionId })
+    .then(tasks => {
+      res.json(tasks);
+    })
+    .catch(handlePromiseRejection(res));
+});
+
 app.use('/requestPasswordReset', (req, res) => {
   const { email } = req.body;
 

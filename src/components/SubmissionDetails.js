@@ -16,6 +16,7 @@ class SubmissionDetails extends React.Component {
   }
 
   render() {
+    return JSON.stringify(this.props.submission, null, 2);
     const {
       reqnumber,
       medallionNo,

@@ -77,9 +77,7 @@ class SubmissionDetails extends React.Component {
       }
 
       render() {
-        const {
-          case_id,
-        } = this.props;;
+        const { case_id } = this.props;
 
         const LoadableServiceRequestStatus = Loadable({
           loader: () =>
@@ -95,7 +93,9 @@ class SubmissionDetails extends React.Component {
                   <React.Fragment key={key}>
                     <dt>{humanizeString(key)}:</dt>
                     <dd>
-                      {key.endsWith('Date') ? new Date(value).toString() : value}
+                      {key.endsWith('Date')
+                        ? new Date(value).toString()
+                        : value}
                     </dd>
                   </React.Fragment>
                 ),
@@ -105,14 +105,14 @@ class SubmissionDetails extends React.Component {
           loading: () => 'Loading Service Request Status...',
         });
 
-        return <LoadableServiceRequestStatus />
+        return <LoadableServiceRequestStatus />;
       }
     }
 
-    const srStatusOrDeleteButton = (case_id) =>
+    const srStatusOrDeleteButton = task =>
       (status !== 0 && (
         <div>
-          <ServiceRequestDetails case_id={case_id} />
+          <ServiceRequestDetails case_id={task.case_id} />
         </div>
       )) || (
         <button
@@ -137,16 +137,16 @@ class SubmissionDetails extends React.Component {
       loader: () =>
         axios.get(`/api/tasks/${objectId}`).then(({ data }) => () => {
           const tasks = data;
-          const items = tasks.map(
-            (task) => {
-              return <React.Fragment key={task.action}>
-                <dt>{humanizeString(task.action)}:</dt>
-                <dd>
-                  {task.action === 'tweet report' ? JSON.stringify(task) : srStatusOrDeleteButton(task.case_id)}
-                </dd>
-              </React.Fragment>
-            }
-          );
+          const items = tasks.map(task => (
+            <React.Fragment key={task.action}>
+              <dt>{humanizeString(task.action)}:</dt>
+              <dd>
+                {task.action === 'tweet report'
+                  ? JSON.stringify(task)
+                  : srStatusOrDeleteButton(task)}
+              </dd>
+            </React.Fragment>
+          ));
           return <dl>{items}</dl>;
         }),
       loading: () => 'Loading Tasks...',

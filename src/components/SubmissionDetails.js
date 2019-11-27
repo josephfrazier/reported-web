@@ -71,34 +71,48 @@ class SubmissionDetails extends React.Component {
       );
     };
 
-    const LoadableServiceRequestStatus = Loadable({
-      loader: () =>
-        axios.get(`/srlookup/${reqnumber}`).then(({ data }) => () => {
-          const { error, threeOneOneSRLookupResponse } = data;
-          if (error) {
-            const { errorMessage, errorCode } = error;
-            return `${errorMessage} (error code ${errorCode})`;
-          }
+    class ServiceRequestDetails extends React.Component {
+      constructor(props) {
+        super(props);
+      }
 
-          const items = Object.entries(threeOneOneSRLookupResponse[0]).map(
-            ([key, value]) => (
-              <React.Fragment key={key}>
-                <dt>{humanizeString(key)}:</dt>
-                <dd>
-                  {key.endsWith('Date') ? new Date(value).toString() : value}
-                </dd>
-              </React.Fragment>
-            ),
-          );
-          return <dl>{items}</dl>;
-        }),
-      loading: () => 'Loading Service Request Status...',
-    });
+      render() {
+        const {
+          case_id,
+        } = this.props;;
+
+        const LoadableServiceRequestStatus = Loadable({
+          loader: () =>
+            axios.get(`/srlookup/${case_id}`).then(({ data }) => () => {
+              const { error, threeOneOneSRLookupResponse } = data;
+              if (error) {
+                const { errorMessage, errorCode } = error;
+                return `${errorMessage} (error code ${errorCode})`;
+              }
+
+              const items = Object.entries(threeOneOneSRLookupResponse[0]).map(
+                ([key, value]) => (
+                  <React.Fragment key={key}>
+                    <dt>{humanizeString(key)}:</dt>
+                    <dd>
+                      {key.endsWith('Date') ? new Date(value).toString() : value}
+                    </dd>
+                  </React.Fragment>
+                ),
+              );
+              return <dl>{items}</dl>;
+            }),
+          loading: () => 'Loading Service Request Status...',
+        });
+
+        return <LoadableServiceRequestStatus />
+      }
+    }
 
     const srStatusOrDeleteButton = (case_id) =>
       (status !== 0 && (
         <div>
-          <LoadableServiceRequestStatus />
+          <ServiceRequestDetails case_id={case_id} />
         </div>
       )) || (
         <button

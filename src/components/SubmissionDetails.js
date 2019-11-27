@@ -95,7 +95,7 @@ class SubmissionDetails extends React.Component {
       loading: () => 'Loading Service Request Status...',
     });
 
-    const srStatusOrDeleteButton = () =>
+    const srStatusOrDeleteButton = (case_id) =>
       (status !== 0 && (
         <div>
           <LoadableServiceRequestStatus />
@@ -128,7 +128,7 @@ class SubmissionDetails extends React.Component {
               return <React.Fragment key={task.action}>
                 <dt>{humanizeString(task.action)}:</dt>
                 <dd>
-                  {task.action === 'submit 311 complaint' ? srStatusOrDeleteButton() : JSON.stringify(task)}
+                  {task.action === 'submit 311 complaint' ? srStatusOrDeleteButton(task.case_id) : JSON.stringify(task)}
                 </dd>
               </React.Fragment>
             }

@@ -123,11 +123,6 @@ class SubmissionDetails extends React.Component {
       loader: () =>
         axios.get(`/api/tasks/${objectId}`).then(({ data }) => () => {
           const tasks = data;
-          // if (error) {
-          //   const { errorMessage, errorCode } = error;
-          //   return `${errorMessage} (error code ${errorCode})`;
-          // }
-
           const items = tasks.map(
             (task) => {
               return <React.Fragment key={task.action}>

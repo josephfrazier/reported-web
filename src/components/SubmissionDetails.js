@@ -143,7 +143,7 @@ class SubmissionDetails extends React.Component {
               <dt>{humanizeString(task.action)}:</dt>
               <dd>
                 {task.action === 'tweet report'
-                  ? JSON.stringify(task)
+                  ? <a href={task.tweet_url} target="_blank" rel="noopener noreferrer">{task.message}</a>
                   : srStatusOrDeleteButton(task)}
               </dd>
             </React.Fragment>

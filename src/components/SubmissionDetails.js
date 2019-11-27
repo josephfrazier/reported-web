@@ -142,7 +142,7 @@ class SubmissionDetails extends React.Component {
               return <React.Fragment key={task.action}>
                 <dt>{humanizeString(task.action)}:</dt>
                 <dd>
-                  {task.action === 'submit 311 complaint' ? srStatusOrDeleteButton(task.case_id) : JSON.stringify(task)}
+                  {task.action === 'tweet report' ? JSON.stringify(task) : srStatusOrDeleteButton(task.case_id)}
                 </dd>
               </React.Fragment>
             }

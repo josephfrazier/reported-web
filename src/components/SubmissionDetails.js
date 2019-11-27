@@ -119,6 +119,30 @@ class SubmissionDetails extends React.Component {
         </button>
       );
 
+    const LoadableTasks = Loadable({
+      loader: () =>
+        axios.get(`/api/tasks/${objectId}`).then(({ data }) => () => {
+          const tasks = data;
+          // if (error) {
+          //   const { errorMessage, errorCode } = error;
+          //   return `${errorMessage} (error code ${errorCode})`;
+          // }
+
+          const items = tasks.map(
+            (task) => (
+              <React.Fragment key={task.action}>
+                <dt>{humanizeString(task.action)}:</dt>
+                <dd>
+                  {JSON.stringify(task)}
+                </dd>
+              </React.Fragment>
+            ),
+          );
+          return <dl>{items}</dl>;
+        }),
+      loading: () => 'Loading Tasks...',
+    });
+
     return (
       <details
         open={this.state.isDetailsOpen}
@@ -141,7 +165,7 @@ class SubmissionDetails extends React.Component {
             <p>{reportDescription}</p>
             <ImagesAndVideos />
 
-            {srStatusOrDeleteButton()}
+            <LoadableTasks />
           </React.Fragment>
         )}
       </details>

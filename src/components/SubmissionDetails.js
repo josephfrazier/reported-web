@@ -77,7 +77,8 @@ class SubmissionDetails extends React.Component {
       }
 
       render() {
-        const { case_id } = this.props;
+        const { task } = this.props;
+        const { case_id } = task;
 
         const LoadableServiceRequestStatus = Loadable({
           loader: () =>
@@ -112,7 +113,7 @@ class SubmissionDetails extends React.Component {
     const srStatusOrDeleteButton = task =>
       (status !== 0 && (
         <div>
-          <ServiceRequestDetails case_id={task.case_id} />
+          <ServiceRequestDetails task={task} />
         </div>
       )) || (
         <button

@@ -129,14 +129,14 @@ class SubmissionDetails extends React.Component {
           // }
 
           const items = tasks.map(
-            (task) => (
-              <React.Fragment key={task.action}>
+            (task) => {
+              return <React.Fragment key={task.action}>
                 <dt>{humanizeString(task.action)}:</dt>
                 <dd>
-                  {JSON.stringify(task)}
+                  {task.action === 'submit 311 complaint' ? srStatusOrDeleteButton() : JSON.stringify(task)}
                 </dd>
               </React.Fragment>
-            ),
+            }
           );
           return <dl>{items}</dl>;
         }),

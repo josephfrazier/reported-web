@@ -73,7 +73,7 @@
     "react-modal": "^3.4.5",
     "react-social-icons": "^2.8.1",
     "recompose": "^0.26.0",
-    "serialize-javascript": "^1.5.0",
+    "serialize-javascript": "^2.1.1",
     "sharp": "^0.20.1",
     "source-map-support": "^0.5.9",
     "strftime": "^0.10.0",

@@ -11,13 +11,6 @@
 
 const pkg = require('../package.json');
 
-const isDebug = !process.argv.includes('--release');
-
-// CSS Nano options http://cssnano.co/
-const minimizeCssOptions = {
-  discardComments: { removeAll: true },
-};
-
 module.exports = () => ({
   // The list of plugins for PostCSS
   // https://github.com/postcss/postcss
@@ -45,13 +38,5 @@ module.exports = () => ({
       browsers: pkg.browserslist,
       autoprefixer: { flexbox: 'no-2009' },
     }),
-    // CSS Nano http://cssnano.co/
-    ...(isDebug
-      ? []
-      : [
-          require('cssnano')({
-            preset: ['default', minimizeCssOptions],
-          }),
-        ]),
   ],
 });

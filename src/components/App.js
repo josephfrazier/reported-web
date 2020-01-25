@@ -10,8 +10,15 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
-import StyleContext from 'isomorphic-style-loader/StyleContext';
-import ApplicationContext from './ApplicationContext';
+const ContextType = {
+  // Enables critical path CSS rendering
+  // https://github.com/kriasoft/isomorphic-style-loader
+  insertCss: PropTypes.func.isRequired,
+  // Universal HTTP client
+  fetch: PropTypes.func.isRequired,
+  pathname: PropTypes.string.isRequired,
+  query: PropTypes.object,
+};
 
 /**
  * The top-level React component setting context (global) variables
@@ -27,7 +34,7 @@ import ApplicationContext from './ApplicationContext';
  *   };
  *
  *   ReactDOM.render(
- *     <App context={context} insertCss={() => {}}>
+ *     <App context={context}>
  *       <Layout>
  *         <LandingPage />
  *       </Layout>
@@ -35,28 +42,23 @@ import ApplicationContext from './ApplicationContext';
  *     container,
  *   );
  */
+class App extends React.PureComponent {
+  static propTypes = {
+    context: PropTypes.shape(ContextType).isRequired,
+    children: PropTypes.element.isRequired,
+  };
 
-export default function App({ context, insertCss, children }) {
-  // NOTE: If you need to add or modify header, footer etc. of the app,
-  // please do that inside the Layout component.
-  return (
-    <StyleContext.Provider value={{ insertCss }}>
-      <ApplicationContext.Provider value={{ context }}>
-        {React.Children.only(children)}
-      </ApplicationContext.Provider>
-    </StyleContext.Provider>
-  );
+  static childContextTypes = ContextType;
+
+  getChildContext() {
+    return this.props.context;
+  }
+
+  render() {
+    // NOTE: If you need to add or modify header, footer etc. of the app,
+    // please do that inside the Layout component.
+    return React.Children.only(this.props.children);
+  }
 }
 
-App.propTypes = {
-  // Enables critical path CSS rendering
-  // https://github.com/kriasoft/isomorphic-style-loader
-  insertCss: PropTypes.func.isRequired,
-  context: PropTypes.shape({
-    // Universal HTTP client
-    fetch: PropTypes.func.isRequired,
-    pathname: PropTypes.string.isRequired,
-    query: PropTypes.object,
-  }).isRequired,
-  children: PropTypes.element.isRequired,
-};
+export default App;

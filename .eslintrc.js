@@ -21,7 +21,7 @@ module.exports = {
     'prettier/react',
   ],
 
-  plugins: ['flowtype', 'css-modules', 'prettier', 'jest'],
+  plugins: ['flowtype', 'css-modules', 'prettier'],
 
   globals: {
     __DEV__: true,
@@ -29,7 +29,6 @@ module.exports = {
 
   env: {
     browser: true,
-    jest: true,
   },
 
   rules: {

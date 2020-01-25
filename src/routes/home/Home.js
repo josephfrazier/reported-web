@@ -10,7 +10,7 @@
 import promisify from 'util.promisify';
 import React from 'react';
 import PropTypes from 'prop-types';
-import withStyles from 'isomorphic-style-loader/lib/withStyles';
+import useStyles from 'isomorphic-style-loader/useStyles';
 import FileReaderInput from 'react-file-reader-input';
 import blobUtil from 'blob-util';
 import { ExifImage } from 'exif';
@@ -447,9 +447,7 @@ class Home extends React.Component {
 
         if (plate) {
           this.setState({
-            vehicleInfoComponent: `Could not find ${plate} in ${
-              usStateNames[licenseState]
-            }`,
+            vehicleInfoComponent: `Could not find ${plate} in ${usStateNames[licenseState]}`,
           });
 
           if (plate.match(/1\d\d\d\d\d\dC/)) {
@@ -529,8 +527,8 @@ class Home extends React.Component {
       target.type === 'checkbox'
         ? target.checked
         : target.type === 'datetime-local'
-          ? target.value.slice(0, 'YYYY-MM-DDThh:mm'.length)
-          : target.value;
+        ? target.value.slice(0, 'YYYY-MM-DDThh:mm'.length)
+        : target.value;
     const { name } = target;
 
     this.setState(
@@ -613,6 +611,7 @@ class Home extends React.Component {
   };
 
   render() {
+    useStyles(marx, s);
     return (
       <Dropzone
         className={s.root}
@@ -705,9 +704,8 @@ class Home extends React.Component {
                   </label>
 
                   <label htmlFor="password">
-                    {
-                      "Password (this is saved on your device, so use a password you don't use anywhere else): "
-                    }
+                    Password (this is saved on your device, so use a password
+                    you don't use anywhere else):
                     <div style={{ display: 'flex' }}>
                       <input
                         required
@@ -1394,4 +1392,4 @@ const MyMapComponent = compose(
   withGoogleMap,
 )(MyMapComponentPure);
 
-export default withStyles(marx, s)(withLocalStorage(Home));
+export default withLocalStorage(Home);

@@ -158,8 +158,8 @@ export function ElectriCitibikeList({
     console.timeEnd('new PolygonLookup'); // eslint-disable-line no-console
   }
 
-  const bikeStations = data.features
-    .filter(f => f.properties.bikes_available > 0)
+  const ebikeStations = data.features
+    .filter(f => f.properties.ebikes_available > 0)
     .map(f => {
       const { coordinates } = f.geometry;
       const start = { latitude, longitude };
@@ -189,18 +189,18 @@ export function ElectriCitibikeList({
       };
     });
 
-  bikeStations.sort((a, b) => a.distMeters - b.distMeters);
+  ebikeStations.sort((a, b) => a.distMeters - b.distMeters);
   const humanDate = strftime('%r', new Date(updatedAt));
-  const totalbikesAvailable = bikeStations
-    .map(station => station.bikes_available)
+  const totalEbikesAvailable = ebikeStations
+    .map(station => station.ebikes_available)
     .reduce((a, b) => a + b, 0);
   return (
     <>
-      {totalbikesAvailable} available as of {humanDate}
-      {bikeStations.map(station => (
+      {totalEbikesAvailable} available as of {humanDate}
+      {ebikeStations.map(station => (
         <details key={station.name} style={{ margin: '1rem 0' }}>
           <summary>
-            {station.bikes_available} @&nbsp;
+            {station.ebikes_available} @&nbsp;
             <a
               target="_blank"
               rel="noopener noreferrer"
@@ -212,8 +212,23 @@ export function ElectriCitibikeList({
             (about {Math.ceil(station.distMeters / 80)} blocks{' '}
             {station.compassBearing} of you)
             <br />
+            Max Charge:{' '}
+            {Math.max(
+              ...(station.ebikes || [{ charge: 0 }]).map(ebike => ebike.charge),
+            ) || '?'}
+            /4
+            <br />
             Empty Docks: {station.docks_available}
           </summary>
+          <ul>
+            {station.ebikes &&
+              station.ebikes.map(ebike => (
+                <li key={ebike.bike_number}>
+                  {`#${ebike.bike_number}`} has {ebike.charge}
+                  /4 charge
+                </li>
+              ))}
+          </ul>
         </details>
       ))}
     </>

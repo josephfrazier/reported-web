@@ -215,7 +215,8 @@ export function ElectriCitibikeList({
             Max Charge:{' '}
             {Math.max(
               ...(station.ebikes || [{ charge: 0 }]).map(ebike => ebike.charge),
-            ) || '?'}/4
+            ) || '?'}
+            /4
             <br />
             Empty Docks: {station.docks_available}
           </summary>
@@ -223,7 +224,8 @@ export function ElectriCitibikeList({
             {station.ebikes &&
               station.ebikes.map(ebike => (
                 <li key={ebike.bike_number}>
-                  {`#${ebike.bike_number}`} has {ebike.charge}/4 charge
+                  {`#${ebike.bike_number}`} has {ebike.charge}
+                  /4 charge
                 </li>
               ))}
           </ul>

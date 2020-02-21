@@ -37,8 +37,8 @@ import bufferToArrayBuffer from 'buffer-to-arraybuffer';
 import objectToFormData from 'object-to-formdata';
 import usStateNames from 'datasets-us-states-abbr-names';
 import fileExtension from 'file-extension';
-const dwGen = require('diceware-generator');
-const enEFF = require('diceware-wordlist-en-eff');
+import dwGen from 'diceware-generator';
+import enEFF from 'diceware-wordlist-en-eff';
 import Modal from 'react-modal';
 import Dropzone from '@josephfrazier/react-dropzone';
 
@@ -284,8 +284,8 @@ class Home extends React.Component {
         const options = {
           language: enEFF,
           wordcount: 6,
-          format: 'string'
-        }
+          format: 'string',
+        };
         this.setState({
           password: dwGen(options),
           isPasswordRevealed: true,

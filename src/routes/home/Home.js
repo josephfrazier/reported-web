@@ -37,7 +37,8 @@ import bufferToArrayBuffer from 'buffer-to-arraybuffer';
 import objectToFormData from 'object-to-formdata';
 import usStateNames from 'datasets-us-states-abbr-names';
 import fileExtension from 'file-extension';
-import niceware from 'niceware';
+import diceware from 'diceware-generator';
+import wordlist from 'diceware-wordlist-en-eff';
 import Modal from 'react-modal';
 import Dropzone from '@josephfrazier/react-dropzone';
 
@@ -280,8 +281,13 @@ class Home extends React.Component {
     if (!this.state.password) {
       // async so that test snapshots don't change
       setTimeout(() => {
+        const options = {
+          language: wordlist,
+          wordcount: 6,
+          format: 'string',
+        };
         this.setState({
-          password: niceware.generatePassphrase(10).join(' '),
+          password: diceware(options),
           isPasswordRevealed: true,
         });
       });

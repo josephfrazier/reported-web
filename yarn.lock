@@ -3582,6 +3582,18 @@ dicer@0.2.5:
     readable-stream "1.1.x"
     streamsearch "0.1.2"
 
+diceware-generator@^3.0.1:
+  version "3.0.1"
+  resolved "https://registry.yarnpkg.com/diceware-generator/-/diceware-generator-3.0.1.tgz#e69e0a10dc5149ea85815f0b4ae29e2f80dde58a"
+  integrity sha1-5p4KENxRSeqFgV8LSuKeL4Dd5Yo=
+  dependencies:
+    secure-random "^1.1.1"
+
+diceware-wordlist-en-eff@^1.0.1:
+  version "1.0.1"
+  resolved "https://registry.yarnpkg.com/diceware-wordlist-en-eff/-/diceware-wordlist-en-eff-1.0.1.tgz#35a8971060fb66dd28ee599720ce8b14023ae59b"
+  integrity sha1-NaiXEGD7Zt0o7lmXIM6LFAI65Zs=
+
 diff@^3.2.0:
   version "3.5.0"
   resolved "https://registry.yarnpkg.com/diff/-/diff-3.5.0.tgz#800c0dd1e0a8bfbc95835c202ad220fe317e5a12"
@@ -10857,6 +10869,11 @@ schema-utils@^1.0.0:
 scriptjs@^2.5.8:
   version "2.5.8"
   resolved "https://registry.yarnpkg.com/scriptjs/-/scriptjs-2.5.8.tgz#d0c43955c2e6bad33b6e4edf7b53b8965aa7ca5f"
+
+secure-random@^1.1.1:
+  version "1.1.2"
+  resolved "https://registry.yarnpkg.com/secure-random/-/secure-random-1.1.2.tgz#ed103b460a851632d420d46448b2a900a41e7f7c"
+  integrity sha512-H2bdSKERKdBV1SwoqYm6C0y+9EA94v6SUBOWO8kDndc4NoUih7Dv6Tsgma7zO1lv27wIvjlD0ZpMQk7um5dheQ==
 
 seek-bzip@^1.0.5:
   version "1.0.5"

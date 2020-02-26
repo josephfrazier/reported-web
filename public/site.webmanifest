@@ -2,7 +2,7 @@
   "name": "Reported",
   "short_name": "Reported",
   "description": "Reported lets you hold NYC drivers accountable for dangerous driving, via 311 & more.",
-  "theme_color": "#fbc02d",
+  "theme_color": "#008000",
   "background_color": "white",
   "display": "standalone",
   "icons": [

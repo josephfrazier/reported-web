@@ -550,7 +550,7 @@ Bronx, NY 10471",
         },
         "place_id": "ChIJUaKJHJXzwokRS0cn01bSawQ",
         "plus_code": Object {
-          "compound_code": "V3JQ+9W New York, United States",
+          "compound_code": "V3JQ+9W The Bronx, New York, United States",
           "global_code": "87G8V3JQ+9W",
         },
         "types": Array [
@@ -944,7 +944,7 @@ Astoria, NY 11105",
         },
         "place_id": "ChIJpbB_M09fwokRsw6tOsOT3Wk",
         "plus_code": Object {
-          "compound_code": "Q3CF+QJ New York, United States",
+          "compound_code": "Q3CF+QJ Astoria, Queens, NY, United States",
           "global_code": "87G8Q3CF+QJ",
         },
         "types": Array [
@@ -1026,18 +1026,18 @@ Astoria, NY 11105",
         "formatted_address": "27-8 21st St, Astoria, NY 11102, USA",
         "geometry": Object {
           "location": Object {
-            "lat": 40.7720424,
-            "lng": -73.92609569999999,
+            "lat": 40.772027,
+            "lng": -73.92610359999999,
           },
           "location_type": "RANGE_INTERPOLATED",
           "viewport": Object {
             "northeast": Object {
-              "lat": 40.77339138029149,
-              "lng": -73.9247467197085,
+              "lat": 40.7733759802915,
+              "lng": -73.92475461970848,
             },
             "southwest": Object {
-              "lat": 40.77069341970849,
-              "lng": -73.9274446802915,
+              "lat": 40.77067801970851,
+              "lng": -73.9274525802915,
             },
           },
         },

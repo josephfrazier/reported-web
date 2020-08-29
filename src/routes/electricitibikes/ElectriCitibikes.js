@@ -37,9 +37,7 @@ class ElectriCitibikes extends React.Component {
   componentDidMount() {
     this.updateData();
 
-    fetch(
-      'https://services5.arcgis.com/GfwWNkhOj9bNBqoJ/arcgis/rest/services/nybb/FeatureServer/0/query?where=1=1&outFields=*&outSR=4326&f=geojson',
-    )
+    fetch('/borough-boundaries-clipped-to-shoreline.geo.json')
       .then(response => response.json())
       .then(boroughBoundariesFeatureCollection => {
         this.setState({

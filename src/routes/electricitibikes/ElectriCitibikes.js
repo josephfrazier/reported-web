@@ -37,7 +37,7 @@ class ElectriCitibikes extends React.Component {
   componentDidMount() {
     this.updateData();
 
-    fetch('/borough-boundaries-clipped-to-shoreline.geojson')
+    fetch('/borough-boundaries-clipped-to-shoreline.geo.json')
       .then(response => response.json())
       .then(boroughBoundariesFeatureCollection => {
         this.setState({

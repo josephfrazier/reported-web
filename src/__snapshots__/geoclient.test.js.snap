@@ -234,18 +234,18 @@ New York, NY 10007",
         "formatted_address": "240 Broadway, New York, NY 10007, USA",
         "geometry": Object {
           "location": Object {
-            "lat": 40.7128555,
-            "lng": -74.0061209,
+            "lat": 40.7127845,
+            "lng": -74.00600039999999,
           },
           "location_type": "ROOFTOP",
           "viewport": Object {
             "northeast": Object {
-              "lat": 40.7142044802915,
-              "lng": -74.00477191970849,
+              "lat": 40.71413348029149,
+              "lng": -74.00465141970848,
             },
             "southwest": Object {
-              "lat": 40.7115065197085,
-              "lng": -74.0074698802915,
+              "lat": 40.7114355197085,
+              "lng": -74.0073493802915,
             },
           },
         },
@@ -1285,18 +1285,18 @@ New York, NY 10007",
         "formatted_address": "240 Broadway, New York, NY 10007, USA",
         "geometry": Object {
           "location": Object {
-            "lat": 40.7128555,
-            "lng": -74.0061209,
+            "lat": 40.7127845,
+            "lng": -74.00600039999999,
           },
           "location_type": "ROOFTOP",
           "viewport": Object {
             "northeast": Object {
-              "lat": 40.7142044802915,
-              "lng": -74.00477191970849,
+              "lat": 40.71413348029149,
+              "lng": -74.00465141970848,
             },
             "southwest": Object {
-              "lat": 40.7115065197085,
-              "lng": -74.0074698802915,
+              "lat": 40.7114355197085,
+              "lng": -74.0073493802915,
             },
           },
         },

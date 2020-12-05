@@ -709,7 +709,6 @@ class Home extends React.Component {
                       }}
                     />
                   </label>
-
                   <label htmlFor="password">
                     {
                       "Password (this is saved on your device, so use a password you don't use anywhere else): "
@@ -759,7 +758,6 @@ class Home extends React.Component {
                       </button>
                     </div>
                   </label>
-
                   <button
                     type="button"
                     disabled={this.state.isUserInfoSaving}
@@ -812,7 +810,6 @@ class Home extends React.Component {
                       onChange={this.handleInputChange}
                     />
                   </label>
-
                   <label htmlFor="LastName">
                     Last Name:{' '}
                     <input
@@ -825,7 +822,6 @@ class Home extends React.Component {
                       onChange={this.handleInputChange}
                     />
                   </label>
-
                   <label htmlFor="Phone">
                     Phone Number:{' '}
                     <input
@@ -838,7 +834,6 @@ class Home extends React.Component {
                       onChange={this.handleInputChange}
                     />
                   </label>
-
                   <label htmlFor="testify">
                     <input
                       type="checkbox"
@@ -850,7 +845,6 @@ class Home extends React.Component {
                       "I'm willing to testify at a hearing, which can be done by phone."
                     }
                   </label>
-
                   <button
                     type="submit"
                     disabled={this.state.isUserInfoSaving}

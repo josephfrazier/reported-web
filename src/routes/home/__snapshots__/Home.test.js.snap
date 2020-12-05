@@ -108,6 +108,16 @@ exports[`Home renders children correctly 1`] = `
             >
               Sign Up / Log In
             </button>
+            <br />
+            <br />
+            (If you cannot log in even after resetting your password, email
+             
+            <a
+              href="mailto:reportedapp@gmail.com"
+            >
+              reportedapp@gmail.com
+            </a>
+            )
             <label
               htmlFor="FirstName"
             >

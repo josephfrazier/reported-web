@@ -797,7 +797,14 @@ class Home extends React.Component {
                   >
                     Sign Up / Log In
                   </button>
-
+                  <br />
+                  <br />
+                  (If you cannot log in even after resetting your password,
+                  email{' '}
+                  <a href="mailto:reportedapp@gmail.com">
+                    reportedapp@gmail.com
+                  </a>
+                  )
                   <label htmlFor="FirstName">
                     First Name:{' '}
                     <input

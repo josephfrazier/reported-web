@@ -21,7 +21,12 @@ jobs:
     - run: export PATH=$HOME/.yarn/bin:$PATH
     - run: yarn
     - run: yarn lint
-    - run: yarn test
+    - shell: bash
+      env:
+        GEO_APP_ID: ${{ secrets.GEO_APP_ID }}
+        GEO_APP_KEY: ${{ secrets.GEO_APP_KEY }}
+        GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+      run: yarn test
     - run: yarn build --release
       env:
         CI: true

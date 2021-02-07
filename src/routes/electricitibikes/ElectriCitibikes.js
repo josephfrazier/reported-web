@@ -229,4 +229,14 @@ export function ElectriCitibikeList({
   );
 }
 
+ElectriCitibikeList.propTypes = {
+  data: PropTypes.shape({
+    features: PropTypes.array.isRequired,
+  }).isRequired,
+  latitude: PropTypes.number.isRequired,
+  longitude: PropTypes.number.isRequired,
+  updatedAt: PropTypes.number.isRequired,
+  boroughBoundariesFeatureCollection: PropTypes.object.isRequired,
+};
+
 export default withStyles(marx, s)(ElectriCitibikes);

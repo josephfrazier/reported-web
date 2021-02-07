@@ -30,4 +30,5 @@ jobs:
     - run: yarn build --release
       env:
         CI: true
-
+    - run: yarn serve & sleep 1
+    - run: curl localhost:3000

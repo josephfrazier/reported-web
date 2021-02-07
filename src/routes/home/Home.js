@@ -514,11 +514,17 @@ class Home extends React.Component {
           extractLocationDate({ attachmentFile }).then(this.setLocationDate),
         ]);
       } catch (err) {
+        const hasMultipleAttachments = attachmentData.length > 1;
+        const fileCopy = hasMultipleAttachments
+          ? 'one of the files, but they may have been found in other files.'
+          : 'the file.';
+
         this.alert(
           <React.Fragment>
             <p>
-              Could not extract plate/location/date from image. Please
-              enter/confirm them manually.
+              Could not extract plate and/or location and/or date from{' '}
+              {fileCopy}
+              Please enter/confirm any missing values manually.
             </p>
 
             <p>(Error message: {err.message})</p>

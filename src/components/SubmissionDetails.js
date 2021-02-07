@@ -71,34 +71,49 @@ class SubmissionDetails extends React.Component {
       );
     };
 
-    const LoadableServiceRequestStatus = Loadable({
-      loader: () =>
-        axios.get(`/srlookup/${reqnumber}`).then(({ data }) => () => {
-          const { error, threeOneOneSRLookupResponse } = data;
-          if (error) {
-            const { errorMessage, errorCode } = error;
-            return `${errorMessage} (error code ${errorCode})`;
-          }
+    class ServiceRequestDetails extends React.Component {
+      constructor(props) {
+        super(props);
+      }
 
-          const items = Object.entries(threeOneOneSRLookupResponse[0]).map(
-            ([key, value]) => (
-              <React.Fragment key={key}>
-                <dt>{humanizeString(key)}:</dt>
-                <dd>
-                  {key.endsWith('Date') ? new Date(value).toString() : value}
-                </dd>
-              </React.Fragment>
-            ),
-          );
-          return <dl>{items}</dl>;
-        }),
-      loading: () => 'Loading Service Request Status...',
-    });
+      render() {
+        const { task } = this.props;
+        const { case_id } = task;
 
-    const srStatusOrDeleteButton = () =>
+        const LoadableServiceRequestStatus = Loadable({
+          loader: () =>
+            axios.get(`/srlookup/${case_id}`).then(({ data }) => () => {
+              const { error, threeOneOneSRLookupResponse } = data;
+              if (error) {
+                const { errorMessage, errorCode } = error;
+                return `${errorMessage} (error code ${errorCode})`;
+              }
+
+              const items = Object.entries(threeOneOneSRLookupResponse[0]).map(
+                ([key, value]) => (
+                  <React.Fragment key={key}>
+                    <dt>{humanizeString(key)}:</dt>
+                    <dd>
+                      {key.endsWith('Date')
+                        ? new Date(value).toString()
+                        : value}
+                    </dd>
+                  </React.Fragment>
+                ),
+              );
+              return <dl>{items}</dl>;
+            }),
+          loading: () => 'Loading Service Request Status...',
+        });
+
+        return <LoadableServiceRequestStatus />;
+      }
+    }
+
+    const srStatusOrDeleteButton = task =>
       (status !== 0 && (
         <div>
-          <LoadableServiceRequestStatus />
+          <ServiceRequestDetails task={task} />
         </div>
       )) || (
         <button
@@ -118,6 +133,25 @@ class SubmissionDetails extends React.Component {
           Delete Submission
         </button>
       );
+
+    const LoadableTasks = Loadable({
+      loader: () =>
+        axios.get(`/api/tasks/${objectId}`).then(({ data }) => () => {
+          const tasks = data;
+          const items = tasks.map(task => (
+            <React.Fragment key={task.action}>
+              <dt>{humanizeString(task.action)}:</dt>
+              <dd>
+                {task.action === 'tweet report'
+                  ? <a href={task.tweet_url} target="_blank" rel="noopener noreferrer">{task.message}</a>
+                  : srStatusOrDeleteButton(task)}
+              </dd>
+            </React.Fragment>
+          ));
+          return <dl>{items}</dl>;
+        }),
+      loading: () => 'Loading Tasks...',
+    });
 
     return (
       <details
@@ -141,7 +175,7 @@ class SubmissionDetails extends React.Component {
             <p>{reportDescription}</p>
             <ImagesAndVideos />
 
-            {srStatusOrDeleteButton()}
+            <LoadableTasks />
           </React.Fragment>
         )}
       </details>

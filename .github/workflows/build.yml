@@ -26,6 +26,10 @@ jobs:
         GEO_APP_ID: ${{ secrets.GEO_APP_ID }}
         GEO_APP_KEY: ${{ secrets.GEO_APP_KEY }}
         GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+        PARSE_APP_ID: ${{ secrets.PARSE_APP_ID }}
+        PARSE_JAVASCRIPT_KEY: ${{ secrets.PARSE_JAVASCRIPT_KEY }}
+        PARSE_MASTER_KEY: ${{ secrets.PARSE_MASTER_KEY }}
+        PARSE_SERVER_URL: ${{ secrets.PARSE_SERVER_URL }}
       run: yarn test
     - run: yarn build --release
       env:

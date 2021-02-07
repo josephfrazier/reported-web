@@ -31,4 +31,4 @@ jobs:
       env:
         CI: true
     - run: yarn serve & sleep 1
-    - run: curl localhost:3000
+    - run: curl -D- localhost:3000/api/categories

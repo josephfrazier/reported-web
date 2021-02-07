@@ -462,7 +462,7 @@ const serverConfig = {
     './chunk-manifest.json',
     './asset-manifest.json',
     nodeExternals({
-      whitelist: [reStyle, reImage],
+      allowlist: [reStyle, reImage],
     }),
   ],
 

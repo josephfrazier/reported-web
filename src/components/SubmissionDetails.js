@@ -74,22 +74,14 @@ class SubmissionDetails extends React.Component {
     const LoadableServiceRequestStatus = Loadable({
       loader: () =>
         axios.get(`/srlookup/${reqnumber}`).then(({ data }) => () => {
-          const { error, threeOneOneSRLookupResponse } = data;
-          if (error) {
-            const { errorMessage, errorCode } = error;
-            return `${errorMessage} (error code ${errorCode})`;
-          }
-
-          const items = Object.entries(threeOneOneSRLookupResponse[0]).map(
-            ([key, value]) => (
-              <React.Fragment key={key}>
-                <dt>{humanizeString(key)}:</dt>
-                <dd>
-                  {key.endsWith('Date') ? new Date(value).toString() : value}
-                </dd>
-              </React.Fragment>
-            ),
-          );
+          const items = Object.entries(data).map(([key, value]) => (
+            <React.Fragment key={key}>
+              <dt>{humanizeString(key)}:</dt>
+              <dd>
+                {key.endsWith('Date') ? new Date(value).toString() : value}
+              </dd>
+            </React.Fragment>
+          ));
           return <dl>{items}</dl>;
         }),
       loading: () => 'Loading Service Request Status...',

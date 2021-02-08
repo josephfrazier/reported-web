@@ -288,6 +288,9 @@ app.get('/srlookup/:reqnumber', (req, res) => {
       const { document } = new JSDOM(data).window;
 
       const result = {};
+      result.description = document.querySelector(
+        '#page-wrapper p',
+      ).textContent;
       [
         ...document.querySelectorAll('#page-wrapper td.form-control-cell'),
       ].forEach(e => {

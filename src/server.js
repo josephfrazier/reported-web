@@ -26,6 +26,7 @@ import axios from 'axios';
 import multer from 'multer';
 import stringify from 'json-stringify-safe';
 import DelayedResponse from 'http-delayed-response';
+import { JSDOM } from 'jsdom';
 
 import { isImage, isVideo } from './isImage.js';
 import { validateLocation, processValidation } from './geoclient.js';
@@ -267,8 +268,16 @@ app.use('/api/deleteSubmission', (req, res) => {
     .catch(handlePromiseRejection(res));
 });
 
-function srlookup({ reqnumber }) {
-  return axios.get(`http://www1.nyc.gov/apps/311api/srlookup/${reqnumber}`);
+async function srlookup({ reqnumber }) {
+  const response = await axios.get(
+    `https://portal.311.nyc.gov/api-get-sr-or-correspondence-by-number/?number=${reqnumber}`,
+  );
+  const {
+    data: { srid },
+  } = response;
+  const url = `https://portal.311.nyc.gov/sr-details/?id=${srid}`;
+
+  return axios.get(url);
 }
 
 app.get('/srlookup/:reqnumber', (req, res) => {
@@ -276,7 +285,23 @@ app.get('/srlookup/:reqnumber', (req, res) => {
 
   srlookup({ reqnumber })
     .then(({ data }) => {
-      res.json(data);
+      const { document } = new JSDOM(data).window;
+
+      const result = {};
+      result.description = document.querySelector(
+        '#page-wrapper p',
+      ).textContent;
+      [
+        ...document.querySelectorAll('#page-wrapper td.form-control-cell'),
+      ].forEach(e => {
+        const key = e.querySelector('label').textContent;
+        const input = e.querySelector('input');
+        const value = input && input.value;
+
+        result[key] = value;
+      });
+
+      res.json(result);
     })
     .catch(handlePromiseRejection(res));
 });

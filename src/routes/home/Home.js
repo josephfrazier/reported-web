@@ -583,8 +583,6 @@ class Home extends React.Component {
       });
       this.attachmentPlates.set(attachmentFile, result);
       return result;
-    } catch (err) {
-      throw err;
     } finally {
       console.timeEnd('extractPlate'); // eslint-disable-line no-console
     }

@@ -28,11 +28,15 @@ class ElectriCitibikes extends React.Component {
     title: PropTypes.string.isRequired,
   };
 
-  state = {
-    data: {
-      features: [],
-    },
-  };
+  constructor(props) {
+    super(props);
+
+    this.state = {
+      data: {
+        features: [],
+      },
+    };
+  }
 
   componentDidMount() {
     this.updateData();

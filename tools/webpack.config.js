@@ -14,7 +14,7 @@ import WebpackAssetsManifest from 'webpack-assets-manifest';
 import nodeExternals from 'webpack-node-externals';
 import { BundleAnalyzerPlugin } from 'webpack-bundle-analyzer';
 import overrideRules from './lib/overrideRules';
-import pkg from '../package.json';
+import pkg from '../package';
 
 const ROOT_DIR = path.resolve(__dirname, '..');
 const resolvePath = (...args) => path.resolve(ROOT_DIR, ...args);

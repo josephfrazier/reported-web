@@ -3,7 +3,7 @@
  */
 /* eslint-env jest */
 
-import getVehicleType from './getVehicleType.js';
+import getVehicleType from './getVehicleType';
 
 describe('getVehicleType', () => {
   test('returns the right object', async () => {

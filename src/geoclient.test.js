@@ -3,7 +3,7 @@
  */
 /* eslint-env jest */
 
-import { validateLocation, processValidation } from './geoclient.js';
+import { validateLocation, processValidation } from './geoclient';
 
 describe('validateLocation', () => {
   test('returns the right object', async () => {

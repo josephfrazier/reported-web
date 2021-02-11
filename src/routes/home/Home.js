@@ -12,7 +12,7 @@ import PropTypes from 'prop-types';
 import withStyles from 'isomorphic-style-loader/lib/withStyles';
 import FileReaderInput from 'react-file-reader-input';
 import blobUtil from 'blob-util';
-import exifr from 'exifr/dist/full.umd.js';
+import exifr from 'exifr/dist/full.umd';
 import axios from 'axios';
 import promisedLocation from 'promised-location';
 import { compose, withProps } from 'recompose';
@@ -44,8 +44,8 @@ import Dropzone from '@josephfrazier/react-dropzone';
 import marx from 'marx-css/css/marx.css';
 import s from './Home.css';
 
-import SubmissionDetails from '../../components/SubmissionDetails.js';
-import { isImage, isVideo } from '../../isImage.js';
+import SubmissionDetails from '../../components/SubmissionDetails';
+import { isImage, isVideo } from '../../isImage';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyDlwm2ykA0ohTXeVepQYvkcmdjz2M2CKEI';
 

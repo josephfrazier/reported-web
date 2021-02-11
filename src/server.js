@@ -29,10 +29,10 @@ import DelayedResponse from 'http-delayed-response';
 import { JSDOM } from 'jsdom';
 import heicConvert from 'heic-convert';
 
-import { isImage, isVideo } from './isImage.js';
-import { validateLocation, processValidation } from './geoclient.js';
-import getVehicleType from './getVehicleType.js';
-import { submit_311_illegal_parking_report } from './311.js'; // eslint-disable-line camelcase
+import { isImage, isVideo } from './isImage';
+import { validateLocation, processValidation } from './geoclient';
+import getVehicleType from './getVehicleType';
+import { submit_311_illegal_parking_report } from './311'; // eslint-disable-line camelcase
 
 import App from './components/App';
 import Html from './components/Html';
@@ -40,8 +40,8 @@ import { ErrorPageWithoutStyle } from './routes/error/ErrorPage';
 import errorPageStyle from './routes/error/ErrorPage.css';
 import createFetch from './createFetch';
 import router from './router';
-// import assets from './asset-manifest.json'; // eslint-disable-line import/no-unresolved
-import chunks from './chunk-manifest.json'; // eslint-disable-line import/no-unresolved
+// import assets from './asset-manifest'; // eslint-disable-line import/no-unresolved
+import chunks from './chunk-manifest'; // eslint-disable-line import/no-unresolved
 import config from './config';
 
 require('dotenv').config();

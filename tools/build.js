@@ -13,7 +13,7 @@ import clean from './clean';
 import copy from './copy';
 import bundle from './bundle';
 import render from './render';
-import pkg from '../package.json';
+import pkg from '../package';
 
 /**
  * Compiles the project from source files into a distributable

@@ -4,7 +4,7 @@
 import '@babel/polyfill';
 import React from 'react';
 import renderer from 'react-test-renderer';
-import { ElectriCitibikeList } from './ElectriCitibikes.js';
+import { ElectriCitibikeList } from './ElectriCitibikes';
 
 import {
   data,
@@ -12,7 +12,7 @@ import {
   longitude,
   updatedAt,
   boroughBoundariesFeatureCollection,
-} from './test_state.json';
+} from './test_state';
 
 require('timezone-mock').register('US/Eastern');
 

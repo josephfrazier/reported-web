@@ -66,7 +66,7 @@ export default DisqusThread;
 
 ```js
 import React from 'react';
-import DisqusThread from './DisqusThread.js';
+import DisqusThread from './DisqusThread';
 
 class MyComponent extends React.Component {
   render() {

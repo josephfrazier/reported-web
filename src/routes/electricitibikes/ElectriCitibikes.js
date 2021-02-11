@@ -12,7 +12,7 @@ import PropTypes from 'prop-types';
 import promisedLocation from 'promised-location';
 import humanizeDistance from 'humanize-distance';
 import geodist from 'geodist';
-import 'intl/locale-data/jsonp/en.js'; // https://github.com/andyearnshaw/Intl.js/issues/271#issuecomment-292233493
+import 'intl/locale-data/jsonp/en'; // https://github.com/andyearnshaw/Intl.js/issues/271#issuecomment-292233493
 import strftime from 'strftime';
 import PolygonLookup from 'polygon-lookup';
 import geolib from 'geolib';

@@ -152,10 +152,11 @@ const config = {
               importLoaders: 1,
               sourceMap: isDebug,
               // CSS Modules https://github.com/css-modules/css-modules
-              modules: true,
-              localIdentName: isDebug
-                ? '[name]-[local]-[hash:base64:5]'
-                : '[hash:base64:5]',
+              modules: {
+                localIdentName: isDebug
+                  ? '[name]-[local]-[hash:base64:5]'
+                  : '[hash:base64:5]',
+              },
               // CSS Nano http://cssnano.co/
               // minimize: isDebug ? false : minimizeCssOptions,
             },

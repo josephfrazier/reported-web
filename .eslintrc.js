@@ -104,6 +104,7 @@ module.exports = {
     'react/forbid-prop-types': 'off',
     'react/destructuring-assignment': 'off',
     'react/static-property-placement': ['error', 'static public field'],
+    'react/jsx-props-no-spreading': 'off',
   },
 
   settings: {

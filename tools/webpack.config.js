@@ -34,9 +34,9 @@ const staticAssetName = isDebug
   : '[hash:8].[ext]';
 
 // CSS Nano options http://cssnano.co/
-const minimizeCssOptions = {
-  discardComments: { removeAll: true },
-};
+// const minimizeCssOptions = {
+//   discardComments: { removeAll: true },
+// };
 
 //
 // Common configuration chunk to be used for both
@@ -139,7 +139,7 @@ const config = {
             loader: 'css-loader',
             options: {
               sourceMap: isDebug,
-              minimize: isDebug ? false : minimizeCssOptions,
+              // minimize: isDebug ? false : minimizeCssOptions,
             },
           },
 
@@ -157,7 +157,7 @@ const config = {
                 ? '[name]-[local]-[hash:base64:5]'
                 : '[hash:base64:5]',
               // CSS Nano http://cssnano.co/
-              minimize: isDebug ? false : minimizeCssOptions,
+              // minimize: isDebug ? false : minimizeCssOptions,
             },
           },
 

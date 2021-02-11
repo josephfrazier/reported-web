@@ -5743,22 +5743,6 @@ hawk@~6.0.2:
     hoek "4.x.x"
     sntp "2.x.x"
 
-heic-convert@^1.2.4:
-  version "1.2.4"
-  resolved "https://registry.yarnpkg.com/heic-convert/-/heic-convert-1.2.4.tgz#605820f98ace3949a40fc7b263ee0bc573a0176b"
-  integrity sha512-klJHyv+BqbgKiCQvCqI9IKIvweCcohDuDl0Jphearj8+16+v8eff2piVevHqq4dW9TK0r1onTR6PKHP1I4hdbA==
-  dependencies:
-    heic-decode "^1.1.2"
-    jpeg-js "^0.4.1"
-    pngjs "^3.4.0"
-
-heic-decode@^1.1.2:
-  version "1.1.2"
-  resolved "https://registry.yarnpkg.com/heic-decode/-/heic-decode-1.1.2.tgz#974701666432e31ed64b2263a1ece7cff5218209"
-  integrity sha512-UF8teegxvzQPdSTcx5frIUhitNDliz/9Pui0JFdIqVRE00spVE33DcCYtZqaLNyd4y5RP/QQWZFIc1YWVKKm2A==
-  dependencies:
-    libheif-js "^1.10.0"
-
 heroku-self-ping@^1.1.4:
   version "1.1.5"
   resolved "https://registry.yarnpkg.com/heroku-self-ping/-/heroku-self-ping-1.1.5.tgz#0547ca34c51c687347c8a1b7a5f278e6718f2bc6"
@@ -7080,11 +7064,6 @@ jmespath@0.15.0:
   resolved "https://registry.yarnpkg.com/jmespath/-/jmespath-0.15.0.tgz#a3f222a9aae9f966f5d27c796510e28091764217"
   integrity sha1-o/Iiqarp+Wb10nx5ZRDigJF2Qhc=
 
-jpeg-js@^0.4.1:
-  version "0.4.3"
-  resolved "https://registry.yarnpkg.com/jpeg-js/-/jpeg-js-0.4.3.tgz#6158e09f1983ad773813704be80680550eff977b"
-  integrity sha512-ru1HWKek8octvUHFHvE5ZzQ1yAsJmIvRdGWvSoKV52XKyuyYA437QWDttXT8eZXDSbuMpHlLzPDZUPd6idIz+Q==
-
 js-base64@^2.1.9:
   version "2.4.5"
   resolved "https://registry.yarnpkg.com/js-base64/-/js-base64-2.4.5.tgz#e293cd3c7c82f070d700fc7a1ca0a2e69f101f92"
@@ -7419,11 +7398,6 @@ levn@^0.3.0, levn@~0.3.0:
   dependencies:
     prelude-ls "~1.1.2"
     type-check "~0.3.2"
-
-libheif-js@^1.10.0:
-  version "1.10.0"
-  resolved "https://registry.yarnpkg.com/libheif-js/-/libheif-js-1.10.0.tgz#414774cea65a783d603570967501c06a4d8bb885"
-  integrity sha512-o6lxGpy5RmO8aUMnDuHulkLd0g0QFWPWbZ5fjq2SM+E/xpeCTw5l+p//r8dmgKQiPzcXyitLr27gdGOLBIKBfg==
 
 lie@*:
   version "3.3.0"
@@ -9724,11 +9698,6 @@ pluralize@^7.0.0:
 pn@^1.1.0:
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/pn/-/pn-1.1.0.tgz#e2f4cef0e219f463c179ab37463e4e1ecdccbafb"
-
-pngjs@^3.4.0:
-  version "3.4.0"
-  resolved "https://registry.yarnpkg.com/pngjs/-/pngjs-3.4.0.tgz#99ca7d725965fb655814eaf65f38f12bbdbf555f"
-  integrity sha512-NCrCHhWmnQklfH4MtJMRjZ2a8c80qXeMlQMv2uVp9ISJMTt562SbGd6n2oq0PaPgKm7Z6pL9E2UlLIhC+SHL3w==
 
 point-in-polygon@1.0.1:
   version "1.0.1"

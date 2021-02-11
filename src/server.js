@@ -20,13 +20,14 @@ import ReactDOM from 'react-dom/server';
 import PrettyError from 'pretty-error';
 import OpenalprApi from 'openalpr_api';
 import Parse from 'parse/node';
-import fileType from 'file-type-es5';
+import FileType from 'file-type/browser';
 import sharp from 'sharp';
 import axios from 'axios';
 import multer from 'multer';
 import stringify from 'json-stringify-safe';
 import DelayedResponse from 'http-delayed-response';
 import { JSDOM } from 'jsdom';
+import heicConvert from 'heic-convert';
 
 import { isImage, isVideo } from './isImage.js';
 import { validateLocation, processValidation } from './geoclient.js';
@@ -436,11 +437,11 @@ app.use('/submit', (req, res) => {
         // upload attachments
         // http://docs.parseplatform.org/js/guide/#creating-a-parsefile
 
-        const attachmentsWithFormats = attachmentData.map(
-          ({ buffer: attachmentBuffer }) => ({
+        const attachmentsWithFormats = await Promise.all(
+          attachmentData.map(async ({ buffer: attachmentBuffer }) => ({
             attachmentBuffer,
-            ext: fileType(attachmentBuffer).ext,
-          }),
+            ext: await FileType.fromBuffer(attachmentBuffer).ext,
+          })),
         );
 
         const images = attachmentsWithFormats.filter(isImage);
@@ -491,7 +492,7 @@ app.use('/submit', (req, res) => {
 });
 
 // adapted from https://github.com/openalpr/cloudapi/tree/8141c1ba57f03df4f53430c6e5e389b39714d0e0/javascript#getting-started
-app.use('/openalpr', upload.single('attachmentFile'), (req, res) => {
+app.use('/openalpr', upload.single('attachmentFile'), async (req, res) => {
   const country = 'us';
   const opts = {
     recognizeVehicle: 1,
@@ -501,10 +502,24 @@ app.use('/openalpr', upload.single('attachmentFile'), (req, res) => {
     prewarp: '',
   };
 
-  const attachmentBuffer = req.file.buffer;
+  let attachmentBuffer = req.file.buffer;
   const api = new OpenalprApi.DefaultApi();
 
   const secretKey = OPENALPR_SECRET_KEY; // {String} The secret key used to authenticate your account. You can view your secret key by visiting https://cloud.openalpr.com/
+
+  try {
+    console.time('heic-convert'); // eslint-disable-line no-console
+    attachmentBuffer = await heicConvert({
+      buffer: attachmentBuffer,
+      format: 'JPEG',
+      quality: 1,
+    });
+  } catch (e) {
+    console.error('could not convert file from heic to jpg');
+    console.error(e);
+  } finally {
+    console.timeEnd('heic-convert'); // eslint-disable-line no-console
+  }
 
   orientImageBuffer({ attachmentBuffer })
     .then(buffer => buffer.toString('base64'))

@@ -81,9 +81,9 @@ module.exports = {
     ],
 
     // Allow <label> to refer to nested <input>
-    // https://github.com/evcohen/eslint-plugin-jsx-a11y/blob/ab0bd82dad4a5bc16ed4a62ea71b9e6b53218c9e/docs/rules/label-has-for.md
+    // https://github.com/jsx-eslint/eslint-plugin-jsx-a11y/blob/066ccffac37459e5b3dcb607f06ad3e88bc39c08/docs/rules/control-has-associated-label.md
     // TODO make this more granular
-    'jsx-a11y/label-has-for': 'off',
+    'jsx-a11y/control-has-associated-label': 'off',
 
     // Allow .js files to use JSX syntax
     // https://github.com/yannickcr/eslint-plugin-react/blob/master/docs/rules/jsx-filename-extension.md

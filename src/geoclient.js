@@ -17,8 +17,9 @@ export async function validateLocation({ lat, long }) {
   const response = { lat, long };
   const GOOGLE_MAP_URL =
     'https://maps.googleapis.com/maps/api/geocode/json?latlng=';
-  const url = `${GOOGLE_MAP_URL +
-    lat},${long}&result_type=street_address&key=${GOOGLE_API_KEY}`;
+  const url = `${
+    GOOGLE_MAP_URL + lat
+  },${long}&result_type=street_address&key=${GOOGLE_API_KEY}`;
   const { data: googleResponse } = await axios.get(url);
 
   // check if zero results

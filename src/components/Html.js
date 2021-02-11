@@ -45,12 +45,12 @@ class Html extends React.Component {
           <meta name="description" content={description} />
           <meta name="viewport" content="width=device-width, initial-scale=1" />
           <meta name="theme-color" content="#008000" />
-          {scripts.map(script => (
+          {scripts.map((script) => (
             <link key={script} rel="preload" href={script} as="script" />
           ))}
           <link rel="manifest" href="/site.webmanifest" />
           <link rel="apple-touch-icon" href="/icon.png" />
-          {styles.map(style => (
+          {styles.map((style) => (
             <style
               key={style.id}
               id={style.id}
@@ -63,7 +63,7 @@ class Html extends React.Component {
           <script
             dangerouslySetInnerHTML={{ __html: `window.App=${serialize(app)}` }}
           />
-          {scripts.map(script => (
+          {scripts.map((script) => (
             <script key={script} src={script} />
           ))}
           {config.analytics.googleTrackingId && (

@@ -113,7 +113,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json({ limit: '80mb' }));
 // attachments are no longer sent as base64 JSON, but bodyParser still tries to parse non-JSON bodies, so this 80mb `limit` needs to be here to avoid errors
 
-const handlePromiseRejection = res => error => {
+const handlePromiseRejection = (res) => (error) => {
   console.error({ error });
   res.status(500).json(JSON.parse(stringify({ error })));
 };
@@ -132,7 +132,7 @@ async function logIn({ email, password }) {
   return user
     .signUp(null)
     .catch(() => Parse.User.logIn(username, password))
-    .then(userAgain => {
+    .then((userAgain) => {
       console.info({ user: userAgain });
       if (!userAgain.get('emailVerified')) {
         userAgain.set({ email }); // reset email to trigger a verification email
@@ -150,7 +150,7 @@ async function logIn({ email, password }) {
 
 app.use('/api/logIn', (req, res) => {
   logIn(req.body)
-    .then(user => res.json(user))
+    .then((user) => res.json(user))
     .catch(handlePromiseRejection(res));
 });
 
@@ -182,7 +182,7 @@ async function saveUser({
     testify,
   };
 
-  return logIn({ email, password }).then(userAgain => {
+  return logIn({ email, password }).then((userAgain) => {
     userAgain.set(fields);
     return userAgain.save(null, {
       // sessionToken must be manually passed in:
@@ -194,7 +194,7 @@ async function saveUser({
 
 app.use('/saveUser', (req, res) => {
   saveUser(req.body)
-    .then(user => res.json(user))
+    .then((user) => res.json(user))
     .catch(handlePromiseRejection(res));
 });
 
@@ -203,7 +203,7 @@ app.use('/api/categories', (req, res) => {
   const query = new Parse.Query(Category);
   query
     .find()
-    .then(results => {
+    .then((results) => {
       const categories = results.map(({ id, attributes }) => ({
         objectId: id,
         ...attributes,
@@ -216,19 +216,19 @@ app.use('/api/categories', (req, res) => {
 app.use('/api/validate_location', (req, res) => {
   const { lat, long } = req.body;
   validateLocation({ lat, long })
-    .then(body => res.json(body))
+    .then((body) => res.json(body))
     .catch(handlePromiseRejection(res));
 });
 
 app.use('/api/process_validation', (req, res) => {
   const { lat, long } = req.body;
   processValidation({ lat, long })
-    .then(body => res.json(body))
+    .then((body) => res.json(body))
     .catch(handlePromiseRejection(res));
 });
 
 async function getSubmissions(req) {
-  return saveUser(req.body).then(user => {
+  return saveUser(req.body).then((user) => {
     const Submission = Parse.Object.extend('submission');
     const query = new Parse.Query(Submission);
     // Search by "Username" (email address) to show submissions made by all
@@ -243,14 +243,14 @@ async function getSubmissions(req) {
 
 app.use('/submissions', (req, res) => {
   getSubmissions(req)
-    .then(results => {
+    .then((results) => {
       const submissions = results.map(({ id, attributes }) => ({
         objectId: id,
         ...attributes,
       }));
       return submissions;
     })
-    .then(submissions => {
+    .then((submissions) => {
       res.json({ submissions });
     })
     .catch(handlePromiseRejection(res));
@@ -259,8 +259,8 @@ app.use('/submissions', (req, res) => {
 app.use('/api/deleteSubmission', (req, res) => {
   const { objectId } = req.body;
   getSubmissions(req)
-    .then(submissions => {
-      const submission = submissions.find(sub => sub.id === objectId);
+    .then((submissions) => {
+      const submission = submissions.find((sub) => sub.id === objectId);
       assert(submission); // TODO make it obvious that this is necessary
       return submission.destroy().then(() => {
         res.json({ objectId });
@@ -294,7 +294,7 @@ app.get('/srlookup/:reqnumber', (req, res) => {
       ).textContent;
       [
         ...document.querySelectorAll('#page-wrapper td.form-control-cell'),
-      ].forEach(e => {
+      ].forEach((e) => {
         const key = e.querySelector('label').textContent;
         const input = e.querySelector('input');
         const value = input && input.value;
@@ -322,8 +322,8 @@ function orientImageBuffer({ attachmentBuffer }) {
     .rotate()
     .toBuffer()
     .catch(() => attachmentBuffer)
-    .then(buffer => Buffer.from(buffer))
-    .then(buffer => {
+    .then((buffer) => Buffer.from(buffer))
+    .then((buffer) => {
       console.timeEnd(`orientImageBuffer`); // eslint-disable-line no-console
       return buffer;
     });
@@ -332,7 +332,7 @@ function orientImageBuffer({ attachmentBuffer }) {
 app.use('/submit', (req, res) => {
   // Call upload.array directly to intercept errors and respond with JSON, see the following:
   // https://github.com/expressjs/multer/tree/80ee2f52432cc0c81c93b03c6b0b448af1f626e5#error-handling
-  upload.array('attachmentData[]')(req, res, error => {
+  upload.array('attachmentData[]')(req, res, (error) => {
     if (error) {
       // Make error.message enumerable so it gets sent to the client
       const { message } = error;
@@ -379,7 +379,7 @@ app.use('/submit', (req, res) => {
       Phone,
       testify,
     })
-      .then(async user => {
+      .then(async (user) => {
         // make sure all required fields are present
         Object.entries({
           plate,
@@ -475,7 +475,7 @@ app.use('/submit', (req, res) => {
         ]);
         return submission.save(null);
       })
-      .then(submission => {
+      .then((submission) => {
         // Unwrap encoded Date objects into ISO strings
         // before: { __type: 'Date', iso: '2018-05-26T23:17:22.000Z' }
         // after: '2018-05-26T23:17:22.000Z'
@@ -522,8 +522,8 @@ app.use('/openalpr', upload.single('attachmentFile'), async (req, res) => {
   }
 
   orientImageBuffer({ attachmentBuffer })
-    .then(buffer => buffer.toString('base64'))
-    .then(attachmentBytesRotated => {
+    .then((buffer) => buffer.toString('base64'))
+    .then((attachmentBytesRotated) => {
       console.time(`/openalpr recognizeBytes`); // eslint-disable-line no-console
       return new Promise((resolve, reject) => {
         api.recognizeBytes(
@@ -542,7 +542,7 @@ app.use('/openalpr', upload.single('attachmentFile'), async (req, res) => {
         );
       });
     })
-    .then(data => res.json(data))
+    .then((data) => res.json(data))
     .catch(handlePromiseRejection(res));
 });
 
@@ -559,7 +559,7 @@ app.use('/api/submit_311_illegal_parking_report', (req, res) => {
   delayed.json();
   const delayedCallback = delayed.start();
   submit_311_illegal_parking_report(req.body)
-    .then(result => {
+    .then((result) => {
       delayedCallback(null, { result });
     })
     .catch(handlePromiseRejection(res));
@@ -576,7 +576,7 @@ app.get('*', async (req, res, next) => {
     // https://github.com/kriasoft/isomorphic-style-loader
     const insertCss = (...styles) => {
       // eslint-disable-next-line no-underscore-dangle
-      styles.forEach(style => css.add(style._getCss()));
+      styles.forEach((style) => css.add(style._getCss()));
     };
 
     // Universal HTTP client
@@ -609,9 +609,9 @@ app.get('*', async (req, res, next) => {
     data.styles = [{ id: 'css', cssText: [...css].join('') }];
 
     const scripts = new Set();
-    const addChunk = chunk => {
+    const addChunk = (chunk) => {
       if (chunks[chunk]) {
-        chunks[chunk].forEach(asset => scripts.add(asset));
+        chunks[chunk].forEach((asset) => scripts.add(asset));
       } else if (__DEV__) {
         throw new Error(`Chunk with name '${chunk}' cannot be found`);
       }

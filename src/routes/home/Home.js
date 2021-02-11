@@ -70,7 +70,7 @@ const defaultLongitude = -74.006;
 
 // adapted from https://www.bignerdranch.com/blog/dont-over-react/
 const urls = new WeakMap();
-const getBlobUrl = blob => {
+const getBlobUrl = (blob) => {
   if (urls.has(blob)) {
     return urls.get(blob);
   }
@@ -86,7 +86,7 @@ const geolocate = () =>
     return { coords: { latitude, longitude } };
   });
 
-const jsDateToCreateDate = jsDate =>
+const jsDateToCreateDate = (jsDate) =>
   jsDate.toISOString().replace(/:\d\d\..*/g, '');
 
 async function blobToBuffer({ attachmentFile }) {
@@ -135,7 +135,7 @@ function extractLocationDateFromVideo({ attachmentArrayBuffer }) {
   // https://stackoverflow.com/questions/8936984/uint8array-to-string-in-javascript/36949791#36949791
   const string = new TextDecoder('utf-8').decode(uint8array);
   const [latitude, longitude] = execall(/[+-][\d.]+/g, string)
-    .map(m => m.match)
+    .map((m) => m.match)
     .map(Number);
 
   // TODO make sure time is correct (ugh timezones...)
@@ -156,7 +156,7 @@ async function extractLocationDate({ attachmentFile }) {
   }
 
   console.time(`exifr.parse`); // eslint-disable-line no-console
-  return exifr.parse(attachmentBuffer).then(exifData => {
+  return exifr.parse(attachmentBuffer).then((exifData) => {
     console.timeEnd(`exifr.parse`); // eslint-disable-line no-console
     return Promise.all([
       extractLocation({ exifData }),
@@ -284,16 +284,16 @@ class Home extends React.Component {
 
     // Allow users to paste image data
     // adapted from https://github.com/charliewilco/react-gluejar/blob/b69d7cfa9d08bfb34d8eb6815e4b548528218883/src/index.js#L85
-    window.addEventListener('paste', clipboardEvent => {
+    window.addEventListener('paste', (clipboardEvent) => {
       const { items } = clipboardEvent.clipboardData;
       // [].map.call because `items` isn't an array
       const attachmentData = [].map
-        .call(items, item => item.getAsFile())
-        .filter(file => !!file);
+        .call(items, (item) => item.getAsFile())
+        .filter((file) => !!file);
       this.handleAttachmentData({ attachmentData });
     });
 
-    window.addEventListener('beforeunload', beforeUnloadEvent => {
+    window.addEventListener('beforeunload', (beforeUnloadEvent) => {
       if (this.state.attachmentData.length === 0) {
         return '';
       }
@@ -320,9 +320,9 @@ class Home extends React.Component {
         objectId,
       })
       .then(() => {
-        this.setState(state => ({
+        this.setState((state) => ({
           submissions: state.submissions.filter(
-            sub => sub.objectId !== objectId,
+            (sub) => sub.objectId !== objectId,
           ),
         }));
       });
@@ -353,14 +353,14 @@ class Home extends React.Component {
       longitude,
       formatted_address: 'Finding Address...',
     });
-    debouncedProcessValidation({ latitude, longitude }).then(data => {
+    debouncedProcessValidation({ latitude, longitude }).then((data) => {
       this.setState({
         formatted_address: data.google_response.results[0].formatted_address,
       });
     });
   };
 
-  setCreateDate = millisecondsSinceEpoch => {
+  setCreateDate = (millisecondsSinceEpoch) => {
     // Adjust date to local time
     // https://stackoverflow.com/questions/674721/how-do-i-subtract-minutes-from-a-date-in-javascript
     const MS_PER_MINUTE = 60000;
@@ -402,7 +402,7 @@ class Home extends React.Component {
 
         if (
           this.state.submissions.some(
-            submission =>
+            (submission) =>
               submission.license === plate && submission.state === licenseState,
           )
         ) {
@@ -416,7 +416,7 @@ class Home extends React.Component {
 
         this.setState({
           vehicleInfoComponent: (
-            <React.Fragment>
+            <>
               {plate} in {usStateNames[licenseState]}: {vehicleYear}{' '}
               {vehicleMake} {vehicleModel} ({vehicleBody})
               <img
@@ -426,11 +426,11 @@ class Home extends React.Component {
                   display: 'block',
                 }}
               />
-            </React.Fragment>
+            </>
           ),
         });
       })
-      .catch(err => {
+      .catch((err) => {
         console.error(err);
 
         if (plate !== this.state.plate) {
@@ -487,7 +487,7 @@ class Home extends React.Component {
   };
 
   handleAttachmentData = async ({ attachmentData }) => {
-    this.setState(state => ({
+    this.setState((state) => ({
       attachmentData: state.attachmentData.concat(attachmentData),
     }));
 
@@ -505,7 +505,7 @@ class Home extends React.Component {
           : 'the file.';
 
         this.alert(
-          <React.Fragment>
+          <>
             <p>
               Could not extract plate and/or location and/or date from{' '}
               {fileCopy}
@@ -513,14 +513,14 @@ class Home extends React.Component {
             </p>
 
             <p>(Error message: {err.message})</p>
-          </React.Fragment>,
+          </>,
         );
         console.error(`Error: ${err.message}`);
       }
     }
   };
 
-  handleInputChange = event => {
+  handleInputChange = (event) => {
     const { target } = event;
     const value =
       target.type === 'checkbox'
@@ -586,16 +586,16 @@ class Home extends React.Component {
     }
   };
 
-  handleAxiosError = error =>
+  handleAxiosError = (error) =>
     Promise.reject(error)
-      .catch(err => {
+      .catch((err) => {
         this.alert(`Error: ${err.response.data.error.message}`);
       })
-      .catch(err => {
+      .catch((err) => {
         console.error(err);
       });
 
-  alert = modalText => this.setState({ modalText });
+  alert = (modalText) => this.setState({ modalText });
 
   closeAlert = () => this.setState({ modalText: null });
 
@@ -613,7 +613,7 @@ class Home extends React.Component {
     return (
       <Dropzone
         className={s.root}
-        onDrop={attachmentData => {
+        onDrop={(attachmentData) => {
           this.handleAttachmentData({ attachmentData });
         }}
         accept="image/*, video/*"
@@ -654,7 +654,7 @@ class Home extends React.Component {
             {/* TODO use tabbed interface instead of toggling <details> ? */}
             <details
               open={this.state.isUserInfoOpen}
-              onToggle={evt => {
+              onToggle={(evt) => {
                 this.setState({
                   isUserInfoOpen: evt.target.open,
                 });
@@ -663,7 +663,7 @@ class Home extends React.Component {
               <summary>Create/Edit User (click to expand)</summary>
 
               <form
-                onSubmit={e => {
+                onSubmit={(e) => {
                   e.preventDefault();
                   this.setState({ isUserInfoSaving: true });
                   axios
@@ -688,12 +688,13 @@ class Home extends React.Component {
                       autoComplete="email"
                       value={this.state.email}
                       name="email"
-                      onChange={event => {
+                      onChange={(event) => {
                         this.handleInputChange({
                           target: {
                             name: event.target.name,
-                            value: event.target.value.replace(/@.*/, atDomain =>
-                              atDomain.toLowerCase(),
+                            value: event.target.value.replace(
+                              /@.*/,
+                              (atDomain) => atDomain.toLowerCase(),
                             ),
                           },
                         });
@@ -722,7 +723,7 @@ class Home extends React.Component {
                       <button
                         type="button"
                         onClick={() => {
-                          this.setState(state => ({
+                          this.setState((state) => ({
                             isPasswordRevealed: !state.isPasswordRevealed,
                           }));
                         }}
@@ -757,7 +758,7 @@ class Home extends React.Component {
 
                       const { data } = await axios
                         .post('/api/logIn', this.state)
-                        .catch(err => {
+                        .catch((err) => {
                           this.handleAxiosError(err);
                           return { data: false };
                         });
@@ -773,7 +774,7 @@ class Home extends React.Component {
                       this.setState(
                         // If a new user clicks the button after filling all the fields,
                         // don't override them with empty data from the server.
-                        state => ({
+                        (state) => ({
                           FirstName: FirstName || state.FirstName,
                           LastName: LastName || state.LastName,
                           Phone: Phone || state.Phone,
@@ -858,7 +859,7 @@ class Home extends React.Component {
               style={{
                 display: this.state.isUserInfoOpen ? 'none' : 'block',
               }}
-              onSubmit={async e => {
+              onSubmit={async (e) => {
                 e.preventDefault();
 
                 if (
@@ -881,7 +882,7 @@ class Home extends React.Component {
                       CreateDate: new Date(this.state.CreateDate).toISOString(),
                     }),
                     {
-                      onUploadProgress: progressEvent => {
+                      onUploadProgress: (progressEvent) => {
                         const {
                           loaded: submitProgressValue,
                           total: submitProgressMax,
@@ -893,7 +894,7 @@ class Home extends React.Component {
                         });
                       },
 
-                      onDownloadProgress: progressEvent => {
+                      onDownloadProgress: (progressEvent) => {
                         const {
                           loaded: submitProgressValue,
                           total: submitProgressMax,
@@ -916,7 +917,7 @@ class Home extends React.Component {
                         2,
                       )}`,
                     );
-                    this.setState(state => ({
+                    this.setState((state) => ({
                       attachmentData: [],
                       submissions: [submission].concat(state.submissions),
                       plateSuggestion: '',
@@ -924,7 +925,7 @@ class Home extends React.Component {
                     }));
                     this.setLicensePlate({ plate: '', licenseState: 'NY' });
                     this.alert(
-                      <React.Fragment>
+                      <>
                         <p>Thanks for your submission!</p>
                         <p>
                           Your information has been submitted to Reported. It
@@ -934,7 +935,7 @@ class Home extends React.Component {
                         {/*
                         <p>objectId: {data.submission.objectId}</p>
                         */}
-                      </React.Fragment>,
+                      </>,
                     );
                   })
                   .catch(this.handleAxiosError)
@@ -984,7 +985,7 @@ class Home extends React.Component {
                     flexWrap: 'wrap',
                   }}
                 >
-                  {this.state.attachmentData.map(attachmentFile => {
+                  {this.state.attachmentData.map((attachmentFile) => {
                     const { name } = attachmentFile;
                     const ext = fileExtension(name);
                     const isImg = isImage({ ext });
@@ -1021,9 +1022,9 @@ class Home extends React.Component {
                             background: 'white',
                           }}
                           onClick={() => {
-                            this.setState(state => ({
+                            this.setState((state) => ({
                               attachmentData: state.attachmentData.filter(
-                                file => file.name !== name,
+                                (file) => file.name !== name,
                               ),
                             }));
                           }}
@@ -1047,7 +1048,7 @@ class Home extends React.Component {
                     list="plateSuggestion"
                     ref={this.plateRef}
                     placeholder={this.state.plateSuggestion}
-                    onChange={event => {
+                    onChange={(event) => {
                       this.setLicensePlate({
                         plate: event.target.value.toUpperCase(),
                       });
@@ -1064,7 +1065,7 @@ class Home extends React.Component {
                     }}
                     value={this.state.licenseState}
                     name="licenseState"
-                    onChange={event => {
+                    onChange={(event) => {
                       this.setLicensePlate({
                         plate: this.state.plate,
                         licenseState: event.target.value,
@@ -1087,7 +1088,7 @@ class Home extends React.Component {
                     name="typeofuser"
                     onChange={this.handleInputChange}
                   >
-                    {typeofuserValues.map(typeofuser => (
+                    {typeofuserValues.map((typeofuser) => (
                       <option key={typeofuser} value={typeofuser}>
                         {typeofuser}
                       </option>
@@ -1102,7 +1103,7 @@ class Home extends React.Component {
                     name="typeofcomplaint"
                     onChange={this.handleInputChange}
                   >
-                    {this.props.typeofcomplaintValues.map(typeofcomplaint => (
+                    {this.props.typeofcomplaintValues.map((typeofcomplaint) => (
                       <option key={typeofcomplaint} value={typeofcomplaint}>
                         {typeofcomplaint}
                       </option>
@@ -1143,7 +1144,7 @@ class Home extends React.Component {
                       lat: this.state.latitude,
                       lng: this.state.longitude,
                     }}
-                    onRef={mapRef => {
+                    onRef={(mapRef) => {
                       this.mapRef = mapRef;
                     }}
                     onCenterChanged={() => {
@@ -1151,13 +1152,13 @@ class Home extends React.Component {
                       const longitude = this.mapRef.getCenter().lng();
                       this.setCoords({ latitude, longitude });
                     }}
-                    onSearchBoxMounted={ref => {
+                    onSearchBoxMounted={(ref) => {
                       this.searchBox = ref;
                     }}
                     onPlacesChanged={() => {
                       const places = this.searchBox.getPlaces();
 
-                      const nextMarkers = places.map(place => ({
+                      const nextMarkers = places.map((place) => ({
                         position: place.geometry.location,
                       }));
                       const { latitude, longitude } =
@@ -1185,7 +1186,7 @@ class Home extends React.Component {
                         .then(({ coords }) => {
                           this.setCoords(coords);
                         })
-                        .catch(err => {
+                        .catch((err) => {
                           this.alert(err.message);
                           console.error(err);
                         });
@@ -1264,7 +1265,7 @@ class Home extends React.Component {
             <br />
 
             <details
-              onToggle={evt => {
+              onToggle={(evt) => {
                 if (!evt.target.open) {
                   return;
                 }
@@ -1280,7 +1281,7 @@ class Home extends React.Component {
               <ul>
                 {this.state.submissions.length === 0
                   ? 'Loading submissions...'
-                  : this.state.submissions.map(submission => (
+                  : this.state.submissions.map((submission) => (
                       <li key={submission.objectId}>
                         <SubmissionDetails
                           submission={submission}
@@ -1322,7 +1323,7 @@ Home.propTypes = {
   typeofcomplaintValues: PropTypes.arrayOf(PropTypes.string).isRequired,
 };
 
-const MyMapComponentPure = props => {
+const MyMapComponentPure = (props) => {
   const {
     position,
     onRef,

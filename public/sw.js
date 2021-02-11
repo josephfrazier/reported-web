@@ -17,7 +17,7 @@ const offlineHeaders = {
 // If any fetch fails, it will show `offlineBody`
 // Maybe this should be limited to HTML documents?
 // eslint-disable-next-line no-restricted-globals
-self.addEventListener('fetch', event => {
+self.addEventListener('fetch', (event) => {
   const { request } = event;
 
   // DevTools opening will trigger these o-i-c requests, which this SW can't handle.
@@ -28,7 +28,7 @@ self.addEventListener('fetch', event => {
   }
 
   event.respondWith(
-    fetch(request).catch(error => {
+    fetch(request).catch((error) => {
       console.error({
         message: `[PWA Builder] Network request Failed. Serving offline page ${error}`,
         event,

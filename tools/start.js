@@ -37,7 +37,7 @@ function createCompilationPromise(name, compiler, config) {
       console.info(`[${format(timeStart)}] Compiling '${name}'...`);
     });
 
-    compiler.hooks.done.tap(name, stats => {
+    compiler.hooks.done.tap(name, (stats) => {
       console.info(stats.toString(config.stats));
       const timeEnd = new Date();
       const time = timeEnd.getTime() - timeStart.getTime();
@@ -71,7 +71,7 @@ async function start() {
   server.use(express.static(path.resolve(__dirname, '../public')));
 
   // Configure client-side hot module replacement
-  const clientConfig = webpackConfig.find(config => config.name === 'client');
+  const clientConfig = webpackConfig.find((config) => config.name === 'client');
   clientConfig.entry.client = ['./tools/lib/webpackHotDevClient']
     .concat(clientConfig.entry.client)
     .sort((a, b) => b.includes('polyfill') - a.includes('polyfill'));
@@ -84,17 +84,17 @@ async function start() {
     'hash',
   );
   clientConfig.module.rules = clientConfig.module.rules.filter(
-    x => x.loader !== 'null-loader',
+    (x) => x.loader !== 'null-loader',
   );
   clientConfig.plugins.push(new webpack.HotModuleReplacementPlugin());
 
   // Configure server-side hot module replacement
-  const serverConfig = webpackConfig.find(config => config.name === 'server');
+  const serverConfig = webpackConfig.find((config) => config.name === 'server');
   serverConfig.output.hotUpdateMainFilename = 'updates/[hash].hot-update.json';
   serverConfig.output.hotUpdateChunkFilename =
     'updates/[id].[hash].hot-update.js';
   serverConfig.module.rules = serverConfig.module.rules.filter(
-    x => x.loader !== 'null-loader',
+    (x) => x.loader !== 'null-loader',
   );
   serverConfig.plugins.push(new webpack.HotModuleReplacementPlugin());
 
@@ -102,10 +102,10 @@ async function start() {
   await run(clean);
   const multiCompiler = webpack(webpackConfig);
   const clientCompiler = multiCompiler.compilers.find(
-    compiler => compiler.name === 'client',
+    (compiler) => compiler.name === 'client',
   );
   const serverCompiler = multiCompiler.compilers.find(
-    compiler => compiler.name === 'server',
+    (compiler) => compiler.name === 'server',
   );
   const clientPromise = createCompilationPromise(
     'client',
@@ -137,14 +137,14 @@ async function start() {
     if (!appPromiseIsResolved) return;
     appPromiseIsResolved = false;
     // eslint-disable-next-line no-return-assign
-    appPromise = new Promise(resolve => (appPromiseResolve = resolve));
+    appPromise = new Promise((resolve) => (appPromiseResolve = resolve));
   });
 
   let app;
   server.use((req, res) => {
     appPromise
       .then(() => app.handle(req, res))
-      .catch(error => console.error(error));
+      .catch((error) => console.error(error));
   });
 
   function checkForUpdate(fromUpdate) {
@@ -157,7 +157,7 @@ async function start() {
     }
     return app.hot
       .check(true)
-      .then(updatedModules => {
+      .then((updatedModules) => {
         if (!updatedModules) {
           if (fromUpdate) {
             console.info(`${hmrPrefix}Update applied.`);
@@ -168,13 +168,13 @@ async function start() {
           console.info(`${hmrPrefix}Nothing hot updated.`);
         } else {
           console.info(`${hmrPrefix}Updated modules:`);
-          updatedModules.forEach(moduleId =>
+          updatedModules.forEach((moduleId) =>
             console.info(`${hmrPrefix} - ${moduleId}`),
           );
           checkForUpdate(true);
         }
       })
-      .catch(error => {
+      .catch((error) => {
         if (['abort', 'fail'].includes(app.hot.status())) {
           console.warn(`${hmrPrefix}Cannot apply update.`);
           delete require.cache[require.resolve('../build/server')];

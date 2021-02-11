@@ -41,7 +41,7 @@ class SubmissionDetails extends React.Component {
 
     const ImagesAndVideos = () => {
       const images = [photoData, photoData0, photoData1, photoData2]
-        .filter(item => !!item)
+        .filter((item) => !!item)
         .map((photoDataItem, i) => {
           const { url } = photoDataItem;
           return (
@@ -52,7 +52,7 @@ class SubmissionDetails extends React.Component {
         });
 
       const videos = [videoData0, videoData1, videoData2]
-        .filter(item => !!item)
+        .filter((item) => !!item)
         .map((videoData, i) => {
           const url = videoData;
           return (
@@ -64,10 +64,10 @@ class SubmissionDetails extends React.Component {
         });
 
       return (
-        <React.Fragment>
+        <>
           {images}
           {videos}
-        </React.Fragment>
+        </>
       );
     };
 
@@ -114,7 +114,7 @@ class SubmissionDetails extends React.Component {
     return (
       <details
         open={this.state.isDetailsOpen}
-        onToggle={evt => {
+        onToggle={(evt) => {
           this.setState({
             isDetailsOpen: evt.target.open,
           });
@@ -129,12 +129,12 @@ class SubmissionDetails extends React.Component {
         </summary>
 
         {this.state.isDetailsOpen && (
-          <React.Fragment>
+          <>
             <p>{reportDescription}</p>
             <ImagesAndVideos />
 
             {srStatusOrDeleteButton()}
-          </React.Fragment>
+          </>
         )}
       </details>
     );

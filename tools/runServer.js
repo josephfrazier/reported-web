@@ -24,7 +24,7 @@ const serverPath = path.join(
 
 // Launch or restart the Node.js server
 function runServer() {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     function onStdOut(data) {
       const time = new Date().toTimeString();
       const match = data.toString('utf8').match(RUNNING_REGEXP);
@@ -35,7 +35,7 @@ function runServer() {
       if (match) {
         server.host = match[1];
         server.stdout.removeListener('data', onStdOut);
-        server.stdout.on('data', x => process.stdout.write(x));
+        server.stdout.on('data', (x) => process.stdout.write(x));
         pending = false;
         resolve(server);
       }
@@ -46,7 +46,7 @@ function runServer() {
     }
 
     server = cp.spawn('node', [serverPath], {
-      env: Object.assign({ NODE_ENV: 'development' }, process.env),
+      env: { NODE_ENV: 'development', ...process.env },
       silent: false,
     });
 
@@ -61,7 +61,7 @@ function runServer() {
     }
 
     server.stdout.on('data', onStdOut);
-    server.stderr.on('data', x => process.stderr.write(x));
+    server.stderr.on('data', (x) => process.stderr.write(x));
 
     return server;
   });

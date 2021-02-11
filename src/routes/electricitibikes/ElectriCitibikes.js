@@ -38,8 +38,8 @@ class ElectriCitibikes extends React.Component {
     this.updateData();
 
     fetch('/borough-boundaries-clipped-to-shoreline.geo.json')
-      .then(response => response.json())
-      .then(boroughBoundariesFeatureCollection => {
+      .then((response) => response.json())
+      .then((boroughBoundariesFeatureCollection) => {
         this.setState({
           boroughBoundariesFeatureCollection,
         });
@@ -50,7 +50,7 @@ class ElectriCitibikes extends React.Component {
     this.setState({ isRefreshing: true });
     const data = await fetch(
       'https://bikeangels-api.citibikenyc.com/map/v1/nyc/stations',
-    ).then(r => r.json());
+    ).then((r) => r.json());
     console.info({ data });
     const updatedAt = Date.now();
     this.setState({ isRefreshing: false, data, updatedAt });
@@ -153,8 +153,8 @@ export function ElectriCitibikeList({
   }
 
   const ebikeStations = data.features
-    .filter(f => f.properties.ebikes_available > 0)
-    .map(f => {
+    .filter((f) => f.properties.ebikes_available > 0)
+    .map((f) => {
       const { coordinates } = f.geometry;
       const start = { latitude, longitude };
       const end = {
@@ -186,12 +186,12 @@ export function ElectriCitibikeList({
   ebikeStations.sort((a, b) => a.distMeters - b.distMeters);
   const humanDate = strftime('%r', new Date(updatedAt));
   const totalEbikesAvailable = ebikeStations
-    .map(station => station.ebikes_available)
+    .map((station) => station.ebikes_available)
     .reduce((a, b) => a + b, 0);
   return (
     <>
       {totalEbikesAvailable} available as of {humanDate}
-      {ebikeStations.map(station => (
+      {ebikeStations.map((station) => (
         <details key={station.name} style={{ margin: '1rem 0' }}>
           <summary>
             {station.ebikes_available} @&nbsp;
@@ -208,7 +208,9 @@ export function ElectriCitibikeList({
             <br />
             Max Charge:{' '}
             {Math.max(
-              ...(station.ebikes || [{ charge: 0 }]).map(ebike => ebike.charge),
+              ...(station.ebikes || [{ charge: 0 }]).map(
+                (ebike) => ebike.charge,
+              ),
             ) || '?'}
             /4
             <br />
@@ -216,7 +218,7 @@ export function ElectriCitibikeList({
           </summary>
           <ul>
             {station.ebikes &&
-              station.ebikes.map(ebike => (
+              station.ebikes.map((ebike) => (
                 <li key={ebike.bike_number}>
                   {`#${ebike.bike_number}`} has {ebike.charge}
                   /4 charge

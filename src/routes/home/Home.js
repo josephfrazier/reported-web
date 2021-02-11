@@ -190,6 +190,10 @@ async function getVideoScreenshot({ attachmentFile }) {
 }
 
 class Home extends React.Component {
+  static propTypes = {
+    typeofcomplaintValues: PropTypes.arrayOf(PropTypes.string).isRequired,
+  };
+
   // adapted from https://www.bignerdranch.com/blog/dont-over-react/
   attachmentPlates = new WeakMap();
 
@@ -1318,10 +1322,6 @@ class Home extends React.Component {
     );
   }
 }
-
-Home.propTypes = {
-  typeofcomplaintValues: PropTypes.arrayOf(PropTypes.string).isRequired,
-};
 
 const MyMapComponentPure = (props) => {
   const {

@@ -5,6 +5,35 @@ import axios from 'axios';
 import humanizeString from 'humanize-string';
 
 class SubmissionDetails extends React.Component {
+  static propTypes = {
+    isDetailsOpen: PropTypes.bool,
+    onDeleteSubmission: PropTypes.func.isRequired,
+    submission: PropTypes.shape({
+      reqnumber: PropTypes.string,
+      medallionNo: PropTypes.string,
+      typeofcomplaint: PropTypes.string,
+      loc1_address: PropTypes.string,
+      timeofreport: PropTypes.string,
+      reportDescription: PropTypes.string,
+      status: PropTypes.number,
+
+      photoData: PropTypes.object,
+      photoData0: PropTypes.object,
+      photoData1: PropTypes.object,
+      photoData2: PropTypes.object,
+
+      videoData0: PropTypes.string,
+      videoData1: PropTypes.string,
+      videoData2: PropTypes.string,
+
+      objectId: PropTypes.string,
+    }).isRequired,
+  };
+
+  static defaultProps = {
+    isDetailsOpen: false,
+  };
+
   constructor(props) {
     super(props);
 
@@ -140,34 +169,5 @@ class SubmissionDetails extends React.Component {
     );
   }
 }
-
-SubmissionDetails.propTypes = {
-  isDetailsOpen: PropTypes.bool,
-  onDeleteSubmission: PropTypes.func.isRequired,
-  submission: PropTypes.shape({
-    reqnumber: PropTypes.string,
-    medallionNo: PropTypes.string,
-    typeofcomplaint: PropTypes.string,
-    loc1_address: PropTypes.string,
-    timeofreport: PropTypes.string,
-    reportDescription: PropTypes.string,
-    status: PropTypes.number,
-
-    photoData: PropTypes.object,
-    photoData0: PropTypes.object,
-    photoData1: PropTypes.object,
-    photoData2: PropTypes.object,
-
-    videoData0: PropTypes.string,
-    videoData1: PropTypes.string,
-    videoData2: PropTypes.string,
-
-    objectId: PropTypes.string,
-  }).isRequired,
-};
-
-SubmissionDetails.defaultProps = {
-  isDetailsOpen: false,
-};
 
 export default SubmissionDetails;

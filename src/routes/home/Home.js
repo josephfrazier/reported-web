@@ -440,9 +440,7 @@ class Home extends React.Component {
 
         if (plate) {
           this.setState({
-            vehicleInfoComponent: `Could not find ${plate} in ${
-              usStateNames[licenseState]
-            }`,
+            vehicleInfoComponent: `Could not find ${plate} in ${usStateNames[licenseState]}`,
           });
 
           if (plate.match(/1\d\d\d\d\d\dC/)) {
@@ -528,8 +526,8 @@ class Home extends React.Component {
       target.type === 'checkbox'
         ? target.checked
         : target.type === 'datetime-local'
-          ? target.value.slice(0, 'YYYY-MM-DDThh:mm'.length)
-          : target.value;
+        ? target.value.slice(0, 'YYYY-MM-DDThh:mm'.length)
+        : target.value;
     const { name } = target;
 
     this.setState(

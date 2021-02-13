@@ -101,14 +101,10 @@ class ElectriCitibikes extends React.Component {
 
 function getMapUrl({ station, latitude, longitude }) {
   if (latitude && longitude) {
-    return `https://www.google.com/maps/dir/?api=1&travelmode=bicycling&origin=${latitude}%2C${longitude}&destination=${
-      station.latitude
-    }%2C${station.longitude}`;
+    return `https://www.google.com/maps/dir/?api=1&travelmode=bicycling&origin=${latitude}%2C${longitude}&destination=${station.latitude}%2C${station.longitude}`;
   }
 
-  return `https://www.google.com/maps/search/?api=1&query=${
-    station.latitude
-  }%2C${station.longitude}`;
+  return `https://www.google.com/maps/search/?api=1&query=${station.latitude}%2C${station.longitude}`;
 }
 
 function getBoroName({ lookup, end }) {
@@ -232,5 +228,15 @@ export function ElectriCitibikeList({
     </>
   );
 }
+
+ElectriCitibikeList.propTypes = {
+  data: PropTypes.shape({
+    features: PropTypes.array.isRequired,
+  }).isRequired,
+  latitude: PropTypes.number.isRequired,
+  longitude: PropTypes.number.isRequired,
+  updatedAt: PropTypes.number.isRequired,
+  boroughBoundariesFeatureCollection: PropTypes.object.isRequired,
+};
 
 export default withStyles(marx, s)(ElectriCitibikes);

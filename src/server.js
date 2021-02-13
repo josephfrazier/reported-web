@@ -27,7 +27,7 @@ import multer from 'multer';
 import stringify from 'json-stringify-safe';
 import DelayedResponse from 'http-delayed-response';
 import { JSDOM } from 'jsdom';
-// import heicConvert from 'heic-convert';
+import heicConvert from 'heic-convert';
 
 import { isImage, isVideo } from './isImage.js';
 import { validateLocation, processValidation } from './geoclient.js';
@@ -502,25 +502,24 @@ app.use('/openalpr', upload.single('attachmentFile'), async (req, res) => {
     prewarp: '',
   };
 
-  const attachmentBuffer = req.file.buffer;
+  let attachmentBuffer = req.file.buffer;
   const api = new OpenalprApi.DefaultApi();
 
   const secretKey = OPENALPR_SECRET_KEY; // {String} The secret key used to authenticate your account. You can view your secret key by visiting https://cloud.openalpr.com/
 
-  // TODO: Fix OOMs caused by this, see https://github.com/josephfrazier/Reported-Web/commit/e561fc3395c42770c170356760ddc7166416a842
-  // try {
-  //   console.time('heic-convert'); // eslint-disable-line no-console
-  //   attachmentBuffer = await heicConvert({
-  //     buffer: attachmentBuffer,
-  //     format: 'JPEG',
-  //     quality: 1,
-  //   });
-  // } catch (e) {
-  //   console.error('could not convert file from heic to jpg');
-  //   console.error(e);
-  // } finally {
-  //   console.timeEnd('heic-convert'); // eslint-disable-line no-console
-  // }
+  try {
+    console.time('heic-convert'); // eslint-disable-line no-console
+    attachmentBuffer = await heicConvert({
+      buffer: attachmentBuffer,
+      format: 'JPEG',
+      quality: 1,
+    });
+  } catch (e) {
+    console.error('could not convert file from heic to jpg');
+    console.error(e);
+  } finally {
+    console.timeEnd('heic-convert'); // eslint-disable-line no-console
+  }
 
   orientImageBuffer({ attachmentBuffer })
     .then(buffer => buffer.toString('base64'))

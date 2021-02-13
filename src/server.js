@@ -508,6 +508,13 @@ app.use('/openalpr', upload.single('attachmentFile'), async (req, res) => {
   const secretKey = OPENALPR_SECRET_KEY; // {String} The secret key used to authenticate your account. You can view your secret key by visiting https://cloud.openalpr.com/
 
   try {
+    const used = process.memoryUsage();
+    for (const key in used) {
+      console.log(
+        `${key} ${Math.round((used[key] / 1024 / 1024) * 100) / 100} MB`,
+      );
+    }
+
     console.time('heic-convert'); // eslint-disable-line no-console
     attachmentBuffer = await heicConvert({
       buffer: attachmentBuffer,
@@ -519,6 +526,13 @@ app.use('/openalpr', upload.single('attachmentFile'), async (req, res) => {
     console.error(e);
   } finally {
     console.timeEnd('heic-convert'); // eslint-disable-line no-console
+
+    const used = process.memoryUsage();
+    for (const key in used) {
+      console.log(
+        `${key} ${Math.round((used[key] / 1024 / 1024) * 100) / 100} MB`,
+      );
+    }
   }
 
   orientImageBuffer({ attachmentBuffer })

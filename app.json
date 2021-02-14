@@ -1,6 +1,17 @@
 {
+  "env": {
+    "VIPS_VERSION": {
+      "value": "8.9.2"
+    }
+  },
   "stack": "heroku-20",
   "buildpacks": [
+    {
+      "url": "heroku-community/apt"
+    },
+    {
+      "url": "https://github.com/brandoncc/heroku-buildpack-vips"
+    },
     {
       "url": "heroku/nodejs"
     },

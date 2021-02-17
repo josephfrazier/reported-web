@@ -7,12 +7,13 @@
  * LICENSE.txt file in the root directory of this source tree.
  */
 
+import promisify from 'util.promisify';
 import React from 'react';
 import PropTypes from 'prop-types';
 import withStyles from 'isomorphic-style-loader/lib/withStyles';
 import FileReaderInput from 'react-file-reader-input';
 import blobUtil from 'blob-util';
-import exifr from 'exifr/dist/full.umd.js';
+import { ExifImage } from 'exif';
 import axios from 'axios';
 import promisedLocation from 'promised-location';
 import { compose, withProps } from 'recompose';
@@ -26,7 +27,7 @@ import { SearchBox } from 'react-google-maps/lib/components/places/SearchBox';
 import withLocalStorage from 'react-localstorage';
 import debounce from 'debounce-promise';
 import { SocialIcon } from 'react-social-icons';
-import FileType from 'file-type/browser';
+import fileType from 'file-type-es5';
 import MP4Box from 'mp4box';
 import execall from 'execall';
 import captureFrame from 'capture-frame';
@@ -104,13 +105,13 @@ async function blobToBuffer({ attachmentFile }) {
 }
 
 // adapted from http://danielhindrikes.se/web/get-coordinates-from-photo-with-javascript/
-function extractLocation({ exifData }) {
-  const lat = exifData.GPSLatitude;
-  const lng = exifData.GPSLongitude;
+function coordsFromExifGps({ gps }) {
+  const lat = gps.GPSLatitude;
+  const lng = gps.GPSLongitude;
 
   // Convert coordinates to WGS84 decimal
-  const latRef = exifData.GPSLatitudeRef || 'N';
-  const lngRef = exifData.GPSLongitudeRef || 'W';
+  const latRef = gps.GPSLatitudeRef || 'N';
+  const lngRef = gps.GPSLongitudeRef || 'W';
   const latitude =
     (lat[0] + lat[1] / 60 + lat[2] / 3600) * (latRef === 'N' ? 1 : -1);
   const longitude =
@@ -119,8 +120,20 @@ function extractLocation({ exifData }) {
   return { latitude, longitude };
 }
 
+function extractLocation({ exifData }) {
+  const { gps } = exifData;
+  return coordsFromExifGps({ gps });
+}
+
 function extractDate({ exifData }) {
-  return exifData.CreateDate.getTime();
+  const {
+    exif: { CreateDate },
+  } = exifData;
+  const millisecondsSinceEpoch = new Date(
+    CreateDate.replace(':', '/').replace(':', '/'),
+  ).getTime();
+
+  return millisecondsSinceEpoch;
 }
 
 function extractLocationDateFromVideo({ attachmentArrayBuffer }) {
@@ -147,7 +160,7 @@ async function extractLocationDate({ attachmentFile }) {
     attachmentFile,
   });
 
-  const { ext } = await FileType.fromBuffer(attachmentBuffer);
+  const { ext } = fileType(attachmentBuffer);
   if (isVideo({ ext })) {
     return extractLocationDateFromVideo({ attachmentArrayBuffer });
   }
@@ -155,9 +168,9 @@ async function extractLocationDate({ attachmentFile }) {
     throw new Error(`${attachmentFile.name} is not an image/video`);
   }
 
-  console.time(`exifr.parse`); // eslint-disable-line no-console
-  return exifr.parse(attachmentBuffer).then(exifData => {
-    console.timeEnd(`exifr.parse`); // eslint-disable-line no-console
+  console.time(`ExifImage`); // eslint-disable-line no-console
+  return promisify(ExifImage)({ image: attachmentBuffer }).then(exifData => {
+    console.timeEnd(`ExifImage`); // eslint-disable-line no-console
     return Promise.all([
       extractLocation({ exifData }),
       extractDate({ exifData }),
@@ -550,7 +563,7 @@ class Home extends React.Component {
 
       let { attachmentBuffer } = await blobToBuffer({ attachmentFile });
 
-      const { ext } = await FileType.fromBuffer(attachmentBuffer);
+      const { ext } = fileType(attachmentBuffer);
       if (isVideo({ ext })) {
         attachmentBuffer = await getVideoScreenshot({ attachmentFile });
       } else if (!isImage({ ext })) {

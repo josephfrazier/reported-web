@@ -439,7 +439,7 @@ app.use('/submit', (req, res) => {
         const attachmentsWithFormats = await Promise.all(
           attachmentData.map(async ({ buffer: attachmentBuffer }) => ({
             attachmentBuffer,
-            ext: await FileType.fromBuffer(attachmentBuffer).ext,
+            ext: (await FileType.fromBuffer(attachmentBuffer)).ext,
           })),
         );
 

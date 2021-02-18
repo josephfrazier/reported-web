@@ -5197,6 +5197,11 @@ eslint-plugin-jsx-a11y@^6.1.1:
     jsx-ast-utils "^3.1.0"
     language-tags "^1.0.5"
 
+eslint-plugin-parentheses-around-await@^0.0.3:
+  version "0.0.3"
+  resolved "https://registry.yarnpkg.com/eslint-plugin-parentheses-around-await/-/eslint-plugin-parentheses-around-await-0.0.3.tgz#f246455ef8c76e7492d253bdd5fe18da12b55f8c"
+  integrity sha512-/KYG40EMN9r2JVvT4B+6grSRRPqcEXM3+4rjrjCxDGrVxEtITHjCJkJw5mqFUgcfcXS1tRFBwVYynURaVkgwZw==
+
 eslint-plugin-prettier@^2.6.2:
   version "2.7.0"
   resolved "https://registry.yarnpkg.com/eslint-plugin-prettier/-/eslint-plugin-prettier-2.7.0.tgz#b4312dcf2c1d965379d7f9d5b5f8aaadc6a45904"

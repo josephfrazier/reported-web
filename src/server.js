@@ -20,7 +20,7 @@ import ReactDOM from 'react-dom/server';
 import PrettyError from 'pretty-error';
 import OpenalprApi from 'openalpr_api';
 import Parse from 'parse/node';
-import FileType from 'file-type/browser';
+import fileType from 'file-type-es5';
 import sharp from 'sharp';
 import axios from 'axios';
 import multer from 'multer';
@@ -436,11 +436,11 @@ app.use('/submit', (req, res) => {
         // upload attachments
         // http://docs.parseplatform.org/js/guide/#creating-a-parsefile
 
-        const attachmentsWithFormats = await Promise.all(
-          attachmentData.map(async ({ buffer: attachmentBuffer }) => ({
+        const attachmentsWithFormats = attachmentData.map(
+          ({ buffer: attachmentBuffer }) => ({
             attachmentBuffer,
-            ext: (await FileType.fromBuffer(attachmentBuffer)).ext,
-          })),
+            ext: fileType(attachmentBuffer).ext,
+          }),
         );
 
         const images = attachmentsWithFormats.filter(isImage);

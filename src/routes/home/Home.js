@@ -508,8 +508,7 @@ class Home extends React.Component {
           <React.Fragment>
             <p>
               Could not extract plate and/or location and/or date from{' '}
-              {fileCopy}
-              Please enter/confirm any missing values manually.
+              {fileCopy} Please enter/confirm any missing values manually.
             </p>
 
             <p style={{ whiteSpace: 'pre-wrap' }}>{err.stack}</p>

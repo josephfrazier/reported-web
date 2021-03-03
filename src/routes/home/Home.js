@@ -512,10 +512,10 @@ class Home extends React.Component {
               Please enter/confirm any missing values manually.
             </p>
 
-            <p>(Error message: {err.message})</p>
+            <p style={{ whiteSpace: 'pre-wrap' }}>{err.stack}</p>
           </React.Fragment>,
         );
-        console.error(`Error: ${err.message}`);
+        console.error(err.stack);
       }
     }
   };

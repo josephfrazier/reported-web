@@ -127,7 +127,7 @@ async function extractLocation({
   attachmentFile,
   attachmentArrayBuffer,
   ext,
-  exifData,
+  attachmentBuffer,
 }) {
   if (isVideo({ ext })) {
     return extractLocationDateFromVideo({ attachmentArrayBuffer })[0];
@@ -136,17 +136,7 @@ async function extractLocation({
     throw new Error(`${attachmentFile.name} is not an image/video`);
   }
 
-  // adapted from http://danielhindrikes.se/web/get-coordinates-from-photo-with-javascript/
-  const lat = exifData.GPSLatitude;
-  const lng = exifData.GPSLongitude;
-
-  // Convert coordinates to WGS84 decimal
-  const latRef = exifData.GPSLatitudeRef || 'N';
-  const lngRef = exifData.GPSLongitudeRef || 'W';
-  const latitude =
-    (lat[0] + lat[1] / 60 + lat[2] / 3600) * (latRef === 'N' ? 1 : -1);
-  const longitude =
-    (lng[0] + lng[1] / 60 + lng[2] / 3600) * (lngRef === 'W' ? -1 : 1);
+  const { latitude, longitude } = await exifr.gps(attachmentBuffer);
 
   return { latitude, longitude };
 }
@@ -516,7 +506,7 @@ class Home extends React.Component {
             attachmentFile,
             attachmentArrayBuffer,
             ext,
-            exifData,
+            attachmentBuffer,
           }).then(this.setCoords),
         ]);
       } catch (err) {

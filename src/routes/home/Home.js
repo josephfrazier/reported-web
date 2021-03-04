@@ -103,26 +103,7 @@ async function blobToBuffer({ attachmentFile }) {
   return { attachmentBuffer, attachmentArrayBuffer };
 }
 
-// adapted from http://danielhindrikes.se/web/get-coordinates-from-photo-with-javascript/
-function extractLocation({ exifData }) {
-  const lat = exifData.GPSLatitude;
-  const lng = exifData.GPSLongitude;
-
-  // Convert coordinates to WGS84 decimal
-  const latRef = exifData.GPSLatitudeRef || 'N';
-  const lngRef = exifData.GPSLongitudeRef || 'W';
-  const latitude =
-    (lat[0] + lat[1] / 60 + lat[2] / 3600) * (latRef === 'N' ? 1 : -1);
-  const longitude =
-    (lng[0] + lng[1] / 60 + lng[2] / 3600) * (lngRef === 'W' ? -1 : 1);
-
-  return { latitude, longitude };
-}
-
-function extractDate({ exifData }) {
-  return exifData.CreateDate.getTime();
-}
-
+// TODO decouple location/date extraction
 function extractLocationDateFromVideo({ attachmentArrayBuffer }) {
   const mp4boxfile = MP4Box.createFile();
   attachmentArrayBuffer.fileStart = 0; // eslint-disable-line no-param-reassign
@@ -142,27 +123,48 @@ function extractLocationDateFromVideo({ attachmentArrayBuffer }) {
   return [{ latitude, longitude }, created.getTime()];
 }
 
-async function extractLocationDate({ attachmentFile }) {
-  const { attachmentBuffer, attachmentArrayBuffer } = await blobToBuffer({
-    attachmentFile,
-  });
-
-  const { ext } = await FileType.fromBuffer(attachmentBuffer);
+async function extractLocation({
+  attachmentFile,
+  attachmentArrayBuffer,
+  ext,
+  exifData,
+}) {
   if (isVideo({ ext })) {
-    return extractLocationDateFromVideo({ attachmentArrayBuffer });
+    return extractLocationDateFromVideo({ attachmentArrayBuffer })[0];
   }
   if (!isImage({ ext })) {
     throw new Error(`${attachmentFile.name} is not an image/video`);
   }
 
-  console.time(`exifr.parse`); // eslint-disable-line no-console
-  return exifr.parse(attachmentBuffer).then(exifData => {
-    console.timeEnd(`exifr.parse`); // eslint-disable-line no-console
-    return Promise.all([
-      extractLocation({ exifData }),
-      extractDate({ exifData }),
-    ]);
-  });
+  // adapted from http://danielhindrikes.se/web/get-coordinates-from-photo-with-javascript/
+  const lat = exifData.GPSLatitude;
+  const lng = exifData.GPSLongitude;
+
+  // Convert coordinates to WGS84 decimal
+  const latRef = exifData.GPSLatitudeRef || 'N';
+  const lngRef = exifData.GPSLongitudeRef || 'W';
+  const latitude =
+    (lat[0] + lat[1] / 60 + lat[2] / 3600) * (latRef === 'N' ? 1 : -1);
+  const longitude =
+    (lng[0] + lng[1] / 60 + lng[2] / 3600) * (lngRef === 'W' ? -1 : 1);
+
+  return { latitude, longitude };
+}
+
+async function extractDate({
+  attachmentFile,
+  attachmentArrayBuffer,
+  ext,
+  exifData,
+}) {
+  if (isVideo({ ext })) {
+    return extractLocationDateFromVideo({ attachmentArrayBuffer })[1];
+  }
+  if (!isImage({ ext })) {
+    throw new Error(`${attachmentFile.name} is not an image/video`);
+  }
+
+  return exifData.CreateDate.getTime();
 }
 
 // derived from https://github.com/feross/capture-frame/tree/06b8f5eac78fea305f7f577d1697ee3b6999c9a8#complete-example
@@ -338,11 +340,6 @@ class Home extends React.Component {
     return Object.keys(this.initialStatePersistent);
   }
 
-  setLocationDate = ([coords, millisecondsSinceEpoch]) => {
-    this.setCoords(coords);
-    this.setCreateDate(millisecondsSinceEpoch);
-  };
-
   setCoords = ({ latitude, longitude } = {}) => {
     if (!latitude || !longitude) {
       console.error('latitude and/or longitude is missing');
@@ -494,9 +491,33 @@ class Home extends React.Component {
     for (const attachmentFile of attachmentData) {
       try {
         // eslint-disable-next-line no-await-in-loop
+        const { attachmentBuffer, attachmentArrayBuffer } = await blobToBuffer({
+          attachmentFile,
+        });
+
+        // eslint-disable-next-line no-await-in-loop
+        const { ext } = await FileType.fromBuffer(attachmentBuffer);
+
+        console.time(`exifr.parse`); // eslint-disable-line no-console
+        // eslint-disable-next-line no-await-in-loop
+        const exifData = await exifr.parse(attachmentBuffer);
+        console.timeEnd(`exifr.parse`); // eslint-disable-line no-console
+
+        // eslint-disable-next-line no-await-in-loop
         await Promise.all([
-          this.extractPlate({ attachmentFile }),
-          extractLocationDate({ attachmentFile }).then(this.setLocationDate),
+          this.extractPlate({ attachmentFile, attachmentBuffer, ext }),
+          extractDate({
+            attachmentFile,
+            attachmentArrayBuffer,
+            ext,
+            exifData,
+          }).then(this.setCreateDate),
+          extractLocation({
+            attachmentFile,
+            attachmentArrayBuffer,
+            ext,
+            exifData,
+          }).then(this.setCoords),
         ]);
       } catch (err) {
         const hasMultipleAttachments = attachmentData.length > 1;
@@ -538,7 +559,7 @@ class Home extends React.Component {
   };
 
   // adapted from https://github.com/openalpr/cloudapi/tree/8141c1ba57f03df4f53430c6e5e389b39714d0e0/javascript#getting-started
-  extractPlate = async ({ attachmentFile }) => {
+  extractPlate = async ({ attachmentFile, attachmentBuffer, ext }) => {
     console.time('extractPlate'); // eslint-disable-line no-console
 
     try {
@@ -547,10 +568,8 @@ class Home extends React.Component {
         return result;
       }
 
-      let { attachmentBuffer } = await blobToBuffer({ attachmentFile });
-
-      const { ext } = await FileType.fromBuffer(attachmentBuffer);
       if (isVideo({ ext })) {
+        // eslint-disable-next-line no-param-reassign
         attachmentBuffer = await getVideoScreenshot({ attachmentFile });
       } else if (!isImage({ ext })) {
         throw new Error(`${attachmentFile.name} is not an image/video`);

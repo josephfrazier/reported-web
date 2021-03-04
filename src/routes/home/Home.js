@@ -506,9 +506,12 @@ class Home extends React.Component {
         // eslint-disable-next-line no-await-in-loop
         await Promise.all([
           this.extractPlate({ attachmentFile, attachmentBuffer, ext }),
-          extractDate({ attachmentArrayBuffer, ext, exifData }).then(
-            this.setCreateDate,
-          ),
+          extractDate({
+            attachmentFile,
+            attachmentArrayBuffer,
+            ext,
+            exifData,
+          }).then(this.setCreateDate),
           extractLocation({
             attachmentFile,
             attachmentArrayBuffer,

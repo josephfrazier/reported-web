@@ -103,26 +103,7 @@ async function blobToBuffer({ attachmentFile }) {
   return { attachmentBuffer, attachmentArrayBuffer };
 }
 
-// adapted from http://danielhindrikes.se/web/get-coordinates-from-photo-with-javascript/
-function extractLocation({ exifData }) {
-  const lat = exifData.GPSLatitude;
-  const lng = exifData.GPSLongitude;
-
-  // Convert coordinates to WGS84 decimal
-  const latRef = exifData.GPSLatitudeRef || 'N';
-  const lngRef = exifData.GPSLongitudeRef || 'W';
-  const latitude =
-    (lat[0] + lat[1] / 60 + lat[2] / 3600) * (latRef === 'N' ? 1 : -1);
-  const longitude =
-    (lng[0] + lng[1] / 60 + lng[2] / 3600) * (lngRef === 'W' ? -1 : 1);
-
-  return { latitude, longitude };
-}
-
-function extractDate({ exifData }) {
-  return exifData.CreateDate.getTime();
-}
-
+// TODO decouple location/date extraction
 function extractLocationDateFromVideo({ attachmentArrayBuffer }) {
   const mp4boxfile = MP4Box.createFile();
   attachmentArrayBuffer.fileStart = 0; // eslint-disable-line no-param-reassign
@@ -142,14 +123,14 @@ function extractLocationDateFromVideo({ attachmentArrayBuffer }) {
   return [{ latitude, longitude }, created.getTime()];
 }
 
-async function extractLocationDate({ attachmentFile }) {
+async function extractLocation({ attachmentFile }) {
   const { attachmentBuffer, attachmentArrayBuffer } = await blobToBuffer({
     attachmentFile,
   });
 
   const { ext } = await FileType.fromBuffer(attachmentBuffer);
   if (isVideo({ ext })) {
-    return extractLocationDateFromVideo({ attachmentArrayBuffer });
+    return extractLocationDateFromVideo({ attachmentArrayBuffer })[0];
   }
   if (!isImage({ ext })) {
     throw new Error(`${attachmentFile.name} is not an image/video`);
@@ -158,10 +139,40 @@ async function extractLocationDate({ attachmentFile }) {
   console.time(`exifr.parse`); // eslint-disable-line no-console
   return exifr.parse(attachmentBuffer).then(exifData => {
     console.timeEnd(`exifr.parse`); // eslint-disable-line no-console
-    return Promise.all([
-      extractLocation({ exifData }),
-      extractDate({ exifData }),
-    ]);
+
+    // adapted from http://danielhindrikes.se/web/get-coordinates-from-photo-with-javascript/
+    const lat = exifData.GPSLatitude;
+    const lng = exifData.GPSLongitude;
+
+    // Convert coordinates to WGS84 decimal
+    const latRef = exifData.GPSLatitudeRef || 'N';
+    const lngRef = exifData.GPSLongitudeRef || 'W';
+    const latitude =
+      (lat[0] + lat[1] / 60 + lat[2] / 3600) * (latRef === 'N' ? 1 : -1);
+    const longitude =
+      (lng[0] + lng[1] / 60 + lng[2] / 3600) * (lngRef === 'W' ? -1 : 1);
+
+    return { latitude, longitude };
+  });
+}
+
+async function extractDate({ attachmentFile }) {
+  const { attachmentBuffer, attachmentArrayBuffer } = await blobToBuffer({
+    attachmentFile,
+  });
+
+  const { ext } = await FileType.fromBuffer(attachmentBuffer);
+  if (isVideo({ ext })) {
+    return extractLocationDateFromVideo({ attachmentArrayBuffer })[1];
+  }
+  if (!isImage({ ext })) {
+    throw new Error(`${attachmentFile.name} is not an image/video`);
+  }
+
+  console.time(`exifr.parse`); // eslint-disable-line no-console
+  return exifr.parse(attachmentBuffer).then(exifData => {
+    console.timeEnd(`exifr.parse`); // eslint-disable-line no-console
+    return exifData.CreateDate.getTime();
   });
 }
 
@@ -338,11 +349,6 @@ class Home extends React.Component {
     return Object.keys(this.initialStatePersistent);
   }
 
-  setLocationDate = ([coords, millisecondsSinceEpoch]) => {
-    this.setCoords(coords);
-    this.setCreateDate(millisecondsSinceEpoch);
-  };
-
   setCoords = ({ latitude, longitude } = {}) => {
     if (!latitude || !longitude) {
       console.error('latitude and/or longitude is missing');
@@ -496,7 +502,8 @@ class Home extends React.Component {
         // eslint-disable-next-line no-await-in-loop
         await Promise.all([
           this.extractPlate({ attachmentFile }),
-          extractLocationDate({ attachmentFile }).then(this.setLocationDate),
+          extractDate({ attachmentFile }).then(this.setCreateDate),
+          extractLocation({ attachmentFile }).then(this.setCoords),
         ]);
       } catch (err) {
         const hasMultipleAttachments = attachmentData.length > 1;

@@ -123,7 +123,11 @@ function extractLocationDateFromVideo({ attachmentArrayBuffer }) {
   return [{ latitude, longitude }, created.getTime()];
 }
 
-async function extractLocation({ attachmentFile, attachmentBuffer, attachmentArrayBuffer }) {
+async function extractLocation({
+  attachmentFile,
+  attachmentBuffer,
+  attachmentArrayBuffer,
+}) {
   const { ext } = await FileType.fromBuffer(attachmentBuffer);
   if (isVideo({ ext })) {
     return extractLocationDateFromVideo({ attachmentArrayBuffer })[0];
@@ -152,7 +156,11 @@ async function extractLocation({ attachmentFile, attachmentBuffer, attachmentArr
   });
 }
 
-async function extractDate({ attachmentFile, attachmentBuffer, attachmentArrayBuffer }) {
+async function extractDate({
+  attachmentFile,
+  attachmentBuffer,
+  attachmentArrayBuffer,
+}) {
   const { ext } = await FileType.fromBuffer(attachmentBuffer);
   if (isVideo({ ext })) {
     return extractLocationDateFromVideo({ attachmentArrayBuffer })[1];
@@ -499,8 +507,14 @@ class Home extends React.Component {
         // eslint-disable-next-line no-await-in-loop
         await Promise.all([
           this.extractPlate({ attachmentFile, attachmentBuffer }),
-          extractDate({ attachmentBuffer, attachmentArrayBuffer }).then(this.setCreateDate),
-          extractLocation({ attachmentFile, attachmentBuffer, attachmentArrayBuffer }).then(this.setCoords),
+          extractDate({ attachmentBuffer, attachmentArrayBuffer }).then(
+            this.setCreateDate,
+          ),
+          extractLocation({
+            attachmentFile,
+            attachmentBuffer,
+            attachmentArrayBuffer,
+          }).then(this.setCoords),
         ]);
       } catch (err) {
         const hasMultipleAttachments = attachmentData.length > 1;

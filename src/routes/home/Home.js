@@ -145,7 +145,7 @@ async function extractDate({
   attachmentFile,
   attachmentArrayBuffer,
   ext,
-  exifData,
+  attachmentBuffer,
 }) {
   if (isVideo({ ext })) {
     return extractLocationDateFromVideo({ attachmentArrayBuffer })[1];
@@ -154,7 +154,9 @@ async function extractDate({
     throw new Error(`${attachmentFile.name} is not an image/video`);
   }
 
-  return exifData.CreateDate.getTime();
+  const { CreateDate } = await exifr.parse(attachmentBuffer, ['CreateDate']);
+
+  return CreateDate.getTime();
 }
 
 // derived from https://github.com/feross/capture-frame/tree/06b8f5eac78fea305f7f577d1697ee3b6999c9a8#complete-example
@@ -488,11 +490,6 @@ class Home extends React.Component {
         // eslint-disable-next-line no-await-in-loop
         const { ext } = await FileType.fromBuffer(attachmentBuffer);
 
-        console.time(`exifr.parse`); // eslint-disable-line no-console
-        // eslint-disable-next-line no-await-in-loop
-        const exifData = await exifr.parse(attachmentBuffer);
-        console.timeEnd(`exifr.parse`); // eslint-disable-line no-console
-
         // eslint-disable-next-line no-await-in-loop
         await Promise.all([
           this.extractPlate({ attachmentFile, attachmentBuffer, ext }),
@@ -500,7 +497,7 @@ class Home extends React.Component {
             attachmentFile,
             attachmentArrayBuffer,
             ext,
-            exifData,
+            attachmentBuffer,
           }).then(this.setCreateDate),
           extractLocation({
             attachmentFile,

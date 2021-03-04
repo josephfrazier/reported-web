@@ -127,8 +127,8 @@ async function extractLocation({
   attachmentFile,
   attachmentBuffer,
   attachmentArrayBuffer,
+  ext,
 }) {
-  const { ext } = await FileType.fromBuffer(attachmentBuffer);
   if (isVideo({ ext })) {
     return extractLocationDateFromVideo({ attachmentArrayBuffer })[0];
   }
@@ -160,8 +160,8 @@ async function extractDate({
   attachmentFile,
   attachmentBuffer,
   attachmentArrayBuffer,
+  ext,
 }) {
-  const { ext } = await FileType.fromBuffer(attachmentBuffer);
   if (isVideo({ ext })) {
     return extractLocationDateFromVideo({ attachmentArrayBuffer })[1];
   }
@@ -505,15 +505,19 @@ class Home extends React.Component {
         });
 
         // eslint-disable-next-line no-await-in-loop
+        const { ext } = await FileType.fromBuffer(attachmentBuffer);
+
+        // eslint-disable-next-line no-await-in-loop
         await Promise.all([
-          this.extractPlate({ attachmentFile, attachmentBuffer }),
-          extractDate({ attachmentBuffer, attachmentArrayBuffer }).then(
+          this.extractPlate({ attachmentFile, attachmentBuffer, ext }),
+          extractDate({ attachmentBuffer, attachmentArrayBuffer, ext }).then(
             this.setCreateDate,
           ),
           extractLocation({
             attachmentFile,
             attachmentBuffer,
             attachmentArrayBuffer,
+            ext,
           }).then(this.setCoords),
         ]);
       } catch (err) {
@@ -556,7 +560,7 @@ class Home extends React.Component {
   };
 
   // adapted from https://github.com/openalpr/cloudapi/tree/8141c1ba57f03df4f53430c6e5e389b39714d0e0/javascript#getting-started
-  extractPlate = async ({ attachmentFile, attachmentBuffer }) => {
+  extractPlate = async ({ attachmentFile, attachmentBuffer, ext }) => {
     console.time('extractPlate'); // eslint-disable-line no-console
 
     try {
@@ -565,7 +569,6 @@ class Home extends React.Component {
         return result;
       }
 
-      const { ext } = await FileType.fromBuffer(attachmentBuffer);
       if (isVideo({ ext })) {
         // eslint-disable-next-line no-param-reassign
         attachmentBuffer = await getVideoScreenshot({ attachmentFile });

@@ -125,9 +125,9 @@ function extractLocationDateFromVideo({ attachmentArrayBuffer }) {
 
 async function extractLocation({
   attachmentFile,
-  attachmentBuffer,
   attachmentArrayBuffer,
   ext,
+  exifData,
 }) {
   if (isVideo({ ext })) {
     return extractLocationDateFromVideo({ attachmentArrayBuffer })[0];
@@ -136,31 +136,26 @@ async function extractLocation({
     throw new Error(`${attachmentFile.name} is not an image/video`);
   }
 
-  console.time(`exifr.parse`); // eslint-disable-line no-console
-  return exifr.parse(attachmentBuffer).then(exifData => {
-    console.timeEnd(`exifr.parse`); // eslint-disable-line no-console
+  // adapted from http://danielhindrikes.se/web/get-coordinates-from-photo-with-javascript/
+  const lat = exifData.GPSLatitude;
+  const lng = exifData.GPSLongitude;
 
-    // adapted from http://danielhindrikes.se/web/get-coordinates-from-photo-with-javascript/
-    const lat = exifData.GPSLatitude;
-    const lng = exifData.GPSLongitude;
+  // Convert coordinates to WGS84 decimal
+  const latRef = exifData.GPSLatitudeRef || 'N';
+  const lngRef = exifData.GPSLongitudeRef || 'W';
+  const latitude =
+    (lat[0] + lat[1] / 60 + lat[2] / 3600) * (latRef === 'N' ? 1 : -1);
+  const longitude =
+    (lng[0] + lng[1] / 60 + lng[2] / 3600) * (lngRef === 'W' ? -1 : 1);
 
-    // Convert coordinates to WGS84 decimal
-    const latRef = exifData.GPSLatitudeRef || 'N';
-    const lngRef = exifData.GPSLongitudeRef || 'W';
-    const latitude =
-      (lat[0] + lat[1] / 60 + lat[2] / 3600) * (latRef === 'N' ? 1 : -1);
-    const longitude =
-      (lng[0] + lng[1] / 60 + lng[2] / 3600) * (lngRef === 'W' ? -1 : 1);
-
-    return { latitude, longitude };
-  });
+  return { latitude, longitude };
 }
 
 async function extractDate({
   attachmentFile,
-  attachmentBuffer,
   attachmentArrayBuffer,
   ext,
+  exifData,
 }) {
   if (isVideo({ ext })) {
     return extractLocationDateFromVideo({ attachmentArrayBuffer })[1];
@@ -169,11 +164,7 @@ async function extractDate({
     throw new Error(`${attachmentFile.name} is not an image/video`);
   }
 
-  console.time(`exifr.parse`); // eslint-disable-line no-console
-  return exifr.parse(attachmentBuffer).then(exifData => {
-    console.timeEnd(`exifr.parse`); // eslint-disable-line no-console
-    return exifData.CreateDate.getTime();
-  });
+  return exifData.CreateDate.getTime();
 }
 
 // derived from https://github.com/feross/capture-frame/tree/06b8f5eac78fea305f7f577d1697ee3b6999c9a8#complete-example
@@ -507,17 +498,22 @@ class Home extends React.Component {
         // eslint-disable-next-line no-await-in-loop
         const { ext } = await FileType.fromBuffer(attachmentBuffer);
 
+        console.time(`exifr.parse`); // eslint-disable-line no-console
+        // eslint-disable-next-line no-await-in-loop
+        const exifData = await exifr.parse(attachmentBuffer);
+        console.timeEnd(`exifr.parse`); // eslint-disable-line no-console
+
         // eslint-disable-next-line no-await-in-loop
         await Promise.all([
           this.extractPlate({ attachmentFile, attachmentBuffer, ext }),
-          extractDate({ attachmentBuffer, attachmentArrayBuffer, ext }).then(
+          extractDate({ attachmentArrayBuffer, ext, exifData }).then(
             this.setCreateDate,
           ),
           extractLocation({
             attachmentFile,
-            attachmentBuffer,
             attachmentArrayBuffer,
             ext,
+            exifData,
           }).then(this.setCoords),
         ]);
       } catch (err) {

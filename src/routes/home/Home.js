@@ -123,12 +123,7 @@ function extractLocationDateFromVideo({ attachmentArrayBuffer }) {
   return [{ latitude, longitude }, created.getTime()];
 }
 
-async function extractLocation({
-  attachmentFile,
-  attachmentArrayBuffer,
-  ext,
-  attachmentBuffer,
-}) {
+async function extractLocation({ attachmentFile, attachmentArrayBuffer, ext }) {
   if (isVideo({ ext })) {
     return extractLocationDateFromVideo({ attachmentArrayBuffer })[0];
   }
@@ -136,17 +131,12 @@ async function extractLocation({
     throw new Error(`${attachmentFile.name} is not an image/video`);
   }
 
-  const { latitude, longitude } = await exifr.gps(attachmentBuffer);
+  const { latitude, longitude } = await exifr.gps(attachmentArrayBuffer);
 
   return { latitude, longitude };
 }
 
-async function extractDate({
-  attachmentFile,
-  attachmentArrayBuffer,
-  ext,
-  attachmentBuffer,
-}) {
+async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
   if (isVideo({ ext })) {
     return extractLocationDateFromVideo({ attachmentArrayBuffer })[1];
   }
@@ -154,7 +144,9 @@ async function extractDate({
     throw new Error(`${attachmentFile.name} is not an image/video`);
   }
 
-  const { CreateDate } = await exifr.parse(attachmentBuffer, ['CreateDate']);
+  const { CreateDate } = await exifr.parse(attachmentArrayBuffer, [
+    'CreateDate',
+  ]);
 
   return CreateDate.getTime();
 }
@@ -497,13 +489,11 @@ class Home extends React.Component {
             attachmentFile,
             attachmentArrayBuffer,
             ext,
-            attachmentBuffer,
           }).then(this.setCreateDate),
           extractLocation({
             attachmentFile,
             attachmentArrayBuffer,
             ext,
-            attachmentBuffer,
           }).then(this.setCoords),
         ]);
       } catch (err) {

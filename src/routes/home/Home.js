@@ -123,11 +123,7 @@ function extractLocationDateFromVideo({ attachmentArrayBuffer }) {
   return [{ latitude, longitude }, created.getTime()];
 }
 
-async function extractLocation({ attachmentFile }) {
-  const { attachmentBuffer, attachmentArrayBuffer } = await blobToBuffer({
-    attachmentFile,
-  });
-
+async function extractLocation({ attachmentFile, attachmentBuffer, attachmentArrayBuffer }) {
   const { ext } = await FileType.fromBuffer(attachmentBuffer);
   if (isVideo({ ext })) {
     return extractLocationDateFromVideo({ attachmentArrayBuffer })[0];
@@ -156,11 +152,7 @@ async function extractLocation({ attachmentFile }) {
   });
 }
 
-async function extractDate({ attachmentFile }) {
-  const { attachmentBuffer, attachmentArrayBuffer } = await blobToBuffer({
-    attachmentFile,
-  });
-
+async function extractDate({ attachmentFile, attachmentBuffer, attachmentArrayBuffer }) {
   const { ext } = await FileType.fromBuffer(attachmentBuffer);
   if (isVideo({ ext })) {
     return extractLocationDateFromVideo({ attachmentArrayBuffer })[1];
@@ -500,10 +492,15 @@ class Home extends React.Component {
     for (const attachmentFile of attachmentData) {
       try {
         // eslint-disable-next-line no-await-in-loop
+        const { attachmentBuffer, attachmentArrayBuffer } = await blobToBuffer({
+          attachmentFile,
+        });
+
+        // eslint-disable-next-line no-await-in-loop
         await Promise.all([
-          this.extractPlate({ attachmentFile }),
-          extractDate({ attachmentFile }).then(this.setCreateDate),
-          extractLocation({ attachmentFile }).then(this.setCoords),
+          this.extractPlate({ attachmentFile, attachmentBuffer }),
+          extractDate({ attachmentBuffer, attachmentArrayBuffer }).then(this.setCreateDate),
+          extractLocation({ attachmentFile, attachmentBuffer, attachmentArrayBuffer }).then(this.setCoords),
         ]);
       } catch (err) {
         const hasMultipleAttachments = attachmentData.length > 1;
@@ -545,7 +542,7 @@ class Home extends React.Component {
   };
 
   // adapted from https://github.com/openalpr/cloudapi/tree/8141c1ba57f03df4f53430c6e5e389b39714d0e0/javascript#getting-started
-  extractPlate = async ({ attachmentFile }) => {
+  extractPlate = async ({ attachmentFile, attachmentBuffer }) => {
     console.time('extractPlate'); // eslint-disable-line no-console
 
     try {
@@ -554,10 +551,9 @@ class Home extends React.Component {
         return result;
       }
 
-      let { attachmentBuffer } = await blobToBuffer({ attachmentFile });
-
       const { ext } = await FileType.fromBuffer(attachmentBuffer);
       if (isVideo({ ext })) {
+        // eslint-disable-next-line no-param-reassign
         attachmentBuffer = await getVideoScreenshot({ attachmentFile });
       } else if (!isImage({ ext })) {
         throw new Error(`${attachmentFile.name} is not an image/video`);

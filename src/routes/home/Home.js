@@ -136,7 +136,7 @@ async function extractLocation({ attachmentFile, attachmentArrayBuffer, ext }) {
 
     return { latitude, longitude };
   } catch (err) {
-    console.error(err);
+    console.error(err.stack);
 
     throw 'location'; // eslint-disable-line no-throw-literal
   }
@@ -157,7 +157,7 @@ async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
 
     return CreateDate.getTime();
   } catch (err) {
-    console.error(err);
+    console.error(err.stack);
 
     throw 'creation date'; // eslint-disable-line no-throw-literal
   }
@@ -592,7 +592,7 @@ class Home extends React.Component {
       this.attachmentPlates.set(attachmentFile, result);
       return result;
     } catch (err) {
-      console.error(err);
+      console.error(err.stack);
 
       throw 'license plate'; // eslint-disable-line no-throw-literal
     } finally {

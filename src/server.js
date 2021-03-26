@@ -349,7 +349,6 @@ app.use('/submit', (req, res) => {
 
       plate,
       licenseState,
-      typeofuser,
       typeofreport = 'complaint',
       typeofcomplaint,
       reportDescription,
@@ -383,7 +382,6 @@ app.use('/submit', (req, res) => {
         Object.entries({
           plate,
           licenseState,
-          typeofuser,
           typeofcomplaint,
           latitude,
           longitude,
@@ -413,8 +411,6 @@ app.use('/submit', (req, res) => {
           license: plate, // https://github.com/josephfrazier/Reported-Web/issues/23
           state: licenseState, // https://github.com/josephfrazier/Reported-Web/issues/23
           typeofcomplaint,
-          typeofuser: typeofuser.toLowerCase(),
-          passenger: typeofuser.toLowerCase() === 'passenger',
           locationNumber: 1,
           latitude: latitude.toString(),
           longitude: longitude.toString(),

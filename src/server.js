@@ -410,6 +410,7 @@ app.use('/submit', (req, res) => {
           medallionNo: plate,
           license: plate, // https://github.com/josephfrazier/Reported-Web/issues/23
           state: licenseState, // https://github.com/josephfrazier/Reported-Web/issues/23
+          typeofcomplaint,
           passenger: false,
           locationNumber: 1,
           latitude: latitude.toString(),

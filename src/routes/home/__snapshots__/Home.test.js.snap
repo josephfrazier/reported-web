@@ -544,33 +544,6 @@ exports[`Home renders children correctly 1`] = `
             <br />
           </label>
           <label
-            htmlFor="typeofuser"
-          >
-            I was:
-             
-            <select
-              name="typeofuser"
-              onChange={[Function]}
-              value="Cyclist"
-            >
-              <option
-                value="Cyclist"
-              >
-                Cyclist
-              </option>
-              <option
-                value="Walker"
-              >
-                Walker
-              </option>
-              <option
-                value="Passenger"
-              >
-                Passenger
-              </option>
-            </select>
-          </label>
-          <label
             htmlFor="typeofcomplaint"
           >
             Type:

@@ -122,31 +122,43 @@ function extractLocationDateFromVideo({ attachmentArrayBuffer }) {
 }
 
 async function extractLocation({ attachmentFile, attachmentArrayBuffer, ext }) {
-  if (isVideo({ ext })) {
-    return extractLocationDateFromVideo({ attachmentArrayBuffer })[0];
-  }
-  if (!isImage({ ext })) {
-    throw new Error(`${attachmentFile.name} is not an image/video`);
-  }
+  try {
+    if (isVideo({ ext })) {
+      return extractLocationDateFromVideo({ attachmentArrayBuffer })[0];
+    }
+    if (!isImage({ ext })) {
+      throw new Error(`${attachmentFile.name} is not an image/video`);
+    }
 
-  const { latitude, longitude } = await exifr.gps(attachmentArrayBuffer);
+    const { latitude, longitude } = await exifr.gps(attachmentArrayBuffer);
 
-  return { latitude, longitude };
+    return { latitude, longitude };
+  } catch (err) {
+    console.error(err.stack);
+
+    throw 'location'; // eslint-disable-line no-throw-literal
+  }
 }
 
 async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
-  if (isVideo({ ext })) {
-    return extractLocationDateFromVideo({ attachmentArrayBuffer })[1];
-  }
-  if (!isImage({ ext })) {
-    throw new Error(`${attachmentFile.name} is not an image/video`);
-  }
+  try {
+    if (isVideo({ ext })) {
+      return extractLocationDateFromVideo({ attachmentArrayBuffer })[1];
+    }
+    if (!isImage({ ext })) {
+      throw new Error(`${attachmentFile.name} is not an image/video`);
+    }
 
-  const { CreateDate } = await exifr.parse(attachmentArrayBuffer, [
-    'CreateDate',
-  ]);
+    const { CreateDate } = await exifr.parse(attachmentArrayBuffer, [
+      'CreateDate',
+    ]);
 
-  return CreateDate.getTime();
+    return CreateDate.getTime();
+  } catch (err) {
+    console.error(err.stack);
+
+    throw 'creation date'; // eslint-disable-line no-throw-literal
+  }
 }
 
 // derived from https://github.com/feross/capture-frame/tree/06b8f5eac78fea305f7f577d1697ee3b6999c9a8#complete-example
@@ -480,7 +492,7 @@ class Home extends React.Component {
         const { ext } = await FileType.fromBuffer(attachmentBuffer);
 
         // eslint-disable-next-line no-await-in-loop
-        await Promise.all([
+        await Promise.allSettled([
           this.extractPlate({ attachmentFile, attachmentBuffer, ext }),
           extractDate({
             attachmentFile,
@@ -492,8 +504,16 @@ class Home extends React.Component {
             attachmentArrayBuffer,
             ext,
           }).then(this.setCoords),
-        ]);
-      } catch (err) {
+        ]).then(values => {
+          const rejected = values.filter(v => v.status === 'rejected');
+
+          if (rejected.length === 0) {
+            return;
+          }
+
+          throw rejected.map(v => v.reason).join(', ');
+        });
+      } catch (missingValuesString) {
         const hasMultipleAttachments = attachmentData.length > 1;
         const fileCopy = hasMultipleAttachments
           ? 'one of the files, but they may have been found in other files.'
@@ -502,14 +522,11 @@ class Home extends React.Component {
         this.alert(
           <React.Fragment>
             <p>
-              Could not extract plate and/or location and/or date from{' '}
-              {fileCopy} Please enter/confirm any missing values manually.
+              Could not extract the {missingValuesString} from {fileCopy} Please
+              enter/confirm any missing values manually.
             </p>
-
-            <p style={{ whiteSpace: 'pre-wrap' }}>{err.stack}</p>
           </React.Fragment>,
         );
-        console.error(err.stack);
       }
     }
   };
@@ -572,7 +589,9 @@ class Home extends React.Component {
       this.attachmentPlates.set(attachmentFile, result);
       return result;
     } catch (err) {
-      throw err;
+      console.error(err.stack);
+
+      throw 'license plate'; // eslint-disable-line no-throw-literal
     } finally {
       console.timeEnd('extractPlate'); // eslint-disable-line no-console
     }

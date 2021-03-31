@@ -121,50 +121,44 @@ function extractLocationDateFromVideo({ attachmentArrayBuffer }) {
   return [{ latitude, longitude }, created.getTime()];
 }
 
-async function replaceRejectionReason(
-  asyncFunction,
-  argumentObject,
-  rejectionReason,
-) {
-  console.time(asyncFunction.name); // eslint-disable-line no-console
-
-  return asyncFunction(argumentObject)
-    .catch(err => {
-      console.error(err.stack);
-
-      throw rejectionReason;
-    })
-    .finally(() => {
-      console.timeEnd(asyncFunction.name); // eslint-disable-line no-console
-    });
-}
-
 async function extractLocation({ attachmentFile, attachmentArrayBuffer, ext }) {
-  if (isVideo({ ext })) {
-    return extractLocationDateFromVideo({ attachmentArrayBuffer })[0];
-  }
-  if (!isImage({ ext })) {
-    throw new Error(`${attachmentFile.name} is not an image/video`);
-  }
+  try {
+    if (isVideo({ ext })) {
+      return extractLocationDateFromVideo({ attachmentArrayBuffer })[0];
+    }
+    if (!isImage({ ext })) {
+      throw new Error(`${attachmentFile.name} is not an image/video`);
+    }
 
-  const { latitude, longitude } = await exifr.gps(attachmentArrayBuffer);
+    const { latitude, longitude } = await exifr.gps(attachmentArrayBuffer);
 
-  return { latitude, longitude };
+    return { latitude, longitude };
+  } catch (err) {
+    console.error(err.stack);
+
+    throw 'location'; // eslint-disable-line no-throw-literal
+  }
 }
 
 async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
-  if (isVideo({ ext })) {
-    return extractLocationDateFromVideo({ attachmentArrayBuffer })[1];
-  }
-  if (!isImage({ ext })) {
-    throw new Error(`${attachmentFile.name} is not an image/video`);
-  }
+  try {
+    if (isVideo({ ext })) {
+      return extractLocationDateFromVideo({ attachmentArrayBuffer })[1];
+    }
+    if (!isImage({ ext })) {
+      throw new Error(`${attachmentFile.name} is not an image/video`);
+    }
 
-  const { CreateDate } = await exifr.parse(attachmentArrayBuffer, [
-    'CreateDate',
-  ]);
+    const { CreateDate } = await exifr.parse(attachmentArrayBuffer, [
+      'CreateDate',
+    ]);
 
-  return CreateDate.getTime();
+    return CreateDate.getTime();
+  } catch (err) {
+    console.error(err.stack);
+
+    throw 'creation date'; // eslint-disable-line no-throw-literal
+  }
 }
 
 // derived from https://github.com/feross/capture-frame/tree/06b8f5eac78fea305f7f577d1697ee3b6999c9a8#complete-example
@@ -497,30 +491,19 @@ class Home extends React.Component {
         // eslint-disable-next-line no-await-in-loop
         const { ext } = await FileType.fromBuffer(attachmentBuffer);
 
-        const argumentObject = {
-          attachmentFile,
-          attachmentBuffer,
-          attachmentArrayBuffer,
-          ext,
-        };
-
         // eslint-disable-next-line no-await-in-loop
         await Promise.allSettled([
-          replaceRejectionReason(
-            this.extractPlate.bind(this),
-            argumentObject,
-            'license plate',
-          ).then(this.setCreateDate),
-          replaceRejectionReason(
-            extractDate,
-            argumentObject,
-            'creation date',
-          ).then(this.setCreateDate),
-          replaceRejectionReason(
-            extractLocation,
-            argumentObject,
-            'location',
-          ).then(this.setCoords),
+          this.extractPlate({ attachmentFile, attachmentBuffer, ext }),
+          extractDate({
+            attachmentFile,
+            attachmentArrayBuffer,
+            ext,
+          }).then(this.setCreateDate),
+          extractLocation({
+            attachmentFile,
+            attachmentArrayBuffer,
+            ext,
+          }).then(this.setCoords),
         ]).then(values => {
           const rejected = values.filter(v => v.status === 'rejected');
 
@@ -568,40 +551,50 @@ class Home extends React.Component {
 
   // adapted from https://github.com/openalpr/cloudapi/tree/8141c1ba57f03df4f53430c6e5e389b39714d0e0/javascript#getting-started
   extractPlate = async ({ attachmentFile, attachmentBuffer, ext }) => {
-    if (this.attachmentPlates.has(attachmentFile)) {
-      const result = this.attachmentPlates.get(attachmentFile);
+    console.time('extractPlate'); // eslint-disable-line no-console
+
+    try {
+      if (this.attachmentPlates.has(attachmentFile)) {
+        const result = this.attachmentPlates.get(attachmentFile);
+        return result;
+      }
+
+      if (isVideo({ ext })) {
+        // eslint-disable-next-line no-param-reassign
+        attachmentBuffer = await getVideoScreenshot({ attachmentFile });
+      } else if (!isImage({ ext })) {
+        throw new Error(`${attachmentFile.name} is not an image/video`);
+      }
+
+      console.time(`bufferToBlob(${attachmentFile.name})`); // eslint-disable-line no-console
+      const attachmentBlob = await blobUtil.arrayBufferToBlob(
+        bufferToArrayBuffer(attachmentBuffer),
+      );
+      console.timeEnd(`bufferToBlob(${attachmentFile.name})`); // eslint-disable-line no-console
+
+      const formData = new window.FormData();
+      formData.append('attachmentFile', attachmentBlob);
+      const { data } = await axios.post('/openalpr', formData);
+      const result = data.results[0];
+      result.licenseState = result.region.toUpperCase();
+      if (
+        this.state.plate === '' &&
+        document.activeElement !== this.plateRef.current
+      ) {
+        this.setLicensePlate(result);
+      }
+      this.setState({
+        plateSuggestion: result.plate,
+      });
+      this.attachmentPlates.set(attachmentFile, result);
       return result;
-    }
+    } catch (err) {
+      console.error(err.stack);
 
-    if (isVideo({ ext })) {
-      // eslint-disable-next-line no-param-reassign
-      attachmentBuffer = await getVideoScreenshot({ attachmentFile });
-    } else if (!isImage({ ext })) {
-      throw new Error(`${attachmentFile.name} is not an image/video`);
+      throw 'license plate'; // eslint-disable-line no-throw-literal
+    } finally {
+      console.timeEnd('extractPlate'); // eslint-disable-line no-console
     }
-
-    console.time(`bufferToBlob(${attachmentFile.name})`); // eslint-disable-line no-console
-    const attachmentBlob = await blobUtil.arrayBufferToBlob(
-      bufferToArrayBuffer(attachmentBuffer),
-    );
-    console.timeEnd(`bufferToBlob(${attachmentFile.name})`); // eslint-disable-line no-console
-
-    const formData = new window.FormData();
-    formData.append('attachmentFile', attachmentBlob);
-    const { data } = await axios.post('/openalpr', formData);
-    const result = data.results[0];
-    result.licenseState = result.region.toUpperCase();
-    if (
-      this.state.plate === '' &&
-      document.activeElement !== this.plateRef.current
-    ) {
-      this.setLicensePlate(result);
-    }
-    this.setState({
-      plateSuggestion: result.plate,
-    });
-    this.attachmentPlates.set(attachmentFile, result);
-    return result;
   };
 
   handleAxiosError = error =>

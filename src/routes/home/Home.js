@@ -63,8 +63,6 @@ const debouncedGetVehicleType = debounce(
   500,
 );
 
-const typeofuserValues = ['Cyclist', 'Walker', 'Passenger'];
-
 const defaultLatitude = 40.7128;
 const defaultLongitude = -74.006;
 
@@ -212,7 +210,6 @@ class Home extends React.Component {
 
       plate: '',
       licenseState: 'NY',
-      typeofuser: typeofuserValues[0],
       typeofcomplaint: typeofcomplaintValues[0],
       reportDescription: '',
       can_be_shared_publicly: false,
@@ -1099,21 +1096,6 @@ class Home extends React.Component {
                     ))}
                   </select>
                   {this.state.vehicleInfoComponent}
-                </label>
-
-                <label htmlFor="typeofuser">
-                  I was:{' '}
-                  <select
-                    value={this.state.typeofuser}
-                    name="typeofuser"
-                    onChange={this.handleInputChange}
-                  >
-                    {typeofuserValues.map(typeofuser => (
-                      <option key={typeofuser} value={typeofuser}>
-                        {typeofuser}
-                      </option>
-                    ))}
-                  </select>
                 </label>
 
                 <label htmlFor="typeofcomplaint">

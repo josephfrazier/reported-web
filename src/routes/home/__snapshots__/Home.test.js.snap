@@ -544,33 +544,6 @@ exports[`Home renders children correctly 1`] = `
             <br />
           </label>
           <label
-            htmlFor="typeofuser"
-          >
-            I was:
-             
-            <select
-              name="typeofuser"
-              onChange={[Function]}
-              value="Cyclist"
-            >
-              <option
-                value="Cyclist"
-              >
-                Cyclist
-              </option>
-              <option
-                value="Walker"
-              >
-                Walker
-              </option>
-              <option
-                value="Passenger"
-              >
-                Passenger
-              </option>
-            </select>
-          </label>
-          <label
             htmlFor="typeofcomplaint"
           >
             Type:
@@ -655,7 +628,7 @@ exports[`Home renders children correctly 1`] = `
               onChange={[Function]}
               required={true}
               type="datetime-local"
-              value="2016-11-17T19:00"
+              value="2016-11-17T20:00"
             />
           </label>
           <label

@@ -3,12 +3,12 @@
 exports[`getVehicleType returns the right object 1`] = `
 Object {
   "result": Object {
-    "licensePlate": "T716540C",
+    "licensePlate": "HUK9845",
     "licenseState": "NY",
-    "vehicleBody": "Sedan/Saloon",
-    "vehicleMake": "Lincoln",
-    "vehicleModel": "Town Car",
-    "vehicleYear": "2009",
+    "vehicleBody": "Sport Utility Vehicle (SUV)/Multi-Purpose Vehicle (MPV)",
+    "vehicleMake": "Dodge",
+    "vehicleModel": "Durango",
+    "vehicleYear": "2018",
   },
 }
 `;

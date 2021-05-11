@@ -2,44 +2,30 @@ import axios from 'axios';
 
 // ported from https://github.com/jeffrono/Reported/blob/19b588171315a3093d53986f9fb995059f5084b4/v2/enrich_functions.rb#L325-L346
 export default function getVehicleType({ licensePlate, licenseState }) {
-  const url = `https://findbyplate.com/US/${licenseState}/${licensePlate}/`;
+  const url = `https://www.carfax.com/api/mobile-homepage-quickvin-check?plate=${licensePlate}&state=${licenseState}`;
 
   console.time(url); // eslint-disable-line no-console
-  return axios.get(url).then(({ data }) => {
-    console.timeEnd(url); // eslint-disable-line no-console
-    const vehicleSummary = data
-      .match(/<h2 class="vehicle-modal">(.+?)</s)[1]
-      .trim();
-    const components = vehicleSummary.split(' ');
-    const vehicleYear = components[0];
-    let vehicleMake = components[1];
-    vehicleMake =
-      vehicleMake.charAt(0).toUpperCase() + vehicleMake.slice(1).toLowerCase();
-    const vehicleModel = components.slice(2).join(' ');
-    let vehicleBody;
 
-    try {
-      vehicleBody = data
-        .match(/<div class="cell" data-title="BodyClass">(.+?)</s)[1]
-        .trim();
-    } catch (err) {
-      console.error('no vehicle body');
-    }
-
-    // if (vehicleYear === 'Try Members Area') {
-    //   const message = 'not found';
-    //   throw { message, licensePlate, licenseState }; // eslint-disable-line no-throw-literal
-    // }
-
-    return {
-      result: {
-        vehicleYear,
-        vehicleMake,
-        vehicleModel,
-        vehicleBody,
-        licensePlate,
-        licenseState,
+  return axios
+    .get(url, {
+      headers: {
+        'accept-language': 'en-US,en;q=0.9',
+        'user-agent':
+          'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.114 Safari/537.36',
       },
-    };
-  });
+    })
+    .then(({ data }) => {
+      console.timeEnd(url); // eslint-disable-line no-console
+
+      return {
+        result: {
+          vehicleYear: data.quickVinResults[0].year,
+          vehicleMake: data.quickVinResults[0].make,
+          vehicleModel: data.quickVinResults[0].model,
+          vehicleBody: undefined,
+          licensePlate,
+          licenseState,
+        },
+      };
+    });
 }

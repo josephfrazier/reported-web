@@ -37,9 +37,7 @@ class ElectriCitibikes extends React.Component {
   componentDidMount() {
     this.updateData();
 
-    fetch(
-      'https://services5.arcgis.com/GfwWNkhOj9bNBqoJ/arcgis/rest/services/nybb/FeatureServer/0/query?where=1=1&outFields=*&outSR=4326&f=geojson',
-    )
+    fetch('/borough-boundaries-clipped-to-shoreline.geo.json')
       .then(response => response.json())
       .then(boroughBoundariesFeatureCollection => {
         this.setState({
@@ -103,14 +101,10 @@ class ElectriCitibikes extends React.Component {
 
 function getMapUrl({ station, latitude, longitude }) {
   if (latitude && longitude) {
-    return `https://www.google.com/maps/dir/?api=1&travelmode=bicycling&origin=${latitude}%2C${longitude}&destination=${
-      station.latitude
-    }%2C${station.longitude}`;
+    return `https://www.google.com/maps/dir/?api=1&travelmode=bicycling&origin=${latitude}%2C${longitude}&destination=${station.latitude}%2C${station.longitude}`;
   }
 
-  return `https://www.google.com/maps/search/?api=1&query=${
-    station.latitude
-  }%2C${station.longitude}`;
+  return `https://www.google.com/maps/search/?api=1&query=${station.latitude}%2C${station.longitude}`;
 }
 
 function getBoroName({ lookup, end }) {
@@ -158,8 +152,8 @@ export function ElectriCitibikeList({
     console.timeEnd('new PolygonLookup'); // eslint-disable-line no-console
   }
 
-  const bikeStations = data.features
-    .filter(f => f.properties.bikes_available > 0)
+  const ebikeStations = data.features
+    .filter(f => f.properties.ebikes_available > 0)
     .map(f => {
       const { coordinates } = f.geometry;
       const start = { latitude, longitude };
@@ -189,18 +183,18 @@ export function ElectriCitibikeList({
       };
     });
 
-  bikeStations.sort((a, b) => a.distMeters - b.distMeters);
+  ebikeStations.sort((a, b) => a.distMeters - b.distMeters);
   const humanDate = strftime('%r', new Date(updatedAt));
-  const totalbikesAvailable = bikeStations
-    .map(station => station.bikes_available)
+  const totalEbikesAvailable = ebikeStations
+    .map(station => station.ebikes_available)
     .reduce((a, b) => a + b, 0);
   return (
     <>
-      {totalbikesAvailable} available as of {humanDate}
-      {bikeStations.map(station => (
+      {totalEbikesAvailable} available as of {humanDate}
+      {ebikeStations.map(station => (
         <details key={station.name} style={{ margin: '1rem 0' }}>
           <summary>
-            {station.bikes_available} @&nbsp;
+            {station.ebikes_available} @&nbsp;
             <a
               target="_blank"
               rel="noopener noreferrer"
@@ -212,12 +206,37 @@ export function ElectriCitibikeList({
             (about {Math.ceil(station.distMeters / 80)} blocks{' '}
             {station.compassBearing} of you)
             <br />
+            Max Charge:{' '}
+            {Math.max(
+              ...(station.ebikes || [{ charge: 0 }]).map(ebike => ebike.charge),
+            ) || '?'}
+            /4
+            <br />
             Empty Docks: {station.docks_available}
           </summary>
+          <ul>
+            {station.ebikes &&
+              station.ebikes.map(ebike => (
+                <li key={ebike.bike_number}>
+                  {`#${ebike.bike_number}`} has {ebike.charge}
+                  /4 charge
+                </li>
+              ))}
+          </ul>
         </details>
       ))}
     </>
   );
 }
+
+ElectriCitibikeList.propTypes = {
+  data: PropTypes.shape({
+    features: PropTypes.array.isRequired,
+  }).isRequired,
+  latitude: PropTypes.number.isRequired,
+  longitude: PropTypes.number.isRequired,
+  updatedAt: PropTypes.number.isRequired,
+  boroughBoundariesFeatureCollection: PropTypes.object.isRequired,
+};
 
 export default withStyles(marx, s)(ElectriCitibikes);

@@ -7,13 +7,12 @@
  * LICENSE.txt file in the root directory of this source tree.
  */
 
-import promisify from 'util.promisify';
 import React from 'react';
 import PropTypes from 'prop-types';
 import withStyles from 'isomorphic-style-loader/lib/withStyles';
 import FileReaderInput from 'react-file-reader-input';
 import blobUtil from 'blob-util';
-import { ExifImage } from 'exif';
+import exifr from 'exifr/dist/full.umd.js';
 import axios from 'axios';
 import promisedLocation from 'promised-location';
 import { compose, withProps } from 'recompose';
@@ -27,7 +26,7 @@ import { SearchBox } from 'react-google-maps/lib/components/places/SearchBox';
 import withLocalStorage from 'react-localstorage';
 import debounce from 'debounce-promise';
 import { SocialIcon } from 'react-social-icons';
-import fileType from 'file-type-es5';
+import FileType from 'file-type/browser';
 import MP4Box from 'mp4box';
 import execall from 'execall';
 import captureFrame from 'capture-frame';
@@ -37,7 +36,8 @@ import bufferToArrayBuffer from 'buffer-to-arraybuffer';
 import objectToFormData from 'object-to-formdata';
 import usStateNames from 'datasets-us-states-abbr-names';
 import fileExtension from 'file-extension';
-import niceware from 'niceware';
+import diceware from 'diceware-generator';
+import wordlist from 'diceware-wordlist-en-eff';
 import Modal from 'react-modal';
 import Dropzone from '@josephfrazier/react-dropzone';
 
@@ -62,8 +62,6 @@ const debouncedGetVehicleType = debounce(
     axios.get(`/getVehicleType/${plate}/${licenseState}`),
   500,
 );
-
-const typeofuserValues = ['Cyclist', 'Walker', 'Passenger'];
 
 const defaultLatitude = 40.7128;
 const defaultLongitude = -74.006;
@@ -103,38 +101,7 @@ async function blobToBuffer({ attachmentFile }) {
   return { attachmentBuffer, attachmentArrayBuffer };
 }
 
-// adapted from http://danielhindrikes.se/web/get-coordinates-from-photo-with-javascript/
-function coordsFromExifGps({ gps }) {
-  const lat = gps.GPSLatitude;
-  const lng = gps.GPSLongitude;
-
-  // Convert coordinates to WGS84 decimal
-  const latRef = gps.GPSLatitudeRef || 'N';
-  const lngRef = gps.GPSLongitudeRef || 'W';
-  const latitude =
-    (lat[0] + lat[1] / 60 + lat[2] / 3600) * (latRef === 'N' ? 1 : -1);
-  const longitude =
-    (lng[0] + lng[1] / 60 + lng[2] / 3600) * (lngRef === 'W' ? -1 : 1);
-
-  return { latitude, longitude };
-}
-
-function extractLocation({ exifData }) {
-  const { gps } = exifData;
-  return coordsFromExifGps({ gps });
-}
-
-function extractDate({ exifData }) {
-  const {
-    exif: { CreateDate },
-  } = exifData;
-  const millisecondsSinceEpoch = new Date(
-    CreateDate.replace(':', '/').replace(':', '/'),
-  ).getTime();
-
-  return millisecondsSinceEpoch;
-}
-
+// TODO decouple location/date extraction
 function extractLocationDateFromVideo({ attachmentArrayBuffer }) {
   const mp4boxfile = MP4Box.createFile();
   attachmentArrayBuffer.fileStart = 0; // eslint-disable-line no-param-reassign
@@ -154,27 +121,44 @@ function extractLocationDateFromVideo({ attachmentArrayBuffer }) {
   return [{ latitude, longitude }, created.getTime()];
 }
 
-async function extractLocationDate({ attachmentFile }) {
-  const { attachmentBuffer, attachmentArrayBuffer } = await blobToBuffer({
-    attachmentFile,
-  });
+async function extractLocation({ attachmentFile, attachmentArrayBuffer, ext }) {
+  try {
+    if (isVideo({ ext })) {
+      return extractLocationDateFromVideo({ attachmentArrayBuffer })[0];
+    }
+    if (!isImage({ ext })) {
+      throw new Error(`${attachmentFile.name} is not an image/video`);
+    }
 
-  const { ext } = fileType(attachmentBuffer);
-  if (isVideo({ ext })) {
-    return extractLocationDateFromVideo({ attachmentArrayBuffer });
-  }
-  if (!isImage({ ext })) {
-    throw new Error(`${attachmentFile.name} is not an image/video`);
-  }
+    const { latitude, longitude } = await exifr.gps(attachmentArrayBuffer);
 
-  console.time(`ExifImage`); // eslint-disable-line no-console
-  return promisify(ExifImage)({ image: attachmentBuffer }).then(exifData => {
-    console.timeEnd(`ExifImage`); // eslint-disable-line no-console
-    return Promise.all([
-      extractLocation({ exifData }),
-      extractDate({ exifData }),
+    return { latitude, longitude };
+  } catch (err) {
+    console.error(err.stack);
+
+    throw 'location'; // eslint-disable-line no-throw-literal
+  }
+}
+
+async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
+  try {
+    if (isVideo({ ext })) {
+      return extractLocationDateFromVideo({ attachmentArrayBuffer })[1];
+    }
+    if (!isImage({ ext })) {
+      throw new Error(`${attachmentFile.name} is not an image/video`);
+    }
+
+    const { CreateDate } = await exifr.parse(attachmentArrayBuffer, [
+      'CreateDate',
     ]);
-  });
+
+    return CreateDate.getTime();
+  } catch (err) {
+    console.error(err.stack);
+
+    throw 'creation date'; // eslint-disable-line no-throw-literal
+  }
 }
 
 // derived from https://github.com/feross/capture-frame/tree/06b8f5eac78fea305f7f577d1697ee3b6999c9a8#complete-example
@@ -220,7 +204,6 @@ class Home extends React.Component {
 
       plate: '',
       licenseState: 'NY',
-      typeofuser: typeofuserValues[0],
       typeofcomplaint: typeofcomplaintValues[0],
       reportDescription: '',
       can_be_shared_publicly: false,
@@ -280,8 +263,13 @@ class Home extends React.Component {
     if (!this.state.password) {
       // async so that test snapshots don't change
       setTimeout(() => {
+        const options = {
+          language: wordlist,
+          wordcount: 6,
+          format: 'string',
+        };
         this.setState({
-          password: niceware.generatePassphrase(10).join(' '),
+          password: diceware(options),
           isPasswordRevealed: true,
         });
       });
@@ -344,11 +332,6 @@ class Home extends React.Component {
   getStateFilterKeys() {
     return Object.keys(this.initialStatePersistent);
   }
-
-  setLocationDate = ([coords, millisecondsSinceEpoch]) => {
-    this.setCoords(coords);
-    this.setCreateDate(millisecondsSinceEpoch);
-  };
 
   setCoords = ({ latitude, longitude } = {}) => {
     if (!latitude || !longitude) {
@@ -447,9 +430,7 @@ class Home extends React.Component {
 
         if (plate) {
           this.setState({
-            vehicleInfoComponent: `Could not find ${plate} in ${
-              usStateNames[licenseState]
-            }`,
+            vehicleInfoComponent: `Could not find ${plate} in ${usStateNames[licenseState]}`,
           });
 
           if (plate.match(/1\d\d\d\d\d\dC/)) {
@@ -503,22 +484,49 @@ class Home extends React.Component {
     for (const attachmentFile of attachmentData) {
       try {
         // eslint-disable-next-line no-await-in-loop
-        await Promise.all([
-          this.extractPlate({ attachmentFile }),
-          extractLocationDate({ attachmentFile }).then(this.setLocationDate),
-        ]);
-      } catch (err) {
+        const { attachmentBuffer, attachmentArrayBuffer } = await blobToBuffer({
+          attachmentFile,
+        });
+
+        // eslint-disable-next-line no-await-in-loop
+        const { ext } = await FileType.fromBuffer(attachmentBuffer);
+
+        // eslint-disable-next-line no-await-in-loop
+        await Promise.allSettled([
+          this.extractPlate({ attachmentFile, attachmentBuffer, ext }),
+          extractDate({
+            attachmentFile,
+            attachmentArrayBuffer,
+            ext,
+          }).then(this.setCreateDate),
+          extractLocation({
+            attachmentFile,
+            attachmentArrayBuffer,
+            ext,
+          }).then(this.setCoords),
+        ]).then(values => {
+          const rejected = values.filter(v => v.status === 'rejected');
+
+          if (rejected.length === 0) {
+            return;
+          }
+
+          throw rejected.map(v => v.reason).join(', ');
+        });
+      } catch (missingValuesString) {
+        const hasMultipleAttachments = attachmentData.length > 1;
+        const fileCopy = hasMultipleAttachments
+          ? 'one of the files, but they may have been found in other files.'
+          : 'the file.';
+
         this.alert(
           <React.Fragment>
             <p>
-              Could not extract plate/location/date from image. Please
-              enter/confirm them manually.
+              Could not extract the {missingValuesString} from {fileCopy} Please
+              enter/confirm any missing values manually.
             </p>
-
-            <p>(Error message: {err.message})</p>
           </React.Fragment>,
         );
-        console.error(`Error: ${err.message}`);
       }
     }
   };
@@ -529,8 +537,8 @@ class Home extends React.Component {
       target.type === 'checkbox'
         ? target.checked
         : target.type === 'datetime-local'
-          ? target.value.slice(0, 'YYYY-MM-DDThh:mm'.length)
-          : target.value;
+        ? target.value.slice(0, 'YYYY-MM-DDThh:mm'.length)
+        : target.value;
     const { name } = target;
 
     this.setState(
@@ -542,7 +550,7 @@ class Home extends React.Component {
   };
 
   // adapted from https://github.com/openalpr/cloudapi/tree/8141c1ba57f03df4f53430c6e5e389b39714d0e0/javascript#getting-started
-  extractPlate = async ({ attachmentFile }) => {
+  extractPlate = async ({ attachmentFile, attachmentBuffer, ext }) => {
     console.time('extractPlate'); // eslint-disable-line no-console
 
     try {
@@ -551,10 +559,8 @@ class Home extends React.Component {
         return result;
       }
 
-      let { attachmentBuffer } = await blobToBuffer({ attachmentFile });
-
-      const { ext } = fileType(attachmentBuffer);
       if (isVideo({ ext })) {
+        // eslint-disable-next-line no-param-reassign
         attachmentBuffer = await getVideoScreenshot({ attachmentFile });
       } else if (!isImage({ ext })) {
         throw new Error(`${attachmentFile.name} is not an image/video`);
@@ -583,7 +589,9 @@ class Home extends React.Component {
       this.attachmentPlates.set(attachmentFile, result);
       return result;
     } catch (err) {
-      throw err;
+      console.error(err.stack);
+
+      throw 'license plate'; // eslint-disable-line no-throw-literal
     } finally {
       console.timeEnd('extractPlate'); // eslint-disable-line no-console
     }
@@ -703,7 +711,6 @@ class Home extends React.Component {
                       }}
                     />
                   </label>
-
                   <label htmlFor="password">
                     {
                       "Password (this is saved on your device, so use a password you don't use anywhere else): "
@@ -753,7 +760,6 @@ class Home extends React.Component {
                       </button>
                     </div>
                   </label>
-
                   <button
                     type="button"
                     disabled={this.state.isUserInfoSaving}
@@ -793,7 +799,14 @@ class Home extends React.Component {
                   >
                     Sign Up / Log In
                   </button>
-
+                  <br />
+                  <br />
+                  (If you cannot log in even after resetting your password,
+                  email{' '}
+                  <a href="mailto:reportedapp@gmail.com">
+                    reportedapp@gmail.com
+                  </a>
+                  )
                   <label htmlFor="FirstName">
                     First Name:{' '}
                     <input
@@ -806,7 +819,6 @@ class Home extends React.Component {
                       onChange={this.handleInputChange}
                     />
                   </label>
-
                   <label htmlFor="LastName">
                     Last Name:{' '}
                     <input
@@ -819,7 +831,6 @@ class Home extends React.Component {
                       onChange={this.handleInputChange}
                     />
                   </label>
-
                   <label htmlFor="Phone">
                     Phone Number:{' '}
                     <input
@@ -832,7 +843,6 @@ class Home extends React.Component {
                       onChange={this.handleInputChange}
                     />
                   </label>
-
                   <label htmlFor="testify">
                     <input
                       type="checkbox"
@@ -844,7 +854,6 @@ class Home extends React.Component {
                       "I'm willing to testify at a hearing, which can be done by phone."
                     }
                   </label>
-
                   <button
                     type="button"
                     disabled={this.state.isUserInfoSaving}
@@ -1080,21 +1089,6 @@ class Home extends React.Component {
                     ))}
                   </select>
                   {this.state.vehicleInfoComponent}
-                </label>
-
-                <label htmlFor="typeofuser">
-                  I was:{' '}
-                  <select
-                    value={this.state.typeofuser}
-                    name="typeofuser"
-                    onChange={this.handleInputChange}
-                  >
-                    {typeofuserValues.map(typeofuser => (
-                      <option key={typeofuser} value={typeofuser}>
-                        {typeofuser}
-                      </option>
-                    ))}
-                  </select>
                 </label>
 
                 <label htmlFor="typeofcomplaint">

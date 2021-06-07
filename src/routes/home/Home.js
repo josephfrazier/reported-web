@@ -430,7 +430,16 @@ class Home extends React.Component {
 
         if (plate) {
           this.setState({
-            vehicleInfoComponent: `Could not find ${plate} in ${usStateNames[licenseState]}`,
+            vehicleInfoComponent: (
+              <a
+                href="https://github.com/josephfrazier/Reported-Web/issues/295"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Could not find {plate} in {usStateNames[licenseState]}, click
+                here for details
+              </a>
+            ),
           });
 
           if (plate.match(/1\d\d\d\d\d\dC/)) {

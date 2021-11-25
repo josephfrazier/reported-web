@@ -159,8 +159,8 @@ New York, NY 10007",
   },
   "google_response": Object {
     "plus_code": Object {
-      "compound_code": "PX7V+4H New York, NY, USA",
-      "global_code": "87G7PX7V+4H",
+      "compound_code": "PX7V+4HH New York, NY, USA",
+      "global_code": "87G7PX7V+4HH",
     },
     "results": Array [
       Object {
@@ -461,8 +461,8 @@ Bronx, NY 10471",
   },
   "google_response": Object {
     "plus_code": Object {
-      "compound_code": "V3JQ+8R New York, NY, USA",
-      "global_code": "87G8V3JQ+8R",
+      "compound_code": "V3JQ+8RX New York, NY, USA",
+      "global_code": "87G8V3JQ+8RX",
     },
     "results": Array [
       Object {
@@ -533,24 +533,24 @@ Bronx, NY 10471",
         "formatted_address": "3017 Riverdale Ave, Bronx, NY 10463, USA",
         "geometry": Object {
           "location": Object {
-            "lat": 40.8809802,
-            "lng": -73.9102243,
+            "lat": 40.880985,
+            "lng": -73.9102329,
           },
           "location_type": "ROOFTOP",
           "viewport": Object {
             "northeast": Object {
-              "lat": 40.8823291802915,
-              "lng": -73.90887531970849,
+              "lat": 40.8823339802915,
+              "lng": -73.9088839197085,
             },
             "southwest": Object {
-              "lat": 40.8796312197085,
-              "lng": -73.9115732802915,
+              "lat": 40.8796360197085,
+              "lng": -73.91158188029151,
             },
           },
         },
         "place_id": "ChIJUaKJHJXzwokRS0cn01bSawQ",
         "plus_code": Object {
-          "compound_code": "V3JQ+9W Bronx, NY, USA",
+          "compound_code": "V3JQ+9W New York, NY, USA",
           "global_code": "87G8V3JQ+9W",
         },
         "types": Array [
@@ -853,8 +853,8 @@ Astoria, NY 11105",
   },
   "google_response": Object {
     "plus_code": Object {
-      "compound_code": "Q3CF+VJ New York, NY, USA",
-      "global_code": "87G8Q3CF+VJ",
+      "compound_code": "Q3CF+VJP New York, NY, USA",
+      "global_code": "87G8Q3CF+VJP",
     },
     "results": Array [
       Object {
@@ -1205,8 +1205,8 @@ New York, NY 10007",
   },
   "google_response": Object {
     "plus_code": Object {
-      "compound_code": "PX7V+4H New York, NY, USA",
-      "global_code": "87G7PX7V+4H",
+      "compound_code": "PX7V+4HH New York, NY, USA",
+      "global_code": "87G7PX7V+4HH",
     },
     "results": Array [
       Object {

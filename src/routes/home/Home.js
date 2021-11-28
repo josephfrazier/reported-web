@@ -530,14 +530,14 @@ class Home extends React.Component {
             attachmentArrayBuffer,
             ext,
           }).then(this.setCoords),
-        ]).then(values => {
-          const rejected = values.filter(v => v.status === 'rejected');
+        ]).then((values) => {
+          const rejected = values.filter((v) => v.status === 'rejected');
 
           if (rejected.length === 0) {
             return;
           }
 
-          throw rejected.map(v => v.reason).join(', ');
+          throw rejected.map((v) => v.reason).join(', ');
         });
       } catch (missingValuesString) {
         const hasMultipleAttachments = attachmentData.length > 1;

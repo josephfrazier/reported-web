@@ -30,6 +30,7 @@ export async function validateLocation({ lat, long }) {
     return response;
   }
 
+  console.debug({ googleResponse });
   const address = googleResponse.results[0];
   const building = address.address_components[0].short_name;
   const street = address.address_components[1].short_name;

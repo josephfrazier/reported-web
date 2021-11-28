@@ -494,7 +494,7 @@ function heicConvert({ buffer }) {
 }
 
 // adapted from https://github.com/openalpr/cloudapi/tree/8141c1ba57f03df4f53430c6e5e389b39714d0e0/javascript#getting-started
-app.use('/openalpr', upload.single('attachmentFile'), (req, res) => {
+app.use('/openalpr', upload.single('attachmentFile'), async (req, res) => {
   const country = 'us';
   const opts = {
     recognizeVehicle: 1,

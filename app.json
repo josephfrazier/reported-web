@@ -1,5 +1,8 @@
 {
   "env": {
+    "JEMALLOC_ENABLED": {
+      "value": "true"
+    },
     "NODE_MODULES_CACHE": {
       "value": "false"
     },

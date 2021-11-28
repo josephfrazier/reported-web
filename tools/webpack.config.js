@@ -376,6 +376,7 @@ const clientConfig = {
   // Tell Webpack to provide empty mocks for them so importing them works.
   // https://webpack.js.org/configuration/node/
   // https://github.com/webpack/node-libs-browser/tree/master/mock
+  // eslint-disable-next-line no-dupe-keys
   resolve: {
     fallback: {
       fs: 'empty',
@@ -405,12 +406,6 @@ const serverConfig = {
     filename: '[name].js',
     chunkFilename: 'chunks/[name].js',
     libraryTarget: 'commonjs2',
-  },
-
-  // Webpack mutates resolve object, so clone it to avoid issues
-  // https://github.com/webpack/webpack/issues/4817
-  resolve: {
-    ...config.resolve,
   },
 
   module: {
@@ -488,6 +483,7 @@ const serverConfig = {
 
   // Do not replace node globals with polyfills
   // https://webpack.js.org/configuration/node/
+  // eslint-disable-next-line no-dupe-keys
   resolve: {
     fallback: {
       console: false,

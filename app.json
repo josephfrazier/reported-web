@@ -1,7 +1,7 @@
 {
   "env": {
     "VIPS_VERSION": {
-      "value": "8.9.2"
+      "value": "8.10.6"
     }
   },
   "stack": "heroku-20",

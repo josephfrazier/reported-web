@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const { GEO_APP_ID, GEO_APP_KEY, GOOGLE_API_KEY } = process.env;
+const { GEO_APP_KEY, GOOGLE_API_KEY } = process.env;
 
 // ported from https://github.com/jeffrono/Reported/blob/19b588171315a3093d53986f9fb995059f5084b4/v2/enrich_functions.rb#L149-L154
 async function getCbData(id) {
@@ -60,14 +60,15 @@ export async function validateLocation({ lat, long }) {
   }
 
   const { data: geoclientResponse } = await axios.get(
-    'https://api.cityofnewyork.us/geoclient/v1/address.json',
+    'https://api.nyc.gov/geo/geoclient/v1/address.json',
     {
       params: {
         houseNumber: building,
         street,
         borough,
-        app_id: GEO_APP_ID,
-        app_key: GEO_APP_KEY,
+      },
+      headers: {
+        'Ocp-Apim-Subscription-Key': GEO_APP_KEY,
       },
     },
   );

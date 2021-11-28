@@ -63,8 +63,6 @@ const debouncedGetVehicleType = debounce(
   500,
 );
 
-const typeofuserValues = ['Cyclist', 'Walker', 'Passenger'];
-
 const defaultLatitude = 40.7128;
 const defaultLongitude = -74.006;
 
@@ -103,26 +101,7 @@ async function blobToBuffer({ attachmentFile }) {
   return { attachmentBuffer, attachmentArrayBuffer };
 }
 
-// adapted from http://danielhindrikes.se/web/get-coordinates-from-photo-with-javascript/
-function extractLocation({ exifData }) {
-  const lat = exifData.GPSLatitude;
-  const lng = exifData.GPSLongitude;
-
-  // Convert coordinates to WGS84 decimal
-  const latRef = exifData.GPSLatitudeRef || 'N';
-  const lngRef = exifData.GPSLongitudeRef || 'W';
-  const latitude =
-    (lat[0] + lat[1] / 60 + lat[2] / 3600) * (latRef === 'N' ? 1 : -1);
-  const longitude =
-    (lng[0] + lng[1] / 60 + lng[2] / 3600) * (lngRef === 'W' ? -1 : 1);
-
-  return { latitude, longitude };
-}
-
-function extractDate({ exifData }) {
-  return exifData.CreateDate.getTime();
-}
-
+// TODO decouple location/date extraction
 function extractLocationDateFromVideo({ attachmentArrayBuffer }) {
   const mp4boxfile = MP4Box.createFile();
   attachmentArrayBuffer.fileStart = 0; // eslint-disable-line no-param-reassign
@@ -142,27 +121,55 @@ function extractLocationDateFromVideo({ attachmentArrayBuffer }) {
   return [{ latitude, longitude }, created.getTime()];
 }
 
-async function extractLocationDate({ attachmentFile }) {
-  const { attachmentBuffer, attachmentArrayBuffer } = await blobToBuffer({
-    attachmentFile,
-  });
+async function extractLocation({ attachmentFile, attachmentArrayBuffer, ext }) {
+  try {
+    if (isVideo({ ext })) {
+      return extractLocationDateFromVideo({ attachmentArrayBuffer })[0];
+    }
+    if (!isImage({ ext })) {
+      throw new Error(`${attachmentFile.name} is not an image/video`);
+    }
 
-  const { ext } = await FileType.fromBuffer(attachmentBuffer);
-  if (isVideo({ ext })) {
-    return extractLocationDateFromVideo({ attachmentArrayBuffer });
-  }
-  if (!isImage({ ext })) {
-    throw new Error(`${attachmentFile.name} is not an image/video`);
-  }
+    const { latitude, longitude } = await exifr.gps(attachmentArrayBuffer);
 
-  console.time(`exifr.parse`); // eslint-disable-line no-console
-  return exifr.parse(attachmentBuffer).then(exifData => {
-    console.timeEnd(`exifr.parse`); // eslint-disable-line no-console
-    return Promise.all([
-      extractLocation({ exifData }),
-      extractDate({ exifData }),
+    return { latitude, longitude };
+  } catch (err) {
+    console.error(err.stack);
+
+    throw 'location'; // eslint-disable-line no-throw-literal
+  }
+}
+
+async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
+  try {
+    if (isVideo({ ext })) {
+      return extractLocationDateFromVideo({ attachmentArrayBuffer })[1];
+    }
+    if (!isImage({ ext })) {
+      throw new Error(`${attachmentFile.name} is not an image/video`);
+    }
+
+    const {
+      CreateDate,
+      OffsetTimeDigitized,
+    } = await exifr.parse(attachmentArrayBuffer, [
+      'CreateDate',
+      'OffsetTimeDigitized',
     ]);
-  });
+
+    // console.log({ CreateDate, OffsetTimeDigitized });
+
+    return {
+      millisecondsSinceEpoch: CreateDate.getTime(),
+      offset: OffsetTimeDigitized
+        ? parseInt(OffsetTimeDigitized, 10) * -60
+        : new Date().getTimezoneOffset(),
+    };
+  } catch (err) {
+    console.error(err.stack);
+
+    throw 'creation date'; // eslint-disable-line no-throw-literal
+  }
 }
 
 // derived from https://github.com/feross/capture-frame/tree/06b8f5eac78fea305f7f577d1697ee3b6999c9a8#complete-example
@@ -208,7 +215,6 @@ class Home extends React.Component {
 
       plate: '',
       licenseState: 'NY',
-      typeofuser: typeofuserValues[0],
       typeofcomplaint: typeofcomplaintValues[0],
       reportDescription: '',
       can_be_shared_publicly: false,
@@ -251,7 +257,7 @@ class Home extends React.Component {
   componentDidMount() {
     // if there's no attachments or a time couldn't be extracted, just use now
     if (this.state.attachmentData.length === 0 || !this.state.CreateDate) {
-      this.setCreateDate(Date.now());
+      this.setCreateDate({ millisecondsSinceEpoch: Date.now() });
     }
     geolocate().then(({ coords }) => {
       // if there's no attachments or a location couldn't be extracted, just use here
@@ -338,11 +344,6 @@ class Home extends React.Component {
     return Object.keys(this.initialStatePersistent);
   }
 
-  setLocationDate = ([coords, millisecondsSinceEpoch]) => {
-    this.setCoords(coords);
-    this.setCreateDate(millisecondsSinceEpoch);
-  };
-
   setCoords = ({ latitude, longitude } = {}) => {
     if (!latitude || !longitude) {
       console.error('latitude and/or longitude is missing');
@@ -360,11 +361,13 @@ class Home extends React.Component {
     });
   };
 
-  setCreateDate = millisecondsSinceEpoch => {
+  setCreateDate = ({
+    millisecondsSinceEpoch,
+    offset = new Date().getTimezoneOffset(),
+  }) => {
     // Adjust date to local time
     // https://stackoverflow.com/questions/674721/how-do-i-subtract-minutes-from-a-date-in-javascript
     const MS_PER_MINUTE = 60000;
-    const offset = new Date().getTimezoneOffset();
     const CreateDateJsLocal = new Date(
       millisecondsSinceEpoch - offset * MS_PER_MINUTE,
     );
@@ -440,7 +443,16 @@ class Home extends React.Component {
 
         if (plate) {
           this.setState({
-            vehicleInfoComponent: `Could not find ${plate} in ${usStateNames[licenseState]}`,
+            vehicleInfoComponent: (
+              <a
+                href="https://github.com/josephfrazier/Reported-Web/issues/295"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Could not find {plate} in {usStateNames[licenseState]}, click
+                here for details
+              </a>
+            ),
           });
 
           if (plate.match(/1\d\d\d\d\d\dC/)) {
@@ -494,11 +506,36 @@ class Home extends React.Component {
     for (const attachmentFile of attachmentData) {
       try {
         // eslint-disable-next-line no-await-in-loop
-        await Promise.all([
-          this.extractPlate({ attachmentFile }),
-          extractLocationDate({ attachmentFile }).then(this.setLocationDate),
-        ]);
-      } catch (err) {
+        const { attachmentBuffer, attachmentArrayBuffer } = await blobToBuffer({
+          attachmentFile,
+        });
+
+        // eslint-disable-next-line no-await-in-loop
+        const { ext } = await FileType.fromBuffer(attachmentBuffer);
+
+        // eslint-disable-next-line no-await-in-loop
+        await Promise.allSettled([
+          this.extractPlate({ attachmentFile, attachmentBuffer, ext }),
+          extractDate({
+            attachmentFile,
+            attachmentArrayBuffer,
+            ext,
+          }).then(this.setCreateDate),
+          extractLocation({
+            attachmentFile,
+            attachmentArrayBuffer,
+            ext,
+          }).then(this.setCoords),
+        ]).then(values => {
+          const rejected = values.filter(v => v.status === 'rejected');
+
+          if (rejected.length === 0) {
+            return;
+          }
+
+          throw rejected.map(v => v.reason).join(', ');
+        });
+      } catch (missingValuesString) {
         const hasMultipleAttachments = attachmentData.length > 1;
         const fileCopy = hasMultipleAttachments
           ? 'one of the files, but they may have been found in other files.'
@@ -507,15 +544,11 @@ class Home extends React.Component {
         this.alert(
           <React.Fragment>
             <p>
-              Could not extract plate and/or location and/or date from{' '}
-              {fileCopy}
-              Please enter/confirm any missing values manually.
+              Could not extract the {missingValuesString} from {fileCopy} Please
+              enter/confirm any missing values manually.
             </p>
-
-            <p>(Error message: {err.message})</p>
           </React.Fragment>,
         );
-        console.error(`Error: ${err.message}`);
       }
     }
   };
@@ -539,7 +572,7 @@ class Home extends React.Component {
   };
 
   // adapted from https://github.com/openalpr/cloudapi/tree/8141c1ba57f03df4f53430c6e5e389b39714d0e0/javascript#getting-started
-  extractPlate = async ({ attachmentFile }) => {
+  extractPlate = async ({ attachmentFile, attachmentBuffer, ext }) => {
     console.time('extractPlate'); // eslint-disable-line no-console
 
     try {
@@ -548,10 +581,8 @@ class Home extends React.Component {
         return result;
       }
 
-      let { attachmentBuffer } = await blobToBuffer({ attachmentFile });
-
-      const { ext } = await FileType.fromBuffer(attachmentBuffer);
       if (isVideo({ ext })) {
+        // eslint-disable-next-line no-param-reassign
         attachmentBuffer = await getVideoScreenshot({ attachmentFile });
       } else if (!isImage({ ext })) {
         throw new Error(`${attachmentFile.name} is not an image/video`);
@@ -580,7 +611,9 @@ class Home extends React.Component {
       this.attachmentPlates.set(attachmentFile, result);
       return result;
     } catch (err) {
-      throw err;
+      console.error(err.stack);
+
+      throw 'license plate'; // eslint-disable-line no-throw-literal
     } finally {
       console.timeEnd('extractPlate'); // eslint-disable-line no-console
     }
@@ -1078,21 +1111,6 @@ class Home extends React.Component {
                     ))}
                   </select>
                   {this.state.vehicleInfoComponent}
-                </label>
-
-                <label htmlFor="typeofuser">
-                  I was:{' '}
-                  <select
-                    value={this.state.typeofuser}
-                    name="typeofuser"
-                    onChange={this.handleInputChange}
-                  >
-                    {typeofuserValues.map(typeofuser => (
-                      <option key={typeofuser} value={typeofuser}>
-                        {typeofuser}
-                      </option>
-                    ))}
-                  </select>
                 </label>
 
                 <label htmlFor="typeofcomplaint">

@@ -349,7 +349,6 @@ app.use('/submit', (req, res) => {
 
       plate,
       licenseState,
-      typeofuser,
       typeofreport = 'complaint',
       typeofcomplaint,
       reportDescription,
@@ -383,7 +382,6 @@ app.use('/submit', (req, res) => {
         Object.entries({
           plate,
           licenseState,
-          typeofuser,
           typeofcomplaint,
           latitude,
           longitude,
@@ -413,8 +411,7 @@ app.use('/submit', (req, res) => {
           license: plate, // https://github.com/josephfrazier/Reported-Web/issues/23
           state: licenseState, // https://github.com/josephfrazier/Reported-Web/issues/23
           typeofcomplaint,
-          typeofuser: typeofuser.toLowerCase(),
-          passenger: typeofuser.toLowerCase() === 'passenger',
+          passenger: false,
           locationNumber: 1,
           latitude: latitude.toString(),
           longitude: longitude.toString(),
@@ -439,7 +436,7 @@ app.use('/submit', (req, res) => {
         const attachmentsWithFormats = await Promise.all(
           attachmentData.map(async ({ buffer: attachmentBuffer }) => ({
             attachmentBuffer,
-            ext: await FileType.fromBuffer(attachmentBuffer).ext,
+            ext: (await FileType.fromBuffer(attachmentBuffer)).ext,
           })),
         );
 
@@ -497,7 +494,7 @@ function heicConvert({ buffer }) {
 }
 
 // adapted from https://github.com/openalpr/cloudapi/tree/8141c1ba57f03df4f53430c6e5e389b39714d0e0/javascript#getting-started
-app.use('/openalpr', upload.single('attachmentFile'), async (req, res) => {
+app.use('/openalpr', upload.single('attachmentFile'), (req, res) => {
   const country = 'us';
   const opts = {
     recognizeVehicle: 1,

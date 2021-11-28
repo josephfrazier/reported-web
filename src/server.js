@@ -40,7 +40,7 @@ import errorPageStyle from './routes/error/ErrorPage.css';
 import createFetch from './createFetch';
 import router from './router';
 // import assets from './asset-manifest'; // eslint-disable-line import/no-unresolved
-import chunks from './chunk-manifest.json'; // eslint-disable-line import/no-unresolved
+import chunks from './chunk-manifest'; // eslint-disable-line import/no-unresolved
 import config from './config';
 
 require('dotenv').config();

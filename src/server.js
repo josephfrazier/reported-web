@@ -505,18 +505,23 @@ app.use('/openalpr', upload.single('attachmentFile'), async (req, res) => {
   };
 
   let attachmentBuffer = req.file.buffer;
+  const { ext } = await FileType.fromBuffer(attachmentBuffer);
   const api = new OpenalprApi.DefaultApi();
 
   const secretKey = OPENALPR_SECRET_KEY; // {String} The secret key used to authenticate your account. You can view your secret key by visiting https://cloud.openalpr.com/
 
-  try {
-    console.time('heicConvert'); // eslint-disable-line no-console
-    attachmentBuffer = await heicConvert({ buffer: attachmentBuffer });
-  } catch (e) {
-    console.error('could not convert file from heic to jpg');
-    console.error(e);
-  } finally {
-    console.timeEnd('heicConvert'); // eslint-disable-line no-console
+  if (ext === 'heic') {
+    console.info('HEIC file detected, trying to convert to JPEG');
+
+    try {
+      console.time('heicConvert'); // eslint-disable-line no-console
+      attachmentBuffer = await heicConvert({ buffer: attachmentBuffer });
+    } catch (e) {
+      console.error('could not convert file from heic to jpg');
+      console.error(e);
+    } finally {
+      console.timeEnd('heicConvert'); // eslint-disable-line no-console
+    }
   }
 
   orientImageBuffer({ attachmentBuffer })

@@ -4,3 +4,4 @@ libpoppler-glib8
 libpoppler-glib-dev
 libheif-dev
 libfftw3-dev
+libwebp-dev

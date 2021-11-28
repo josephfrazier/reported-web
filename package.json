@@ -201,7 +201,7 @@
     "clean": "babel-node tools/run clean",
     "copy": "babel-node tools/run copy",
     "bundle": "babel-node tools/run bundle",
-    "heroku-predeploy": "scripts/heroku-predeploy",
+    "heroku-prebuild": "scripts/heroku-prebuild",
     "heroku-postbuild": "yarn run build --release",
     "build": "babel-node tools/run build",
     "build-stats": "yarn run build --release --analyse",

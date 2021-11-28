@@ -628,7 +628,7 @@ exports[`Home renders children correctly 1`] = `
               onChange={[Function]}
               required={true}
               type="datetime-local"
-              value="2016-11-17T20:00"
+              value="2016-11-17T19:00"
             />
           </label>
           <label

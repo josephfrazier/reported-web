@@ -5495,6 +5495,10 @@ exifr@^6.0.0:
   resolved "https://registry.yarnpkg.com/exifr/-/exifr-6.0.0.tgz#e82af10e158852a1c7e19aea45bceb4cdd486727"
   integrity sha512-a8n3SVIyuI5NP5VJCb/rJHsqXnofgYL1ZXcJdKBXOmCNIrj+pSExaBFHcbdEF5xp5GQrK4kpOabLJ+wBfUGYuA==
 
+"exiftool.js@https://github.com/mattburns/exiftool.js/":
+  version "0.3.3"
+  resolved "https://github.com/mattburns/exiftool.js/#f5195b4e6843ad43f92268839432470429668b5f"
+
 exit-hook@^1.0.0:
   version "1.1.1"
   resolved "https://registry.yarnpkg.com/exit-hook/-/exit-hook-1.1.1.tgz#f05ca233b48c05d54fff07765df8507e95c02ff8"

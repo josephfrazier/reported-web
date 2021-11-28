@@ -12,6 +12,7 @@ import PropTypes from 'prop-types';
 import withStyles from 'isomorphic-style-loader/lib/withStyles';
 import FileReaderInput from 'react-file-reader-input';
 import blobUtil from 'blob-util';
+import exiftool from 'exiftool.js'
 import exifr from 'exifr/dist/full.umd.js';
 import axios from 'axios';
 import promisedLocation from 'promised-location';
@@ -149,20 +150,26 @@ async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
       throw new Error(`${attachmentFile.name} is not an image/video`);
     }
 
-    const {
-      CreateDate,
-      OffsetTimeDigitized,
-    } = await exifr.parse(attachmentArrayBuffer, [
-      'CreateDate',
-      'OffsetTimeDigitized',
-    ]);
+    const exif = await exifr.parse(attachmentArrayBuffer, {
+      makerNote: true,
+      pick: ['CreateDate', 'OffsetTimeDigitized', 'TimeZone', 'MakerNote'],
+    });
 
-    // console.log({ CreateDate, OffsetTimeDigitized });
+    const { CreateDate, OffsetTimeDigitized, TimeZone, MakerNote } = exif;
+
+    console.log({ exif, exiftool });
+
+    debugger;
+    exiftool.getExifFromNodeBuffer(attachmentArrayBuffer, function(err, exif) {
+      console.log({ err, exif });
+    });
 
     return {
       millisecondsSinceEpoch: CreateDate.getTime(),
       offset: OffsetTimeDigitized
         ? parseInt(OffsetTimeDigitized, 10) * -60
+        : TimeZone
+        ? parseInt(TimeZone, 10) * -60
         : new Date().getTimezoneOffset(),
     };
   } catch (err) {

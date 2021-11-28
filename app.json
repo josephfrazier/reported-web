@@ -1,5 +1,8 @@
 {
   "env": {
+    "NODE_MODULES_CACHE": {
+      "value": "false"
+    },
     "VIPS_VERSION": {
       "value": "8.10.6"
     }
@@ -8,6 +11,9 @@
   "buildpacks": [
     {
       "url": "heroku-community/apt"
+    },
+    {
+      "url": "https://github.com/gaffneyc/heroku-buildpack-jemalloc"
     },
     {
       "url": "https://github.com/brandoncc/heroku-buildpack-vips"

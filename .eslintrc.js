@@ -21,7 +21,7 @@ module.exports = {
     'prettier/react',
   ],
 
-  plugins: ['flowtype', 'css-modules', 'prettier'],
+  plugins: ['flowtype', 'css-modules', 'prettier', 'parentheses-around-await'],
 
   globals: {
     __DEV__: true,
@@ -32,6 +32,8 @@ module.exports = {
   },
 
   rules: {
+    'parentheses-around-await/parentheses-around-await': 2,
+
     // Forbid the use of extraneous packages
     // https://github.com/benmosher/eslint-plugin-import/blob/master/docs/rules/no-extraneous-dependencies.md
     'import/no-extraneous-dependencies': ['error', { packageDir: '.' }],

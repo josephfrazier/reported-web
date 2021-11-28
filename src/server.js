@@ -27,7 +27,6 @@ import multer from 'multer';
 import stringify from 'json-stringify-safe';
 import DelayedResponse from 'http-delayed-response';
 import { JSDOM } from 'jsdom';
-import heicConvert from 'heic-convert';
 
 import { isImage, isVideo } from './isImage';
 import { validateLocation, processValidation } from './geoclient';
@@ -350,7 +349,6 @@ app.use('/submit', (req, res) => {
 
       plate,
       licenseState,
-      typeofuser,
       typeofreport = 'complaint',
       typeofcomplaint,
       reportDescription,
@@ -384,7 +382,6 @@ app.use('/submit', (req, res) => {
         Object.entries({
           plate,
           licenseState,
-          typeofuser,
           typeofcomplaint,
           latitude,
           longitude,
@@ -414,8 +411,7 @@ app.use('/submit', (req, res) => {
           license: plate, // https://github.com/josephfrazier/Reported-Web/issues/23
           state: licenseState, // https://github.com/josephfrazier/Reported-Web/issues/23
           typeofcomplaint,
-          typeofuser: typeofuser.toLowerCase(),
-          passenger: typeofuser.toLowerCase() === 'passenger',
+          passenger: false,
           locationNumber: 1,
           latitude: latitude.toString(),
           longitude: longitude.toString(),
@@ -440,7 +436,7 @@ app.use('/submit', (req, res) => {
         const attachmentsWithFormats = await Promise.all(
           attachmentData.map(async ({ buffer: attachmentBuffer }) => ({
             attachmentBuffer,
-            ext: await FileType.fromBuffer(attachmentBuffer).ext,
+            ext: (await FileType.fromBuffer(attachmentBuffer)).ext,
           })),
         );
 
@@ -492,7 +488,7 @@ app.use('/submit', (req, res) => {
 });
 
 // adapted from https://github.com/openalpr/cloudapi/tree/8141c1ba57f03df4f53430c6e5e389b39714d0e0/javascript#getting-started
-app.use('/openalpr', upload.single('attachmentFile'), async (req, res) => {
+app.use('/openalpr', upload.single('attachmentFile'), (req, res) => {
   const country = 'us';
   const opts = {
     recognizeVehicle: 1,
@@ -502,24 +498,10 @@ app.use('/openalpr', upload.single('attachmentFile'), async (req, res) => {
     prewarp: '',
   };
 
-  let attachmentBuffer = req.file.buffer;
+  const attachmentBuffer = req.file.buffer;
   const api = new OpenalprApi.DefaultApi();
 
   const secretKey = OPENALPR_SECRET_KEY; // {String} The secret key used to authenticate your account. You can view your secret key by visiting https://cloud.openalpr.com/
-
-  try {
-    console.time('heic-convert'); // eslint-disable-line no-console
-    attachmentBuffer = await heicConvert({
-      buffer: attachmentBuffer,
-      format: 'JPEG',
-      quality: 1,
-    });
-  } catch (e) {
-    console.error('could not convert file from heic to jpg');
-    console.error(e);
-  } finally {
-    console.timeEnd('heic-convert'); // eslint-disable-line no-console
-  }
 
   orientImageBuffer({ attachmentBuffer })
     .then((buffer) => buffer.toString('base64'))

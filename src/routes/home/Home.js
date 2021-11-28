@@ -149,11 +149,22 @@ async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
       throw new Error(`${attachmentFile.name} is not an image/video`);
     }
 
-    const { CreateDate } = await exifr.parse(attachmentArrayBuffer, [
+    const {
+      CreateDate,
+      OffsetTimeDigitized,
+    } = await exifr.parse(attachmentArrayBuffer, [
       'CreateDate',
+      'OffsetTimeDigitized',
     ]);
 
-    return CreateDate.getTime();
+    // console.log({ CreateDate, OffsetTimeDigitized });
+
+    return {
+      millisecondsSinceEpoch: CreateDate.getTime(),
+      offset: OffsetTimeDigitized
+        ? parseInt(OffsetTimeDigitized, 10) * -60
+        : new Date().getTimezoneOffset(),
+    };
   } catch (err) {
     console.error(err.stack);
 
@@ -246,7 +257,7 @@ class Home extends React.Component {
   componentDidMount() {
     // if there's no attachments or a time couldn't be extracted, just use now
     if (this.state.attachmentData.length === 0 || !this.state.CreateDate) {
-      this.setCreateDate(Date.now());
+      this.setCreateDate({ millisecondsSinceEpoch: Date.now() });
     }
     geolocate().then(({ coords }) => {
       // if there's no attachments or a location couldn't be extracted, just use here
@@ -350,11 +361,13 @@ class Home extends React.Component {
     });
   };
 
-  setCreateDate = millisecondsSinceEpoch => {
+  setCreateDate = ({
+    millisecondsSinceEpoch,
+    offset = new Date().getTimezoneOffset(),
+  }) => {
     // Adjust date to local time
     // https://stackoverflow.com/questions/674721/how-do-i-subtract-minutes-from-a-date-in-javascript
     const MS_PER_MINUTE = 60000;
-    const offset = new Date().getTimezoneOffset();
     const CreateDateJsLocal = new Date(
       millisecondsSinceEpoch - offset * MS_PER_MINUTE,
     );

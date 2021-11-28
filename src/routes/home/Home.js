@@ -149,20 +149,21 @@ async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
       throw new Error(`${attachmentFile.name} is not an image/video`);
     }
 
-    const {
-      CreateDate,
-      OffsetTimeDigitized,
-    } = await exifr.parse(attachmentArrayBuffer, [
-      'CreateDate',
-      'OffsetTimeDigitized',
-    ]);
+    const exif = await exifr.parse(attachmentArrayBuffer, {
+      makerNote: true,
+      pick: ['CreateDate', 'OffsetTimeDigitized', 'TimeZone', 'MakerNote'],
+    });
 
-    // console.log({ CreateDate, OffsetTimeDigitized });
+    const { CreateDate, OffsetTimeDigitized, TimeZone, MakerNote } = exif;
+
+    console.log({ exif });
 
     return {
       millisecondsSinceEpoch: CreateDate.getTime(),
       offset: OffsetTimeDigitized
         ? parseInt(OffsetTimeDigitized, 10) * -60
+        : TimeZone
+        ? parseInt(TimeZone, 10) * -60
         : new Date().getTimezoneOffset(),
     };
   } catch (err) {

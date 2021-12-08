@@ -142,7 +142,6 @@ async function extractLocation({ attachmentFile, attachmentArrayBuffer, ext }) {
 }
 
 async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
-  debugger;
   try {
     if (isVideo({ ext })) {
       return extractLocationDateFromVideo({ attachmentArrayBuffer })[1];

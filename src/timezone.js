@@ -30,7 +30,6 @@ function DisplayDstSwitchDates() {
 function FindDstSwitchDate(year, month) {
   // Set the starting date
   const baseDate = new Date(Date.UTC(year, month, 0, 0, 0, 0, 0));
-  let changeDay = 0;
   let changeMinute = -1;
   const baseOffset = (-1 * baseDate.getTimezoneOffset()) / 60;
   let dstDate;
@@ -43,7 +42,6 @@ function FindDstSwitchDate(year, month) {
     // Check if the timezone changed from one day to the next
     if (tmpOffset != baseOffset) {
       let minutes = 0;
-      changeDay = day;
 
       // Back-up one day and grap the offset
       tmpDate = new Date(Date.UTC(year, month, day - 1, 0, 0, 0, 0));

@@ -90,8 +90,7 @@ function isDst(date) {
   const { firstDstDate, secondDstDate } = result;
   const from = new Date(firstDstDate);
   const to = new Date(secondDstDate);
-  const now = new Date();
-  const isDst = from.getTime() < now.getTime() && now.getTime() < to.getTime();
+  const isDst = from.getTime() < date.getTime() && date.getTime() < to.getTime();
   // console.log({isDst})
 
   return isDst;

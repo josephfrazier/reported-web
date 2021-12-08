@@ -46,6 +46,7 @@ import s from './Home.css';
 
 import SubmissionDetails from '../../components/SubmissionDetails.js';
 import { isImage, isVideo } from '../../isImage.js';
+import getNycTimezoneOffset from '../../timezone.js';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyDlwm2ykA0ohTXeVepQYvkcmdjz2M2CKEI';
 
@@ -163,6 +164,8 @@ async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
       millisecondsSinceEpoch: CreateDate.getTime(),
       offset: OffsetTimeDigitized
         ? parseInt(OffsetTimeDigitized, 10) * -60
+        : CreateDate
+        ? getNycTimezoneOffset(CreateDate)
         : new Date().getTimezoneOffset(),
     };
   } catch (err) {

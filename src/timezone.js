@@ -92,5 +92,5 @@ function isDst(date) {
 }
 
 export default function getNycTimezoneOffset(date) {
-  return isDst(date) ? -240 : -300;
+  return isDst(date) ? 240 : 300;
 }

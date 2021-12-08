@@ -165,8 +165,8 @@ async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
       millisecondsSinceEpoch: CreateDate.getTime(),
       offset: OffsetTimeDigitized
         ? parseInt(OffsetTimeDigitized, 10) * -60
-        : getNycTimezoneOffset(CreateDate)
-        // : new Date().getTimezoneOffset(),
+        : getNycTimezoneOffset(CreateDate),
+      // : new Date().getTimezoneOffset(),
     };
   } catch (err) {
     console.error(err.stack);

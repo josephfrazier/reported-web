@@ -87,9 +87,8 @@ function isDst(date) {
   const { firstDstDate, secondDstDate } = DisplayDstSwitchDates();;
   const from = new Date(firstDstDate);
   const to = new Date(secondDstDate);
-  const isDst = from.getTime() < date.getTime() && date.getTime() < to.getTime();
 
-  return isDst;
+  return from.getTime() < date.getTime() && date.getTime() < to.getTime();
 }
 
 export function getNycTimezoneOffset(date) {

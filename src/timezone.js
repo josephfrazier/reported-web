@@ -84,9 +84,7 @@ function DisplayDstSwitchDates() {
 }
 
 function isDst(date) {
-  const result = DisplayDstSwitchDates();
-
-  const { firstDstDate, secondDstDate } = result;
+  const { firstDstDate, secondDstDate } = DisplayDstSwitchDates();;
   const from = new Date(firstDstDate);
   const to = new Date(secondDstDate);
   const isDst = from.getTime() < date.getTime() && date.getTime() < to.getTime();

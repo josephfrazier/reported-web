@@ -40,7 +40,7 @@ function FindDstSwitchDate(year, month) {
     let tmpOffset = (-1 * tmpDate.getTimezoneOffset()) / 60;
 
     // Check if the timezone changed from one day to the next
-    if (tmpOffset != baseOffset) {
+    if (tmpOffset !== baseOffset) {
       let minutes = 0;
 
       // Back-up one day and grap the offset
@@ -48,13 +48,13 @@ function FindDstSwitchDate(year, month) {
       tmpOffset = (-1 * tmpDate.getTimezoneOffset()) / 60;
 
       // Count the minutes until a timezone change occurs
-      while (changeMinute == -1) {
+      while (changeMinute === -1) {
         tmpDate = new Date(Date.UTC(year, month, day - 1, 0, minutes, 0, 0));
         tmpOffset = (-1 * tmpDate.getTimezoneOffset()) / 60;
 
         // Determine the exact minute a timezone change
         // occurs
-        if (tmpOffset != baseOffset) {
+        if (tmpOffset !== baseOffset) {
           // Back-up a minute to get the date/time just
           // before a timezone change occurs
           tmpOffset = new Date(

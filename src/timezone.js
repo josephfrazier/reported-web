@@ -7,7 +7,7 @@ function DisplayDstSwitchDates() {
   let lastOffset = 99;
 
   // Loop through every month of the current year
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < 12; i += 1) {
     // Fetch the timezone value for the month
     const newDate = new Date(Date.UTC(year, i, 0, 0, 0, 0, 0));
     const tz = (-1 * newDate.getTimezoneOffset()) / 60;
@@ -35,7 +35,7 @@ function FindDstSwitchDate(year, month) {
   let dstDate;
 
   // Loop to find the exact day a timezone adjust occurs
-  for (let day = 0; day < 50; day++) {
+  for (let day = 0; day < 50; day += 1) {
     let tmpDate = new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
     let tmpOffset = (-1 * tmpDate.getTimezoneOffset()) / 60;
 
@@ -62,7 +62,7 @@ function FindDstSwitchDate(year, month) {
           );
           changeMinute = minutes;
           break;
-        } else minutes++;
+        } else minutes += 1;
       }
 
       // Add a month (for display) since JavaScript counts

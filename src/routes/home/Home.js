@@ -46,7 +46,7 @@ import s from './Home.css';
 
 import SubmissionDetails from '../../components/SubmissionDetails.js';
 import { isImage, isVideo } from '../../isImage.js';
-import { getNycTimezoneOffset } from '../../timezone.js';
+import getNycTimezoneOffset from '../../timezone.js';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyDlwm2ykA0ohTXeVepQYvkcmdjz2M2CKEI';
 

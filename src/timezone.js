@@ -91,6 +91,6 @@ function isDst(date) {
   return from.getTime() < date.getTime() && date.getTime() < to.getTime();
 }
 
-export function getNycTimezoneOffset(date) {
+export default function getNycTimezoneOffset(date) {
   return isDst(date) ? -240 : -300;
 }

@@ -1,32 +1,3 @@
-function DisplayDstSwitchDates() {
-  let year = new Date().getYear();
-  if (year < 1000) year += 1900;
-
-  let firstSwitch = 0;
-  let secondSwitch = 0;
-  let lastOffset = 99;
-
-  // Loop through every month of the current year
-  for (let i = 0; i < 12; i += 1) {
-    // Fetch the timezone value for the month
-    const newDate = new Date(Date.UTC(year, i, 0, 0, 0, 0, 0));
-    const tz = (-1 * newDate.getTimezoneOffset()) / 60;
-
-    // Capture when a timzezone change occurs
-    if (tz > lastOffset) firstSwitch = i - 1;
-    else if (tz < lastOffset) secondSwitch = i - 1;
-
-    lastOffset = tz;
-  }
-
-  // Go figure out date/time occurrences a minute before
-  // a DST adjustment occurs
-  const secondDstDate = FindDstSwitchDate(year, secondSwitch);
-  const firstDstDate = FindDstSwitchDate(year, firstSwitch);
-
-  return { firstDstDate, secondDstDate };
-}
-
 function FindDstSwitchDate(year, month) {
   // Set the starting date
   const baseDate = new Date(Date.UTC(year, month, 0, 0, 0, 0, 0));
@@ -81,6 +52,35 @@ function FindDstSwitchDate(year, month) {
       return dstDate;
     }
   }
+}
+
+function DisplayDstSwitchDates() {
+  let year = new Date().getYear();
+  if (year < 1000) year += 1900;
+
+  let firstSwitch = 0;
+  let secondSwitch = 0;
+  let lastOffset = 99;
+
+  // Loop through every month of the current year
+  for (let i = 0; i < 12; i += 1) {
+    // Fetch the timezone value for the month
+    const newDate = new Date(Date.UTC(year, i, 0, 0, 0, 0, 0));
+    const tz = (-1 * newDate.getTimezoneOffset()) / 60;
+
+    // Capture when a timzezone change occurs
+    if (tz > lastOffset) firstSwitch = i - 1;
+    else if (tz < lastOffset) secondSwitch = i - 1;
+
+    lastOffset = tz;
+  }
+
+  // Go figure out date/time occurrences a minute before
+  // a DST adjustment occurs
+  const secondDstDate = FindDstSwitchDate(year, secondSwitch);
+  const firstDstDate = FindDstSwitchDate(year, firstSwitch);
+
+  return { firstDstDate, secondDstDate };
 }
 
 function isDst(date) {

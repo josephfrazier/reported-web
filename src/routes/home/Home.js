@@ -468,12 +468,15 @@ class Home extends React.Component {
               plate: `T${plate}`,
               licenseState,
             });
-          } else if (licenseState !== 'NY') {
-            this.setLicensePlate({
-              plate,
-              licenseState: 'NY',
-            });
           }
+          // Commented out due to https://github.com/josephfrazier/Reported-Web/issues/295
+          //
+          // } else if (licenseState !== 'NY') {
+          //   this.setLicensePlate({
+          //     plate,
+          //     licenseState: 'NY',
+          //   });
+          // }
         }
       });
   };

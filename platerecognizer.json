@@ -1,0 +1,52 @@
+{
+  "processing_time": 91.823,
+  "results": [
+    {
+      "box": {
+        "xmin": 721,
+        "ymin": 1475,
+        "xmax": 809,
+        "ymax": 1536
+      },
+      "plate": "t803545c",
+      "region": {
+        "code": "us-ny",
+        "score": 0.904
+      },
+      "score": 0.895,
+      "candidates": [
+        {
+          "score": 0.895,
+          "plate": "t803545c"
+        },
+        {
+          "score": 0.894,
+          "plate": "t8o3545c"
+        },
+        {
+          "score": 0.789,
+          "plate": "tb03545c"
+        },
+        {
+          "score": 0.788,
+          "plate": "tbo3545c"
+        }
+      ],
+      "dscore": 0.866,
+      "vehicle": {
+        "score": 0.733,
+        "type": "Sedan",
+        "box": {
+          "xmin": 246,
+          "ymin": 1155,
+          "xmax": 893,
+          "ymax": 1685
+        }
+      }
+    }
+  ],
+  "filename": "0012_ltsOv_PXL_20220617_203454473_50percent.jpg",
+  "version": 1,
+  "camera_id": null,
+  "timestamp": "2022-06-30T00:12:11.631862Z"
+}

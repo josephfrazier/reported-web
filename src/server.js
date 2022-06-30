@@ -317,12 +317,17 @@ app.use('/requestPasswordReset', (req, res) => {
 
 function orientImageBuffer({ attachmentBuffer }) {
   console.time(`orientImageBuffer`); // eslint-disable-line no-console
+  // eslint-disable-next-line no-console
+  console.log(
+    `image buffer length BEFORE sharp: ${attachmentBuffer.length} bytes`,
+  );
   return sharp(attachmentBuffer)
     .rotate()
     .toBuffer()
     .catch(() => attachmentBuffer)
     .then(buffer => Buffer.from(buffer))
     .then(buffer => {
+      console.log(`image buffer length AFTER sharp: ${buffer.length} bytes`); // eslint-disable-line no-console
       console.timeEnd(`orientImageBuffer`); // eslint-disable-line no-console
       return buffer;
     });

@@ -603,7 +603,11 @@ class Home extends React.Component {
       formData.append('attachmentFile', attachmentBlob);
       const { data } = await axios.post('/platerecognizer', formData);
       const result = data.results[0];
-      result.licenseState = result.region.code.split('-')[1].toUpperCase();
+      try {
+        result.licenseState = result.region.code.split('-')[1].toUpperCase();
+      } catch (err) {
+        result.licenseState = null;
+      }
       result.plate = result.plate.toUpperCase();
       if (
         this.state.plate === '' &&

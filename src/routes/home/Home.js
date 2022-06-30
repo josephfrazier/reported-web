@@ -577,7 +577,6 @@ class Home extends React.Component {
     );
   };
 
-  // adapted from https://github.com/openalpr/cloudapi/tree/8141c1ba57f03df4f53430c6e5e389b39714d0e0/javascript#getting-started
   extractPlate = async ({ attachmentFile, attachmentBuffer, ext }) => {
     console.time('extractPlate'); // eslint-disable-line no-console
 
@@ -602,9 +601,10 @@ class Home extends React.Component {
 
       const formData = new window.FormData();
       formData.append('attachmentFile', attachmentBlob);
-      const { data } = await axios.post('/openalpr', formData);
+      const { data } = await axios.post('/platerecognizer', formData);
       const result = data.results[0];
       result.licenseState = result.region.code.split('-')[1].toUpperCase();
+      result.plate = result.plate.toUpperCase();
       if (
         this.state.plate === '' &&
         document.activeElement !== this.plateRef.current

@@ -3,6 +3,9 @@
 # Dependencies
 node_modules/
 
+# Caches
+.eslintcache
+
 # Compiled output
 build
 

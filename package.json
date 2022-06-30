@@ -35,6 +35,7 @@
     "file-extension": "^4.0.5",
     "file-type": "^16.2.0",
     "force-ssl-heroku": "^1.0.2",
+    "form-data": "^4.0.0",
     "geodist": "^0.2.1",
     "geolib": "^2.0.24",
     "global": "^4.3.2",

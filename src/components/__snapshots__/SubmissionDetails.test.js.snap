@@ -103,6 +103,7 @@ exports[`SubmissionDetails renders children correctly when medallionNo is missin
   open={true}
 >
   <summary>
+    license
      
     typeofcomplaint
      near

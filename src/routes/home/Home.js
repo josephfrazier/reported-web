@@ -409,7 +409,9 @@ class Home extends React.Component {
         if (
           this.state.submissions.some(
             submission =>
-              submission.license === plate && submission.state === licenseState,
+              (submission.license === plate ||
+                submission.medallionNo === plate) &&
+              submission.state === licenseState,
           )
         ) {
           this.alert(

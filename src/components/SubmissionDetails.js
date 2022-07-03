@@ -19,6 +19,7 @@ class SubmissionDetails extends React.Component {
     const {
       reqnumber,
       medallionNo,
+      license,
       typeofcomplaint,
       loc1_address, // eslint-disable-line camelcase
       timeofreport,
@@ -121,7 +122,7 @@ class SubmissionDetails extends React.Component {
         }}
       >
         <summary>
-          {medallionNo} {typeofcomplaint} near{' '}
+          {medallionNo || license} {typeofcomplaint} near{' '}
           {/* eslint-disable-next-line camelcase */}
           {(loc1_address || '').split(',')[0]} on {humanTimeString}
           <br />
@@ -147,6 +148,7 @@ SubmissionDetails.propTypes = {
   submission: PropTypes.shape({
     reqnumber: PropTypes.string,
     medallionNo: PropTypes.string,
+    license: PropTypes.string,
     typeofcomplaint: PropTypes.string,
     loc1_address: PropTypes.string,
     timeofreport: PropTypes.string,

@@ -229,11 +229,22 @@ app.use('/api/process_validation', (req, res) => {
 async function getSubmissions(req) {
   return saveUser(req.body).then(user => {
     const Submission = Parse.Object.extend('submission');
-    const query = new Parse.Query(Submission);
+
+    const usernameQuery = new Parse.Query(Submission);
     // Search by "Username" (email address) to show submissions made by all
     // users with the same email, since the web and mobile clients create
     // separate users
-    query.equalTo('Username', user.get('username'));
+    usernameQuery.equalTo('Username', user.get('username'));
+    usernameQuery.descending('timeofreport');
+    usernameQuery.limit(Number.MAX_SAFE_INTEGER);
+
+    // Also search by "email" since submissions from iOS clients don't always have this set
+    const emailQuery = new Parse.Query(Submission);
+    emailQuery.equalTo('email', user.get('username'));
+    emailQuery.descending('timeofreport');
+    emailQuery.limit(Number.MAX_SAFE_INTEGER);
+
+    const query = Parse.Query.or(usernameQuery, emailQuery);
     query.descending('timeofreport');
     query.limit(Number.MAX_SAFE_INTEGER);
     return query.find();

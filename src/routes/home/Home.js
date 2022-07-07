@@ -1160,6 +1160,11 @@ class Home extends React.Component {
                   style={{
                     content: {
                       padding: 0,
+                      position: 'fixed',
+                      top: '10vh',
+                      left: '10vh',
+                      right: '10vh',
+                      bottom: '10vh',
                     },
                   }}
                 >

@@ -1,5 +1,5 @@
 {
-  "name": "web",
+  "name": "reported-web",
   "version": "0.0.0",
   "private": true,
   "engines": {
@@ -47,7 +47,7 @@
     "image-extensions": "^1.1.0",
     "intl": "^1.2.5",
     "isomorphic-style-loader": "^4.0.0",
-    "jsdom": "^16.4.0",
+    "jsdom": "^16.5.0",
     "json-stringify-safe": "^5.0.1",
     "lodash.sortby": "^4.7.0",
     "marx-css": "^3.0.3",

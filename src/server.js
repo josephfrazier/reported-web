@@ -338,8 +338,24 @@ function orientImageBuffer({ attachmentBuffer }) {
     .catch(() => attachmentBuffer)
     .then(buffer => Buffer.from(buffer))
     .then(buffer => {
-      console.log(`image buffer length AFTER sharp: ${buffer.length} bytes`); // eslint-disable-line no-console
       console.timeEnd(`orientImageBuffer`); // eslint-disable-line no-console
+      const fileSize = buffer.length;
+      console.log(`image buffer length AFTER sharp: ${fileSize} bytes`); // eslint-disable-line no-console
+
+      const maxFilesize = 3000000;
+      if (fileSize > maxFilesize) {
+        const targetWidth = 1024;
+        // eslint-disable-next-line no-console
+        console.log(
+          `file size is greater than maximum of ${maxFilesize} bytes, attempting to scale down to width of ${targetWidth}`,
+        );
+
+        return sharp(buffer)
+          .resize({ width: targetWidth })
+          .toBuffer()
+          .catch(() => attachmentBuffer)
+          .then(resizedBuffer => Buffer.from(resizedBuffer));
+      }
       return buffer;
     });
 }

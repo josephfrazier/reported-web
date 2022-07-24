@@ -503,32 +503,35 @@ app.use('/submit', (req, res) => {
   });
 });
 
+// https://app.platerecognizer.com/upload-limit/
+const downscaleForPlateRecognizer = buffer => {
+  const fileSize = buffer.length;
+  const maxFilesize = 3000000;
+
+  if (fileSize > maxFilesize) {
+    const targetWidth = 1024;
+
+    // eslint-disable-next-line no-console
+    console.log(
+      `file size is greater than maximum of ${maxFilesize} bytes, attempting to scale down to width of ${targetWidth}`,
+    );
+
+    return sharp(buffer)
+      .resize({ width: targetWidth })
+      .toBuffer()
+      .catch(() => buffer)
+      .then(resizedBuffer => Buffer.from(resizedBuffer));
+  }
+
+  return buffer;
+};
+
 // adapted from https://docs.platerecognizer.com/?javascript#license-plate-recognition
 app.use('/platerecognizer', upload.single('attachmentFile'), (req, res) => {
   const attachmentBuffer = req.file.buffer;
 
   orientImageBuffer({ attachmentBuffer })
-    .then(buffer => {
-      const fileSize = buffer.length;
-      const maxFilesize = 3000000;
-
-      if (fileSize > maxFilesize) {
-        const targetWidth = 1024;
-
-        // eslint-disable-next-line no-console
-        console.log(
-          `file size is greater than maximum of ${maxFilesize} bytes, attempting to scale down to width of ${targetWidth}`,
-        );
-
-        return sharp(buffer)
-          .resize({ width: targetWidth })
-          .toBuffer()
-          .catch(() => attachmentBuffer)
-          .then(resizedBuffer => Buffer.from(resizedBuffer));
-      }
-
-      return buffer;
-    })
+    .then(downscaleForPlateRecognizer)
     .then(buffer => buffer.toString('base64'))
     .then(attachmentBytesRotated => {
       console.log('STARTING platerecognizer'); // eslint-disable-line no-console

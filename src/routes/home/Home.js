@@ -454,8 +454,8 @@ class Home extends React.Component {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Could not look up make/model of {plate} in {usStateNames[licenseState]}, click
-                here for details
+                Could not look up make/model of {plate} in{' '}
+                {usStateNames[licenseState]}, click here for details
               </a>
             ),
           });

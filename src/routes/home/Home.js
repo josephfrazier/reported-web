@@ -386,7 +386,7 @@ class Home extends React.Component {
       plate,
       licenseState,
       vehicleInfoComponent: plate ? (
-        `Searching for ${plate} in ${usStateNames[licenseState]}`
+        `Looking up make/model for ${plate} in ${usStateNames[licenseState]}`
       ) : (
         <br />
       ),
@@ -454,7 +454,7 @@ class Home extends React.Component {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Could not find {plate} in {usStateNames[licenseState]}, click
+                Could not look up make/model of {plate} in {usStateNames[licenseState]}, click
                 here for details
               </a>
             ),

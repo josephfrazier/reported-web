@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // ported from https://github.com/jeffrono/Reported/blob/19b588171315a3093d53986f9fb995059f5084b4/v2/enrich_functions.rb#L325-L346
 export default function getVehicleType({ licensePlate, licenseState }) {
-  const url = `https://www.carfax.com/api/mobile-homepage-quickvin-check?plate=${licensePlate}&state=${licenseState}`;
+  const url = `https://www.faxvin.com/license-plate-lookup/result?plate=${licensePlate}&state=${licenseState}`;
 
   console.time(url); // eslint-disable-line no-console
 
@@ -15,6 +15,7 @@ export default function getVehicleType({ licensePlate, licenseState }) {
       },
     })
     .then(({ data }) => {
+      console.log({ data });
       console.timeEnd(url); // eslint-disable-line no-console
 
       return {

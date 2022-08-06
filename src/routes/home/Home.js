@@ -132,6 +132,10 @@ async function extractLocation({ attachmentFile, attachmentArrayBuffer, ext }) {
     }
 
     const { latitude, longitude } = await exifr.gps(attachmentArrayBuffer);
+    console.info(
+      'Extracted GPS latitude/longitude location from EXIF metadata',
+      { latitude, longitude },
+    );
 
     return { latitude, longitude };
   } catch (err) {

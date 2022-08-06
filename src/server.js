@@ -551,6 +551,10 @@ app.use('/platerecognizer', upload.single('attachmentFile'), (req, res) => {
         },
         body,
       })
+        .then(platerecognizerRes => {
+          console.info('/platerecognizer plate-reader', { platerecognizerRes });
+          return platerecognizerRes;
+        })
         .then(platerecognizerRes => platerecognizerRes.json())
         .finally(() => console.timeEnd(`/platerecognizer plate-reader`)); // eslint-disable-line no-console
     })

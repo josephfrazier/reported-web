@@ -231,25 +231,25 @@ New York, NY 10007",
         "formatted_address": "254 Broadway, New York, NY 10007, USA",
         "geometry": Object {
           "location": Object {
-            "lat": 40.7129032,
-            "lng": -74.0063033,
+            "lat": 40.7128376,
+            "lng": -74.0059541,
           },
           "location_type": "ROOFTOP",
           "viewport": Object {
             "northeast": Object {
-              "lat": 40.7142521802915,
-              "lng": -74.00495431970849,
+              "lat": 40.7141865802915,
+              "lng": -74.00460511970849,
             },
             "southwest": Object {
-              "lat": 40.7115542197085,
-              "lng": -74.0076522802915,
+              "lat": 40.7114886197085,
+              "lng": -74.00730308029149,
             },
           },
         },
         "place_id": "ChIJzwO0CyJawokRoSRPRCTv9II",
         "plus_code": Object {
-          "compound_code": "PX7V+5F New York, NY, USA",
-          "global_code": "87G7PX7V+5F",
+          "compound_code": "PX7V+4J New York, NY, USA",
+          "global_code": "87G7PX7V+4J",
         },
         "types": Array [
           "street_address",
@@ -1276,25 +1276,25 @@ New York, NY 10007",
         "formatted_address": "254 Broadway, New York, NY 10007, USA",
         "geometry": Object {
           "location": Object {
-            "lat": 40.7129032,
-            "lng": -74.0063033,
+            "lat": 40.7128376,
+            "lng": -74.0059541,
           },
           "location_type": "ROOFTOP",
           "viewport": Object {
             "northeast": Object {
-              "lat": 40.7142521802915,
-              "lng": -74.00495431970849,
+              "lat": 40.7141865802915,
+              "lng": -74.00460511970849,
             },
             "southwest": Object {
-              "lat": 40.7115542197085,
-              "lng": -74.0076522802915,
+              "lat": 40.7114886197085,
+              "lng": -74.00730308029149,
             },
           },
         },
         "place_id": "ChIJzwO0CyJawokRoSRPRCTv9II",
         "plus_code": Object {
-          "compound_code": "PX7V+5F New York, NY, USA",
-          "global_code": "87G7PX7V+5F",
+          "compound_code": "PX7V+4J New York, NY, USA",
+          "global_code": "87G7PX7V+4J",
         },
         "types": Array [
           "street_address",

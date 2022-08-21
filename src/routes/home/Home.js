@@ -48,6 +48,8 @@ import SubmissionDetails from '../../components/SubmissionDetails.js';
 import { isImage, isVideo } from '../../isImage.js';
 import getNycTimezoneOffset from '../../timezone.js';
 
+const { Exifr } = require('exifr');
+
 const GOOGLE_MAPS_API_KEY = 'AIzaSyDlwm2ykA0ohTXeVepQYvkcmdjz2M2CKEI';
 
 const debouncedProcessValidation = debounce(async ({ latitude, longitude }) => {
@@ -122,6 +124,17 @@ function extractLocationDateFromVideo({ attachmentArrayBuffer }) {
   return [{ latitude, longitude }, created.getTime()];
 }
 
+export async function gps(input) {
+  const exr = new Exifr();
+  await exr.read(input);
+  const output = await exr.parse();
+  console.log('XXX JMF output', { output });
+  if (output && output.gps) {
+    const { latitude, longitude } = output.gps;
+    return { latitude, longitude };
+  }
+}
+
 async function extractLocation({ attachmentFile, attachmentArrayBuffer, ext }) {
   try {
     if (isVideo({ ext })) {
@@ -131,7 +144,8 @@ async function extractLocation({ attachmentFile, attachmentArrayBuffer, ext }) {
       throw new Error(`${attachmentFile.name} is not an image/video`);
     }
 
-    const { latitude, longitude } = await exifr.gps(attachmentArrayBuffer);
+    debugger;
+    const { latitude, longitude } = await gps(attachmentArrayBuffer);
     console.info(
       'Extracted GPS latitude/longitude location from EXIF metadata',
       { latitude, longitude },

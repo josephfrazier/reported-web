@@ -1329,14 +1329,6 @@ class Home extends React.Component {
                   ⚡
                 </span>
               </a>
-              &nbsp;
-              <a
-                href={`javascript:(function () { var script = document.createElement('script'); script.src="//cdn.jsdelivr.net/npm/eruda"; document.body.appendChild(script); script.onload = function () { eruda.init() } })();`}
-              >
-                <span role="img" aria-label="high voltage">
-                  console
-                </span>
-              </a>
             </div>
           </main>
         </div>

@@ -49,7 +49,6 @@ import { isImage, isVideo } from '../../isImage.js';
 import getNycTimezoneOffset from '../../timezone.js';
 
 const { Exifr } = require('exifr');
-const md5 = require('md5');
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyDlwm2ykA0ohTXeVepQYvkcmdjz2M2CKEI';
 
@@ -146,8 +145,6 @@ async function extractLocation({ attachmentFile, attachmentArrayBuffer, ext }) {
     }
 
     debugger;
-    const md5sum = md5(attachmentArrayBuffer);
-    console.info('image md5sum', { md5sum });
     const { latitude, longitude } = await gps(attachmentArrayBuffer);
     console.info(
       'Extracted GPS latitude/longitude location from EXIF metadata',

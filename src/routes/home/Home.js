@@ -665,7 +665,6 @@ class Home extends React.Component {
         onDrop={attachmentData => {
           this.handleAttachmentData({ attachmentData });
         }}
-        accept="image/*, video/*"
         style={{
           position: 'fixed',
           top: 0,
@@ -1001,7 +1000,6 @@ class Home extends React.Component {
             >
               <fieldset disabled={this.state.isSubmitting}>
                 <FileReaderInput
-                  accept="image/*"
                   multiple
                   as="buffer"
                   onChange={this.handleAttachmentInput}
@@ -1010,20 +1008,7 @@ class Home extends React.Component {
                     margin: '1px',
                   }}
                 >
-                  <button type="button">Add picture(s)</button>
-                </FileReaderInput>
-
-                <FileReaderInput
-                  accept="video/*"
-                  multiple
-                  as="buffer"
-                  onChange={this.handleAttachmentInput}
-                  style={{
-                    float: 'left',
-                    margin: '1px',
-                  }}
-                >
-                  <button type="button">Add video(s)</button>
+                  <button type="button">Add pictures/videos</button>
                 </FileReaderInput>
 
                 <div

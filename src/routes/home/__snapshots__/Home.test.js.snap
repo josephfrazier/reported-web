@@ -206,7 +206,6 @@ exports[`Home renders children correctly 1`] = `
             }
           >
             <input
-              accept="image/*"
               multiple={true}
               onChange={[Function]}
               onClick={[Function]}
@@ -221,36 +220,7 @@ exports[`Home renders children correctly 1`] = `
             <button
               type="button"
             >
-              Add picture(s)
-            </button>
-          </div>
-          <div
-            className="_react-file-reader-input"
-            onClick={[Function]}
-            style={
-              Object {
-                "float": "left",
-                "margin": "1px",
-              }
-            }
-          >
-            <input
-              accept="video/*"
-              multiple={true}
-              onChange={[Function]}
-              onClick={[Function]}
-              style={
-                Object {
-                  "position": "absolute",
-                  "top": "-9999px",
-                }
-              }
-              type="file"
-            />
-            <button
-              type="button"
-            >
-              Add video(s)
+              Add pictures/videos
             </button>
           </div>
           <div
@@ -808,7 +778,6 @@ exports[`Home renders children correctly 1`] = `
     </main>
   </div>
   <input
-    accept="image/*, video/*"
     autoComplete="off"
     disabled={false}
     multiple={true}

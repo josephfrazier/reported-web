@@ -72,12 +72,12 @@ Parse.serverURL = PARSE_SERVER_URL;
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 10 * 1000 * 1000, // 10MB
+    fileSize: 20 * 1000 * 1000, // just under 20MB
     files: 6,
   },
 });
 // Here's the logic for the above `limits`:
-// * Back4App has a per-file limit of 10mb: https://docs.back4app.com/docs/faq-parse-back4app/can-i-store-files-larger-than-10-mb-can-i-pay-to-remove-this-limit/
+// * Back4App has a per-file limit of 20mb: https://www.back4app.com/pricing
 // * Up to 6 files can be included with each submission to Back4App:
 //   * photoData0
 //   * photoData1

@@ -506,7 +506,7 @@ app.use('/submit', (req, res) => {
 // https://app.platerecognizer.com/upload-limit/
 const downscaleForPlateRecognizer = buffer => {
   const fileSize = buffer.length;
-  const maxFilesize = 2572792;
+  const maxFilesize = 2411654;
 
   if (fileSize >= maxFilesize) {
     const targetWidth = 1024;

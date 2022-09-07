@@ -519,8 +519,18 @@ const downscaleForPlateRecognizer = buffer => {
     return sharp(buffer)
       .resize({ width: targetWidth })
       .toBuffer()
-      .catch(() => buffer)
-      .then(resizedBuffer => Buffer.from(resizedBuffer));
+      .catch(error => {
+        console.error('could not scale down, using unscaled image', { error });
+        return buffer;
+      })
+      .then(resizedBufferish => {
+        const resizedBuffer = Buffer.from(resizedBufferish);
+        // eslint-disable-next-line no-console
+        console.log(
+          `file size after scaling down: ${resizedBuffer.length} bytes`,
+        );
+        return resizedBuffer;
+      });
   }
 
   return buffer;

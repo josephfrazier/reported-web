@@ -509,7 +509,7 @@ const downscaleForPlateRecognizer = buffer => {
   const maxFilesize = 2411654;
 
   if (fileSize >= maxFilesize) {
-    const targetWidth = 1024;
+    const targetWidth = 4096;
 
     // eslint-disable-next-line no-console
     console.log(

@@ -233,6 +233,18 @@ exports[`Home renders children correctly 1`] = `
             }
           />
           <label
+            htmlFor="isAlprEnabled"
+          >
+            <input
+              checked={true}
+              name="isAlprEnabled"
+              onChange={[Function]}
+              type="checkbox"
+            />
+             
+            Automatically read license plates from pictures/videos
+          </label>
+          <label
             htmlFor="plate"
           >
             License/Medallion:

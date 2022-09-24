@@ -585,7 +585,8 @@ exports[`Home renders children correctly 1`] = `
           <label
             htmlFor="where"
           >
-            Where:
+            Where: 
+            
             <br />
             <button
               name="where"

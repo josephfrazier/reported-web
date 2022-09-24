@@ -248,6 +248,7 @@ class Home extends React.Component {
       plateSuggestion: '',
       vehicleInfoComponent: <br />,
       submissions: [],
+      addressProvenance: '',
     };
 
     const initialState = {
@@ -267,14 +268,18 @@ class Home extends React.Component {
     if (this.state.attachmentData.length === 0 || !this.state.CreateDate) {
       this.setCreateDate({ millisecondsSinceEpoch: Date.now() });
     }
-    geolocate().then(({ coords }) => {
+    geolocate().then(({ coords: { latitude, longitude } }) => {
       // if there's no attachments or a location couldn't be extracted, just use here
       if (
         this.state.attachmentData.length === 0 ||
         (this.state.latitude === defaultLatitude &&
           this.state.longitude === defaultLongitude)
       ) {
-        this.setCoords(coords);
+        this.setCoords({
+          latitude,
+          longitude,
+          addressProvenance: '(from device)',
+        });
       }
     });
 
@@ -352,7 +357,9 @@ class Home extends React.Component {
     return Object.keys(this.initialStatePersistent);
   }
 
-  setCoords = ({ latitude, longitude } = {}) => {
+  setCoords = (
+    { latitude, longitude, addressProvenance } = { addressProvenance: '' },
+  ) => {
     if (!latitude || !longitude) {
       console.error('latitude and/or longitude is missing');
       return;
@@ -361,6 +368,7 @@ class Home extends React.Component {
       latitude,
       longitude,
       formatted_address: 'Finding Address...',
+      addressProvenance,
     });
     debouncedProcessValidation({ latitude, longitude }).then(data => {
       this.setState({
@@ -538,7 +546,13 @@ class Home extends React.Component {
             attachmentFile,
             attachmentArrayBuffer,
             ext,
-          }).then(this.setCoords),
+          }).then(({ latitude, longitude }) => {
+            this.setCoords({
+              latitude,
+              longitude,
+              addressProvenance: '(extracted from picture/video)',
+            });
+          }),
         ]).then(values => {
           const rejected = values.filter(v => v.status === 'rejected');
 
@@ -1147,7 +1161,7 @@ class Home extends React.Component {
                 </label>
 
                 <label htmlFor="where">
-                  Where:
+                  Where: {this.state.addressProvenance}
                   <br />
                   <button
                     type="button"
@@ -1185,7 +1199,11 @@ class Home extends React.Component {
                     onCenterChanged={() => {
                       const latitude = this.mapRef.getCenter().lat();
                       const longitude = this.mapRef.getCenter().lng();
-                      this.setCoords({ latitude, longitude });
+                      this.setCoords({
+                        latitude,
+                        longitude,
+                        addressProvenance: '(manually set)',
+                      });
                     }}
                     onSearchBoxMounted={ref => {
                       this.searchBox = ref;
@@ -1207,6 +1225,7 @@ class Home extends React.Component {
                       this.setCoords({
                         latitude,
                         longitude,
+                        addressProvenance: '(manually set)',
                       });
                     }}
                   />
@@ -1218,8 +1237,12 @@ class Home extends React.Component {
                     }}
                     onClick={() => {
                       geolocate()
-                        .then(({ coords }) => {
-                          this.setCoords(coords);
+                        .then(({ coords: { latitude, longitude } }) => {
+                          this.setCoords({
+                            latitude,
+                            longitude,
+                            addressProvenance: '(from device)',
+                          });
                         })
                         .catch(err => {
                           this.alert(err.message);

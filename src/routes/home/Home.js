@@ -233,6 +233,7 @@ class Home extends React.Component {
 
     const initialStatePersistent = {
       ...initialStatePerSubmission,
+      isAlprEnabled: true,
       isUserInfoOpen: true,
       isMapOpen: false,
     };
@@ -587,6 +588,12 @@ class Home extends React.Component {
     console.time('extractPlate'); // eslint-disable-line no-console
 
     try {
+      if (this.state.isAlprEnabled === false) {
+        console.info('ALPR is disabled, skipping');
+        return undefined;
+      }
+
+      // TODO does this actually do anything? the returned result isn't used anywhere
       if (this.attachmentPlates.has(attachmentFile)) {
         const result = this.attachmentPlates.get(attachmentFile);
         return result;
@@ -1070,6 +1077,16 @@ class Home extends React.Component {
                     );
                   })}
                 </div>
+
+                <label htmlFor="isAlprEnabled">
+                  <input
+                    type="checkbox"
+                    checked={this.state.isAlprEnabled}
+                    name="isAlprEnabled"
+                    onChange={this.handleInputChange}
+                  />{' '}
+                  Automatically read license plates from pictures/videos
+                </label>
 
                 <label htmlFor="plate">
                   License/Medallion:

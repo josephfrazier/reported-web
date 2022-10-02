@@ -713,679 +713,689 @@ class Home extends React.Component {
         disableClick
       >
         <div className={s.container}>
-          <main>
-            <h1>
-              <a
-                href="https://reportedly.weebly.com/"
-                style={{
-                  textDecoration: 'underline',
-                }}
-              >
-                Reported
-              </a>
-            </h1>
-
-            <Modal
-              isOpen={!!this.state.modalText}
-              onRequestClose={this.closeAlert}
-            >
-              {this.state.modalText}
-              <br />
-              <button type="button" onClick={this.closeAlert}>
-                Close
-              </button>
-            </Modal>
-
-            {/* TODO use tabbed interface instead of toggling <details> ? */}
-            <details
-              open={this.state.isUserInfoOpen}
-              onToggle={evt => {
-                this.setState({
-                  isUserInfoOpen: evt.target.open,
-                });
-              }}
-            >
-              <summary>Create/Edit User (click to expand)</summary>
-
-              <form
-                onSubmit={e => {
-                  e.preventDefault();
-                  this.setState({ isUserInfoSaving: true });
-                  axios
-                    .post('/saveUser', this.state)
-                    .then(() => {
-                      this.setState({ isUserInfoOpen: false });
-                      window.scrollTo(0, 0);
-                    })
-                    .catch(this.handleAxiosError)
-                    .then(() => {
-                      this.setState({ isUserInfoSaving: false });
-                    });
-                }}
-              >
-                <fieldset disabled={this.state.isUserInfoSaving}>
-                  <label htmlFor="email">
-                    Email:{' '}
-                    <input
-                      required
-                      onInvalid={() => this.setState({ isUserInfoOpen: true })}
-                      type="email"
-                      autoComplete="email"
-                      value={this.state.email}
-                      name="email"
-                      onChange={event => {
-                        this.handleInputChange({
-                          target: {
-                            name: event.target.name,
-                            value: event.target.value.replace(/@.*/, atDomain =>
-                              atDomain.toLowerCase(),
-                            ),
-                          },
-                        });
+            <main>
+              <Ons.Tabbar>
+              <Ons.Page>
+                {/*
+                  <h1>
+                    <a
+                      href="https://reportedly.weebly.com/"
+                      style={{
+                        textDecoration: 'underline',
                       }}
-                    />
-                  </label>
-                  <label htmlFor="password">
-                    {
-                      "Password (this is saved on your device, so use a password you don't use anywhere else): "
+                    >
+                      Reported
+                    </a>
+                  </h1>
+
+                  <Modal
+                    isOpen={!!this.state.modalText}
+                    onRequestClose={this.closeAlert}
+                  >
+                    {this.state.modalText}
+                    <br />
+                    <button type="button" onClick={this.closeAlert}>
+                      Close
+                    </button>
+                  </Modal>
+                */}
+
+                {/* TODO use tabbed interface instead of toggling <details> ? */}
+                <details
+                  open={this.state.isUserInfoOpen}
+                  onToggle={evt => {
+                    this.setState({
+                      isUserInfoOpen: evt.target.open,
+                    });
+                  }}
+                >
+                  <summary>Create/Edit User (click to expand)</summary>
+
+                  <form
+                    onSubmit={e => {
+                      e.preventDefault();
+                      this.setState({ isUserInfoSaving: true });
+                      axios
+                        .post('/saveUser', this.state)
+                        .then(() => {
+                          this.setState({ isUserInfoOpen: false });
+                          window.scrollTo(0, 0);
+                        })
+                        .catch(this.handleAxiosError)
+                        .then(() => {
+                          this.setState({ isUserInfoSaving: false });
+                        });
+                    }}
+                  >
+                    <fieldset disabled={this.state.isUserInfoSaving}>
+                      <label htmlFor="email">
+                        Email:{' '}
+                        <input
+                          required
+                          onInvalid={() => this.setState({ isUserInfoOpen: true })}
+                          type="email"
+                          autoComplete="email"
+                          value={this.state.email}
+                          name="email"
+                          onChange={event => {
+                            this.handleInputChange({
+                              target: {
+                                name: event.target.name,
+                                value: event.target.value.replace(/@.*/, atDomain =>
+                                  atDomain.toLowerCase(),
+                                ),
+                              },
+                            });
+                          }}
+                        />
+                      </label>
+                      <label htmlFor="password">
+                        {
+                          "Password (this is saved on your device, so use a password you don't use anywhere else): "
+                        }
+                        <div style={{ display: 'flex' }}>
+                          <input
+                            required
+                            onInvalid={() =>
+                              this.setState({ isUserInfoOpen: true })
+                            }
+                            type={
+                              this.state.isPasswordRevealed ? 'text' : 'password'
+                            }
+                            autoComplete="current-password"
+                            value={this.state.password}
+                            name="password"
+                            onChange={this.handleInputChange}
+                          />
+                          &nbsp;
+                          <button
+                            type="button"
+                            onClick={() => {
+                              this.setState(state => ({
+                                isPasswordRevealed: !state.isPasswordRevealed,
+                              }));
+                            }}
+                          >
+                            {this.state.isPasswordRevealed ? 'Hide' : 'Show'}
+                          </button>
+                          &nbsp;
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const { email } = this.state;
+                              axios
+                                .post('/requestPasswordReset', {
+                                  email,
+                                })
+                                .then(() => {
+                                  const message = `Please check ${email} to reset your password.`;
+                                  this.alert(message);
+                                })
+                                .catch(this.handleAxiosError);
+                            }}
+                          >
+                            Reset
+                          </button>
+                        </div>
+                      </label>
+                      <button
+                        type="button"
+                        disabled={this.state.isUserInfoSaving}
+                        onClick={async () => {
+                          this.setState({ isUserInfoSaving: true });
+
+                          const { data } = await axios
+                            .post('/api/logIn', this.state)
+                            .catch(err => {
+                              this.handleAxiosError(err);
+                              return { data: false };
+                            });
+
+                          this.setState({ isUserInfoSaving: false });
+
+                          if (!data) {
+                            return;
+                          }
+
+                          const { FirstName, LastName, Phone, testify } = data;
+
+                          this.setState(
+                            // If a new user clicks the button after filling all the fields,
+                            // don't override them with empty data from the server.
+                            state => ({
+                              FirstName: FirstName || state.FirstName,
+                              LastName: LastName || state.LastName,
+                              Phone: Phone || state.Phone,
+                              testify: testify || state.testify,
+                            }),
+                            () => {
+                              this.saveStateToLocalStorage();
+                              this.userFormSubmitRef.current.click();
+                            },
+                          );
+                        }}
+                      >
+                        Sign Up / Log In
+                      </button>
+                      <br />
+                      <br />
+                      (If you cannot log in even after resetting your password,
+                      email{' '}
+                      <a href="mailto:reportedapp@gmail.com">
+                        reportedapp@gmail.com
+                      </a>
+                      )
+                      <label htmlFor="FirstName">
+                        First Name:{' '}
+                        <input
+                          required
+                          onInvalid={() => this.setState({ isUserInfoOpen: true })}
+                          type="text"
+                          autoComplete="given-name"
+                          value={this.state.FirstName}
+                          name="FirstName"
+                          onChange={this.handleInputChange}
+                        />
+                      </label>
+                      <label htmlFor="LastName">
+                        Last Name:{' '}
+                        <input
+                          required
+                          onInvalid={() => this.setState({ isUserInfoOpen: true })}
+                          type="text"
+                          autoComplete="family-name"
+                          value={this.state.LastName}
+                          name="LastName"
+                          onChange={this.handleInputChange}
+                        />
+                      </label>
+                      <label htmlFor="Phone">
+                        Phone Number:{' '}
+                        <input
+                          required
+                          onInvalid={() => this.setState({ isUserInfoOpen: true })}
+                          type="tel"
+                          autoComplete="tel"
+                          value={this.state.Phone}
+                          name="Phone"
+                          onChange={this.handleInputChange}
+                        />
+                      </label>
+                      <label htmlFor="testify">
+                        <input
+                          type="checkbox"
+                          checked={this.state.testify}
+                          name="testify"
+                          onChange={this.handleInputChange}
+                        />{' '}
+                        {
+                          "I'm willing to testify at a hearing, which can be done by phone."
+                        }
+                      </label>
+                      <button
+                        type="submit"
+                        disabled={this.state.isUserInfoSaving}
+                        ref={this.userFormSubmitRef}
+                      >
+                        {this.state.isUserInfoSaving ? 'Saving...' : 'Save'}
+                      </button>
+                    </fieldset>
+                  </form>
+                </details>
+              </Ons.Page>
+
+              <Ons.Page>
+                <form
+                  style={{
+                    display: this.state.isUserInfoOpen ? 'none' : 'block',
+                  }}
+                  onSubmit={async e => {
+                    e.preventDefault();
+
+                    if (
+                      this.state.latitude === defaultLatitude &&
+                      this.state.longitude === defaultLongitude
+                    ) {
+                      this.alert('Please provide the location of the incident');
+                      return;
                     }
-                    <div style={{ display: 'flex' }}>
+
+                    this.setState({
+                      isSubmitting: true,
+                    });
+                    axios
+                      .post(
+                        '/submit',
+                        objectToFormData({
+                          ...this.getPerSubmissionState(),
+                          attachmentData: this.state.attachmentData,
+                          CreateDate: new Date(this.state.CreateDate).toISOString(),
+                        }),
+                        {
+                          onUploadProgress: progressEvent => {
+                            const {
+                              loaded: submitProgressValue,
+                              total: submitProgressMax,
+                            } = progressEvent;
+
+                            this.setState({
+                              submitProgressValue,
+                              submitProgressMax,
+                            });
+                          },
+
+                          onDownloadProgress: progressEvent => {
+                            const {
+                              loaded: submitProgressValue,
+                              total: submitProgressMax,
+                            } = progressEvent;
+
+                            this.setState({
+                              submitProgressValue,
+                              submitProgressMax,
+                            });
+                          },
+                        },
+                      )
+                      .then(({ data }) => {
+                        const { submission } = data;
+                        window.scrollTo(0, 0);
+                        console.info(
+                          `submitted successfully. Returned data: ${JSON.stringify(
+                            data,
+                            null,
+                            2,
+                          )}`,
+                        );
+                        this.setState(state => ({
+                          attachmentData: [],
+                          submissions: [submission].concat(state.submissions),
+                          plateSuggestion: '',
+                          reportDescription: '',
+                        }));
+                        this.setLicensePlate({ plate: '', licenseState: 'NY' });
+                        this.alert(
+                          <React.Fragment>
+                            <p>Thanks for your submission!</p>
+                            <p>
+                              Your information has been submitted to Reported. It
+                              may take up to 24 hours for it to be processed.
+                            </p>
+
+                            {/*
+                            <p>objectId: {data.submission.objectId}</p>
+                            */}
+                          </React.Fragment>,
+                        );
+                      })
+                      .catch(this.handleAxiosError)
+                      .then(() => {
+                        this.setState({
+                          isSubmitting: false,
+                          submitProgressValue: null,
+                          submitProgressMax: null,
+                        });
+                      })
+                      .then(() => {
+                        this.saveStateToLocalStorage();
+                      });
+                  }}
+                >
+                  <fieldset disabled={this.state.isSubmitting}>
+                    <FileReaderInput
+                      multiple
+                      as="buffer"
+                      onChange={this.handleAttachmentInput}
+                      style={{
+                        float: 'left',
+                        margin: '1px',
+                      }}
+                    >
+                      <button type="button">Add pictures/videos</button>
+                    </FileReaderInput>
+
+                    <div
+                      style={{
+                        clear: 'both',
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      {this.state.attachmentData.map(attachmentFile => {
+                        const { name } = attachmentFile;
+                        const ext = fileExtension(name);
+                        const isImg = isImage({ ext });
+                        const src = getBlobUrl(attachmentFile);
+
+                        return (
+                          <div
+                            key={name}
+                            style={{
+                              width: '33%',
+                              margin: '0.1%',
+                              flexGrow: 1,
+                              position: 'relative',
+                            }}
+                          >
+                            <a href={src} target="_blank" rel="noopener noreferrer">
+                              {isImg ? (
+                                <img src={src} alt={name} />
+                              ) : (
+                                /* eslint-disable-next-line jsx-a11y/media-has-caption */
+                                <video src={src} alt={name} />
+                              )}
+                            </a>
+
+                            <button
+                              type="button"
+                              style={{
+                                position: 'absolute',
+                                top: 0,
+                                right: 0,
+                                padding: 0,
+                                margin: '1px',
+                                color: 'red', // Ubuntu Chrome shows black otherwise
+                                background: 'white',
+                              }}
+                              onClick={() => {
+                                this.setState(state => ({
+                                  attachmentData: state.attachmentData.filter(
+                                    file => file.name !== name,
+                                  ),
+                                }));
+                              }}
+                            >
+                              <span role="img" aria-label="Delete photo/video">
+                                ❌
+                              </span>
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <label htmlFor="isAlprEnabled">
+                      <input
+                        type="checkbox"
+                        checked={this.state.isAlprEnabled}
+                        name="isAlprEnabled"
+                        onChange={this.handleInputChange}
+                      />{' '}
+                      Automatically read license plates from pictures/videos
+                    </label>
+
+                    <label htmlFor="plate">
+                      License/Medallion:
                       <input
                         required
-                        onInvalid={() =>
-                          this.setState({ isUserInfoOpen: true })
-                        }
-                        type={
-                          this.state.isPasswordRevealed ? 'text' : 'password'
-                        }
-                        autoComplete="current-password"
-                        value={this.state.password}
-                        name="password"
-                        onChange={this.handleInputChange}
+                        type="search"
+                        value={this.state.plate}
+                        name="plate"
+                        list="plateSuggestion"
+                        ref={this.plateRef}
+                        placeholder={this.state.plateSuggestion}
+                        onChange={event => {
+                          this.setLicensePlate({
+                            plate: event.target.value.toUpperCase(),
+                          });
+                        }}
                       />
-                      &nbsp;
-                      <button
-                        type="button"
-                        onClick={() => {
-                          this.setState(state => ({
-                            isPasswordRevealed: !state.isPasswordRevealed,
-                          }));
-                        }}
-                      >
-                        {this.state.isPasswordRevealed ? 'Hide' : 'Show'}
-                      </button>
-                      &nbsp;
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const { email } = this.state;
-                          axios
-                            .post('/requestPasswordReset', {
-                              email,
-                            })
-                            .then(() => {
-                              const message = `Please check ${email} to reset your password.`;
-                              this.alert(message);
-                            })
-                            .catch(this.handleAxiosError);
-                        }}
-                      >
-                        Reset
-                      </button>
-                    </div>
-                  </label>
-                  <button
-                    type="button"
-                    disabled={this.state.isUserInfoSaving}
-                    onClick={async () => {
-                      this.setState({ isUserInfoSaving: true });
-
-                      const { data } = await axios
-                        .post('/api/logIn', this.state)
-                        .catch(err => {
-                          this.handleAxiosError(err);
-                          return { data: false };
-                        });
-
-                      this.setState({ isUserInfoSaving: false });
-
-                      if (!data) {
-                        return;
-                      }
-
-                      const { FirstName, LastName, Phone, testify } = data;
-
-                      this.setState(
-                        // If a new user clicks the button after filling all the fields,
-                        // don't override them with empty data from the server.
-                        state => ({
-                          FirstName: FirstName || state.FirstName,
-                          LastName: LastName || state.LastName,
-                          Phone: Phone || state.Phone,
-                          testify: testify || state.testify,
-                        }),
-                        () => {
-                          this.saveStateToLocalStorage();
-                          this.userFormSubmitRef.current.click();
-                        },
-                      );
-                    }}
-                  >
-                    Sign Up / Log In
-                  </button>
-                  <br />
-                  <br />
-                  (If you cannot log in even after resetting your password,
-                  email{' '}
-                  <a href="mailto:reportedapp@gmail.com">
-                    reportedapp@gmail.com
-                  </a>
-                  )
-                  <label htmlFor="FirstName">
-                    First Name:{' '}
-                    <input
-                      required
-                      onInvalid={() => this.setState({ isUserInfoOpen: true })}
-                      type="text"
-                      autoComplete="given-name"
-                      value={this.state.FirstName}
-                      name="FirstName"
-                      onChange={this.handleInputChange}
-                    />
-                  </label>
-                  <label htmlFor="LastName">
-                    Last Name:{' '}
-                    <input
-                      required
-                      onInvalid={() => this.setState({ isUserInfoOpen: true })}
-                      type="text"
-                      autoComplete="family-name"
-                      value={this.state.LastName}
-                      name="LastName"
-                      onChange={this.handleInputChange}
-                    />
-                  </label>
-                  <label htmlFor="Phone">
-                    Phone Number:{' '}
-                    <input
-                      required
-                      onInvalid={() => this.setState({ isUserInfoOpen: true })}
-                      type="tel"
-                      autoComplete="tel"
-                      value={this.state.Phone}
-                      name="Phone"
-                      onChange={this.handleInputChange}
-                    />
-                  </label>
-                  <label htmlFor="testify">
-                    <input
-                      type="checkbox"
-                      checked={this.state.testify}
-                      name="testify"
-                      onChange={this.handleInputChange}
-                    />{' '}
-                    {
-                      "I'm willing to testify at a hearing, which can be done by phone."
-                    }
-                  </label>
-                  <button
-                    type="submit"
-                    disabled={this.state.isUserInfoSaving}
-                    ref={this.userFormSubmitRef}
-                  >
-                    {this.state.isUserInfoSaving ? 'Saving...' : 'Save'}
-                  </button>
-                </fieldset>
-              </form>
-            </details>
-
-            <form
-              style={{
-                display: this.state.isUserInfoOpen ? 'none' : 'block',
-              }}
-              onSubmit={async e => {
-                e.preventDefault();
-
-                if (
-                  this.state.latitude === defaultLatitude &&
-                  this.state.longitude === defaultLongitude
-                ) {
-                  this.alert('Please provide the location of the incident');
-                  return;
-                }
-
-                this.setState({
-                  isSubmitting: true,
-                });
-                axios
-                  .post(
-                    '/submit',
-                    objectToFormData({
-                      ...this.getPerSubmissionState(),
-                      attachmentData: this.state.attachmentData,
-                      CreateDate: new Date(this.state.CreateDate).toISOString(),
-                    }),
-                    {
-                      onUploadProgress: progressEvent => {
-                        const {
-                          loaded: submitProgressValue,
-                          total: submitProgressMax,
-                        } = progressEvent;
-
-                        this.setState({
-                          submitProgressValue,
-                          submitProgressMax,
-                        });
-                      },
-
-                      onDownloadProgress: progressEvent => {
-                        const {
-                          loaded: submitProgressValue,
-                          total: submitProgressMax,
-                        } = progressEvent;
-
-                        this.setState({
-                          submitProgressValue,
-                          submitProgressMax,
-                        });
-                      },
-                    },
-                  )
-                  .then(({ data }) => {
-                    const { submission } = data;
-                    window.scrollTo(0, 0);
-                    console.info(
-                      `submitted successfully. Returned data: ${JSON.stringify(
-                        data,
-                        null,
-                        2,
-                      )}`,
-                    );
-                    this.setState(state => ({
-                      attachmentData: [],
-                      submissions: [submission].concat(state.submissions),
-                      plateSuggestion: '',
-                      reportDescription: '',
-                    }));
-                    this.setLicensePlate({ plate: '', licenseState: 'NY' });
-                    this.alert(
-                      <React.Fragment>
-                        <p>Thanks for your submission!</p>
-                        <p>
-                          Your information has been submitted to Reported. It
-                          may take up to 24 hours for it to be processed.
-                        </p>
-
-                        {/*
-                        <p>objectId: {data.submission.objectId}</p>
-                        */}
-                      </React.Fragment>,
-                    );
-                  })
-                  .catch(this.handleAxiosError)
-                  .then(() => {
-                    this.setState({
-                      isSubmitting: false,
-                      submitProgressValue: null,
-                      submitProgressMax: null,
-                    });
-                  })
-                  .then(() => {
-                    this.saveStateToLocalStorage();
-                  });
-              }}
-            >
-              <fieldset disabled={this.state.isSubmitting}>
-                <FileReaderInput
-                  multiple
-                  as="buffer"
-                  onChange={this.handleAttachmentInput}
-                  style={{
-                    float: 'left',
-                    margin: '1px',
-                  }}
-                >
-                  <button type="button">Add pictures/videos</button>
-                </FileReaderInput>
-
-                <div
-                  style={{
-                    clear: 'both',
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                  }}
-                >
-                  {this.state.attachmentData.map(attachmentFile => {
-                    const { name } = attachmentFile;
-                    const ext = fileExtension(name);
-                    const isImg = isImage({ ext });
-                    const src = getBlobUrl(attachmentFile);
-
-                    return (
-                      <div
-                        key={name}
+                      <datalist id="plateSuggestion">
+                        {this.state.plateSuggestion && (
+                          <option value={this.state.plateSuggestion} />
+                        )}
+                      </datalist>
+                      <select
                         style={{
-                          width: '33%',
-                          margin: '0.1%',
-                          flexGrow: 1,
-                          position: 'relative',
+                          marginTop: '0.5rem',
+                        }}
+                        value={this.state.licenseState}
+                        name="licenseState"
+                        onChange={event => {
+                          this.setLicensePlate({
+                            plate: this.state.plate,
+                            licenseState: event.target.value,
+                          });
                         }}
                       >
-                        <a href={src} target="_blank" rel="noopener noreferrer">
-                          {isImg ? (
-                            <img src={src} alt={name} />
-                          ) : (
-                            /* eslint-disable-next-line jsx-a11y/media-has-caption */
-                            <video src={src} alt={name} />
-                          )}
-                        </a>
+                        {Object.entries(usStateNames).map(([abbr, name]) => (
+                          <option key={abbr} value={abbr}>
+                            {name}
+                          </option>
+                        ))}
+                      </select>
+                      {this.state.vehicleInfoComponent}
+                    </label>
 
-                        <button
-                          type="button"
-                          style={{
-                            position: 'absolute',
-                            top: 0,
-                            right: 0,
-                            padding: 0,
-                            margin: '1px',
-                            color: 'red', // Ubuntu Chrome shows black otherwise
-                            background: 'white',
-                          }}
-                          onClick={() => {
-                            this.setState(state => ({
-                              attachmentData: state.attachmentData.filter(
-                                file => file.name !== name,
-                              ),
-                            }));
-                          }}
-                        >
-                          <span role="img" aria-label="Delete photo/video">
-                            ❌
-                          </span>
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
+                    <label htmlFor="typeofcomplaint">
+                      Type:{' '}
+                      <select
+                        value={this.state.typeofcomplaint}
+                        name="typeofcomplaint"
+                        onChange={this.handleInputChange}
+                      >
+                        {this.props.typeofcomplaintValues.map(typeofcomplaint => (
+                          <option key={typeofcomplaint} value={typeofcomplaint}>
+                            {typeofcomplaint}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
 
-                <label htmlFor="isAlprEnabled">
-                  <input
-                    type="checkbox"
-                    checked={this.state.isAlprEnabled}
-                    name="isAlprEnabled"
-                    onChange={this.handleInputChange}
-                  />{' '}
-                  Automatically read license plates from pictures/videos
-                </label>
+                    <label htmlFor="where">
+                      Where: {this.state.addressProvenance}
+                      <br />
+                      <button
+                        type="button"
+                        name="where"
+                        onClick={() => this.setState({ isMapOpen: true })}
+                        style={{
+                          width: '100%',
+                        }}
+                      >
+                        {this.state.formatted_address
+                          .split(', ')
+                          .slice(0, 2)
+                          .join(', ')}
+                      </button>
+                    </label>
 
-                <label htmlFor="plate">
-                  License/Medallion:
-                  <input
-                    required
-                    type="search"
-                    value={this.state.plate}
-                    name="plate"
-                    list="plateSuggestion"
-                    ref={this.plateRef}
-                    placeholder={this.state.plateSuggestion}
-                    onChange={event => {
-                      this.setLicensePlate({
-                        plate: event.target.value.toUpperCase(),
-                      });
-                    }}
-                  />
-                  <datalist id="plateSuggestion">
-                    {this.state.plateSuggestion && (
-                      <option value={this.state.plateSuggestion} />
-                    )}
-                  </datalist>
-                  <select
-                    style={{
-                      marginTop: '0.5rem',
-                    }}
-                    value={this.state.licenseState}
-                    name="licenseState"
-                    onChange={event => {
-                      this.setLicensePlate({
-                        plate: this.state.plate,
-                        licenseState: event.target.value,
-                      });
-                    }}
-                  >
-                    {Object.entries(usStateNames).map(([abbr, name]) => (
-                      <option key={abbr} value={abbr}>
-                        {name}
-                      </option>
-                    ))}
-                  </select>
-                  {this.state.vehicleInfoComponent}
-                </label>
-
-                <label htmlFor="typeofcomplaint">
-                  Type:{' '}
-                  <select
-                    value={this.state.typeofcomplaint}
-                    name="typeofcomplaint"
-                    onChange={this.handleInputChange}
-                  >
-                    {this.props.typeofcomplaintValues.map(typeofcomplaint => (
-                      <option key={typeofcomplaint} value={typeofcomplaint}>
-                        {typeofcomplaint}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label htmlFor="where">
-                  Where: {this.state.addressProvenance}
-                  <br />
-                  <button
-                    type="button"
-                    name="where"
-                    onClick={() => this.setState({ isMapOpen: true })}
-                    style={{
-                      width: '100%',
-                    }}
-                  >
-                    {this.state.formatted_address
-                      .split(', ')
-                      .slice(0, 2)
-                      .join(', ')}
-                  </button>
-                </label>
-
-                <Modal
-                  isOpen={this.state.isMapOpen}
-                  onRequestClose={() => this.setState({ isMapOpen: false })}
-                  style={{
-                    content: {
-                      padding: 0,
-                    },
-                  }}
-                >
-                  <MyMapComponent
-                    key="map"
-                    position={{
-                      lat: this.state.latitude,
-                      lng: this.state.longitude,
-                    }}
-                    onRef={mapRef => {
-                      this.mapRef = mapRef;
-                    }}
-                    onCenterChanged={() => {
-                      const latitude = this.mapRef.getCenter().lat();
-                      const longitude = this.mapRef.getCenter().lng();
-                      this.setCoords({
-                        latitude,
-                        longitude,
-                        addressProvenance: '(manually set)',
-                      });
-                    }}
-                    onSearchBoxMounted={ref => {
-                      this.searchBox = ref;
-                    }}
-                    onPlacesChanged={() => {
-                      const places = this.searchBox.getPlaces();
-
-                      const nextMarkers = places.map(place => ({
-                        position: place.geometry.location,
-                      }));
-                      const { latitude, longitude } =
-                        nextMarkers.length > 0
-                          ? {
-                              latitude: nextMarkers[0].position.lat(),
-                              longitude: nextMarkers[0].position.lng(),
-                            }
-                          : this.state;
-
-                      this.setCoords({
-                        latitude,
-                        longitude,
-                        addressProvenance: '(manually set)',
-                      });
-                    }}
-                  />
-
-                  <button
-                    type="button"
-                    style={{
-                      float: 'left',
-                    }}
-                    onClick={() => {
-                      geolocate()
-                        .then(({ coords: { latitude, longitude } }) => {
+                    <Modal
+                      isOpen={this.state.isMapOpen}
+                      onRequestClose={() => this.setState({ isMapOpen: false })}
+                      style={{
+                        content: {
+                          padding: 0,
+                        },
+                      }}
+                    >
+                      <MyMapComponent
+                        key="map"
+                        position={{
+                          lat: this.state.latitude,
+                          lng: this.state.longitude,
+                        }}
+                        onRef={mapRef => {
+                          this.mapRef = mapRef;
+                        }}
+                        onCenterChanged={() => {
+                          const latitude = this.mapRef.getCenter().lat();
+                          const longitude = this.mapRef.getCenter().lng();
                           this.setCoords({
                             latitude,
                             longitude,
-                            addressProvenance: '(from device)',
+                            addressProvenance: '(manually set)',
                           });
-                        })
-                        .catch(err => {
-                          this.alert(err.message);
-                          console.error(err);
-                        });
-                    }}
-                  >
-                    Use current location
-                  </button>
+                        }}
+                        onSearchBoxMounted={ref => {
+                          this.searchBox = ref;
+                        }}
+                        onPlacesChanged={() => {
+                          const places = this.searchBox.getPlaces();
 
-                  <button
-                    type="button"
-                    onClick={() => this.setState({ isMapOpen: false })}
-                    style={{
-                      float: 'right',
-                    }}
-                  >
-                    Close
-                  </button>
-                </Modal>
+                          const nextMarkers = places.map(place => ({
+                            position: place.geometry.location,
+                          }));
+                          const { latitude, longitude } =
+                            nextMarkers.length > 0
+                              ? {
+                                  latitude: nextMarkers[0].position.lat(),
+                                  longitude: nextMarkers[0].position.lng(),
+                                }
+                              : this.state;
 
-                <label htmlFor="CreateDate">
-                  When:{' '}
-                  <input
-                    required
-                    type="datetime-local"
-                    value={this.state.CreateDate}
-                    name="CreateDate"
-                    onChange={this.handleInputChange}
-                  />
-                </label>
+                          this.setCoords({
+                            latitude,
+                            longitude,
+                            addressProvenance: '(manually set)',
+                          });
+                        }}
+                      />
 
-                <label htmlFor="reportDescription">
-                  Description:{' '}
-                  <textarea
-                    value={this.state.reportDescription}
-                    name="reportDescription"
-                    onChange={this.handleInputChange}
-                  />
-                </label>
+                      <button
+                        type="button"
+                        style={{
+                          float: 'left',
+                        }}
+                        onClick={() => {
+                          geolocate()
+                            .then(({ coords: { latitude, longitude } }) => {
+                              this.setCoords({
+                                latitude,
+                                longitude,
+                                addressProvenance: '(from device)',
+                              });
+                            })
+                            .catch(err => {
+                              this.alert(err.message);
+                              console.error(err);
+                            });
+                        }}
+                      >
+                        Use current location
+                      </button>
 
-                <label htmlFor="can_be_shared_publicly">
-                  <input
-                    type="checkbox"
-                    checked={this.state.can_be_shared_publicly}
-                    name="can_be_shared_publicly"
-                    onChange={this.handleInputChange}
-                  />{' '}
-                  Allow the photos/videos, description, category, and location
-                  to be publicly displayed
-                </label>
+                      <button
+                        type="button"
+                        onClick={() => this.setState({ isMapOpen: false })}
+                        style={{
+                          float: 'right',
+                        }}
+                      >
+                        Close
+                      </button>
+                    </Modal>
 
-                {this.state.isSubmitting ? (
-                  <progress
-                    max={this.state.submitProgressMax}
-                    value={this.state.submitProgressValue}
-                    style={{
-                      width: '100%',
-                    }}
-                  >
-                    {this.state.submitProgressValue}/
-                    {this.state.submitProgressMax}
-                  </progress>
-                ) : (
-                  <button
-                    type="submit"
-                    disabled={this.state.isSubmitting}
-                    style={{
-                      width: '100%',
-                    }}
-                  >
-                    Submit
-                  </button>
-                )}
-              </fieldset>
-            </form>
+                    <label htmlFor="CreateDate">
+                      When:{' '}
+                      <input
+                        required
+                        type="datetime-local"
+                        value={this.state.CreateDate}
+                        name="CreateDate"
+                        onChange={this.handleInputChange}
+                      />
+                    </label>
 
-            <br />
+                    <label htmlFor="reportDescription">
+                      Description:{' '}
+                      <textarea
+                        value={this.state.reportDescription}
+                        name="reportDescription"
+                        onChange={this.handleInputChange}
+                      />
+                    </label>
 
-            <details
-              onToggle={evt => {
-                if (!evt.target.open) {
-                  return;
-                }
-                this.loadPreviousSubmissions();
-              }}
-            >
-              <summary>
-                Previous Submissions
-                {this.state.submissions.length > 0 &&
-                  ` (${this.state.submissions.length})`}
-              </summary>
+                    <label htmlFor="can_be_shared_publicly">
+                      <input
+                        type="checkbox"
+                        checked={this.state.can_be_shared_publicly}
+                        name="can_be_shared_publicly"
+                        onChange={this.handleInputChange}
+                      />{' '}
+                      Allow the photos/videos, description, category, and location
+                      to be publicly displayed
+                    </label>
 
-              <ul>
-                {this.state.submissions.length === 0
-                  ? 'Loading submissions...'
-                  : this.state.submissions.map(submission => (
-                      <li key={submission.objectId}>
-                        <SubmissionDetails
-                          submission={submission}
-                          onDeleteSubmission={this.onDeleteSubmission}
-                        />
-                      </li>
-                    ))}
-              </ul>
-            </details>
+                    {this.state.isSubmitting ? (
+                      <progress
+                        max={this.state.submitProgressMax}
+                        value={this.state.submitProgressValue}
+                        style={{
+                          width: '100%',
+                        }}
+                      >
+                        {this.state.submitProgressValue}/
+                        {this.state.submitProgressMax}
+                      </progress>
+                    ) : (
+                      <button
+                        type="submit"
+                        disabled={this.state.isSubmitting}
+                        style={{
+                          width: '100%',
+                        }}
+                      >
+                        Submit
+                      </button>
+                    )}
+                  </fieldset>
+                </form>
+              </Ons.Page>
 
-            <div style={{ float: 'right' }}>
-              <SocialIcon
-                url="https://twitter.com/Reported_NYC"
-                rel="noopener"
-              />
-              &nbsp;
-              <a
-                href="/electricitibikes"
-                style={{
-                  background: 'black',
-                  border: '1em solid black',
-                  borderRadius: '2em',
-                  textDecoration: 'none',
-                }}
-              >
-                <span role="img" aria-label="high voltage">
-                  ⚡
-                </span>
-              </a>
-            </div>
+              <Ons.Page>
+                <details
+                  onToggle={evt => {
+                    if (!evt.target.open) {
+                      return;
+                    }
+                    this.loadPreviousSubmissions();
+                  }}
+                >
+                  <summary>
+                    Previous Submissions
+                    {this.state.submissions.length > 0 &&
+                      ` (${this.state.submissions.length})`}
+                  </summary>
+
+                  <ul>
+                    {this.state.submissions.length === 0
+                      ? 'Loading submissions...'
+                      : this.state.submissions.map(submission => (
+                          <li key={submission.objectId}>
+                            <SubmissionDetails
+                              submission={submission}
+                              onDeleteSubmission={this.onDeleteSubmission}
+                            />
+                          </li>
+                        ))}
+                  </ul>
+                </details>
+              </Ons.Page>
+            </Ons.Tabbar>
+
+              {/*
+              <div style={{ float: 'right' }}>
+                <SocialIcon
+                  url="https://twitter.com/Reported_NYC"
+                  rel="noopener"
+                />
+                &nbsp;
+                <a
+                  href="/electricitibikes"
+                  style={{
+                    background: 'black',
+                    border: '1em solid black',
+                    borderRadius: '2em',
+                    textDecoration: 'none',
+                  }}
+                >
+                  <span role="img" aria-label="high voltage">
+                    ⚡
+                  </span>
+                </a>
+              </div>
+                  */}
           </main>
         </div>
       </Dropzone>

@@ -206,7 +206,6 @@ exports[`Home renders children correctly 1`] = `
             }
           >
             <input
-              accept="image/*"
               multiple={true}
               onChange={[Function]}
               onClick={[Function]}
@@ -221,36 +220,7 @@ exports[`Home renders children correctly 1`] = `
             <button
               type="button"
             >
-              Add picture(s)
-            </button>
-          </div>
-          <div
-            className="_react-file-reader-input"
-            onClick={[Function]}
-            style={
-              Object {
-                "float": "left",
-                "margin": "1px",
-              }
-            }
-          >
-            <input
-              accept="video/*"
-              multiple={true}
-              onChange={[Function]}
-              onClick={[Function]}
-              style={
-                Object {
-                  "position": "absolute",
-                  "top": "-9999px",
-                }
-              }
-              type="file"
-            />
-            <button
-              type="button"
-            >
-              Add video(s)
+              Add pictures/videos
             </button>
           </div>
           <div
@@ -262,6 +232,18 @@ exports[`Home renders children correctly 1`] = `
               }
             }
           />
+          <label
+            htmlFor="isAlprEnabled"
+          >
+            <input
+              checked={true}
+              name="isAlprEnabled"
+              onChange={[Function]}
+              type="checkbox"
+            />
+             
+            Automatically read license plates from pictures/videos
+          </label>
           <label
             htmlFor="plate"
           >
@@ -603,7 +585,8 @@ exports[`Home renders children correctly 1`] = `
           <label
             htmlFor="where"
           >
-            Where:
+            Where: 
+            
             <br />
             <button
               name="where"
@@ -628,7 +611,7 @@ exports[`Home renders children correctly 1`] = `
               onChange={[Function]}
               required={true}
               type="datetime-local"
-              value="2016-11-17T19:00"
+              value="2016-11-17T20:00"
             />
           </label>
           <label
@@ -808,7 +791,6 @@ exports[`Home renders children correctly 1`] = `
     </main>
   </div>
   <input
-    accept="image/*, video/*"
     autoComplete="off"
     disabled={false}
     multiple={true}

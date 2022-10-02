@@ -18,7 +18,6 @@ import nodeFetch from 'node-fetch';
 import React from 'react';
 import ReactDOM from 'react-dom/server';
 import PrettyError from 'pretty-error';
-import OpenalprApi from 'openalpr_api';
 import Parse from 'parse/node';
 import FileType from 'file-type/browser';
 import sharp from 'sharp';
@@ -27,6 +26,7 @@ import multer from 'multer';
 import stringify from 'json-stringify-safe';
 import DelayedResponse from 'http-delayed-response';
 import { JSDOM } from 'jsdom';
+import FormData from 'form-data';
 
 import { isImage, isVideo } from './isImage.js';
 import { validateLocation, processValidation } from './geoclient.js';
@@ -57,7 +57,7 @@ const {
   PARSE_MASTER_KEY,
   PARSE_SERVER_URL,
   HEROKU_RELEASE_VERSION,
-  OPENALPR_SECRET_KEY,
+  PLATERECOGNIZER_TOKEN,
 } = process.env;
 
 require('heroku-self-ping')(config.api.serverUrl, {
@@ -72,12 +72,12 @@ Parse.serverURL = PARSE_SERVER_URL;
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 10 * 1000 * 1000, // 10MB
+    fileSize: 20 * 1000 * 1000, // just under 20MB
     files: 6,
   },
 });
 // Here's the logic for the above `limits`:
-// * Back4App has a per-file limit of 10mb: https://docs.back4app.com/docs/faq-parse-back4app/can-i-store-files-larger-than-10-mb-can-i-pay-to-remove-this-limit/
+// * Back4App has a per-file limit of 20mb: https://www.back4app.com/pricing
 // * Up to 6 files can be included with each submission to Back4App:
 //   * photoData0
 //   * photoData1
@@ -229,11 +229,22 @@ app.use('/api/process_validation', (req, res) => {
 async function getSubmissions(req) {
   return saveUser(req.body).then(user => {
     const Submission = Parse.Object.extend('submission');
-    const query = new Parse.Query(Submission);
+
+    const usernameQuery = new Parse.Query(Submission);
     // Search by "Username" (email address) to show submissions made by all
     // users with the same email, since the web and mobile clients create
     // separate users
-    query.equalTo('Username', user.get('username'));
+    usernameQuery.equalTo('Username', user.get('username'));
+    usernameQuery.descending('timeofreport');
+    usernameQuery.limit(Number.MAX_SAFE_INTEGER);
+
+    // Also search by "email" since submissions from iOS clients don't always have this set
+    const emailQuery = new Parse.Query(Submission);
+    emailQuery.equalTo('email', user.get('username'));
+    emailQuery.descending('timeofreport');
+    emailQuery.limit(Number.MAX_SAFE_INTEGER);
+
+    const query = Parse.Query.or(usernameQuery, emailQuery);
     query.descending('timeofreport');
     query.limit(Number.MAX_SAFE_INTEGER);
     return query.find();
@@ -317,12 +328,17 @@ app.use('/requestPasswordReset', (req, res) => {
 
 function orientImageBuffer({ attachmentBuffer }) {
   console.time(`orientImageBuffer`); // eslint-disable-line no-console
+  // eslint-disable-next-line no-console
+  console.log(
+    `image buffer length BEFORE sharp: ${attachmentBuffer.length} bytes`,
+  );
   return sharp(attachmentBuffer)
     .rotate()
     .toBuffer()
     .catch(() => attachmentBuffer)
     .then(buffer => Buffer.from(buffer))
     .then(buffer => {
+      console.log(`image buffer length AFTER sharp: ${buffer.length} bytes`); // eslint-disable-line no-console
       console.timeEnd(`orientImageBuffer`); // eslint-disable-line no-console
       return buffer;
     });
@@ -493,61 +509,95 @@ function heicConvert({ buffer }) {
     .toBuffer();
 }
 
-// adapted from https://github.com/openalpr/cloudapi/tree/8141c1ba57f03df4f53430c6e5e389b39714d0e0/javascript#getting-started
-app.use('/openalpr', upload.single('attachmentFile'), async (req, res) => {
-  const country = 'us';
-  const opts = {
-    recognizeVehicle: 1,
-    state: 'ny',
-    returnImage: 0,
-    topn: 10,
-    prewarp: '',
-  };
+// https://app.platerecognizer.com/upload-limit/
+const downscaleForPlateRecognizer = buffer => {
+  const fileSize = buffer.length;
+  const maxFilesize = 2411654;
 
-  let attachmentBuffer = req.file.buffer;
-  const { ext } = await FileType.fromBuffer(attachmentBuffer);
-  const api = new OpenalprApi.DefaultApi();
+  if (fileSize >= maxFilesize) {
+    const targetWidth = 4096;
 
-  const secretKey = OPENALPR_SECRET_KEY; // {String} The secret key used to authenticate your account. You can view your secret key by visiting https://cloud.openalpr.com/
+    // eslint-disable-next-line no-console
+    console.log(
+      `file size is greater than maximum of ${maxFilesize} bytes, attempting to scale down to width of ${targetWidth}`,
+    );
 
-  if (ext === 'heic') {
-    console.info('HEIC file detected, trying to convert to JPEG');
-
-    try {
-      console.time('heicConvert'); // eslint-disable-line no-console
-      attachmentBuffer = await heicConvert({ buffer: attachmentBuffer });
-    } catch (e) {
-      console.error('could not convert file from heic to jpg');
-      console.error(e);
-    } finally {
-      console.timeEnd('heicConvert'); // eslint-disable-line no-console
-    }
+    return sharp(buffer)
+      .resize({ width: targetWidth })
+      .toBuffer()
+      .catch(error => {
+        console.error('could not scale down, using unscaled image', { error });
+        return buffer;
+      })
+      .then(resizedBufferish => {
+        const resizedBuffer = Buffer.from(resizedBufferish);
+        // eslint-disable-next-line no-console
+        console.log(
+          `file size after scaling down: ${resizedBuffer.length} bytes`,
+        );
+        return resizedBuffer;
+      });
   }
 
-  orientImageBuffer({ attachmentBuffer })
-    .then(buffer => buffer.toString('base64'))
-    .then(attachmentBytesRotated => {
-      console.time(`/openalpr recognizeBytes`); // eslint-disable-line no-console
-      return new Promise((resolve, reject) => {
-        api.recognizeBytes(
-          attachmentBytesRotated,
-          secretKey,
-          country,
-          opts,
-          (error, data) => {
-            console.timeEnd(`/openalpr recognizeBytes`); // eslint-disable-line no-console
-            if (error) {
-              reject(error);
-            } else {
-              resolve(data);
-            }
+  return buffer;
+};
+
+// adapted from https://docs.platerecognizer.com/?javascript#license-plate-recognition
+app.use(
+  '/platerecognizer',
+  upload.single('attachmentFile'),
+  async (req, res) => {
+    let attachmentBuffer = req.file.buffer;
+    const { ext } = await FileType.fromBuffer(attachmentBuffer);
+
+    if (ext === 'heic') {
+      console.info('HEIC file detected, trying to convert to JPEG');
+
+      try {
+        console.time('heicConvert'); // eslint-disable-line no-console
+        attachmentBuffer = await heicConvert({ buffer: attachmentBuffer });
+      } catch (e) {
+        console.error('could not convert file from heic to jpg');
+        console.error(e);
+      } finally {
+        console.timeEnd('heicConvert'); // eslint-disable-line no-console
+      }
+    }
+
+    orientImageBuffer({ attachmentBuffer })
+      .then(downscaleForPlateRecognizer)
+      .then(buffer => buffer.toString('base64'))
+      .then(attachmentBytesRotated => {
+        console.log('STARTING platerecognizer'); // eslint-disable-line no-console
+        console.time(`/platerecognizer plate-reader`); // eslint-disable-line no-console
+
+        const body = new FormData();
+
+        body.append('upload', attachmentBytesRotated);
+
+        // body.append("regions", "us-ny"); // Change to your country
+        body.append('regions', 'us'); // Change to your country
+
+        return nodeFetch('https://api.platerecognizer.com/v1/plate-reader/', {
+          method: 'POST',
+          headers: {
+            Authorization: `Token ${PLATERECOGNIZER_TOKEN}`,
           },
-        );
-      });
-    })
-    .then(data => res.json(data))
-    .catch(handlePromiseRejection(res));
-});
+          body,
+        })
+          .then(platerecognizerRes => {
+            console.info('/platerecognizer plate-reader', {
+              platerecognizerRes,
+            });
+            return platerecognizerRes;
+          })
+          .then(platerecognizerRes => platerecognizerRes.json())
+          .finally(() => console.timeEnd(`/platerecognizer plate-reader`)); // eslint-disable-line no-console
+      })
+      .then(data => res.json(data))
+      .catch(handlePromiseRejection(res));
+  },
+);
 
 // ported from https://github.com/jeffrono/Reported/blob/19b588171315a3093d53986f9fb995059f5084b4/v2/enrich_functions.rb#L325-L346
 app.use('/getVehicleType/:licensePlate/:licenseState?', (req, res) => {

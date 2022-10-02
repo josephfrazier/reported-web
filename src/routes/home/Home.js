@@ -46,6 +46,7 @@ import s from './Home.css';
 
 import SubmissionDetails from '../../components/SubmissionDetails.js';
 import { isImage, isVideo } from '../../isImage.js';
+import getNycTimezoneOffset from '../../timezone.js';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyDlwm2ykA0ohTXeVepQYvkcmdjz2M2CKEI';
 
@@ -131,6 +132,10 @@ async function extractLocation({ attachmentFile, attachmentArrayBuffer, ext }) {
     }
 
     const { latitude, longitude } = await exifr.gps(attachmentArrayBuffer);
+    console.info(
+      'Extracted GPS latitude/longitude location from EXIF metadata',
+      { latitude, longitude },
+    );
 
     return { latitude, longitude };
   } catch (err) {
@@ -163,6 +168,8 @@ async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
       millisecondsSinceEpoch: CreateDate.getTime(),
       offset: OffsetTimeDigitized
         ? parseInt(OffsetTimeDigitized, 10) * -60
+        : CreateDate
+        ? getNycTimezoneOffset(CreateDate)
         : new Date().getTimezoneOffset(),
     };
   } catch (err) {
@@ -226,6 +233,7 @@ class Home extends React.Component {
 
     const initialStatePersistent = {
       ...initialStatePerSubmission,
+      isAlprEnabled: true,
       isUserInfoOpen: true,
       isMapOpen: false,
     };
@@ -240,6 +248,7 @@ class Home extends React.Component {
       plateSuggestion: '',
       vehicleInfoComponent: <br />,
       submissions: [],
+      addressProvenance: '',
     };
 
     const initialState = {
@@ -259,14 +268,18 @@ class Home extends React.Component {
     if (this.state.attachmentData.length === 0 || !this.state.CreateDate) {
       this.setCreateDate({ millisecondsSinceEpoch: Date.now() });
     }
-    geolocate().then(({ coords }) => {
+    geolocate().then(({ coords: { latitude, longitude } }) => {
       // if there's no attachments or a location couldn't be extracted, just use here
       if (
         this.state.attachmentData.length === 0 ||
         (this.state.latitude === defaultLatitude &&
           this.state.longitude === defaultLongitude)
       ) {
-        this.setCoords(coords);
+        this.setCoords({
+          latitude,
+          longitude,
+          addressProvenance: '(from device)',
+        });
       }
     });
 
@@ -344,7 +357,9 @@ class Home extends React.Component {
     return Object.keys(this.initialStatePersistent);
   }
 
-  setCoords = ({ latitude, longitude } = {}) => {
+  setCoords = (
+    { latitude, longitude, addressProvenance } = { addressProvenance: '' },
+  ) => {
     if (!latitude || !longitude) {
       console.error('latitude and/or longitude is missing');
       return;
@@ -353,6 +368,7 @@ class Home extends React.Component {
       latitude,
       longitude,
       formatted_address: 'Finding Address...',
+      addressProvenance,
     });
     debouncedProcessValidation({ latitude, longitude }).then(data => {
       this.setState({
@@ -383,7 +399,7 @@ class Home extends React.Component {
       plate,
       licenseState,
       vehicleInfoComponent: plate ? (
-        `Searching for ${plate} in ${usStateNames[licenseState]}`
+        `Looking up make/model for ${plate} in ${usStateNames[licenseState]}`
       ) : (
         <br />
       ),
@@ -406,7 +422,9 @@ class Home extends React.Component {
         if (
           this.state.submissions.some(
             submission =>
-              submission.license === plate && submission.state === licenseState,
+              (submission.license === plate ||
+                submission.medallionNo === plate) &&
+              submission.state === licenseState,
           )
         ) {
           this.alert(
@@ -449,8 +467,8 @@ class Home extends React.Component {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Could not find {plate} in {usStateNames[licenseState]}, click
-                here for details
+                Could not look up make/model of {plate} in{' '}
+                {usStateNames[licenseState]}, click here for details
               </a>
             ),
           });
@@ -465,12 +483,15 @@ class Home extends React.Component {
               plate: `T${plate}`,
               licenseState,
             });
-          } else if (licenseState !== 'NY') {
-            this.setLicensePlate({
-              plate,
-              licenseState: 'NY',
-            });
           }
+          // Commented out due to https://github.com/josephfrazier/Reported-Web/issues/295
+          //
+          // } else if (licenseState !== 'NY') {
+          //   this.setLicensePlate({
+          //     plate,
+          //     licenseState: 'NY',
+          //   });
+          // }
         }
       });
   };
@@ -525,7 +546,13 @@ class Home extends React.Component {
             attachmentFile,
             attachmentArrayBuffer,
             ext,
-          }).then(this.setCoords),
+          }).then(({ latitude, longitude }) => {
+            this.setCoords({
+              latitude,
+              longitude,
+              addressProvenance: '(extracted from picture/video)',
+            });
+          }),
         ]).then(values => {
           const rejected = values.filter(v => v.status === 'rejected');
 
@@ -571,11 +598,16 @@ class Home extends React.Component {
     );
   };
 
-  // adapted from https://github.com/openalpr/cloudapi/tree/8141c1ba57f03df4f53430c6e5e389b39714d0e0/javascript#getting-started
   extractPlate = async ({ attachmentFile, attachmentBuffer, ext }) => {
     console.time('extractPlate'); // eslint-disable-line no-console
 
     try {
+      if (this.state.isAlprEnabled === false) {
+        console.info('ALPR is disabled, skipping');
+        return undefined;
+      }
+
+      // TODO does this actually do anything? the returned result isn't used anywhere
       if (this.attachmentPlates.has(attachmentFile)) {
         const result = this.attachmentPlates.get(attachmentFile);
         return result;
@@ -596,9 +628,14 @@ class Home extends React.Component {
 
       const formData = new window.FormData();
       formData.append('attachmentFile', attachmentBlob);
-      const { data } = await axios.post('/openalpr', formData);
+      const { data } = await axios.post('/platerecognizer', formData);
       const result = data.results[0];
-      result.licenseState = result.region.toUpperCase();
+      try {
+        result.licenseState = result.region.code.split('-')[1].toUpperCase();
+      } catch (err) {
+        result.licenseState = null;
+      }
+      result.plate = result.plate.toUpperCase();
       if (
         this.state.plate === '' &&
         document.activeElement !== this.plateRef.current
@@ -649,7 +686,6 @@ class Home extends React.Component {
         onDrop={attachmentData => {
           this.handleAttachmentData({ attachmentData });
         }}
-        accept="image/*, video/*"
         style={{
           position: 'fixed',
           top: 0,
@@ -985,7 +1021,6 @@ class Home extends React.Component {
             >
               <fieldset disabled={this.state.isSubmitting}>
                 <FileReaderInput
-                  accept="image/*"
                   multiple
                   as="buffer"
                   onChange={this.handleAttachmentInput}
@@ -994,20 +1029,7 @@ class Home extends React.Component {
                     margin: '1px',
                   }}
                 >
-                  <button type="button">Add picture(s)</button>
-                </FileReaderInput>
-
-                <FileReaderInput
-                  accept="video/*"
-                  multiple
-                  as="buffer"
-                  onChange={this.handleAttachmentInput}
-                  style={{
-                    float: 'left',
-                    margin: '1px',
-                  }}
-                >
-                  <button type="button">Add video(s)</button>
+                  <button type="button">Add pictures/videos</button>
                 </FileReaderInput>
 
                 <div
@@ -1070,6 +1092,16 @@ class Home extends React.Component {
                   })}
                 </div>
 
+                <label htmlFor="isAlprEnabled">
+                  <input
+                    type="checkbox"
+                    checked={this.state.isAlprEnabled}
+                    name="isAlprEnabled"
+                    onChange={this.handleInputChange}
+                  />{' '}
+                  Automatically read license plates from pictures/videos
+                </label>
+
                 <label htmlFor="plate">
                   License/Medallion:
                   <input
@@ -1129,7 +1161,7 @@ class Home extends React.Component {
                 </label>
 
                 <label htmlFor="where">
-                  Where:
+                  Where: {this.state.addressProvenance}
                   <br />
                   <button
                     type="button"
@@ -1167,7 +1199,11 @@ class Home extends React.Component {
                     onCenterChanged={() => {
                       const latitude = this.mapRef.getCenter().lat();
                       const longitude = this.mapRef.getCenter().lng();
-                      this.setCoords({ latitude, longitude });
+                      this.setCoords({
+                        latitude,
+                        longitude,
+                        addressProvenance: '(manually set)',
+                      });
                     }}
                     onSearchBoxMounted={ref => {
                       this.searchBox = ref;
@@ -1189,6 +1225,7 @@ class Home extends React.Component {
                       this.setCoords({
                         latitude,
                         longitude,
+                        addressProvenance: '(manually set)',
                       });
                     }}
                   />
@@ -1200,8 +1237,12 @@ class Home extends React.Component {
                     }}
                     onClick={() => {
                       geolocate()
-                        .then(({ coords }) => {
-                          this.setCoords(coords);
+                        .then(({ coords: { latitude, longitude } }) => {
+                          this.setCoords({
+                            latitude,
+                            longitude,
+                            addressProvenance: '(from device)',
+                          });
                         })
                         .catch(err => {
                           this.alert(err.message);
@@ -1375,7 +1416,7 @@ const MyMapComponentPure = props => {
             padding: `0 12px`,
             borderRadius: `3px`,
             boxShadow: `0 2px 6px rgba(0, 0, 0, 0.3)`,
-            fontSize: `14px`,
+            fontSize: `16px`,
             outline: `none`,
             textOverflow: `ellipses`,
           }}

@@ -913,7 +913,7 @@ class Home extends React.Component {
                     }
                   </label>
                   <button
-                    type="submit"
+                    type="button"
                     disabled={this.state.isUserInfoSaving}
                     ref={this.userFormSubmitRef}
                   >
@@ -1308,7 +1308,7 @@ class Home extends React.Component {
                   </progress>
                 ) : (
                   <button
-                    type="submit"
+                    type="button"
                     disabled={this.state.isSubmitting}
                     style={{
                       width: '100%',

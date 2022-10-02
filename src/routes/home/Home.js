@@ -43,8 +43,9 @@ import Dropzone from '@josephfrazier/react-dropzone';
 
 import marx from 'marx-css/css/marx.css';
 import s from './Home.css';
-import onsenUiCss from 'onsenui/css/onsenui.css';
-import onsenCssComponents from 'onsenui/css/onsen-css-components.css';
+// TODO: get this working with webpack, instead of `<link>`ing the CDN CSS in Html.js
+// import onsenUiCss from 'onsenui/css/onsenui.css';
+// import onsenCssComponents from 'onsenui/css/onsen-css-components.css';
 
 import SubmissionDetails from '../../components/SubmissionDetails.js';
 import { isImage, isVideo } from '../../isImage.js';

@@ -629,9 +629,11 @@ app.get('*', async (req, res, next) => {
     }
 
     const data = { ...route };
-    data.children = ReactDOM.renderToString(
-      <App context={context}>{route.component}</App>,
-    );
+    // TODO: get Onsen working with SSR, or at least instead only running on the client
+    // TODO: See https://github.com/kriasoft/react-starter-kit/issues/1737
+    // data.children = ReactDOM.renderToString(
+    //   <App context={context}>{route.component}</App>,
+    // );
     data.styles = [{ id: 'css', cssText: [...css].join('') }];
 
     const scripts = new Set();

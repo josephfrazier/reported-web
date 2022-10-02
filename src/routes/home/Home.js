@@ -47,9 +47,6 @@ import s from './Home.css';
 // import onsenUiCss from 'onsenui/css/onsenui.css';
 // import onsenCssComponents from 'onsenui/css/onsen-css-components.css';
 
-// TODO?: import { Page, Toolbar, Button } from 'react-onsenui'; // Only import the necessary components
-import * as Ons from 'react-onsenui'; // Import everything and use it as 'Ons.Page', 'Ons.Button'
-
 import SubmissionDetails from '../../components/SubmissionDetails.js';
 import { isImage, isVideo } from '../../isImage.js';
 import getNycTimezoneOffset from '../../timezone.js';
@@ -245,6 +242,8 @@ class Home extends React.Component {
     };
 
     const initialStatePerSession = {
+      appIsMounted: false, // https://github.com/kriasoft/react-starter-kit/issues/186#issuecomment-266245175
+
       attachmentData: [],
 
       modalText: null,
@@ -270,6 +269,10 @@ class Home extends React.Component {
   }
 
   componentDidMount() {
+    requestAnimationFrame(() => { // https://github.com/kriasoft/react-starter-kit/issues/186#issuecomment-266245175
+      this.setState({ appIsMounted: true });
+    });
+
     // if there's no attachments or a time couldn't be extracted, just use now
     if (this.state.attachmentData.length === 0 || !this.state.CreateDate) {
       this.setCreateDate({ millisecondsSinceEpoch: Date.now() });
@@ -686,6 +689,13 @@ class Home extends React.Component {
   };
 
   render() {
+    if (this.state.appIsMounted) {
+      return null;
+    }
+
+    // TODO?: import { Page, Toolbar, Button } from 'react-onsenui'; // Only import the necessary components
+    const Ons = require('react-onsenui'); // Import everything and use it as 'Ons.Page', 'Ons.Button'
+
     return (
       <Dropzone
         className={s.root}

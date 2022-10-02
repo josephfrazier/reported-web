@@ -47,6 +47,9 @@ import s from './Home.css';
 // import onsenUiCss from 'onsenui/css/onsenui.css';
 // import onsenCssComponents from 'onsenui/css/onsen-css-components.css';
 
+// TODO?: import { Page, Toolbar, Button } from 'react-onsenui'; // Only import the necessary components
+import * as Ons from 'react-onsenui'; // Import everything and use it as 'Ons.Page', 'Ons.Button'
+
 import SubmissionDetails from '../../components/SubmissionDetails.js';
 import { isImage, isVideo } from '../../isImage.js';
 import getNycTimezoneOffset from '../../timezone.js';

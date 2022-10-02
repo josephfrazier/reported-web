@@ -629,6 +629,7 @@ class Home extends React.Component {
       const formData = new window.FormData();
       formData.append('attachmentFile', attachmentBlob);
       const { data } = await axios.post('/platerecognizer', formData);
+      // TODO: handle case where results array is empty
       const result = data.results[0];
       try {
         result.licenseState = result.region.code.split('-')[1].toUpperCase();

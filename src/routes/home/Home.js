@@ -689,7 +689,7 @@ class Home extends React.Component {
   };
 
   render() {
-    if (this.state.appIsMounted) {
+    if (!this.state.appIsMounted) {
       return null;
     }
 

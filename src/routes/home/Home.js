@@ -43,6 +43,8 @@ import Dropzone from '@josephfrazier/react-dropzone';
 
 import marx from 'marx-css/css/marx.css';
 import s from './Home.css';
+import onsenUiCss from 'onsenui/css/onsenui.css';
+import onsenCssComponents from 'onsenui/css/onsen-css-components.css';
 
 import SubmissionDetails from '../../components/SubmissionDetails.js';
 import { isImage, isVideo } from '../../isImage.js';

@@ -1454,3 +1454,5 @@ const MyMapComponent = compose(
 )(MyMapComponentPure);
 
 export default withStyles(marx, s)(withLocalStorage(Home));
+// TODO get this working, see other TODO in file
+// export default withStyles(onsenCssComponents, onsenUiCss, marx, s)(withLocalStorage(Home));

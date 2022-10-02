@@ -10281,6 +10281,11 @@ onetime@^2.0.0:
   dependencies:
     mimic-fn "^1.0.0"
 
+onsenui@^2.12.3:
+  version "2.12.3"
+  resolved "https://registry.yarnpkg.com/onsenui/-/onsenui-2.12.3.tgz#c37bf0cdc5230d99e51614a1989a78f87841c055"
+  integrity sha512-Msc7JbNYBttHSVA2qYksLgKE4tBDdwaS9j7yFKW0g1op2Njvv4LhLMTWGtp4k59ioD+1SEcaEGaI8+xzByHOOg==
+
 open@^7.0.2:
   version "7.4.2"
   resolved "https://registry.yarnpkg.com/open/-/open-7.4.2.tgz#b8147e26dcf3e426316c730089fd71edd29c2321"
@@ -12247,6 +12252,13 @@ react-modal@^3.1.11, react-modal@^3.4.5:
     prop-types "^15.5.10"
     react-lifecycles-compat "^3.0.0"
     warning "^4.0.3"
+
+react-onsenui@^1.13.0:
+  version "1.13.0"
+  resolved "https://registry.yarnpkg.com/react-onsenui/-/react-onsenui-1.13.0.tgz#b8622e0acafa7bb1986185579b17aa4c5997d823"
+  integrity sha512-huctJAwkVteo2VlTBlL2damLxRsm1mLrJRaAeq5LsxSZStTUAn4v1tIkD/DkzIcAcd7zqg7hoGmuOSGs1K3CWg==
+  dependencies:
+    prop-types "^15.6.0"
 
 react-redux@5.1.1:
   version "5.1.1"

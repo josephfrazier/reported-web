@@ -50,6 +50,9 @@ class Html extends React.Component {
           ))}
           <link rel="manifest" href="/site.webmanifest" />
           <link rel="apple-touch-icon" href="/icon.png" />
+          {/* TODO: figure out how to do this in Home.js instead */}
+          <link rel="stylesheet" href="https://unpkg.com/onsenui/css/onsenui.css" />
+          <link rel="stylesheet" href="https://unpkg.com/onsenui/css/onsen-css-components.min.css" />
           {styles.map(style => (
             <style
               key={style.id}

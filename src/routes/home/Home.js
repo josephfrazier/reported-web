@@ -632,7 +632,7 @@ class Home extends React.Component {
       // TODO: handle case where results array is empty
       const result = data.results[0];
       if (!result) {
-        throw 'license plate (image was read, but no plates were found)'
+        throw 'license plate (image was read, but no plates were found)'; // eslint-disable-line no-throw-literal
       }
       try {
         result.licenseState = result.region.code.split('-')[1].toUpperCase();
@@ -652,7 +652,7 @@ class Home extends React.Component {
       this.attachmentPlates.set(attachmentFile, result);
       return result;
     } catch (err) {
-      if (err == 'license plate (image was read, but no plates were found)') {
+      if (err === 'license plate (image was read, but no plates were found)') {
         throw err;
       }
       console.error(err.stack);

@@ -119,11 +119,9 @@
     "flow-bin": "^0.81.0",
     "front-matter": "^2.3.0",
     "glob": "^7.1.3",
-    "husky": "^2.7.0",
     "identity-obj-proxy": "^3.0.0",
     "jest": "^23.6.0",
     "jest-mock-now": "^1.2.0",
-    "lint-staged": "^7.3.0",
     "localtunnel": "^1.9.1",
     "markdown-it": "^8.4.2",
     "mkdirp": "^0.5.1",
@@ -181,7 +179,6 @@
     }
   },
   "scripts": {
-    "precommit": "lint-staged && yarn run test",
     "lint-js": "eslint --ignore-path .gitignore --ignore-pattern \"!**/.*\" .",
     "lint-css": "stylelint \"src/**/*.{css,less,styl,scss,sass,sss}\"",
     "lint": "yarn run lint-js && yarn run lint-css",

@@ -590,12 +590,9 @@ class Home extends React.Component {
         : target.value;
     const { name } = target;
 
-    this.setState(
-      {
-        [name]: value,
-      },
-      () => this.saveStateToLocalStorage(),
-    );
+    this.setState({
+      [name]: value,
+    });
   };
 
   extractPlate = async ({ attachmentFile, attachmentBuffer, ext }) => {

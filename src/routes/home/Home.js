@@ -40,6 +40,8 @@ import diceware from 'diceware-generator';
 import wordlist from 'diceware-wordlist-en-eff';
 import Modal from 'react-modal';
 import Dropzone from '@josephfrazier/react-dropzone';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 import marx from 'marx-css/css/marx.css';
 import s from './Home.css';
@@ -245,7 +247,6 @@ class Home extends React.Component {
     const initialStatePerSession = {
       attachmentData: [],
 
-      modalText: null,
       isPasswordRevealed: false,
       isUserInfoSaving: false,
       isSubmitting: false,
@@ -669,9 +670,17 @@ class Home extends React.Component {
         console.error(err);
       });
 
-  alert = modalText => this.setState({ modalText });
-
-  closeAlert = () => this.setState({ modalText: null });
+  alert = modalText =>
+    toast.warn(modalText, {
+      position: 'top-center',
+      autoClose: 5000,
+      hideProgressBar: false,
+      closeOnClick: true,
+      pauseOnHover: true,
+      draggable: true,
+      progress: undefined,
+      theme: 'dark',
+    });
 
   loadPreviousSubmissions = () => {
     axios
@@ -713,16 +722,18 @@ class Home extends React.Component {
               </a>
             </h1>
 
-            <Modal
-              isOpen={!!this.state.modalText}
-              onRequestClose={this.closeAlert}
-            >
-              {this.state.modalText}
-              <br />
-              <button type="button" onClick={this.closeAlert}>
-                Close
-              </button>
-            </Modal>
+            <ToastContainer
+              position="top-center"
+              autoClose={5000}
+              hideProgressBar={false}
+              newestOnTop={false}
+              closeOnClick
+              rtl={false}
+              pauseOnFocusLoss
+              draggable
+              pauseOnHover
+              theme="dark"
+            />
 
             {/* TODO use tabbed interface instead of toggling <details> ? */}
             <details

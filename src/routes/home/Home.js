@@ -64,6 +64,10 @@ const debouncedGetVehicleType = debounce(
   500,
 );
 
+const debouncedSaveStateToLocalStorage = debounce(self => {
+  self.saveStateToLocalStorage();
+}, 500);
+
 const defaultLatitude = 40.7128;
 const defaultLongitude = -74.006;
 
@@ -594,7 +598,7 @@ class Home extends React.Component {
       {
         [name]: value,
       },
-      () => this.saveStateToLocalStorage(),
+      () => debouncedSaveStateToLocalStorage(this),
     );
   };
 

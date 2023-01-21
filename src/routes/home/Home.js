@@ -64,6 +64,10 @@ const debouncedGetVehicleType = debounce(
   500,
 );
 
+const debouncedSaveStateToLocalStorage = debounce(self => {
+  self.saveStateToLocalStorage();
+}, 500);
+
 const defaultLatitude = 40.7128;
 const defaultLongitude = -74.006;
 
@@ -590,9 +594,12 @@ class Home extends React.Component {
         : target.value;
     const { name } = target;
 
-    this.setState({
-      [name]: value,
-    });
+    this.setState(
+      {
+        [name]: value,
+      },
+      () => debouncedSaveStateToLocalStorage(this),
+    );
   };
 
   extractPlate = async ({ attachmentFile, attachmentBuffer, ext }) => {

@@ -432,7 +432,7 @@ class Home extends React.Component {
               submission.state === licenseState,
           )
         ) {
-          this.alert(
+          this.notifyWarning(
             <p>
               You have already submitted a report for {plate} in {licenseState},
               are you sure you want to submit another?
@@ -573,7 +573,7 @@ class Home extends React.Component {
           ? 'one of the files, but they may have been found in other files.'
           : 'the file.';
 
-        this.alert(
+        this.notifyWarning(
           <React.Fragment>
             <p>
               Could not extract the {missingValuesString} from {fileCopy} Please
@@ -664,15 +664,15 @@ class Home extends React.Component {
   handleAxiosError = error =>
     Promise.reject(error)
       .catch(err => {
-        this.alert(`Error: ${err.response.data.error.message}`);
+        this.notifyWarning(`Error: ${err.response.data.error.message}`);
       })
       .catch(err => {
         console.error(err);
       });
 
-  success = modalText => toast.success(modalText);
+  notifySuccess = notificationContent => toast.success(notificationContent);
 
-  alert = modalText => toast.warn(modalText);
+  notifyWarning = notificationContent => toast.warn(notificationContent);
 
   loadPreviousSubmissions = () => {
     axios
@@ -816,7 +816,7 @@ class Home extends React.Component {
                             })
                             .then(() => {
                               const message = `Please check ${email} to reset your password.`;
-                              this.alert(message);
+                              this.notifyWarning(message);
                             })
                             .catch(this.handleAxiosError);
                         }}
@@ -941,7 +941,7 @@ class Home extends React.Component {
                   this.state.latitude === defaultLatitude &&
                   this.state.longitude === defaultLongitude
                 ) {
-                  this.alert('Please provide the location of the incident');
+                  this.notifyWarning('Please provide the location of the incident');
                   return;
                 }
 
@@ -999,7 +999,7 @@ class Home extends React.Component {
                       reportDescription: '',
                     }));
                     this.setLicensePlate({ plate: '', licenseState: 'NY' });
-                    this.success(
+                    this.notifySuccess(
                       <React.Fragment>
                         <p>Thanks for your submission!</p>
                         <p>
@@ -1252,7 +1252,7 @@ class Home extends React.Component {
                           });
                         })
                         .catch(err => {
-                          this.alert(err.message);
+                          this.notifyWarning(err.message);
                           console.error(err);
                         });
                     }}

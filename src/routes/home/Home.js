@@ -40,6 +40,8 @@ import diceware from 'diceware-generator';
 import wordlist from 'diceware-wordlist-en-eff';
 import Modal from 'react-modal';
 import Dropzone from '@josephfrazier/react-dropzone';
+import { ToastContainer, toast } from 'react-toastify';
+import toastifyStyles from 'react-toastify/dist/ReactToastify.css';
 
 import marx from 'marx-css/css/marx.css';
 import s from './Home.css';
@@ -245,7 +247,6 @@ class Home extends React.Component {
     const initialStatePerSession = {
       attachmentData: [],
 
-      modalText: null,
       isPasswordRevealed: false,
       isUserInfoSaving: false,
       isSubmitting: false,
@@ -431,7 +432,7 @@ class Home extends React.Component {
               submission.state === licenseState,
           )
         ) {
-          this.alert(
+          this.notifyWarning(
             <p>
               You have already submitted a report for {plate} in {licenseState},
               are you sure you want to submit another?
@@ -572,7 +573,7 @@ class Home extends React.Component {
           ? 'one of the files, but they may have been found in other files.'
           : 'the file.';
 
-        this.alert(
+        this.notifyWarning(
           <React.Fragment>
             <p>
               Could not extract the {missingValuesString} from {fileCopy} Please
@@ -663,15 +664,19 @@ class Home extends React.Component {
   handleAxiosError = error =>
     Promise.reject(error)
       .catch(err => {
-        this.alert(`Error: ${err.response.data.error.message}`);
+        this.notifyError(`Error: ${err.response.data.error.message}`);
       })
       .catch(err => {
         console.error(err);
       });
 
-  alert = modalText => this.setState({ modalText });
+  notifySuccess = notificationContent => toast.success(notificationContent);
 
-  closeAlert = () => this.setState({ modalText: null });
+  notifyInfo = notificationContent => toast.info(notificationContent);
+
+  notifyWarning = notificationContent => toast.warn(notificationContent);
+
+  notifyError = notificationContent => toast.error(notificationContent);
 
   loadPreviousSubmissions = () => {
     axios
@@ -713,16 +718,18 @@ class Home extends React.Component {
               </a>
             </h1>
 
-            <Modal
-              isOpen={!!this.state.modalText}
-              onRequestClose={this.closeAlert}
-            >
-              {this.state.modalText}
-              <br />
-              <button type="button" onClick={this.closeAlert}>
-                Close
-              </button>
-            </Modal>
+            <ToastContainer
+              position="top-center"
+              autoClose={5000}
+              hideProgressBar={false}
+              newestOnTop={false}
+              closeOnClick
+              rtl={false}
+              pauseOnFocusLoss
+              draggable
+              pauseOnHover
+              theme="dark"
+            />
 
             {/* TODO use tabbed interface instead of toggling <details> ? */}
             <details
@@ -813,7 +820,7 @@ class Home extends React.Component {
                             })
                             .then(() => {
                               const message = `Please check ${email} to reset your password.`;
-                              this.alert(message);
+                              this.notifyInfo(message);
                             })
                             .catch(this.handleAxiosError);
                         }}
@@ -938,7 +945,9 @@ class Home extends React.Component {
                   this.state.latitude === defaultLatitude &&
                   this.state.longitude === defaultLongitude
                 ) {
-                  this.alert('Please provide the location of the incident');
+                  this.notifyError(
+                    'Please provide the location of the incident',
+                  );
                   return;
                 }
 
@@ -996,7 +1005,7 @@ class Home extends React.Component {
                       reportDescription: '',
                     }));
                     this.setLicensePlate({ plate: '', licenseState: 'NY' });
-                    this.alert(
+                    this.notifySuccess(
                       <React.Fragment>
                         <p>Thanks for your submission!</p>
                         <p>
@@ -1249,7 +1258,7 @@ class Home extends React.Component {
                           });
                         })
                         .catch(err => {
-                          this.alert(err.message);
+                          this.notifyError(err.message);
                           console.error(err);
                         });
                     }}
@@ -1455,4 +1464,4 @@ const MyMapComponent = compose(
   withGoogleMap,
 )(MyMapComponentPure);
 
-export default withStyles(marx, s)(withLocalStorage(Home));
+export default withStyles(marx, s, toastifyStyles)(withLocalStorage(Home));

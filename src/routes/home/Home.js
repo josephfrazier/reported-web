@@ -41,7 +41,7 @@ import wordlist from 'diceware-wordlist-en-eff';
 import Modal from 'react-modal';
 import Dropzone from '@josephfrazier/react-dropzone';
 import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import toastifyStyles from 'react-toastify/dist/ReactToastify.css';
 
 import marx from 'marx-css/css/marx.css';
 import s from './Home.css';
@@ -1466,4 +1466,4 @@ const MyMapComponent = compose(
   withGoogleMap,
 )(MyMapComponentPure);
 
-export default withStyles(marx, s)(withLocalStorage(Home));
+export default withStyles(marx, s, toastifyStyles)(withLocalStorage(Home));

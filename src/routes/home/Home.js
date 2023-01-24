@@ -664,7 +664,7 @@ class Home extends React.Component {
   handleAxiosError = error =>
     Promise.reject(error)
       .catch(err => {
-        this.notifyWarning(`Error: ${err.response.data.error.message}`);
+        this.notifyError(`Error: ${err.response.data.error.message}`);
       })
       .catch(err => {
         console.error(err);
@@ -672,7 +672,11 @@ class Home extends React.Component {
 
   notifySuccess = notificationContent => toast.success(notificationContent);
 
+  notifyInfo = notificationContent => toast.info(notificationContent);
+
   notifyWarning = notificationContent => toast.warn(notificationContent);
+
+  notifyError = notificationContent => toast.error(notificationContent);
 
   loadPreviousSubmissions = () => {
     axios
@@ -816,7 +820,7 @@ class Home extends React.Component {
                             })
                             .then(() => {
                               const message = `Please check ${email} to reset your password.`;
-                              this.notifyWarning(message);
+                              this.notifyInfo(message);
                             })
                             .catch(this.handleAxiosError);
                         }}
@@ -941,7 +945,9 @@ class Home extends React.Component {
                   this.state.latitude === defaultLatitude &&
                   this.state.longitude === defaultLongitude
                 ) {
-                  this.notifyWarning('Please provide the location of the incident');
+                  this.notifyError(
+                    'Please provide the location of the incident',
+                  );
                   return;
                 }
 
@@ -1252,7 +1258,7 @@ class Home extends React.Component {
                           });
                         })
                         .catch(err => {
-                          this.notifyWarning(err.message);
+                          this.notifyError(err.message);
                           console.error(err);
                         });
                     }}

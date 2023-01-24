@@ -37,6 +37,9 @@ exports[`Home renders children correctly 1`] = `
           Reported
         </a>
       </h1>
+      <div
+        className="Toastify"
+      />
       <details
         onToggle={[Function]}
         open={true}

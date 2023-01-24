@@ -670,6 +670,8 @@ class Home extends React.Component {
         console.error(err);
       });
 
+  success = modalText => toast.success(modalText);
+
   alert = modalText => toast.warn(modalText);
 
   loadPreviousSubmissions = () => {
@@ -997,7 +999,7 @@ class Home extends React.Component {
                       reportDescription: '',
                     }));
                     this.setLicensePlate({ plate: '', licenseState: 'NY' });
-                    this.alert(
+                    this.success(
                       <React.Fragment>
                         <p>Thanks for your submission!</p>
                         <p>

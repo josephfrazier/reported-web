@@ -563,14 +563,16 @@ class Home extends React.Component {
     );
 
     const zipped = zip(...arrs);
-    const failedExtractions = zipped.filter(results =>
-      results.every(r => r.status === 'rejected'),
-    );
-    const failureReasons = failedExtractions.map(
-      extraction => extraction[0].reason,
-    );
-    const missingValuesString = failureReasons.join(', ');
 
+    const rejected = zipped
+      .filter(results => results.every(r => r.status === 'rejected'))
+      .map(extractions => extractions[0].reason);
+
+    if (rejected.length === 0) {
+      return;
+    }
+
+    const missingValuesString = rejected.map(v => v.reason).join(', ');
     const hasMultipleAttachments = attachmentData.length > 1;
     const fileCopy = hasMultipleAttachments
       ? 'one of the files, but they may have been found in other files.'

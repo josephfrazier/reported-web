@@ -573,9 +573,7 @@ class Home extends React.Component {
 
     const missingValuesString = rejected.map(v => v.reason).join(', ');
     const hasMultipleAttachments = attachmentData.length > 1;
-    const fileCopy = hasMultipleAttachments
-      ? 'the files.'
-      : 'the file.';
+    const fileCopy = hasMultipleAttachments ? 'the files.' : 'the file.';
 
     this.notifyWarning(
       <React.Fragment>

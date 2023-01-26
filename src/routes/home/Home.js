@@ -530,7 +530,7 @@ class Home extends React.Component {
       attachmentData: state.attachmentData.concat(attachmentData),
     }));
 
-    const arrs = await attachmentData.map(async attachmentFile => {
+    const arrs = await Promise.all(attachmentData.map(async attachmentFile => {
       // eslint-disable-next-line no-await-in-loop
       const { attachmentBuffer, attachmentArrayBuffer } = await blobToBuffer({
         attachmentFile,
@@ -558,7 +558,7 @@ class Home extends React.Component {
           });
         }),
       ]);
-    });
+    }));
 
     const zipped = zip(...arrs);
     const failedExtractions = zipped.filter(results =>

@@ -42,6 +42,7 @@ import Modal from 'react-modal';
 import Dropzone from '@josephfrazier/react-dropzone';
 import { ToastContainer, toast } from 'react-toastify';
 import toastifyStyles from 'react-toastify/dist/ReactToastify.css';
+import { zip } from 'zip-array';
 
 import marx from 'marx-css/css/marx.css';
 import s from './Home.css';
@@ -529,60 +530,58 @@ class Home extends React.Component {
       attachmentData: state.attachmentData.concat(attachmentData),
     }));
 
-    for (const attachmentFile of attachmentData) {
-      try {
-        // eslint-disable-next-line no-await-in-loop
-        const { attachmentBuffer, attachmentArrayBuffer } = await blobToBuffer({
+    const arrs = await attachmentData.map(async attachmentFile => {
+      // eslint-disable-next-line no-await-in-loop
+      const { attachmentBuffer, attachmentArrayBuffer } = await blobToBuffer({
+        attachmentFile,
+      });
+
+      // eslint-disable-next-line no-await-in-loop
+      const { ext } = await FileType.fromBuffer(attachmentBuffer);
+
+      return Promise.allSettled([
+        this.extractPlate({ attachmentFile, attachmentBuffer, ext }),
+        extractDate({
           attachmentFile,
-        });
+          attachmentArrayBuffer,
+          ext,
+        }).then(this.setCreateDate),
+        extractLocation({
+          attachmentFile,
+          attachmentArrayBuffer,
+          ext,
+        }).then(({ latitude, longitude }) => {
+          this.setCoords({
+            latitude,
+            longitude,
+            addressProvenance: '(extracted from picture/video)',
+          });
+        }),
+      ]);
+    });
 
-        // eslint-disable-next-line no-await-in-loop
-        const { ext } = await FileType.fromBuffer(attachmentBuffer);
+    const zipped = zip(...arrs);
+    const failedExtractions = zipped.filter(results =>
+      results.every(r => r.status === 'rejected'),
+    );
+    const failureReasons = failedExtractions.map(
+      extraction => extraction[0].reason,
+    );
+    const missingValuesString = failureReasons.join(', ');
 
-        // eslint-disable-next-line no-await-in-loop
-        await Promise.allSettled([
-          this.extractPlate({ attachmentFile, attachmentBuffer, ext }),
-          extractDate({
-            attachmentFile,
-            attachmentArrayBuffer,
-            ext,
-          }).then(this.setCreateDate),
-          extractLocation({
-            attachmentFile,
-            attachmentArrayBuffer,
-            ext,
-          }).then(({ latitude, longitude }) => {
-            this.setCoords({
-              latitude,
-              longitude,
-              addressProvenance: '(extracted from picture/video)',
-            });
-          }),
-        ]).then(values => {
-          const rejected = values.filter(v => v.status === 'rejected');
+    const hasMultipleAttachments = attachmentData.length > 1;
+    const fileCopy = hasMultipleAttachments
+      ? 'one of the files, but they may have been found in other files.'
+      : 'the file.';
 
-          if (rejected.length === 0) {
-            return;
-          }
-
-          throw rejected.map(v => v.reason).join(', ');
-        });
-      } catch (missingValuesString) {
-        const hasMultipleAttachments = attachmentData.length > 1;
-        const fileCopy = hasMultipleAttachments
-          ? 'one of the files, but they may have been found in other files.'
-          : 'the file.';
-
-        this.notifyWarning(
-          <React.Fragment>
-            <p>
-              Could not extract the {missingValuesString} from {fileCopy} Please
-              enter/confirm any missing values manually.
-            </p>
-          </React.Fragment>,
-        );
-      }
-    }
+    this.notifyWarning(
+      <React.Fragment>
+        <p>
+          Could not extract the {missingValuesString} from {fileCopy} Please
+          enter/confirm any missing values manually.
+        </p>
+      </React.Fragment>,
+    );
   };
 
   handleInputChange = event => {

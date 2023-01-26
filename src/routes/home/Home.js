@@ -566,7 +566,7 @@ class Home extends React.Component {
 
     const rejected = zipped
       .filter(results => results.every(r => r.status === 'rejected'))
-      .map(extractions => extractions[0].reason);
+      .map(extractions => extractions[0]);
 
     if (rejected.length === 0) {
       return;

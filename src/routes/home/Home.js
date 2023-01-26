@@ -530,7 +530,7 @@ class Home extends React.Component {
       attachmentData: state.attachmentData.concat(attachmentData),
     }));
 
-    const arrs = await Promise.all(
+    const listsOfExtractions = await Promise.all(
       attachmentData.map(async attachmentFile => {
         // eslint-disable-next-line no-await-in-loop
         const { attachmentBuffer, attachmentArrayBuffer } = await blobToBuffer({
@@ -562,7 +562,7 @@ class Home extends React.Component {
       }),
     );
 
-    const groupedByExtractionType = zip(...arrs);
+    const groupedByExtractionType = zip(...listsOfExtractions);
     const rejected = groupedByExtractionType
       .filter(results => results.every(r => r.status === 'rejected'))
       .map(extractions => extractions[0]);

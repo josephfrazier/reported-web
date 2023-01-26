@@ -562,9 +562,8 @@ class Home extends React.Component {
       }),
     );
 
-    const zipped = zip(...arrs);
-
-    const rejected = zipped
+    const groupedByExtractionType = zip(...arrs);
+    const rejected = groupedByExtractionType
       .filter(results => results.every(r => r.status === 'rejected'))
       .map(extractions => extractions[0]);
 

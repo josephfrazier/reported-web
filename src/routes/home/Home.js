@@ -42,6 +42,7 @@ import Modal from 'react-modal';
 import Dropzone from '@josephfrazier/react-dropzone';
 import { ToastContainer, toast } from 'react-toastify';
 import toastifyStyles from 'react-toastify/dist/ReactToastify.css';
+import { zip } from 'zip-array';
 
 import marx from 'marx-css/css/marx.css';
 import s from './Home.css';
@@ -529,8 +530,8 @@ class Home extends React.Component {
       attachmentData: state.attachmentData.concat(attachmentData),
     }));
 
-    for (const attachmentFile of attachmentData) {
-      try {
+    const listsOfExtractions = await Promise.all(
+      attachmentData.map(async attachmentFile => {
         // eslint-disable-next-line no-await-in-loop
         const { attachmentBuffer, attachmentArrayBuffer } = await blobToBuffer({
           attachmentFile,
@@ -539,8 +540,7 @@ class Home extends React.Component {
         // eslint-disable-next-line no-await-in-loop
         const { ext } = await FileType.fromBuffer(attachmentBuffer);
 
-        // eslint-disable-next-line no-await-in-loop
-        await Promise.allSettled([
+        return Promise.allSettled([
           this.extractPlate({ attachmentFile, attachmentBuffer, ext }),
           extractDate({
             attachmentFile,
@@ -558,31 +558,31 @@ class Home extends React.Component {
               addressProvenance: '(extracted from picture/video)',
             });
           }),
-        ]).then(values => {
-          const rejected = values.filter(v => v.status === 'rejected');
+        ]);
+      }),
+    );
 
-          if (rejected.length === 0) {
-            return;
-          }
+    const groupedByExtractionType = zip(...listsOfExtractions);
+    const rejected = groupedByExtractionType
+      .filter(results => results.every(r => r.status === 'rejected'))
+      .map(extractions => extractions[0]);
 
-          throw rejected.map(v => v.reason).join(', ');
-        });
-      } catch (missingValuesString) {
-        const hasMultipleAttachments = attachmentData.length > 1;
-        const fileCopy = hasMultipleAttachments
-          ? 'one of the files, but they may have been found in other files.'
-          : 'the file.';
-
-        this.notifyWarning(
-          <React.Fragment>
-            <p>
-              Could not extract the {missingValuesString} from {fileCopy} Please
-              enter/confirm any missing values manually.
-            </p>
-          </React.Fragment>,
-        );
-      }
+    if (rejected.length === 0) {
+      return;
     }
+
+    const missingValuesString = rejected.map(v => v.reason).join(', ');
+    const hasMultipleAttachments = attachmentData.length > 1;
+    const fileCopy = hasMultipleAttachments ? 'the files.' : 'the file.';
+
+    this.notifyWarning(
+      <React.Fragment>
+        <p>
+          Could not extract the {missingValuesString} from {fileCopy} Please
+          enter/confirm any missing values manually.
+        </p>
+      </React.Fragment>,
+    );
   };
 
   handleInputChange = event => {

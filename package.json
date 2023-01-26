@@ -83,7 +83,8 @@
     "universal-router": "^6.0.0",
     "util.promisify": "^1.0.0",
     "video-extensions": "^1.1.0",
-    "whatwg-fetch": "^3.0.0"
+    "whatwg-fetch": "^3.0.0",
+    "zip-array": "^1.0.1"
   },
   "devDependencies": {
     "@babel/core": "^7.0.0",

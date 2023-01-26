@@ -530,35 +530,37 @@ class Home extends React.Component {
       attachmentData: state.attachmentData.concat(attachmentData),
     }));
 
-    const arrs = await Promise.all(attachmentData.map(async attachmentFile => {
-      // eslint-disable-next-line no-await-in-loop
-      const { attachmentBuffer, attachmentArrayBuffer } = await blobToBuffer({
-        attachmentFile,
-      });
-
-      // eslint-disable-next-line no-await-in-loop
-      const { ext } = await FileType.fromBuffer(attachmentBuffer);
-
-      return Promise.allSettled([
-        this.extractPlate({ attachmentFile, attachmentBuffer, ext }),
-        extractDate({
+    const arrs = await Promise.all(
+      attachmentData.map(async attachmentFile => {
+        // eslint-disable-next-line no-await-in-loop
+        const { attachmentBuffer, attachmentArrayBuffer } = await blobToBuffer({
           attachmentFile,
-          attachmentArrayBuffer,
-          ext,
-        }).then(this.setCreateDate),
-        extractLocation({
-          attachmentFile,
-          attachmentArrayBuffer,
-          ext,
-        }).then(({ latitude, longitude }) => {
-          this.setCoords({
-            latitude,
-            longitude,
-            addressProvenance: '(extracted from picture/video)',
-          });
-        }),
-      ]);
-    }));
+        });
+
+        // eslint-disable-next-line no-await-in-loop
+        const { ext } = await FileType.fromBuffer(attachmentBuffer);
+
+        return Promise.allSettled([
+          this.extractPlate({ attachmentFile, attachmentBuffer, ext }),
+          extractDate({
+            attachmentFile,
+            attachmentArrayBuffer,
+            ext,
+          }).then(this.setCreateDate),
+          extractLocation({
+            attachmentFile,
+            attachmentArrayBuffer,
+            ext,
+          }).then(({ latitude, longitude }) => {
+            this.setCoords({
+              latitude,
+              longitude,
+              addressProvenance: '(extracted from picture/video)',
+            });
+          }),
+        ]);
+      }),
+    );
 
     const zipped = zip(...arrs);
     const failedExtractions = zipped.filter(results =>

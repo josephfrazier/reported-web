@@ -171,6 +171,7 @@ async function extractPlate({
     }
 
     if (attachmentPlates.has(attachmentFile)) {
+      console.info(`found cached plate for ${attachmentFile.name}!`);
       const result = attachmentPlates.get(attachmentFile);
       return result;
     }
@@ -580,77 +581,83 @@ class Home extends React.Component {
   };
 
   handleAttachmentData = async ({ attachmentData }) => {
-    this.setState(state => ({
-      attachmentData: state.attachmentData.concat(attachmentData),
-    }));
-
-    const listsOfExtractions = await Promise.all(
-      attachmentData.map(async attachmentFile => {
-        // eslint-disable-next-line no-await-in-loop
-        const { attachmentBuffer, attachmentArrayBuffer } = await blobToBuffer({
-          attachmentFile,
-        });
-
-        // eslint-disable-next-line no-await-in-loop
-        const { ext } = await FileType.fromBuffer(attachmentBuffer);
-
-        return Promise.allSettled([
-          extractPlate({
-            attachmentFile,
-            attachmentBuffer,
-            ext,
-            isAlprEnabled: this.state.isAlprEnabled,
-          }).then(result => {
-            if (
-              this.state.plate === '' &&
-              document.activeElement !== this.plateRef.current
-            ) {
-              this.setLicensePlate(result);
-            }
-            this.setState({
-              plateSuggestion: result.plate,
-            });
-          }),
-          extractDate({
-            attachmentFile,
-            attachmentArrayBuffer,
-            ext,
-          }).then(this.setCreateDate),
-          extractLocation({
-            attachmentFile,
-            attachmentArrayBuffer,
-            ext,
-          }).then(({ latitude, longitude }) => {
-            this.setCoords({
-              latitude,
-              longitude,
-              addressProvenance: '(extracted from picture/video)',
-            });
-          }),
-        ]);
+    this.setState(
+      state => ({
+        attachmentData: state.attachmentData.concat(attachmentData),
       }),
-    );
+      async () => {
+        const listsOfExtractions = await Promise.all(
+          this.state.attachmentData.map(async attachmentFile => {
+            // eslint-disable-next-line no-await-in-loop
+            const {
+              attachmentBuffer,
+              attachmentArrayBuffer,
+            } = await blobToBuffer({
+              attachmentFile,
+            });
 
-    const groupedByExtractionType = zip(...listsOfExtractions);
-    const rejected = groupedByExtractionType
-      .filter(results => results.every(r => r.status === 'rejected'))
-      .map(extractions => extractions[0]);
+            // eslint-disable-next-line no-await-in-loop
+            const { ext } = await FileType.fromBuffer(attachmentBuffer);
 
-    if (rejected.length === 0) {
-      return;
-    }
+            return Promise.allSettled([
+              extractPlate({
+                attachmentFile,
+                attachmentBuffer,
+                ext,
+                isAlprEnabled: this.state.isAlprEnabled,
+              }).then(result => {
+                if (
+                  this.state.plate === '' &&
+                  document.activeElement !== this.plateRef.current
+                ) {
+                  this.setLicensePlate(result);
+                }
+                this.setState({
+                  plateSuggestion: result.plate,
+                });
+              }),
+              extractDate({
+                attachmentFile,
+                attachmentArrayBuffer,
+                ext,
+              }).then(this.setCreateDate),
+              extractLocation({
+                attachmentFile,
+                attachmentArrayBuffer,
+                ext,
+              }).then(({ latitude, longitude }) => {
+                this.setCoords({
+                  latitude,
+                  longitude,
+                  addressProvenance: '(extracted from picture/video)',
+                });
+              }),
+            ]);
+          }),
+        );
 
-    const missingValuesString = rejected.map(v => v.reason).join(', ');
-    const hasMultipleAttachments = attachmentData.length > 1;
-    const fileCopy = hasMultipleAttachments ? 'the files.' : 'the file.';
+        const groupedByExtractionType = zip(...listsOfExtractions);
+        const rejected = groupedByExtractionType
+          .filter(results => results.every(r => r.status === 'rejected'))
+          .map(extractions => extractions[0]);
 
-    this.notifyWarning(
-      <React.Fragment>
-        <p>
-          Could not extract the {missingValuesString} from {fileCopy} Please
-          enter/confirm any missing values manually.
-        </p>
-      </React.Fragment>,
+        if (rejected.length === 0) {
+          return;
+        }
+
+        const missingValuesString = rejected.map(v => v.reason).join(', ');
+        const hasMultipleAttachments = this.state.attachmentData.length > 1;
+        const fileCopy = hasMultipleAttachments ? 'the files.' : 'the file.';
+
+        this.notifyWarning(
+          <React.Fragment>
+            <p>
+              Could not extract the {missingValuesString} from {fileCopy} Please
+              enter/confirm any missing values manually.
+            </p>
+          </React.Fragment>,
+        );
+      },
     );
   };
 

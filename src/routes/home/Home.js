@@ -129,6 +129,88 @@ function extractLocationDateFromVideo({ attachmentArrayBuffer }) {
   return [{ latitude, longitude }, created.getTime()];
 }
 
+// derived from https://github.com/feross/capture-frame/tree/06b8f5eac78fea305f7f577d1697ee3b6999c9a8#complete-example
+async function getVideoScreenshot({ attachmentFile }) {
+  const src = getBlobUrl(attachmentFile);
+  const video = document.createElement('video');
+
+  video.volume = 0;
+  video.setAttribute('crossOrigin', 'anonymous'); // optional, when cross-domain
+  video.src = src;
+  video.play();
+  await pEvent(video, 'canplay');
+
+  video.currentTime = 0; // TODO let user choose time?
+  await pEvent(video, 'seeked');
+
+  const buf = captureFrame(video);
+
+  // unload video element, to prevent memory leaks
+  video.pause();
+  video.src = '';
+  video.load();
+
+  return buf;
+}
+
+// adapted from https://www.bignerdranch.com/blog/dont-over-react/
+const attachmentPlates = new WeakMap();
+
+async function extractPlate({
+  attachmentFile,
+  attachmentBuffer,
+  ext,
+  isAlprEnabled,
+}) {
+  try {
+    console.time('extractPlate'); // eslint-disable-line no-console
+
+    if (isAlprEnabled === false) {
+      console.info('ALPR is disabled, skipping');
+      return { plate: '', licenseState: '' };
+    }
+
+    if (attachmentPlates.has(attachmentFile)) {
+      console.info(`found cached plate for ${attachmentFile.name}!`);
+      const result = attachmentPlates.get(attachmentFile);
+      return result;
+    }
+
+    if (isVideo({ ext })) {
+      // eslint-disable-next-line no-param-reassign
+      attachmentBuffer = await getVideoScreenshot({ attachmentFile });
+    } else if (!isImage({ ext })) {
+      throw new Error(`${attachmentFile.name} is not an image/video`);
+    }
+
+    console.time(`bufferToBlob(${attachmentFile.name})`); // eslint-disable-line no-console
+    const attachmentBlob = await blobUtil.arrayBufferToBlob(
+      bufferToArrayBuffer(attachmentBuffer),
+    );
+    console.timeEnd(`bufferToBlob(${attachmentFile.name})`); // eslint-disable-line no-console
+
+    const formData = new window.FormData();
+    formData.append('attachmentFile', attachmentBlob);
+    const { data } = await axios.post('/platerecognizer', formData);
+    const result = data.results[0];
+    try {
+      result.licenseState = result.region.code.split('-')[1].toUpperCase();
+    } catch (err) {
+      result.licenseState = null;
+    }
+    result.plate = result.plate.toUpperCase();
+
+    attachmentPlates.set(attachmentFile, result);
+    return result;
+  } catch (err) {
+    console.error(err.stack);
+
+    throw 'license plate'; // eslint-disable-line no-throw-literal
+  } finally {
+    console.timeEnd('extractPlate'); // eslint-disable-line no-console
+  }
+}
+
 async function extractLocation({ attachmentFile, attachmentArrayBuffer, ext }) {
   try {
     if (isVideo({ ext })) {
@@ -186,34 +268,7 @@ async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
   }
 }
 
-// derived from https://github.com/feross/capture-frame/tree/06b8f5eac78fea305f7f577d1697ee3b6999c9a8#complete-example
-async function getVideoScreenshot({ attachmentFile }) {
-  const src = getBlobUrl(attachmentFile);
-  const video = document.createElement('video');
-
-  video.volume = 0;
-  video.setAttribute('crossOrigin', 'anonymous'); // optional, when cross-domain
-  video.src = src;
-  video.play();
-  await pEvent(video, 'canplay');
-
-  video.currentTime = 0; // TODO let user choose time?
-  await pEvent(video, 'seeked');
-
-  const buf = captureFrame(video);
-
-  // unload video element, to prevent memory leaks
-  video.pause();
-  video.src = '';
-  video.load();
-
-  return buf;
-}
-
 class Home extends React.Component {
-  // adapted from https://www.bignerdranch.com/blog/dont-over-react/
-  attachmentPlates = new WeakMap();
-
   constructor(props) {
     super(props);
 
@@ -526,62 +581,83 @@ class Home extends React.Component {
   };
 
   handleAttachmentData = async ({ attachmentData }) => {
-    this.setState(state => ({
-      attachmentData: state.attachmentData.concat(attachmentData),
-    }));
-
-    const listsOfExtractions = await Promise.all(
-      attachmentData.map(async attachmentFile => {
-        // eslint-disable-next-line no-await-in-loop
-        const { attachmentBuffer, attachmentArrayBuffer } = await blobToBuffer({
-          attachmentFile,
-        });
-
-        // eslint-disable-next-line no-await-in-loop
-        const { ext } = await FileType.fromBuffer(attachmentBuffer);
-
-        return Promise.allSettled([
-          this.extractPlate({ attachmentFile, attachmentBuffer, ext }),
-          extractDate({
-            attachmentFile,
-            attachmentArrayBuffer,
-            ext,
-          }).then(this.setCreateDate),
-          extractLocation({
-            attachmentFile,
-            attachmentArrayBuffer,
-            ext,
-          }).then(({ latitude, longitude }) => {
-            this.setCoords({
-              latitude,
-              longitude,
-              addressProvenance: '(extracted from picture/video)',
-            });
-          }),
-        ]);
+    this.setState(
+      state => ({
+        attachmentData: state.attachmentData.concat(attachmentData),
       }),
-    );
+      async () => {
+        const listsOfExtractions = await Promise.all(
+          this.state.attachmentData.map(async attachmentFile => {
+            // eslint-disable-next-line no-await-in-loop
+            const {
+              attachmentBuffer,
+              attachmentArrayBuffer,
+            } = await blobToBuffer({
+              attachmentFile,
+            });
 
-    const groupedByExtractionType = zip(...listsOfExtractions);
-    const rejected = groupedByExtractionType
-      .filter(results => results.every(r => r.status === 'rejected'))
-      .map(extractions => extractions[0]);
+            // eslint-disable-next-line no-await-in-loop
+            const { ext } = await FileType.fromBuffer(attachmentBuffer);
 
-    if (rejected.length === 0) {
-      return;
-    }
+            return Promise.allSettled([
+              extractPlate({
+                attachmentFile,
+                attachmentBuffer,
+                ext,
+                isAlprEnabled: this.state.isAlprEnabled,
+              }).then(result => {
+                if (
+                  this.state.plate === '' &&
+                  document.activeElement !== this.plateRef.current
+                ) {
+                  this.setLicensePlate(result);
+                }
+                this.setState({
+                  plateSuggestion: result.plate,
+                });
+              }),
+              extractDate({
+                attachmentFile,
+                attachmentArrayBuffer,
+                ext,
+              }).then(this.setCreateDate),
+              extractLocation({
+                attachmentFile,
+                attachmentArrayBuffer,
+                ext,
+              }).then(({ latitude, longitude }) => {
+                this.setCoords({
+                  latitude,
+                  longitude,
+                  addressProvenance: '(extracted from picture/video)',
+                });
+              }),
+            ]);
+          }),
+        );
 
-    const missingValuesString = rejected.map(v => v.reason).join(', ');
-    const hasMultipleAttachments = attachmentData.length > 1;
-    const fileCopy = hasMultipleAttachments ? 'the files.' : 'the file.';
+        const groupedByExtractionType = zip(...listsOfExtractions);
+        const rejected = groupedByExtractionType
+          .filter(results => results.every(r => r.status === 'rejected'))
+          .map(extractions => extractions[0]);
 
-    this.notifyWarning(
-      <React.Fragment>
-        <p>
-          Could not extract the {missingValuesString} from {fileCopy} Please
-          enter/confirm any missing values manually.
-        </p>
-      </React.Fragment>,
+        if (rejected.length === 0) {
+          return;
+        }
+
+        const missingValuesString = rejected.map(v => v.reason).join(', ');
+        const hasMultipleAttachments = this.state.attachmentData.length > 1;
+        const fileCopy = hasMultipleAttachments ? 'the files.' : 'the file.';
+
+        this.notifyWarning(
+          <React.Fragment>
+            <p>
+              Could not extract the {missingValuesString} from {fileCopy} Please
+              enter/confirm any missing values manually.
+            </p>
+          </React.Fragment>,
+        );
+      },
     );
   };
 
@@ -601,64 +677,6 @@ class Home extends React.Component {
       },
       () => debouncedSaveStateToLocalStorage(this),
     );
-  };
-
-  extractPlate = async ({ attachmentFile, attachmentBuffer, ext }) => {
-    console.time('extractPlate'); // eslint-disable-line no-console
-
-    try {
-      if (this.state.isAlprEnabled === false) {
-        console.info('ALPR is disabled, skipping');
-        return undefined;
-      }
-
-      // TODO does this actually do anything? the returned result isn't used anywhere
-      if (this.attachmentPlates.has(attachmentFile)) {
-        const result = this.attachmentPlates.get(attachmentFile);
-        return result;
-      }
-
-      if (isVideo({ ext })) {
-        // eslint-disable-next-line no-param-reassign
-        attachmentBuffer = await getVideoScreenshot({ attachmentFile });
-      } else if (!isImage({ ext })) {
-        throw new Error(`${attachmentFile.name} is not an image/video`);
-      }
-
-      console.time(`bufferToBlob(${attachmentFile.name})`); // eslint-disable-line no-console
-      const attachmentBlob = await blobUtil.arrayBufferToBlob(
-        bufferToArrayBuffer(attachmentBuffer),
-      );
-      console.timeEnd(`bufferToBlob(${attachmentFile.name})`); // eslint-disable-line no-console
-
-      const formData = new window.FormData();
-      formData.append('attachmentFile', attachmentBlob);
-      const { data } = await axios.post('/platerecognizer', formData);
-      const result = data.results[0];
-      try {
-        result.licenseState = result.region.code.split('-')[1].toUpperCase();
-      } catch (err) {
-        result.licenseState = null;
-      }
-      result.plate = result.plate.toUpperCase();
-      if (
-        this.state.plate === '' &&
-        document.activeElement !== this.plateRef.current
-      ) {
-        this.setLicensePlate(result);
-      }
-      this.setState({
-        plateSuggestion: result.plate,
-      });
-      this.attachmentPlates.set(attachmentFile, result);
-      return result;
-    } catch (err) {
-      console.error(err.stack);
-
-      throw 'license plate'; // eslint-disable-line no-throw-literal
-    } finally {
-      console.timeEnd('extractPlate'); // eslint-disable-line no-console
-    }
   };
 
   handleAxiosError = error =>

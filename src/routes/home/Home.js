@@ -575,7 +575,7 @@ class Home extends React.Component {
     const missingValuesString = rejected.map(v => v.reason).join(', ');
     const hasMultipleAttachments = attachmentData.length > 1;
     const fileCopy = hasMultipleAttachments
-      ? 'one of the files, but they may have been found in other files.'
+      ? 'the files.'
       : 'the file.';
 
     this.notifyWarning(

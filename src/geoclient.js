@@ -32,7 +32,17 @@ export async function validateLocation({ lat, long }) {
 
   console.log({ googleResponse }); // eslint-disable-line no-console
   const address = googleResponse.results[0];
-  const building = address.address_components[0].short_name;
+  let building = address.address_components[0].short_name;
+  // (ported from https://github.com/jeffrono/Reported/blob/6d9e1d8c087ee53954037b4e80a72481a8425045/v2/enrich_functions.rb#L426-L431)
+  // strip out any whack extra characters here
+  // a = '228 A'
+  // b = '225 1/2'
+  // but "33-26" has to be honored! not stripped :o
+  // if it is "44-34" then we keep that, otherwise, strip any extra stuff after a space
+  if (!building.match(/\d+-\d+/)) {
+    building = building.replace(/(\d+).*/g, '$1');
+  }
+
   const street = address.address_components[1].short_name;
   const component3 = address.address_components[3].short_name.replace(
     'The ',

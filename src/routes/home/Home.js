@@ -1050,7 +1050,7 @@ class Home extends React.Component {
                   });
               }}
             >
-              <fieldset disabled={this.state.isSubmitting}>
+              <fieldset disabled={this.state.isSubmitting && this.state.formatted_address !== 'Finding Address...'}>
                 <FileReaderInput
                   multiple
                   as="buffer"

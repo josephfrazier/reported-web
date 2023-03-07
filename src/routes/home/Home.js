@@ -477,6 +477,8 @@ class Home extends React.Component {
           coordsAreInNyc: false,
         });
         this.notifyError(errorMessage);
+
+        return;
       } else {
         this.setState({
           coordsAreInNyc: true,

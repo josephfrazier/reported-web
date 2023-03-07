@@ -471,14 +471,12 @@ class Home extends React.Component {
       const end = { latitude, longitude };
       const BoroName = getBoroNameMemoized({ lookup, end });
       if (BoroName === '(unknown borough)') {
-        const errorMessage = 'Please select a location within NYC';
+        const errorMessage = `latitude/longitude (${latitude}, ${longitude}) is outside NYC. Please select a location within NYC.`;
         this.setState({
           formatted_address: errorMessage,
           coordsAreInNyc: false,
         });
-        this.notifyError(
-          `latitude/longitude (${latitude}, ${longitude}) is outside NYC. ${errorMessage}`,
-        );
+        this.notifyError(errorMessage);
       } else {
         this.setState({
           coordsAreInNyc: true,

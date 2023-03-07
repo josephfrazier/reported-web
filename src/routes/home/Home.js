@@ -479,11 +479,11 @@ class Home extends React.Component {
         this.notifyError(errorMessage);
 
         return;
-      } else {
-        this.setState({
-          coordsAreInNyc: true,
-        });
       }
+
+      this.setState({
+        coordsAreInNyc: true,
+      });
     }
 
     debouncedProcessValidation({ latitude, longitude }).then(data => {

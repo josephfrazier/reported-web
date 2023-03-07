@@ -286,8 +286,6 @@ const getBoroNameMemoized = mem(getBoroName, {
 });
 
 class Home extends React.Component {
-  static contextTypes = { fetch: PropTypes.func.isRequired };
-
   constructor(props) {
     super(props);
 
@@ -405,16 +403,6 @@ class Home extends React.Component {
       return confirmationMessage; // Webkit, Safari, Chrome etc.
     });
 
-    // TODO this was copied from ElectriCitibikes.js, consider unifying them
-    this.context
-      .fetch('/borough-boundaries-clipped-to-shoreline.geo.json')
-      .then(response => response.json())
-      .then(boroughBoundariesFeatureCollection => {
-        this.setState({
-          boroughBoundariesFeatureCollection,
-        });
-      });
-
     this.forceUpdate(); // force "Create/Edit User" fields to render persisted value after load
   }
 
@@ -462,32 +450,27 @@ class Home extends React.Component {
       addressProvenance,
     });
 
-    const {
-      state: { boroughBoundariesFeatureCollection },
-    } = this;
-    // TODO the above/below blocks were copied/adapted from ElectriCitibikes.js, consider unifying them
-    if (boroughBoundariesFeatureCollection) {
-      console.time('new PolygonLookup'); // eslint-disable-line no-console
-      const lookup = new PolygonLookup(boroughBoundariesFeatureCollection);
-      console.timeEnd('new PolygonLookup'); // eslint-disable-line no-console
-
-      const end = { latitude, longitude };
-      const BoroName = getBoroNameMemoized({ lookup, end });
-      if (BoroName === '(unknown borough)') {
-        const errorMessage = `latitude/longitude (${latitude}, ${longitude}) is outside NYC. Please select a location within NYC.`;
-        this.setState({
-          formatted_address: errorMessage,
-          coordsAreInNyc: false,
-        });
-        this.notifyError(errorMessage);
-
-        return;
-      }
-
+    // show error message if location is outside NYC
+    console.time('new PolygonLookup'); // eslint-disable-line no-console
+    const lookup = new PolygonLookup(
+      this.props.boroughBoundariesFeatureCollection,
+    );
+    console.timeEnd('new PolygonLookup'); // eslint-disable-line no-console
+    const end = { latitude, longitude };
+    const BoroName = getBoroNameMemoized({ lookup, end });
+    if (BoroName === '(unknown borough)') {
+      const errorMessage = `latitude/longitude (${latitude}, ${longitude}) is outside NYC. Please select a location within NYC.`;
       this.setState({
-        coordsAreInNyc: true,
+        formatted_address: errorMessage,
+        coordsAreInNyc: false,
       });
+      this.notifyError(errorMessage);
+
+      return;
     }
+    this.setState({
+      coordsAreInNyc: true,
+    });
 
     debouncedProcessValidation({ latitude, longitude }).then(data => {
       this.setState({
@@ -1470,6 +1453,7 @@ class Home extends React.Component {
 
 Home.propTypes = {
   typeofcomplaintValues: PropTypes.arrayOf(PropTypes.string).isRequired,
+  boroughBoundariesFeatureCollection: PropTypes.object.isRequired,
 };
 
 const MyMapComponentPure = props => {

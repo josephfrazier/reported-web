@@ -406,7 +406,8 @@ class Home extends React.Component {
     });
 
     // TODO this was copied from ElectriCitibikes.js, consider unifying them
-    this.context.fetch('/borough-boundaries-clipped-to-shoreline.geo.json')
+    this.context
+      .fetch('/borough-boundaries-clipped-to-shoreline.geo.json')
       .then(response => response.json())
       .then(boroughBoundariesFeatureCollection => {
         this.setState({

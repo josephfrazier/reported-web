@@ -43,6 +43,8 @@ import Dropzone from '@josephfrazier/react-dropzone';
 import { ToastContainer, toast } from 'react-toastify';
 import toastifyStyles from 'react-toastify/dist/ReactToastify.css';
 import { zip } from 'zip-array';
+import mem from 'mem';
+import PolygonLookup from 'polygon-lookup';
 
 import marx from 'marx-css/css/marx.css';
 import s from './Home.css';
@@ -268,6 +270,21 @@ async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
   }
 }
 
+function getBoroName({ lookup, end }) {
+  const boroughPolygon = (lookup &&
+    lookup.search(end.longitude, end.latitude)) || {
+    properties: {
+      BoroName: '(unknown borough)',
+    },
+  };
+
+  return boroughPolygon.properties.BoroName;
+}
+// TODO the above/below functions were copied from ElectriCitibikes.js, consider unifying them
+const getBoroNameMemoized = mem(getBoroName, {
+  cacheKey: ({ lookup, end }) => !!lookup + JSON.stringify(end),
+});
+
 class Home extends React.Component {
   constructor(props) {
     super(props);
@@ -289,6 +306,7 @@ class Home extends React.Component {
       can_be_shared_publicly: false,
       latitude: defaultLatitude,
       longitude: defaultLongitude,
+      coordsAreInNyc: true,
       formatted_address: '',
       CreateDate: jsDateToCreateDate(new Date()),
     };
@@ -385,6 +403,15 @@ class Home extends React.Component {
       return confirmationMessage; // Webkit, Safari, Chrome etc.
     });
 
+    // TODO this was copied from ElectriCitibikes.js, consider unifying them
+    fetch('/borough-boundaries-clipped-to-shoreline.geo.json')
+      .then(response => response.json())
+      .then(boroughBoundariesFeatureCollection => {
+        this.setState({
+          boroughBoundariesFeatureCollection,
+        });
+      });
+
     this.forceUpdate(); // force "Create/Edit User" fields to render persisted value after load
   }
 
@@ -431,6 +458,34 @@ class Home extends React.Component {
       formatted_address: 'Finding Address...',
       addressProvenance,
     });
+
+    const {
+      state: { boroughBoundariesFeatureCollection },
+    } = this;
+    // TODO the above/below blocks were copied/adapted from ElectriCitibikes.js, consider unifying them
+    if (boroughBoundariesFeatureCollection) {
+      console.time('new PolygonLookup'); // eslint-disable-line no-console
+      const lookup = new PolygonLookup(boroughBoundariesFeatureCollection);
+      console.timeEnd('new PolygonLookup'); // eslint-disable-line no-console
+
+      const end = { latitude, longitude };
+      const BoroName = getBoroNameMemoized({ lookup, end });
+      if (BoroName === '(unknown borough)') {
+        const errorMessage = 'Please select a location within NYC';
+        this.setState({
+          formatted_address: errorMessage,
+          coordsAreInNyc: false,
+        });
+        this.notifyError(
+          `latitude/longitude (${latitude}, ${longitude}) is outside NYC. ${errorMessage}`,
+        );
+      } else {
+        this.setState({
+          coordsAreInNyc: true,
+        });
+      }
+    }
+
     debouncedProcessValidation({ latitude, longitude }).then(data => {
       this.setState({
         formatted_address: data.google_response.results[0].formatted_address,
@@ -1340,7 +1395,9 @@ class Home extends React.Component {
                 ) : (
                   <button
                     type="submit"
-                    disabled={this.state.isSubmitting}
+                    disabled={
+                      this.state.isSubmitting || !this.state.coordsAreInNyc
+                    }
                     style={{
                       width: '100%',
                     }}

@@ -286,6 +286,8 @@ const getBoroNameMemoized = mem(getBoroName, {
 });
 
 class Home extends React.Component {
+  static contextTypes = { fetch: PropTypes.func.isRequired };
+
   constructor(props) {
     super(props);
 
@@ -404,7 +406,7 @@ class Home extends React.Component {
     });
 
     // TODO this was copied from ElectriCitibikes.js, consider unifying them
-    fetch('/borough-boundaries-clipped-to-shoreline.geo.json')
+    this.context.fetch('/borough-boundaries-clipped-to-shoreline.geo.json')
       .then(response => response.json())
       .then(boroughBoundariesFeatureCollection => {
         this.setState({

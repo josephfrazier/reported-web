@@ -43,7 +43,6 @@ import Dropzone from '@josephfrazier/react-dropzone';
 import { ToastContainer, toast } from 'react-toastify';
 import toastifyStyles from 'react-toastify/dist/ReactToastify.css';
 import { zip } from 'zip-array';
-import mem from 'mem';
 import PolygonLookup from 'polygon-lookup';
 
 import marx from 'marx-css/css/marx.css';
@@ -52,6 +51,7 @@ import s from './Home.css';
 import SubmissionDetails from '../../components/SubmissionDetails.js';
 import { isImage, isVideo } from '../../isImage.js';
 import getNycTimezoneOffset from '../../timezone.js';
+import { getBoroNameMemoized } from '../../getBoroName.js';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyDlwm2ykA0ohTXeVepQYvkcmdjz2M2CKEI';
 
@@ -269,21 +269,6 @@ async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
     throw 'creation date'; // eslint-disable-line no-throw-literal
   }
 }
-
-function getBoroName({ lookup, end }) {
-  const boroughPolygon = (lookup &&
-    lookup.search(end.longitude, end.latitude)) || {
-    properties: {
-      BoroName: '(unknown borough)',
-    },
-  };
-
-  return boroughPolygon.properties.BoroName;
-}
-// TODO the above/below functions were copied from ElectriCitibikes.js, consider unifying them
-const getBoroNameMemoized = mem(getBoroName, {
-  cacheKey: ({ lookup, end }) => !!lookup + JSON.stringify(end),
-});
 
 class Home extends React.Component {
   constructor(props) {

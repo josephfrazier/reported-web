@@ -1236,6 +1236,7 @@ class Home extends React.Component {
                 </label>
 
                 <Modal
+                  parentSelector={() => document.querySelector(`.${s.root}`)}
                   isOpen={this.state.isMapOpen}
                   onRequestClose={() => this.setState({ isMapOpen: false })}
                   style={{

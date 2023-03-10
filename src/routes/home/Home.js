@@ -43,6 +43,7 @@ import Dropzone from '@josephfrazier/react-dropzone';
 import { ToastContainer, toast } from 'react-toastify';
 import toastifyStyles from 'react-toastify/dist/ReactToastify.css';
 import { zip } from 'zip-array';
+import PolygonLookup from 'polygon-lookup';
 
 import marx from 'marx-css/css/marx.css';
 import s from './Home.css';
@@ -50,6 +51,7 @@ import s from './Home.css';
 import SubmissionDetails from '../../components/SubmissionDetails.js';
 import { isImage, isVideo } from '../../isImage.js';
 import getNycTimezoneOffset from '../../timezone.js';
+import { getBoroNameMemoized } from '../../getBoroName.js';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyDlwm2ykA0ohTXeVepQYvkcmdjz2M2CKEI';
 
@@ -289,6 +291,7 @@ class Home extends React.Component {
       can_be_shared_publicly: false,
       latitude: defaultLatitude,
       longitude: defaultLongitude,
+      coordsAreInNyc: true,
       formatted_address: '',
       CreateDate: jsDateToCreateDate(new Date()),
     };
@@ -431,6 +434,29 @@ class Home extends React.Component {
       formatted_address: 'Finding Address...',
       addressProvenance,
     });
+
+    // show error message if location is outside NYC
+    console.time('new PolygonLookup'); // eslint-disable-line no-console
+    const lookup = new PolygonLookup(
+      this.props.boroughBoundariesFeatureCollection,
+    );
+    console.timeEnd('new PolygonLookup'); // eslint-disable-line no-console
+    const end = { latitude, longitude };
+    const BoroName = getBoroNameMemoized({ lookup, end });
+    if (BoroName === '(unknown borough)') {
+      const errorMessage = `latitude/longitude (${latitude}, ${longitude}) is outside NYC. Please select a location within NYC.`;
+      this.setState({
+        formatted_address: errorMessage,
+        coordsAreInNyc: false,
+      });
+      this.notifyError(errorMessage);
+
+      return;
+    }
+    this.setState({
+      coordsAreInNyc: true,
+    });
+
     debouncedProcessValidation({ latitude, longitude }).then(data => {
       this.setState({
         formatted_address: data.google_response.results[0].formatted_address,
@@ -1210,6 +1236,9 @@ class Home extends React.Component {
                 </label>
 
                 <Modal
+                  parentSelector={() =>
+                    document.querySelector(`.${s.root}`) || document.body
+                  }
                   isOpen={this.state.isMapOpen}
                   onRequestClose={() => this.setState({ isMapOpen: false })}
                   style={{
@@ -1340,7 +1369,9 @@ class Home extends React.Component {
                 ) : (
                   <button
                     type="submit"
-                    disabled={this.state.isSubmitting}
+                    disabled={
+                      this.state.isSubmitting || !this.state.coordsAreInNyc
+                    }
                     style={{
                       width: '100%',
                     }}
@@ -1410,6 +1441,7 @@ class Home extends React.Component {
 
 Home.propTypes = {
   typeofcomplaintValues: PropTypes.arrayOf(PropTypes.string).isRequired,
+  boroughBoundariesFeatureCollection: PropTypes.object.isRequired,
 };
 
 const MyMapComponentPure = props => {

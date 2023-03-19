@@ -50,6 +50,7 @@
     "isomorphic-style-loader": "^4.0.0",
     "jsdom": "^16.5.0",
     "json-stringify-safe": "^5.0.1",
+    "json2csv": "^6.0.0-alpha.2",
     "lodash.sortby": "^4.7.0",
     "marx-css": "^3.0.3",
     "mem": "^4.0.0",

@@ -44,6 +44,7 @@ import { ToastContainer, toast } from 'react-toastify';
 import toastifyStyles from 'react-toastify/dist/ReactToastify.css';
 import { zip } from 'zip-array';
 import PolygonLookup from 'polygon-lookup';
+import { CSVLink } from 'react-csv';
 
 import marx from 'marx-css/css/marx.css';
 import s from './Home.css';
@@ -1401,16 +1402,21 @@ class Home extends React.Component {
               {this.state.submissions.length === 0 ? (
                 'Loading submissions...'
               ) : (
-                <ul>
-                  {this.state.submissions.map(submission => (
-                    <li key={submission.objectId}>
-                      <SubmissionDetails
-                        submission={submission}
-                        onDeleteSubmission={this.onDeleteSubmission}
-                      />
-                    </li>
-                  ))}
-                </ul>
+                <>
+                  <CSVLink data={this.state.submissions}>
+                    Download as CSV
+                  </CSVLink>
+                  <ul>
+                    {this.state.submissions.map(submission => (
+                      <li key={submission.objectId}>
+                        <SubmissionDetails
+                          submission={submission}
+                          onDeleteSubmission={this.onDeleteSubmission}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                </>
               )}
             </details>
 

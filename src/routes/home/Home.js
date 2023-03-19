@@ -1398,18 +1398,20 @@ class Home extends React.Component {
                   ` (${this.state.submissions.length})`}
               </summary>
 
-              <ul>
-                {this.state.submissions.length === 0
-                  ? 'Loading submissions...'
-                  : this.state.submissions.map(submission => (
-                      <li key={submission.objectId}>
-                        <SubmissionDetails
-                          submission={submission}
-                          onDeleteSubmission={this.onDeleteSubmission}
-                        />
-                      </li>
-                    ))}
-              </ul>
+              {this.state.submissions.length === 0 ? (
+                'Loading submissions...'
+              ) : (
+                <ul>
+                  {this.state.submissions.map(submission => (
+                    <li key={submission.objectId}>
+                      <SubmissionDetails
+                        submission={submission}
+                        onDeleteSubmission={this.onDeleteSubmission}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              )}
             </details>
 
             <div style={{ float: 'right' }}>

@@ -660,9 +660,7 @@ exports[`Home renders children correctly 1`] = `
         <summary>
           Previous Submissions
         </summary>
-        <ul>
-          Loading submissions...
-        </ul>
+        Loading submissions...
       </details>
       <div
         style={

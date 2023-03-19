@@ -51,6 +51,7 @@
     "jsdom": "^16.5.0",
     "json-stringify-safe": "^5.0.1",
     "lodash.sortby": "^4.7.0",
+    "map-obj": "^5.0.2",
     "marx-css": "^3.0.3",
     "mem": "^4.0.0",
     "mp4box": "https://github.com/josephfrazier/mp4box.js#commonjs",

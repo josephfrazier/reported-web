@@ -190,7 +190,7 @@
     "fix": "yarn run fix-js && yarn run fix-css",
     "flow": "flow",
     "flow:check": "flow check",
-    "test": "node -r dotenv/config node_modules/.bin/jest",
+    "test": "node -r dotenv/config node_modules/.bin/jest src/geoclient.test.js",
     "test-watch": "yarn run test --watch --notify",
     "test-cover": "yarn run test --coverage",
     "coverage": "yarn run test-cover && opn coverage/lcov-report/index.html",

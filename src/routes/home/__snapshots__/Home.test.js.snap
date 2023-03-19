@@ -658,7 +658,9 @@ exports[`Home renders children correctly 1`] = `
         onToggle={[Function]}
       >
         <summary>
-          Previous Submissions
+          Previous Submissions (
+          loading...
+          )
         </summary>
         Loading submissions...
       </details>

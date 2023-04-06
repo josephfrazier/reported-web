@@ -276,6 +276,11 @@ exports[`Home renders children correctly 1`] = `
               value="NY"
             >
               <option
+                value="NY"
+              >
+                New York
+              </option>
+              <option
                 value="AL"
               >
                 Alabama
@@ -429,11 +434,6 @@ exports[`Home renders children correctly 1`] = `
                 value="NM"
               >
                 New Mexico
-              </option>
-              <option
-                value="NY"
-              >
-                New York
               </option>
               <option
                 value="NC"

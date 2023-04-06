@@ -1193,7 +1193,21 @@ class Home extends React.Component {
                       });
                     }}
                   >
-                    {Object.entries(usStateNames).map(([abbr, name]) => (
+                    {Object.entries(usStateNames).sort(([aAbbr, aName], [bAbbr, bName]) => {
+                      if (aName === 'New York') {
+                        return Number.NEGATIVE_INFINITY;
+                      }
+
+                      if (aName < bName) {
+                        return -1;
+                      }
+
+                      if (aName > bName) {
+                        return 1;
+                      }
+
+                      return 0;
+                    }).map(([abbr, name]) => (
                       <option key={abbr} value={abbr}>
                         {name}
                       </option>

@@ -57,11 +57,7 @@ import { getBoroNameMemoized } from '../../getBoroName.js';
 const GOOGLE_MAPS_API_KEY = 'AIzaSyDlwm2ykA0ohTXeVepQYvkcmdjz2M2CKEI';
 
 const objectMap = (obj, fn) =>
-  Object.fromEntries(
-    Object.entries(obj).map(
-      ([k, v], i) => [k, fn(v, k, i)]
-    )
-  )
+  Object.fromEntries(Object.entries(obj).map(([k, v], i) => [k, fn(v, k, i)]));
 
 const debouncedProcessValidation = debounce(async ({ latitude, longitude }) => {
   const { data } = await axios.post('/api/process_validation', {
@@ -1415,9 +1411,10 @@ class Home extends React.Component {
                   <CSVLink
                     separator="	"
                     data={this.state.submissions.map(submission =>
-                      objectMap(submission, value => typeof value === 'object'
-                        ? JSON.stringify(value)
-                        : value,
+                      objectMap(submission, value =>
+                        typeof value === 'object'
+                          ? JSON.stringify(value)
+                          : value,
                       ),
                     )}
                   >

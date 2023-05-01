@@ -565,7 +565,7 @@ Bronx, NY 10471",
           },
           Object {
             "long_name": "The Bronx",
-            "short_name": "The Bronx",
+            "short_name": "Bronx",
             "types": Array [
               "political",
               "sublocality",
@@ -604,7 +604,7 @@ Bronx, NY 10471",
             ],
           },
         ],
-        "formatted_address": "3017 Riverdale Ave, The Bronx, NY 10463, USA",
+        "formatted_address": "3017 Riverdale Ave, Bronx, NY 10463, USA",
         "geometry": Object {
           "location": Object {
             "lat": 40.880985,
@@ -657,7 +657,7 @@ Bronx, NY 10471",
           },
           Object {
             "long_name": "The Bronx",
-            "short_name": "The Bronx",
+            "short_name": "Bronx",
             "types": Array [
               "political",
               "sublocality",
@@ -696,7 +696,7 @@ Bronx, NY 10471",
             ],
           },
         ],
-        "formatted_address": "1 Riverdale Ave, The Bronx, NY 10463, USA",
+        "formatted_address": "1 Riverdale Ave, Bronx, NY 10463, USA",
         "geometry": Object {
           "location": Object {
             "lat": 40.8804521,
@@ -714,7 +714,7 @@ Bronx, NY 10471",
             },
           },
         },
-        "place_id": "EikxIFJpdmVyZGFsZSBBdmUsIFRoZSBCcm9ueCwgTlkgMTA0NjMsIFVTQSIaEhgKFAoSCZt79x2V88KJEbz4x4G9AvdtEAE",
+        "place_id": "EiUxIFJpdmVyZGFsZSBBdmUsIEJyb254LCBOWSAxMDQ2MywgVVNBIhoSGAoUChIJm3v3HZXzwokRvPjHgb0C920QAQ",
         "types": Array [
           "street_address",
         ],

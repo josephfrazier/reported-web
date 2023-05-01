@@ -1405,7 +1405,7 @@ class Home extends React.Component {
                 'Loading submissions...'
               ) : (
                 <>
-                  <CSVLink data={this.state.submissions}>
+                  <CSVLink data={this.state.submissions} separator="	">
                     Download as CSV
                   </CSVLink>
                   <ul>

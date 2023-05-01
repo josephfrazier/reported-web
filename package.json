@@ -68,6 +68,7 @@
     "puppeteer": "^1.13.0",
     "query-string": "^6.1.0",
     "react": "^16.5.2",
+    "react-csv": "^2.2.2",
     "react-dom": "^16.5.2",
     "react-file-reader-input": "^1.1.4",
     "react-google-maps": "^9.4.5",

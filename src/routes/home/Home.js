@@ -44,6 +44,7 @@ import { ToastContainer, toast } from 'react-toastify';
 import toastifyStyles from 'react-toastify/dist/ReactToastify.css';
 import { zip } from 'zip-array';
 import PolygonLookup from 'polygon-lookup';
+import { CSVLink } from 'react-csv';
 
 import marx from 'marx-css/css/marx.css';
 import s from './Home.css';
@@ -54,6 +55,9 @@ import getNycTimezoneOffset from '../../timezone.js';
 import { getBoroNameMemoized } from '../../getBoroName.js';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyDlwm2ykA0ohTXeVepQYvkcmdjz2M2CKEI';
+
+const objectMap = (obj, fn) =>
+  Object.fromEntries(Object.entries(obj).map(([k, v], i) => [k, fn(v, k, i)]));
 
 const debouncedProcessValidation = debounce(async ({ latitude, longitude }) => {
   const { data } = await axios.post('/api/process_validation', {
@@ -1393,15 +1397,31 @@ class Home extends React.Component {
               }}
             >
               <summary>
-                Previous Submissions
-                {this.state.submissions.length > 0 &&
-                  ` (${this.state.submissions.length})`}
+                Previous Submissions (
+                {this.state.submissions.length > 0
+                  ? this.state.submissions.length
+                  : 'loading...'}
+                )
               </summary>
 
-              <ul>
-                {this.state.submissions.length === 0
-                  ? 'Loading submissions...'
-                  : this.state.submissions.map(submission => (
+              {this.state.submissions.length === 0 ? (
+                'Loading submissions...'
+              ) : (
+                <>
+                  <CSVLink
+                    separator="	"
+                    data={this.state.submissions.map(submission =>
+                      objectMap(submission, value =>
+                        typeof value === 'object'
+                          ? JSON.stringify(value)
+                          : value,
+                      ),
+                    )}
+                  >
+                    Download as CSV
+                  </CSVLink>
+                  <ul>
+                    {this.state.submissions.map(submission => (
                       <li key={submission.objectId}>
                         <SubmissionDetails
                           submission={submission}
@@ -1409,7 +1429,9 @@ class Home extends React.Component {
                         />
                       </li>
                     ))}
-              </ul>
+                  </ul>
+                </>
+              )}
             </details>
 
             <div style={{ float: 'right' }}>

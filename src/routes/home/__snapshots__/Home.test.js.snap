@@ -658,11 +658,11 @@ exports[`Home renders children correctly 1`] = `
         onToggle={[Function]}
       >
         <summary>
-          Previous Submissions
+          Previous Submissions (
+          loading...
+          )
         </summary>
-        <ul>
-          Loading submissions...
-        </ul>
+        Loading submissions...
       </details>
       <div
         style={

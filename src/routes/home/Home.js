@@ -70,7 +70,7 @@ const debouncedProcessValidation = debounce(async ({ latitude, longitude }) => {
 const debouncedGetVehicleType = debounce(
   ({ plate, licenseState }) =>
     axios.get(`/getVehicleType/${plate}/${licenseState}`),
-  500,
+  1000,
 );
 
 const debouncedSaveStateToLocalStorage = debounce(self => {

@@ -1204,11 +1204,15 @@ class Home extends React.Component {
                       });
                     }}
                   >
-                    {Object.entries(usStateNames).map(([abbr, name]) => (
-                      <option key={abbr} value={abbr}>
-                        {name}
-                      </option>
-                    ))}
+                    {Object.entries(usStateNames)
+                      .sort(([, name1], [, name2]) =>
+                        name1.toUpperCase().localeCompare(name2.toUpperCase()),
+                      )
+                      .map(([abbr, name]) => (
+                        <option key={abbr} value={abbr}>
+                          {name}
+                        </option>
+                      ))}
                   </select>
                   {this.state.vehicleInfoComponent}
                 </label>

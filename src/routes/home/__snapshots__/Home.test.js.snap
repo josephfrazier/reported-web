@@ -316,6 +316,11 @@ exports[`Home renders children correctly 1`] = `
                 Delaware
               </option>
               <option
+                value="DC"
+              >
+                District of Columbia
+              </option>
+              <option
                 value="FL"
               >
                 Florida

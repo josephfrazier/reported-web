@@ -224,7 +224,18 @@ async function extractPlate({
   }
 }
 
-async function extractLocation({ attachmentFile, attachmentArrayBuffer, ext }) {
+async function extractLocation({
+  attachmentFile,
+  attachmentArrayBuffer,
+  ext,
+  isReverseGeocodingEnabled,
+}) {
+  if (isReverseGeocodingEnabled === false) {
+    console.info('Reverse geolocation is disabled, skipping');
+
+    throw 'location'; // eslint-disable-line no-throw-literal
+  }
+
   try {
     if (isVideo({ ext })) {
       return extractLocationDateFromVideo({ attachmentArrayBuffer })[0];
@@ -310,6 +321,7 @@ class Home extends React.Component {
     const initialStatePersistent = {
       ...initialStatePerSubmission,
       isAlprEnabled: true,
+      isReverseGeocodingEnabled: true,
       isUserInfoOpen: true,
       isMapOpen: false,
     };
@@ -662,6 +674,7 @@ class Home extends React.Component {
                 attachmentFile,
                 attachmentArrayBuffer,
                 ext,
+                isReverseGeocodingEnabled: this.state.isReverseGeocodingEnabled,
               }).then(({ latitude, longitude }) => {
                 this.setCoords({
                   latitude,
@@ -1168,6 +1181,16 @@ class Home extends React.Component {
                     onChange={this.handleInputChange}
                   />{' '}
                   Automatically read license plates from pictures/videos
+                </label>
+
+                <label htmlFor="isReverseGeocodingEnabled">
+                  <input
+                    type="checkbox"
+                    checked={this.state.isReverseGeocodingEnabled}
+                    name="isReverseGeocodingEnabled"
+                    onChange={this.handleInputChange}
+                  />{' '}
+                  Automatically read addresses from pictures/videos
                 </label>
 
                 <label htmlFor="plate">

@@ -43,4 +43,13 @@ describe('processValidation', () => {
 
     expect(result).toMatchSnapshot();
   });
+
+  test('returns the right object around 0,0', async () => {
+    const result = await processValidation({
+      lat: 0,
+      long: 0,
+    });
+
+    expect(result).toMatchSnapshot();
+  });
 });

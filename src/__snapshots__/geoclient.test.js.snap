@@ -338,6 +338,8 @@ New York, NY 10007",
 }
 `;
 
+exports[`processValidation returns the right object around 0,0 1`] = `undefined`;
+
 exports[`processValidation returns the right object around 3521-3501 Riverdale Ave, The Bronx, NY 10463 1`] = `
 Object {
   "cb_data": Object {

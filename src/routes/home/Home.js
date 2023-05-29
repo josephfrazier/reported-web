@@ -1517,6 +1517,12 @@ const MyMapComponentPure = props => {
         ref={onSearchBoxMounted}
         controlPosition={window.google.maps.ControlPosition.TOP_LEFT}
         onPlacesChanged={onPlacesChanged}
+        bounds={{
+          east: -73.700272,
+          north: 40.915256,
+          south: 40.496044,
+          west: -74.255735,
+        }}
       >
         <input
           type="text"

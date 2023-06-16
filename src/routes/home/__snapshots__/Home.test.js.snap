@@ -248,6 +248,18 @@ exports[`Home renders children correctly 1`] = `
             Automatically read license plates from pictures/videos
           </label>
           <label
+            htmlFor="isReverseGeocodingEnabled"
+          >
+            <input
+              checked={true}
+              name="isReverseGeocodingEnabled"
+              onChange={[Function]}
+              type="checkbox"
+            />
+             
+            Automatically read addresses from pictures/videos
+          </label>
+          <label
             htmlFor="plate"
           >
             License/Medallion:

@@ -35,7 +35,6 @@ import omit from 'object.omit';
 import bufferToArrayBuffer from 'buffer-to-arraybuffer';
 import objectToFormData from 'object-to-formdata';
 import usStateNames from 'datasets-us-states-abbr-names';
-// import usStateNamesWithoutDC from 'datasets-us-states-abbr-names';
 import fileExtension from 'file-extension';
 import diceware from 'diceware-generator';
 import wordlist from 'diceware-wordlist-en-eff';
@@ -55,10 +54,6 @@ import { isImage, isVideo } from '../../isImage.js';
 import getNycTimezoneOffset from '../../timezone.js';
 import { getBoroNameMemoized } from '../../getBoroName.js';
 
-// const usStateNames = {
-//   ...usStateNames,
-//   DC: 'District of Columbia'
-// }
 usStateNames.DC = 'District of Columbia';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyDlwm2ykA0ohTXeVepQYvkcmdjz2M2CKEI';
@@ -224,7 +219,18 @@ async function extractPlate({
   }
 }
 
-async function extractLocation({ attachmentFile, attachmentArrayBuffer, ext }) {
+async function extractLocation({
+  attachmentFile,
+  attachmentArrayBuffer,
+  ext,
+  isReverseGeocodingEnabled,
+}) {
+  if (isReverseGeocodingEnabled === false) {
+    console.info('Reverse geolocation is disabled, skipping');
+
+    throw 'location'; // eslint-disable-line no-throw-literal
+  }
+
   try {
     if (isVideo({ ext })) {
       return extractLocationDateFromVideo({ attachmentArrayBuffer })[0];
@@ -310,6 +316,7 @@ class Home extends React.Component {
     const initialStatePersistent = {
       ...initialStatePerSubmission,
       isAlprEnabled: true,
+      isReverseGeocodingEnabled: true,
       isUserInfoOpen: true,
       isMapOpen: false,
     };
@@ -662,6 +669,7 @@ class Home extends React.Component {
                 attachmentFile,
                 attachmentArrayBuffer,
                 ext,
+                isReverseGeocodingEnabled: this.state.isReverseGeocodingEnabled,
               }).then(({ latitude, longitude }) => {
                 this.setCoords({
                   latitude,
@@ -1170,6 +1178,16 @@ class Home extends React.Component {
                   Automatically read license plates from pictures/videos
                 </label>
 
+                <label htmlFor="isReverseGeocodingEnabled">
+                  <input
+                    type="checkbox"
+                    checked={this.state.isReverseGeocodingEnabled}
+                    name="isReverseGeocodingEnabled"
+                    onChange={this.handleInputChange}
+                  />{' '}
+                  Automatically read addresses from pictures/videos
+                </label>
+
                 <label htmlFor="plate">
                   License/Medallion:
                   <input
@@ -1499,6 +1517,12 @@ const MyMapComponentPure = props => {
         ref={onSearchBoxMounted}
         controlPosition={window.google.maps.ControlPosition.TOP_LEFT}
         onPlacesChanged={onPlacesChanged}
+        bounds={{
+          east: -73.700272,
+          north: 40.915256,
+          south: 40.496044,
+          west: -74.255735,
+        }}
       >
         <input
           type="text"

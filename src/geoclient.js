@@ -2,7 +2,6 @@ import axios from 'axios';
 import axiosRetry from 'axios-retry';
 
 const { GEO_APP_KEY, GOOGLE_API_KEY } = process.env;
-console.log('XXX JMF', { GEO_APP_KEY, GOOGLE_API_KEY })
 
 // ported from https://github.com/jeffrono/Reported/blob/6d9e1d8c087ee53954037b4e80a72481a8425045/v2/enrich_functions.rb#L405-L411
 axiosRetry(axios, { retryDelay: () => 5000 });

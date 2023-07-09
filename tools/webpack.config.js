@@ -286,7 +286,7 @@ const config = {
 
   // Choose a developer tool to enhance debugging
   // https://webpack.js.org/configuration/devtool/#devtool
-  devtool: isDebug ? 'cheap-module-inline-source-map' : 'source-map',
+  devtool: isDebug ? 'inline-cheap-module-source-map' : 'source-map'
 };
 
 //

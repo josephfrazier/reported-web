@@ -103,7 +103,7 @@
     "babel-core": "^7.0.0-bridge.0",
     "babel-eslint": "^9.0.0",
     "babel-jest": "^23.6.0",
-    "babel-loader": "^8.0.0",
+    "babel-loader": "^9.1.3",
     "babel-plugin-transform-react-remove-prop-types": "^0.4.18",
     "browser-sync": "^2.24.7",
     "chokidar": "^2.0.4",
@@ -205,12 +205,12 @@
     "copy": "babel-node tools/run copy",
     "bundle": "babel-node tools/run bundle",
     "heroku-postbuild": "yarn run build --release",
-    "build": "NODE_OPTIONS=--openssl-legacy-provider babel-node tools/run build",
+    "build": "babel-node tools/run build",
     "build-stats": "yarn run build --release --analyse",
     "deploy": "babel-node tools/run deploy",
     "render": "babel-node tools/run render",
     "serve": "babel-node tools/run runServer",
-    "start": "NODE_OPTIONS=--openssl-legacy-provider babel-node tools/run start --inspect",
+    "start": "babel-node tools/run start --inspect",
     "localtunnel": "while true; do yarn lt --port 3000 --subdomain reported-web; done"
   }
 }

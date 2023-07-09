@@ -18,7 +18,7 @@ import PolygonLookup from 'polygon-lookup';
 import geolib from 'geolib';
 import d2d from 'degrees-to-direction';
 
-import withStyles from 'isomorphic-style-loader/lib/withStyles';
+import withStyles from 'isomorphic-style-loader/withStyles';
 import marx from 'marx-css/css/marx.css';
 import { getBoroNameMemoized } from '../../getBoroName.js';
 import s from './ElectriCitibikes.css';

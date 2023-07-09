@@ -286,7 +286,7 @@ const config = {
 
   // Choose a developer tool to enhance debugging
   // https://webpack.js.org/configuration/devtool/#devtool
-  devtool: isDebug ? 'inline-cheap-module-source-map' : 'source-map',
+  devtool: isDebug ? 'cheap-module-inline-source-map' : 'source-map',
 };
 
 //
@@ -356,15 +356,6 @@ const clientConfig = {
           // https://github.com/th0r/webpack-bundle-analyzer
           ...(isAnalyze ? [new BundleAnalyzerPlugin()] : []),
         ]),
-
-    // fix "process is not defined" error:
-    new webpack.ProvidePlugin({
-      process: 'process/browser',
-    }),
-
-    new webpack.ProvidePlugin({
-      Buffer: ['buffer', 'Buffer'],
-    }),
   ],
 
   // Move modules that occur in multiple entry chunks to a new entry chunk (the commons chunk).
@@ -380,16 +371,14 @@ const clientConfig = {
     },
   },
 
-  // Webpack mutates resolve object, so clone it to avoid issues
-  // https://github.com/webpack/webpack/issues/4817
-  resolve: {
-    ...config.resolve,
-    fallback: {
-      fs: false,
-      net: false,
-      tls: false,
-      buffer: require.resolve('buffer/'),
-    },
+  // Some libraries import Node modules but don't use them in the browser.
+  // Tell Webpack to provide empty mocks for them so importing them works.
+  // https://webpack.js.org/configuration/node/
+  // https://github.com/webpack/node-libs-browser/tree/master/mock
+  node: {
+    fs: 'empty',
+    net: 'empty',
+    tls: 'empty',
   },
 };
 
@@ -419,11 +408,6 @@ const serverConfig = {
   // https://github.com/webpack/webpack/issues/4817
   resolve: {
     ...config.resolve,
-    fallback: {
-      console: false,
-      process: false,
-      Buffer: false,
-    },
   },
 
   module: {
@@ -502,7 +486,10 @@ const serverConfig = {
   // Do not replace node globals with polyfills
   // https://webpack.js.org/configuration/node/
   node: {
+    console: false,
     global: false,
+    process: false,
+    Buffer: false,
     __filename: false,
     __dirname: false,
   },

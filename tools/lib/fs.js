@@ -9,7 +9,7 @@
 
 import fs from 'fs';
 import path from 'path';
-import glob from 'glob';
+import { glob } from 'glob';
 import mkdirp from 'mkdirp';
 import rimraf from 'rimraf';
 
@@ -54,20 +54,13 @@ export const copyFile = (source, target) =>
     rd.pipe(wr);
   });
 
-export const readDir = (pattern, options) =>
-  new Promise((resolve, reject) =>
-    glob(pattern, options, (err, result) =>
-      err ? reject(err) : resolve(result),
-    ),
-  );
-
 export const makeDir = name =>
   new Promise((resolve, reject) => {
     mkdirp(name, err => (err ? reject(err) : resolve()));
   });
 
 export const moveDir = async (source, target) => {
-  const dirs = await readDir('**/*.*', {
+  const dirs = await glob('**/*.*', {
     cwd: source,
     nosort: true,
     dot: true,
@@ -83,7 +76,7 @@ export const moveDir = async (source, target) => {
 };
 
 export const copyDir = async (source, target) => {
-  const dirs = await readDir('**/*.*', {
+  const dirs = await glob('**/*.*', {
     cwd: source,
     nosort: true,
     dot: true,
@@ -110,7 +103,6 @@ export default {
   writeFile,
   renameFile,
   copyFile,
-  readDir,
   makeDir,
   copyDir,
   moveDir,

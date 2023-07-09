@@ -151,7 +151,7 @@ async function getVideoScreenshot({ attachmentFile }) {
   video.currentTime = 0; // TODO let user choose time?
   await pEvent(video, 'seeked');
 
-  const buf = captureFrame(video);
+  const buf = captureFrame(video).image;
 
   // unload video element, to prevent memory leaks
   video.pause();

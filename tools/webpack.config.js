@@ -371,15 +371,14 @@ const clientConfig = {
     },
   },
 
-  // Webpack mutates resolve object, so clone it to avoid issues
-  // https://github.com/webpack/webpack/issues/4817
-  resolve: {
-    ...config.resolve,
-    fallback: {
-      fs: false,
-      net: false,
-      tls: false,
-    },
+  // Some libraries import Node modules but don't use them in the browser.
+  // Tell Webpack to provide empty mocks for them so importing them works.
+  // https://webpack.js.org/configuration/node/
+  // https://github.com/webpack/node-libs-browser/tree/master/mock
+  node: {
+    fs: 'empty',
+    net: 'empty',
+    tls: 'empty',
   },
 };
 
@@ -409,11 +408,6 @@ const serverConfig = {
   // https://github.com/webpack/webpack/issues/4817
   resolve: {
     ...config.resolve,
-    fallback: {
-      console: false,
-      process: false,
-      Buffer: false,
-    },
   },
 
   module: {
@@ -492,7 +486,10 @@ const serverConfig = {
   // Do not replace node globals with polyfills
   // https://webpack.js.org/configuration/node/
   node: {
+    console: false,
     global: false,
+    process: false,
+    Buffer: false,
     __filename: false,
     __dirname: false,
   },

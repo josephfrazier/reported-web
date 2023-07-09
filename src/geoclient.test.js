@@ -43,4 +43,15 @@ describe('processValidation', () => {
 
     expect(result).toMatchSnapshot();
   });
+
+  test('returns an error when no address is found after spiraling', async () => {
+    await expect(
+      processValidation({
+        lat: 40.6435893,
+        long: -73.7820064,
+      }),
+    ).rejects.toThrow(
+      'could not reverse-geocode lat/long pair (40.6435893, -73.7820064)',
+    );
+  }, 99999);
 });

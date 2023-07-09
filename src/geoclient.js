@@ -163,5 +163,11 @@ export async function processValidation({ lat, long }) {
     }
   }
 
+  if (response.length === 0) {
+    throw new Error(
+      `could not reverse-geocode lat/long pair (${lat}, ${long})`,
+    );
+  }
+
   return response[0];
 }

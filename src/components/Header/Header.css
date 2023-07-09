@@ -25,12 +25,12 @@
 }
 
 .brand {
-  color: color(var(--brand-color) lightness(+10%));
+  color: color(var(--brand-color) lightness(+10%)); /* stylelint-disable-line function-no-unknown */
   text-decoration: none;
   font-size: 1.75em; /* ~28px */
 }
 
-.brandTxt {
+.brandTxt { /* stylelint-disable-line selector-class-pattern */
   margin-left: 10px;
 }
 
@@ -38,7 +38,7 @@
   text-align: center;
 }
 
-.bannerTitle {
+.bannerTitle { /* stylelint-disable-line selector-class-pattern */
   margin: 0;
   padding: 10px;
   font-weight: normal;
@@ -46,7 +46,7 @@
   line-height: 1em;
 }
 
-.bannerDesc {
+.bannerDesc { /* stylelint-disable-line selector-class-pattern */
   padding: 0;
   color: rgb(255 255 255 / 50%);
   font-size: 1.25em;

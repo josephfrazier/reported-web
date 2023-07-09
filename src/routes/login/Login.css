@@ -23,7 +23,7 @@
   font-size: 1.25em;
 }
 
-.formGroup {
+.formGroup { /* stylelint-disable-line selector-class-pattern */
   margin-bottom: 15px;
 }
 
@@ -121,7 +121,7 @@
   fill: currentcolor;
 }
 
-.lineThrough {
+.lineThrough { /* stylelint-disable-line selector-class-pattern */
   position: relative;
   z-index: 1;
   display: block;
@@ -132,7 +132,7 @@
   font-size: 80%;
 }
 
-.lineThrough::before {
+.lineThrough::before { /* stylelint-disable-line selector-class-pattern */
   position: absolute;
   top: 50%;
   left: 50%;
@@ -145,7 +145,7 @@
   content: '';
 }
 
-.lineThrough::after {
+.lineThrough::after { /* stylelint-disable-line selector-class-pattern */
   position: absolute;
   top: 49%;
   z-index: -2;

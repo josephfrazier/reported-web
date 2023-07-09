@@ -41,7 +41,7 @@
     "geodist": "^0.2.1",
     "geolib": "^2.0.24",
     "global": "^4.3.2",
-    "heroku-self-ping": "^1.1.4",
+    "heroku-self-ping": "^2.0.1",
     "history": "^4.7.2",
     "http-delayed-response": "^0.0.4",
     "humanize-distance": "^1.0.9",

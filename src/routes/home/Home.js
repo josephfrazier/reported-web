@@ -40,6 +40,11 @@ import diceware from 'diceware-generator';
 import wordlist from 'diceware-wordlist-en-eff';
 import Modal from 'react-modal';
 import Dropzone from '@josephfrazier/react-dropzone';
+import { ToastContainer, toast } from 'react-toastify';
+import toastifyStyles from 'react-toastify/dist/ReactToastify.css';
+import { zip } from 'zip-array';
+import PolygonLookup from 'polygon-lookup';
+import { CSVLink } from 'react-csv';
 
 import marx from 'marx-css/css/marx.css';
 import s from './Home.css';
@@ -47,8 +52,14 @@ import s from './Home.css';
 import SubmissionDetails from '../../components/SubmissionDetails.js';
 import { isImage, isVideo } from '../../isImage.js';
 import getNycTimezoneOffset from '../../timezone.js';
+import { getBoroNameMemoized } from '../../getBoroName.js';
+
+usStateNames.DC = 'District of Columbia';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyDlwm2ykA0ohTXeVepQYvkcmdjz2M2CKEI';
+
+const objectMap = (obj, fn) =>
+  Object.fromEntries(Object.entries(obj).map(([k, v], i) => [k, fn(v, k, i)]));
 
 const debouncedProcessValidation = debounce(async ({ latitude, longitude }) => {
   const { data } = await axios.post('/api/process_validation', {
@@ -61,8 +72,12 @@ const debouncedProcessValidation = debounce(async ({ latitude, longitude }) => {
 const debouncedGetVehicleType = debounce(
   ({ plate, licenseState }) =>
     axios.get(`/getVehicleType/${plate}/${licenseState}`),
-  500,
+  1000,
 );
+
+const debouncedSaveStateToLocalStorage = debounce(self => {
+  self.saveStateToLocalStorage();
+}, 500);
 
 const defaultLatitude = 40.7128;
 const defaultLongitude = -74.006;
@@ -122,7 +137,100 @@ function extractLocationDateFromVideo({ attachmentArrayBuffer }) {
   return [{ latitude, longitude }, created.getTime()];
 }
 
-async function extractLocation({ attachmentFile, attachmentArrayBuffer, ext }) {
+// derived from https://github.com/feross/capture-frame/tree/06b8f5eac78fea305f7f577d1697ee3b6999c9a8#complete-example
+async function getVideoScreenshot({ attachmentFile }) {
+  const src = getBlobUrl(attachmentFile);
+  const video = document.createElement('video');
+
+  video.volume = 0;
+  video.setAttribute('crossOrigin', 'anonymous'); // optional, when cross-domain
+  video.src = src;
+  video.play();
+  await pEvent(video, 'canplay');
+
+  video.currentTime = 0; // TODO let user choose time?
+  await pEvent(video, 'seeked');
+
+  const buf = captureFrame(video).image;
+
+  // unload video element, to prevent memory leaks
+  video.pause();
+  video.src = '';
+  video.load();
+
+  return buf;
+}
+
+// adapted from https://www.bignerdranch.com/blog/dont-over-react/
+const attachmentPlates = new WeakMap();
+
+async function extractPlate({
+  attachmentFile,
+  attachmentBuffer,
+  ext,
+  isAlprEnabled,
+}) {
+  try {
+    console.time('extractPlate'); // eslint-disable-line no-console
+
+    if (isAlprEnabled === false) {
+      console.info('ALPR is disabled, skipping');
+      return { plate: '', licenseState: '' };
+    }
+
+    if (attachmentPlates.has(attachmentFile)) {
+      console.info(`found cached plate for ${attachmentFile.name}!`);
+      const result = attachmentPlates.get(attachmentFile);
+      return result;
+    }
+
+    if (isVideo({ ext })) {
+      // eslint-disable-next-line no-param-reassign
+      attachmentBuffer = await getVideoScreenshot({ attachmentFile });
+    } else if (!isImage({ ext })) {
+      throw new Error(`${attachmentFile.name} is not an image/video`);
+    }
+
+    console.time(`bufferToBlob(${attachmentFile.name})`); // eslint-disable-line no-console
+    const attachmentBlob = await blobUtil.arrayBufferToBlob(
+      bufferToArrayBuffer(attachmentBuffer),
+    );
+    console.timeEnd(`bufferToBlob(${attachmentFile.name})`); // eslint-disable-line no-console
+
+    const formData = new window.FormData();
+    formData.append('attachmentFile', attachmentBlob);
+    const { data } = await axios.post('/platerecognizer', formData);
+    const result = data.results[0];
+    try {
+      result.licenseState = result.region.code.split('-')[1].toUpperCase();
+    } catch (err) {
+      result.licenseState = null;
+    }
+    result.plate = result.plate.toUpperCase();
+
+    attachmentPlates.set(attachmentFile, result);
+    return result;
+  } catch (err) {
+    console.error(err.stack);
+
+    throw 'license plate'; // eslint-disable-line no-throw-literal
+  } finally {
+    console.timeEnd('extractPlate'); // eslint-disable-line no-console
+  }
+}
+
+async function extractLocation({
+  attachmentFile,
+  attachmentArrayBuffer,
+  ext,
+  isReverseGeocodingEnabled,
+}) {
+  if (isReverseGeocodingEnabled === false) {
+    console.info('Reverse geolocation is disabled, skipping');
+
+    throw 'location'; // eslint-disable-line no-throw-literal
+  }
+
   try {
     if (isVideo({ ext })) {
       return extractLocationDateFromVideo({ attachmentArrayBuffer })[0];
@@ -132,6 +240,10 @@ async function extractLocation({ attachmentFile, attachmentArrayBuffer, ext }) {
     }
 
     const { latitude, longitude } = await exifr.gps(attachmentArrayBuffer);
+    console.info(
+      'Extracted GPS latitude/longitude location from EXIF metadata',
+      { latitude, longitude },
+    );
 
     return { latitude, longitude };
   } catch (err) {
@@ -175,34 +287,7 @@ async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
   }
 }
 
-// derived from https://github.com/feross/capture-frame/tree/06b8f5eac78fea305f7f577d1697ee3b6999c9a8#complete-example
-async function getVideoScreenshot({ attachmentFile }) {
-  const src = getBlobUrl(attachmentFile);
-  const video = document.createElement('video');
-
-  video.volume = 0;
-  video.setAttribute('crossOrigin', 'anonymous'); // optional, when cross-domain
-  video.src = src;
-  video.play();
-  await pEvent(video, 'canplay');
-
-  video.currentTime = 0; // TODO let user choose time?
-  await pEvent(video, 'seeked');
-
-  const buf = captureFrame(video);
-
-  // unload video element, to prevent memory leaks
-  video.pause();
-  video.src = '';
-  video.load();
-
-  return buf;
-}
-
 class Home extends React.Component {
-  // adapted from https://www.bignerdranch.com/blog/dont-over-react/
-  attachmentPlates = new WeakMap();
-
   constructor(props) {
     super(props);
 
@@ -223,12 +308,15 @@ class Home extends React.Component {
       can_be_shared_publicly: false,
       latitude: defaultLatitude,
       longitude: defaultLongitude,
+      coordsAreInNyc: true,
       formatted_address: '',
       CreateDate: jsDateToCreateDate(new Date()),
     };
 
     const initialStatePersistent = {
       ...initialStatePerSubmission,
+      isAlprEnabled: true,
+      isReverseGeocodingEnabled: true,
       isUserInfoOpen: true,
       isMapOpen: false,
     };
@@ -236,13 +324,13 @@ class Home extends React.Component {
     const initialStatePerSession = {
       attachmentData: [],
 
-      modalText: null,
       isPasswordRevealed: false,
       isUserInfoSaving: false,
       isSubmitting: false,
       plateSuggestion: '',
       vehicleInfoComponent: <br />,
       submissions: [],
+      addressProvenance: '',
     };
 
     const initialState = {
@@ -262,14 +350,18 @@ class Home extends React.Component {
     if (this.state.attachmentData.length === 0 || !this.state.CreateDate) {
       this.setCreateDate({ millisecondsSinceEpoch: Date.now() });
     }
-    geolocate().then(({ coords }) => {
+    geolocate().then(({ coords: { latitude, longitude } }) => {
       // if there's no attachments or a location couldn't be extracted, just use here
       if (
         this.state.attachmentData.length === 0 ||
         (this.state.latitude === defaultLatitude &&
           this.state.longitude === defaultLongitude)
       ) {
-        this.setCoords(coords);
+        this.setCoords({
+          latitude,
+          longitude,
+          addressProvenance: '(from device)',
+        });
       }
     });
 
@@ -347,7 +439,9 @@ class Home extends React.Component {
     return Object.keys(this.initialStatePersistent);
   }
 
-  setCoords = ({ latitude, longitude } = {}) => {
+  setCoords = (
+    { latitude, longitude, addressProvenance } = { addressProvenance: '' },
+  ) => {
     if (!latitude || !longitude) {
       console.error('latitude and/or longitude is missing');
       return;
@@ -356,7 +450,31 @@ class Home extends React.Component {
       latitude,
       longitude,
       formatted_address: 'Finding Address...',
+      addressProvenance,
     });
+
+    // show error message if location is outside NYC
+    console.time('new PolygonLookup'); // eslint-disable-line no-console
+    const lookup = new PolygonLookup(
+      this.props.boroughBoundariesFeatureCollection,
+    );
+    console.timeEnd('new PolygonLookup'); // eslint-disable-line no-console
+    const end = { latitude, longitude };
+    const BoroName = getBoroNameMemoized({ lookup, end });
+    if (BoroName === '(unknown borough)') {
+      const errorMessage = `latitude/longitude (${latitude}, ${longitude}) is outside NYC. Please select a location within NYC.`;
+      this.setState({
+        formatted_address: errorMessage,
+        coordsAreInNyc: false,
+      });
+      this.notifyError(errorMessage);
+
+      return;
+    }
+    this.setState({
+      coordsAreInNyc: true,
+    });
+
     debouncedProcessValidation({ latitude, longitude }).then(data => {
       this.setState({
         formatted_address: data.google_response.results[0].formatted_address,
@@ -386,7 +504,7 @@ class Home extends React.Component {
       plate,
       licenseState,
       vehicleInfoComponent: plate ? (
-        `Searching for ${plate} in ${usStateNames[licenseState]}`
+        `Looking up make/model for ${plate} in ${usStateNames[licenseState]}`
       ) : (
         <br />
       ),
@@ -409,10 +527,12 @@ class Home extends React.Component {
         if (
           this.state.submissions.some(
             submission =>
-              submission.license === plate && submission.state === licenseState,
+              (submission.license === plate ||
+                submission.medallionNo === plate) &&
+              submission.state === licenseState,
           )
         ) {
-          this.alert(
+          this.notifyWarning(
             <p>
               You have already submitted a report for {plate} in {licenseState},
               are you sure you want to submit another?
@@ -452,8 +572,8 @@ class Home extends React.Component {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Could not find {plate} in {usStateNames[licenseState]}, click
-                here for details
+                Could not look up make/model of {plate} in{' '}
+                {usStateNames[licenseState]}, click here for details
               </a>
             ),
           });
@@ -505,49 +625,76 @@ class Home extends React.Component {
   };
 
   handleAttachmentData = async ({ attachmentData }) => {
-    this.setState(state => ({
-      attachmentData: state.attachmentData.concat(attachmentData),
-    }));
+    this.setState(
+      state => ({
+        attachmentData: state.attachmentData.concat(attachmentData),
+      }),
+      async () => {
+        const listsOfExtractions = await Promise.all(
+          this.state.attachmentData.map(async attachmentFile => {
+            // eslint-disable-next-line no-await-in-loop
+            const {
+              attachmentBuffer,
+              attachmentArrayBuffer,
+            } = await blobToBuffer({
+              attachmentFile,
+            });
 
-    for (const attachmentFile of attachmentData) {
-      try {
-        // eslint-disable-next-line no-await-in-loop
-        const { attachmentBuffer, attachmentArrayBuffer } = await blobToBuffer({
-          attachmentFile,
-        });
+            // eslint-disable-next-line no-await-in-loop
+            const { ext } = await FileType.fromBuffer(attachmentBuffer);
 
-        // eslint-disable-next-line no-await-in-loop
-        const { ext } = await FileType.fromBuffer(attachmentBuffer);
+            return Promise.allSettled([
+              extractPlate({
+                attachmentFile,
+                attachmentBuffer,
+                ext,
+                isAlprEnabled: this.state.isAlprEnabled,
+              }).then(result => {
+                if (
+                  this.state.plate === '' &&
+                  document.activeElement !== this.plateRef.current
+                ) {
+                  this.setLicensePlate(result);
+                }
+                this.setState({
+                  plateSuggestion: result.plate,
+                });
+              }),
+              extractDate({
+                attachmentFile,
+                attachmentArrayBuffer,
+                ext,
+              }).then(this.setCreateDate),
+              extractLocation({
+                attachmentFile,
+                attachmentArrayBuffer,
+                ext,
+                isReverseGeocodingEnabled: this.state.isReverseGeocodingEnabled,
+              }).then(({ latitude, longitude }) => {
+                this.setCoords({
+                  latitude,
+                  longitude,
+                  addressProvenance: '(extracted from picture/video)',
+                });
+              }),
+            ]);
+          }),
+        );
 
-        // eslint-disable-next-line no-await-in-loop
-        await Promise.allSettled([
-          this.extractPlate({ attachmentFile, attachmentBuffer, ext }),
-          extractDate({
-            attachmentFile,
-            attachmentArrayBuffer,
-            ext,
-          }).then(this.setCreateDate),
-          extractLocation({
-            attachmentFile,
-            attachmentArrayBuffer,
-            ext,
-          }).then(this.setCoords),
-        ]).then(values => {
-          const rejected = values.filter(v => v.status === 'rejected');
+        const groupedByExtractionType = zip(...listsOfExtractions);
+        const rejected = groupedByExtractionType
+          .filter(results => results.every(r => r.status === 'rejected'))
+          .map(extractions => extractions[0]);
 
-          if (rejected.length === 0) {
-            return;
-          }
+        if (rejected.length === 0) {
+          return;
+        }
 
-          throw rejected.map(v => v.reason).join(', ');
-        });
-      } catch (missingValuesString) {
-        const hasMultipleAttachments = attachmentData.length > 1;
-        const fileCopy = hasMultipleAttachments
-          ? 'one of the files, but they may have been found in other files.'
-          : 'the file.';
+        const missingValuesString = rejected.map(v => v.reason).join(', ');
+        const hasMultipleAttachments = this.state.attachmentData.length > 1;
+        const fileCopy = hasMultipleAttachments ? 'the files.' : 'the file.';
 
-        this.alert(
+        this.notifyWarning(
           <React.Fragment>
             <p>
               Could not extract the {missingValuesString} from {fileCopy} Please
@@ -555,8 +702,8 @@ class Home extends React.Component {
             </p>
           </React.Fragment>,
         );
-      }
-    }
+      },
+    );
   };
 
   handleInputChange = event => {
@@ -573,70 +720,26 @@ class Home extends React.Component {
       {
         [name]: value,
       },
-      () => this.saveStateToLocalStorage(),
+      () => debouncedSaveStateToLocalStorage(this),
     );
-  };
-
-  // adapted from https://github.com/openalpr/cloudapi/tree/8141c1ba57f03df4f53430c6e5e389b39714d0e0/javascript#getting-started
-  extractPlate = async ({ attachmentFile, attachmentBuffer, ext }) => {
-    console.time('extractPlate'); // eslint-disable-line no-console
-
-    try {
-      if (this.attachmentPlates.has(attachmentFile)) {
-        const result = this.attachmentPlates.get(attachmentFile);
-        return result;
-      }
-
-      if (isVideo({ ext })) {
-        // eslint-disable-next-line no-param-reassign
-        attachmentBuffer = await getVideoScreenshot({ attachmentFile });
-      } else if (!isImage({ ext })) {
-        throw new Error(`${attachmentFile.name} is not an image/video`);
-      }
-
-      console.time(`bufferToBlob(${attachmentFile.name})`); // eslint-disable-line no-console
-      const attachmentBlob = await blobUtil.arrayBufferToBlob(
-        bufferToArrayBuffer(attachmentBuffer),
-      );
-      console.timeEnd(`bufferToBlob(${attachmentFile.name})`); // eslint-disable-line no-console
-
-      const formData = new window.FormData();
-      formData.append('attachmentFile', attachmentBlob);
-      const { data } = await axios.post('/openalpr', formData);
-      const result = data.results[0];
-      result.licenseState = result.region.toUpperCase();
-      if (
-        this.state.plate === '' &&
-        document.activeElement !== this.plateRef.current
-      ) {
-        this.setLicensePlate(result);
-      }
-      this.setState({
-        plateSuggestion: result.plate,
-      });
-      this.attachmentPlates.set(attachmentFile, result);
-      return result;
-    } catch (err) {
-      console.error(err.stack);
-
-      throw 'license plate'; // eslint-disable-line no-throw-literal
-    } finally {
-      console.timeEnd('extractPlate'); // eslint-disable-line no-console
-    }
   };
 
   handleAxiosError = error =>
     Promise.reject(error)
       .catch(err => {
-        this.alert(`Error: ${err.response.data.error.message}`);
+        this.notifyError(`Error: ${err.response.data.error.message}`);
       })
       .catch(err => {
         console.error(err);
       });
 
-  alert = modalText => this.setState({ modalText });
+  notifySuccess = notificationContent => toast.success(notificationContent);
 
-  closeAlert = () => this.setState({ modalText: null });
+  notifyInfo = notificationContent => toast.info(notificationContent);
+
+  notifyWarning = notificationContent => toast.warn(notificationContent);
+
+  notifyError = notificationContent => toast.error(notificationContent);
 
   loadPreviousSubmissions = () => {
     axios
@@ -655,7 +758,6 @@ class Home extends React.Component {
         onDrop={attachmentData => {
           this.handleAttachmentData({ attachmentData });
         }}
-        accept="image/*, video/*"
         style={{
           position: 'fixed',
           top: 0,
@@ -679,16 +781,18 @@ class Home extends React.Component {
               </a>
             </h1>
 
-            <Modal
-              isOpen={!!this.state.modalText}
-              onRequestClose={this.closeAlert}
-            >
-              {this.state.modalText}
-              <br />
-              <button type="button" onClick={this.closeAlert}>
-                Close
-              </button>
-            </Modal>
+            <ToastContainer
+              position="top-center"
+              autoClose={5000}
+              hideProgressBar={false}
+              newestOnTop={false}
+              closeOnClick
+              rtl={false}
+              pauseOnFocusLoss
+              draggable
+              pauseOnHover
+              theme="dark"
+            />
 
             {/* TODO use tabbed interface instead of toggling <details> ? */}
             <details
@@ -779,7 +883,7 @@ class Home extends React.Component {
                             })
                             .then(() => {
                               const message = `Please check ${email} to reset your password.`;
-                              this.alert(message);
+                              this.notifyInfo(message);
                             })
                             .catch(this.handleAxiosError);
                         }}
@@ -904,7 +1008,9 @@ class Home extends React.Component {
                   this.state.latitude === defaultLatitude &&
                   this.state.longitude === defaultLongitude
                 ) {
-                  this.alert('Please provide the location of the incident');
+                  this.notifyError(
+                    'Please provide the location of the incident',
+                  );
                   return;
                 }
 
@@ -962,7 +1068,7 @@ class Home extends React.Component {
                       reportDescription: '',
                     }));
                     this.setLicensePlate({ plate: '', licenseState: 'NY' });
-                    this.alert(
+                    this.notifySuccess(
                       <React.Fragment>
                         <p>Thanks for your submission!</p>
                         <p>
@@ -991,7 +1097,6 @@ class Home extends React.Component {
             >
               <fieldset disabled={this.state.isSubmitting}>
                 <FileReaderInput
-                  accept="image/*"
                   multiple
                   as="buffer"
                   onChange={this.handleAttachmentInput}
@@ -1000,20 +1105,7 @@ class Home extends React.Component {
                     margin: '1px',
                   }}
                 >
-                  <button type="button">Add picture(s)</button>
-                </FileReaderInput>
-
-                <FileReaderInput
-                  accept="video/*"
-                  multiple
-                  as="buffer"
-                  onChange={this.handleAttachmentInput}
-                  style={{
-                    float: 'left',
-                    margin: '1px',
-                  }}
-                >
-                  <button type="button">Add video(s)</button>
+                  <button type="button">Add pictures/videos</button>
                 </FileReaderInput>
 
                 <div
@@ -1076,6 +1168,26 @@ class Home extends React.Component {
                   })}
                 </div>
 
+                <label htmlFor="isAlprEnabled">
+                  <input
+                    type="checkbox"
+                    checked={this.state.isAlprEnabled}
+                    name="isAlprEnabled"
+                    onChange={this.handleInputChange}
+                  />{' '}
+                  Automatically read license plates from pictures/videos
+                </label>
+
+                <label htmlFor="isReverseGeocodingEnabled">
+                  <input
+                    type="checkbox"
+                    checked={this.state.isReverseGeocodingEnabled}
+                    name="isReverseGeocodingEnabled"
+                    onChange={this.handleInputChange}
+                  />{' '}
+                  Automatically read addresses from pictures/videos
+                </label>
+
                 <label htmlFor="plate">
                   License/Medallion:
                   <input
@@ -1110,11 +1222,15 @@ class Home extends React.Component {
                       });
                     }}
                   >
-                    {Object.entries(usStateNames).map(([abbr, name]) => (
-                      <option key={abbr} value={abbr}>
-                        {name}
-                      </option>
-                    ))}
+                    {Object.entries(usStateNames)
+                      .sort(([, name1], [, name2]) =>
+                        name1.toUpperCase().localeCompare(name2.toUpperCase()),
+                      )
+                      .map(([abbr, name]) => (
+                        <option key={abbr} value={abbr}>
+                          {name}
+                        </option>
+                      ))}
                   </select>
                   {this.state.vehicleInfoComponent}
                 </label>
@@ -1135,7 +1251,7 @@ class Home extends React.Component {
                 </label>
 
                 <label htmlFor="where">
-                  Where:
+                  Where: {this.state.addressProvenance}
                   <br />
                   <button
                     type="button"
@@ -1153,6 +1269,9 @@ class Home extends React.Component {
                 </label>
 
                 <Modal
+                  parentSelector={() =>
+                    document.querySelector(`.${s.root}`) || document.body
+                  }
                   isOpen={this.state.isMapOpen}
                   onRequestClose={() => this.setState({ isMapOpen: false })}
                   style={{
@@ -1173,7 +1292,11 @@ class Home extends React.Component {
                     onCenterChanged={() => {
                       const latitude = this.mapRef.getCenter().lat();
                       const longitude = this.mapRef.getCenter().lng();
-                      this.setCoords({ latitude, longitude });
+                      this.setCoords({
+                        latitude,
+                        longitude,
+                        addressProvenance: '(manually set)',
+                      });
                     }}
                     onSearchBoxMounted={ref => {
                       this.searchBox = ref;
@@ -1195,6 +1318,7 @@ class Home extends React.Component {
                       this.setCoords({
                         latitude,
                         longitude,
+                        addressProvenance: '(manually set)',
                       });
                     }}
                   />
@@ -1206,11 +1330,15 @@ class Home extends React.Component {
                     }}
                     onClick={() => {
                       geolocate()
-                        .then(({ coords }) => {
-                          this.setCoords(coords);
+                        .then(({ coords: { latitude, longitude } }) => {
+                          this.setCoords({
+                            latitude,
+                            longitude,
+                            addressProvenance: '(from device)',
+                          });
                         })
                         .catch(err => {
-                          this.alert(err.message);
+                          this.notifyError(err.message);
                           console.error(err);
                         });
                     }}
@@ -1274,7 +1402,9 @@ class Home extends React.Component {
                 ) : (
                   <button
                     type="submit"
-                    disabled={this.state.isSubmitting}
+                    disabled={
+                      this.state.isSubmitting || !this.state.coordsAreInNyc
+                    }
                     style={{
                       width: '100%',
                     }}
@@ -1296,15 +1426,31 @@ class Home extends React.Component {
               }}
             >
               <summary>
-                Previous Submissions
-                {this.state.submissions.length > 0 &&
-                  ` (${this.state.submissions.length})`}
+                Previous Submissions (
+                {this.state.submissions.length > 0
+                  ? this.state.submissions.length
+                  : 'loading...'}
+                )
               </summary>
 
-              <ul>
-                {this.state.submissions.length === 0
-                  ? 'Loading submissions...'
-                  : this.state.submissions.map(submission => (
+              {this.state.submissions.length === 0 ? (
+                'Loading submissions...'
+              ) : (
+                <>
+                  <CSVLink
+                    separator="	"
+                    data={this.state.submissions.map(submission =>
+                      objectMap(submission, value =>
+                        typeof value === 'object'
+                          ? JSON.stringify(value)
+                          : value,
+                      ),
+                    )}
+                  >
+                    Download as CSV
+                  </CSVLink>
+                  <ul>
+                    {this.state.submissions.map(submission => (
                       <li key={submission.objectId}>
                         <SubmissionDetails
                           submission={submission}
@@ -1312,7 +1458,9 @@ class Home extends React.Component {
                         />
                       </li>
                     ))}
-              </ul>
+                  </ul>
+                </>
+              )}
             </details>
 
             <div style={{ float: 'right' }}>
@@ -1344,6 +1492,7 @@ class Home extends React.Component {
 
 Home.propTypes = {
   typeofcomplaintValues: PropTypes.arrayOf(PropTypes.string).isRequired,
+  boroughBoundariesFeatureCollection: PropTypes.object.isRequired,
 };
 
 const MyMapComponentPure = props => {
@@ -1368,6 +1517,12 @@ const MyMapComponentPure = props => {
         ref={onSearchBoxMounted}
         controlPosition={window.google.maps.ControlPosition.TOP_LEFT}
         onPlacesChanged={onPlacesChanged}
+        bounds={{
+          east: -73.700272,
+          north: 40.915256,
+          south: 40.496044,
+          west: -74.255735,
+        }}
       >
         <input
           type="text"
@@ -1381,7 +1536,7 @@ const MyMapComponentPure = props => {
             padding: `0 12px`,
             borderRadius: `3px`,
             boxShadow: `0 2px 6px rgba(0, 0, 0, 0.3)`,
-            fontSize: `14px`,
+            fontSize: `16px`,
             outline: `none`,
             textOverflow: `ellipses`,
           }}
@@ -1416,4 +1571,4 @@ const MyMapComponent = compose(
   withGoogleMap,
 )(MyMapComponentPure);
 
-export default withStyles(marx, s)(withLocalStorage(Home));
+export default withStyles(marx, s, toastifyStyles)(withLocalStorage(Home));

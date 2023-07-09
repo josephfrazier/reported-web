@@ -17,10 +17,10 @@ import strftime from 'strftime';
 import PolygonLookup from 'polygon-lookup';
 import geolib from 'geolib';
 import d2d from 'degrees-to-direction';
-import mem from 'mem';
 
 import withStyles from 'isomorphic-style-loader/lib/withStyles';
 import marx from 'marx-css/css/marx.css';
+import { getBoroNameMemoized } from '../../getBoroName.js';
 import s from './ElectriCitibikes.css';
 
 class ElectriCitibikes extends React.Component {
@@ -106,21 +106,6 @@ function getMapUrl({ station, latitude, longitude }) {
 
   return `https://www.google.com/maps/search/?api=1&query=${station.latitude}%2C${station.longitude}`;
 }
-
-function getBoroName({ lookup, end }) {
-  const boroughPolygon = (lookup &&
-    lookup.search(end.longitude, end.latitude)) || {
-    properties: {
-      BoroName: '(unknown borough)',
-    },
-  };
-
-  return boroughPolygon.properties.BoroName;
-}
-
-const getBoroNameMemoized = mem(getBoroName, {
-  cacheKey: ({ lookup, end }) => !!lookup + JSON.stringify(end),
-});
 
 function getCompassBearing({ lookup, start, end }) {
   let rhumbLineBearing = geolib.getRhumbLineBearing(start, end);

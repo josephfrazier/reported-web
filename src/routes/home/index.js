@@ -11,6 +11,7 @@ import React from 'react';
 import sortBy from 'lodash.sortby';
 import Home from './Home';
 import Layout from '../../components/Layout';
+import boroughBoundariesFeatureCollection from '../../../public/borough-boundaries-clipped-to-shoreline.geo.json';
 
 async function action({ fetch }) {
   // get complaint categories from server
@@ -25,7 +26,12 @@ async function action({ fetch }) {
     chunks: ['home'],
     component: (
       <Layout>
-        <Home typeofcomplaintValues={typeofcomplaintValues} />
+        <Home
+          typeofcomplaintValues={typeofcomplaintValues}
+          boroughBoundariesFeatureCollection={
+            boroughBoundariesFeatureCollection
+          }
+        />
       </Layout>
     ),
   };

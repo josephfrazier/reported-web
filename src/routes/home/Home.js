@@ -43,6 +43,8 @@ import Dropzone from '@josephfrazier/react-dropzone';
 import { ToastContainer, toast } from 'react-toastify';
 import toastifyStyles from 'react-toastify/dist/ReactToastify.css';
 import { zip } from 'zip-array';
+import PolygonLookup from 'polygon-lookup';
+import { CSVLink } from 'react-csv';
 
 import marx from 'marx-css/css/marx.css';
 import s from './Home.css';
@@ -50,8 +52,14 @@ import s from './Home.css';
 import SubmissionDetails from '../../components/SubmissionDetails.js';
 import { isImage, isVideo } from '../../isImage.js';
 import getNycTimezoneOffset from '../../timezone.js';
+import { getBoroNameMemoized } from '../../getBoroName.js';
+
+usStateNames.DC = 'District of Columbia';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyDlwm2ykA0ohTXeVepQYvkcmdjz2M2CKEI';
+
+const objectMap = (obj, fn) =>
+  Object.fromEntries(Object.entries(obj).map(([k, v], i) => [k, fn(v, k, i)]));
 
 const debouncedProcessValidation = debounce(async ({ latitude, longitude }) => {
   const { data } = await axios.post('/api/process_validation', {
@@ -64,7 +72,7 @@ const debouncedProcessValidation = debounce(async ({ latitude, longitude }) => {
 const debouncedGetVehicleType = debounce(
   ({ plate, licenseState }) =>
     axios.get(`/getVehicleType/${plate}/${licenseState}`),
-  500,
+  1000,
 );
 
 const debouncedSaveStateToLocalStorage = debounce(self => {
@@ -211,7 +219,18 @@ async function extractPlate({
   }
 }
 
-async function extractLocation({ attachmentFile, attachmentArrayBuffer, ext }) {
+async function extractLocation({
+  attachmentFile,
+  attachmentArrayBuffer,
+  ext,
+  isReverseGeocodingEnabled,
+}) {
+  if (isReverseGeocodingEnabled === false) {
+    console.info('Reverse geolocation is disabled, skipping');
+
+    throw 'location'; // eslint-disable-line no-throw-literal
+  }
+
   try {
     if (isVideo({ ext })) {
       return extractLocationDateFromVideo({ attachmentArrayBuffer })[0];
@@ -289,6 +308,7 @@ class Home extends React.Component {
       can_be_shared_publicly: false,
       latitude: defaultLatitude,
       longitude: defaultLongitude,
+      coordsAreInNyc: true,
       formatted_address: '',
       CreateDate: jsDateToCreateDate(new Date()),
     };
@@ -296,6 +316,7 @@ class Home extends React.Component {
     const initialStatePersistent = {
       ...initialStatePerSubmission,
       isAlprEnabled: true,
+      isReverseGeocodingEnabled: true,
       isUserInfoOpen: true,
       isMapOpen: false,
     };
@@ -431,6 +452,29 @@ class Home extends React.Component {
       formatted_address: 'Finding Address...',
       addressProvenance,
     });
+
+    // show error message if location is outside NYC
+    console.time('new PolygonLookup'); // eslint-disable-line no-console
+    const lookup = new PolygonLookup(
+      this.props.boroughBoundariesFeatureCollection,
+    );
+    console.timeEnd('new PolygonLookup'); // eslint-disable-line no-console
+    const end = { latitude, longitude };
+    const BoroName = getBoroNameMemoized({ lookup, end });
+    if (BoroName === '(unknown borough)') {
+      const errorMessage = `latitude/longitude (${latitude}, ${longitude}) is outside NYC. Please select a location within NYC.`;
+      this.setState({
+        formatted_address: errorMessage,
+        coordsAreInNyc: false,
+      });
+      this.notifyError(errorMessage);
+
+      return;
+    }
+    this.setState({
+      coordsAreInNyc: true,
+    });
+
     debouncedProcessValidation({ latitude, longitude }).then(data => {
       this.setState({
         formatted_address: data.google_response.results[0].formatted_address,
@@ -625,6 +669,7 @@ class Home extends React.Component {
                 attachmentFile,
                 attachmentArrayBuffer,
                 ext,
+                isReverseGeocodingEnabled: this.state.isReverseGeocodingEnabled,
               }).then(({ latitude, longitude }) => {
                 this.setCoords({
                   latitude,
@@ -1133,6 +1178,16 @@ class Home extends React.Component {
                   Automatically read license plates from pictures/videos
                 </label>
 
+                <label htmlFor="isReverseGeocodingEnabled">
+                  <input
+                    type="checkbox"
+                    checked={this.state.isReverseGeocodingEnabled}
+                    name="isReverseGeocodingEnabled"
+                    onChange={this.handleInputChange}
+                  />{' '}
+                  Automatically read addresses from pictures/videos
+                </label>
+
                 <label htmlFor="plate">
                   License/Medallion:
                   <input
@@ -1167,11 +1222,15 @@ class Home extends React.Component {
                       });
                     }}
                   >
-                    {Object.entries(usStateNames).map(([abbr, name]) => (
-                      <option key={abbr} value={abbr}>
-                        {name}
-                      </option>
-                    ))}
+                    {Object.entries(usStateNames)
+                      .sort(([, name1], [, name2]) =>
+                        name1.toUpperCase().localeCompare(name2.toUpperCase()),
+                      )
+                      .map(([abbr, name]) => (
+                        <option key={abbr} value={abbr}>
+                          {name}
+                        </option>
+                      ))}
                   </select>
                   {this.state.vehicleInfoComponent}
                 </label>
@@ -1210,6 +1269,9 @@ class Home extends React.Component {
                 </label>
 
                 <Modal
+                  parentSelector={() =>
+                    document.querySelector(`.${s.root}`) || document.body
+                  }
                   isOpen={this.state.isMapOpen}
                   onRequestClose={() => this.setState({ isMapOpen: false })}
                   style={{
@@ -1340,7 +1402,9 @@ class Home extends React.Component {
                 ) : (
                   <button
                     type="submit"
-                    disabled={this.state.isSubmitting}
+                    disabled={
+                      this.state.isSubmitting || !this.state.coordsAreInNyc
+                    }
                     style={{
                       width: '100%',
                     }}
@@ -1362,15 +1426,31 @@ class Home extends React.Component {
               }}
             >
               <summary>
-                Previous Submissions
-                {this.state.submissions.length > 0 &&
-                  ` (${this.state.submissions.length})`}
+                Previous Submissions (
+                {this.state.submissions.length > 0
+                  ? this.state.submissions.length
+                  : 'loading...'}
+                )
               </summary>
 
-              <ul>
-                {this.state.submissions.length === 0
-                  ? 'Loading submissions...'
-                  : this.state.submissions.map(submission => (
+              {this.state.submissions.length === 0 ? (
+                'Loading submissions...'
+              ) : (
+                <>
+                  <CSVLink
+                    separator="	"
+                    data={this.state.submissions.map(submission =>
+                      objectMap(submission, value =>
+                        typeof value === 'object'
+                          ? JSON.stringify(value)
+                          : value,
+                      ),
+                    )}
+                  >
+                    Download as CSV
+                  </CSVLink>
+                  <ul>
+                    {this.state.submissions.map(submission => (
                       <li key={submission.objectId}>
                         <SubmissionDetails
                           submission={submission}
@@ -1378,7 +1458,9 @@ class Home extends React.Component {
                         />
                       </li>
                     ))}
-              </ul>
+                  </ul>
+                </>
+              )}
             </details>
 
             <div style={{ float: 'right' }}>
@@ -1410,6 +1492,7 @@ class Home extends React.Component {
 
 Home.propTypes = {
   typeofcomplaintValues: PropTypes.arrayOf(PropTypes.string).isRequired,
+  boroughBoundariesFeatureCollection: PropTypes.object.isRequired,
 };
 
 const MyMapComponentPure = props => {
@@ -1434,6 +1517,12 @@ const MyMapComponentPure = props => {
         ref={onSearchBoxMounted}
         controlPosition={window.google.maps.ControlPosition.TOP_LEFT}
         onPlacesChanged={onPlacesChanged}
+        bounds={{
+          east: -73.700272,
+          north: 40.915256,
+          south: 40.496044,
+          west: -74.255735,
+        }}
       >
         <input
           type="text"

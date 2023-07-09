@@ -62,7 +62,6 @@ export const makeDir = name =>
 export const moveDir = async (source, target) => {
   const dirs = await glob('**/*.*', {
     cwd: source,
-    nosort: true,
     dot: true,
   });
   await Promise.all(
@@ -78,7 +77,6 @@ export const moveDir = async (source, target) => {
 export const copyDir = async (source, target) => {
   const dirs = await glob('**/*.*', {
     cwd: source,
-    nosort: true,
     dot: true,
   });
   await Promise.all(

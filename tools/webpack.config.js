@@ -44,9 +44,6 @@ const minimizeCssOptions = {
 // -----------------------------------------------------------------------------
 
 const config = {
-  // experiments: {
-  //   futureDefaults: true
-  // },
   context: ROOT_DIR,
 
   mode: isDebug ? 'development' : 'production',
@@ -59,7 +56,6 @@ const config = {
     chunkFilename: isDebug
       ? '[name].chunk.js'
       : '[name].[chunkhash:8].chunk.js',
-    // hashFunction: 'xxhash64',
     // Point sourcemap entries to original disk location (format as URL on Windows)
     devtoolModuleFilenameTemplate: info =>
       path.resolve(info.absoluteResourcePath).replace(/\\/g, '/'),
@@ -290,10 +286,7 @@ const config = {
 
   // Choose a developer tool to enhance debugging
   // https://webpack.js.org/configuration/devtool/#devtool
-  // devtool: isDebug ? 'cheap-module-inline-source-map' : 'source-map',
-  // devtool: isDebug ? 'inline-cheap-module-source-map' : 'source-map',
-  // devtool: isDebug ? 'eval-source-map' : 'source-map',
-  devtool: 'source-map',
+  devtool: isDebug ? 'cheap-module-inline-source-map' : 'source-map',
 };
 
 //

@@ -44,13 +44,12 @@ describe('processValidation', () => {
     expect(result).toMatchSnapshot();
   });
 
-  test('returns the right object around 0,0', async () => {
-    await expect(processValidation({
-      lat: 0,
-      long: 0,
-    })).resolves
-    // })).rejects.toEqual({
-    //   error: 'XXX JMF could not reverse-geocode lat/long pair'
-    // })
-  });
+  test('returns an error when no address is found after spiraling', async () => {
+    await expect(
+      processValidation({
+        lat: 0,
+        long: 0,
+      }),
+    ).rejects.toThrow('could not reverse-geocode lat/long pair (0, 0)');
+  }, 10000);
 });

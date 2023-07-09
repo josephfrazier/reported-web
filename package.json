@@ -33,7 +33,7 @@
     "dotenv": "^5.0.1",
     "execall": "^1.0.0",
     "exifr": "^6.0.0",
-    "express": "^4.16.3",
+    "express": "^4.17.3",
     "file-extension": "^4.0.5",
     "file-type": "^16.2.0",
     "force-ssl-heroku": "^1.0.2",

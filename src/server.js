@@ -43,7 +43,9 @@ import router from './router';
 import chunks from './chunk-manifest.json'; // eslint-disable-line import/no-unresolved
 import config from './config';
 
-require('dotenv').config();
+const dotenvConfig = require('dotenv').config();
+console.log('XXX JMF dotenvConfig', { dotenvConfig });
+console.log('XXX JMF process.env', {...process.env});
 
 process.on('unhandledRejection', (reason, p) => {
   console.error('Unhandled Rejection at:', p, 'reason:', reason);

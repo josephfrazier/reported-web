@@ -35,7 +35,7 @@
     "exifr": "^6.0.0",
     "express": "^4.17.3",
     "file-extension": "^4.0.5",
-    "file-type": "^16.2.0",
+    "file-type": "^16.5.4",
     "force-ssl-heroku": "^1.0.2",
     "form-data": "^4.0.0",
     "geodist": "^0.2.1",

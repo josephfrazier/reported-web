@@ -129,7 +129,7 @@
     "jest": "^23.6.0",
     "jest-mock-now": "^1.2.0",
     "localtunnel": "^1.9.1",
-    "markdown-it": "^8.4.2",
+    "markdown-it": "^12.3.2",
     "mkdirp": "^0.5.1",
     "mongodb-runner": "^3.6.1",
     "null-loader": "^0.1.1",

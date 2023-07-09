@@ -361,6 +361,10 @@ const clientConfig = {
     new webpack.ProvidePlugin({
       process: 'process/browser',
     }),
+
+    new webpack.ProvidePlugin({
+      Buffer: ['buffer', 'Buffer'],
+    }),
   ],
 
   // Move modules that occur in multiple entry chunks to a new entry chunk (the commons chunk).
@@ -384,6 +388,7 @@ const clientConfig = {
       fs: false,
       net: false,
       tls: false,
+      buffer: require.resolve('buffer/'),
     },
   },
 };

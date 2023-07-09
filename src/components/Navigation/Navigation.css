@@ -22,25 +22,25 @@
 .link,
 .link:active,
 .link:visited {
-  color: rgba(255, 255, 255, 0.6);
+  color: rgb(255 255 255 / 60%);
 }
 
 .link:hover {
-  color: rgba(255, 255, 255, 1);
+  color: rgb(255 255 255 / 100%);
 }
 
 .highlight {
   margin-right: 8px;
   margin-left: 8px;
   border-radius: 3px;
-  background: rgba(0, 0, 0, 0.15);
+  background: rgb(0 0 0 / 15%);
   color: #fff;
 }
 
 .highlight:hover {
-  background: rgba(0, 0, 0, 0.3);
+  background: rgb(0 0 0 / 30%);
 }
 
 .spacer {
-  color: rgba(255, 255, 255, 0.3);
+  color: rgb(255 255 255 / 30%);
 }

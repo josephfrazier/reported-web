@@ -8,8 +8,8 @@ import { validateLocation, processValidation } from './geoclient.js';
 describe('validateLocation', () => {
   test('returns the right object', async () => {
     const result = await validateLocation({
-      lat: 40.7128,
-      long: -74.006,
+      lat: 40.713007655065155,
+      long: -74.00592677275506,
     });
 
     expect(result).toMatchSnapshot();
@@ -43,4 +43,15 @@ describe('processValidation', () => {
 
     expect(result).toMatchSnapshot();
   });
+
+  test('returns an error when no address is found after spiraling', async () => {
+    await expect(
+      processValidation({
+        lat: 40.6435893,
+        long: -73.7820064,
+      }),
+    ).rejects.toThrow(
+      'could not reverse-geocode lat/long pair (40.6435893, -73.7820064)',
+    );
+  }, 99999);
 });

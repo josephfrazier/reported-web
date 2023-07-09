@@ -37,6 +37,9 @@ exports[`Home renders children correctly 1`] = `
           Reported
         </a>
       </h1>
+      <div
+        className="Toastify"
+      />
       <details
         onToggle={[Function]}
         open={true}
@@ -245,6 +248,18 @@ exports[`Home renders children correctly 1`] = `
             Automatically read license plates from pictures/videos
           </label>
           <label
+            htmlFor="isReverseGeocodingEnabled"
+          >
+            <input
+              checked={true}
+              name="isReverseGeocodingEnabled"
+              onChange={[Function]}
+              type="checkbox"
+            />
+             
+            Automatically read addresses from pictures/videos
+          </label>
+          <label
             htmlFor="plate"
           >
             License/Medallion:
@@ -311,6 +326,11 @@ exports[`Home renders children correctly 1`] = `
                 value="DE"
               >
                 Delaware
+              </option>
+              <option
+                value="DC"
+              >
+                District of Columbia
               </option>
               <option
                 value="FL"
@@ -655,11 +675,11 @@ exports[`Home renders children correctly 1`] = `
         onToggle={[Function]}
       >
         <summary>
-          Previous Submissions
+          Previous Submissions (
+          loading...
+          )
         </summary>
-        <ul>
-          Loading submissions...
-        </ul>
+        Loading submissions...
       </details>
       <div
         style={

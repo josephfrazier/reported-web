@@ -60,7 +60,7 @@ const {
   PLATERECOGNIZER_TOKEN,
 } = process.env;
 
-require('heroku-self-ping')(config.api.serverUrl, {
+require('heroku-self-ping').default(config.api.serverUrl, {
   verbose: true,
 });
 

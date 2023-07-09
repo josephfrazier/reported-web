@@ -494,6 +494,11 @@ const serverConfig = {
       raw: true,
       entryOnly: false,
     }),
+
+    // fix "process is not defined" error:
+    new webpack.ProvidePlugin({
+      process: 'process/browser',
+    }),
   ],
 
   // Do not replace node globals with polyfills

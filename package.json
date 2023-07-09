@@ -21,7 +21,7 @@
     "body-parser": "^1.18.3",
     "buffer": "^6.0.3",
     "buffer-to-arraybuffer": "^0.0.5",
-    "capture-frame": "^1.0.2",
+    "capture-frame": "^4.0.0",
     "classnames": "^2.2.6",
     "compression": "^1.7.2",
     "cookie-parser": "^1.4.3",

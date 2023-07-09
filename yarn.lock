@@ -2945,9 +2945,10 @@ capture-exit@^1.2.0:
   dependencies:
     rsvp "^3.3.3"
 
-capture-frame@^1.0.2:
-  version "1.0.2"
-  resolved "https://registry.yarnpkg.com/capture-frame/-/capture-frame-1.0.2.tgz#73e6930855347ffe0174de84800bd1067e600c5b"
+capture-frame@^4.0.0:
+  version "4.0.0"
+  resolved "https://registry.yarnpkg.com/capture-frame/-/capture-frame-4.0.0.tgz#d48cb0cce617a0b7c939347d593bff74bd96e2e1"
+  integrity sha512-yCV/n4y48DbX4z9RiCX9oBqYn3Bk7Mw74b7kvtaGcZn3MqHuo76SXqAFnIb/GJUfFWQuUnU+yJCcw5wfmEwP8g==
 
 caseless@~0.12.0:
   version "0.12.0"

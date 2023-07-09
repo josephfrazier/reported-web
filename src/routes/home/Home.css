@@ -7,7 +7,7 @@
  * LICENSE.txt file in the root directory of this source tree.
  */
 
-@import '../../components/variables.css';
+@import url('../../components/variables.css');
 
 * {
   box-sizing: border-box;
@@ -34,9 +34,9 @@ label {
 }
 
 input[type='search'] {
-  -webkit-appearance: searchfield;
+  appearance: searchfield;
 }
 
 input[type='search']::-webkit-search-cancel-button {
-  -webkit-appearance: searchfield-cancel-button;
+  appearance: searchfield-cancel-button;
 }

@@ -46,7 +46,7 @@
   box-shadow: inset 0 1px 1px rgb(0 0 0 / 7.5%);
   color: #616161;
   font-size: 18px;
-  line-height: 1.3333333;
+  line-height: 1.3333;
   transition: border-color ease-in-out 0.15s, box-shadow ease-in-out 0.15s;
 }
 
@@ -69,7 +69,7 @@
   text-align: center;
   text-decoration: none;
   font-size: 18px;
-  line-height: 1.3333333;
+  line-height: 1.3333;
   cursor: pointer;
 }
 

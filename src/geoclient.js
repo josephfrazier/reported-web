@@ -110,7 +110,11 @@ export async function validateLocation({ lat, long }) {
 // spirals around that point, calling validateLocation until it succeeds
 // returns hash with google response, geoclient response, and status
 // ported from `process_validation` at https://github.com/jeffrono/Reported/blob/19b588171315a3093d53986f9fb995059f5084b4/v2/enrich_functions.rb#L48-L88
-export async function processValidation({ lat, long }) {
+export async function processValidation({
+  lat,
+  long,
+  validateLocationImplementation = validateLocation,
+}) {
   lat = Number(lat); // eslint-disable-line no-param-reassign
   long = Number(long); // eslint-disable-line no-param-reassign
 
@@ -123,7 +127,7 @@ export async function processValidation({ lat, long }) {
     let r;
     // test version 1
     // eslint-disable-next-line no-await-in-loop
-    r = await validateLocation({
+    r = await validateLocationImplementation({
       lat: lat + i * RADIUS,
       long,
     });
@@ -133,7 +137,7 @@ export async function processValidation({ lat, long }) {
     }
 
     // eslint-disable-next-line no-await-in-loop
-    r = await validateLocation({
+    r = await validateLocationImplementation({
       lat: lat - i * RADIUS,
       long,
     });
@@ -143,7 +147,7 @@ export async function processValidation({ lat, long }) {
     }
 
     // eslint-disable-next-line no-await-in-loop
-    r = await validateLocation({
+    r = await validateLocationImplementation({
       lat,
       long: long + i * RADIUS,
     });
@@ -153,7 +157,7 @@ export async function processValidation({ lat, long }) {
     }
 
     // eslint-disable-next-line no-await-in-loop
-    r = await validateLocation({
+    r = await validateLocationImplementation({
       lat,
       long: long - i * RADIUS,
     });

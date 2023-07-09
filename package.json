@@ -134,7 +134,7 @@
     "mongodb-runner": "^3.6.1",
     "null-loader": "^0.1.1",
     "opn-cli": "^3.1.0",
-    "parse-dashboard": "^1.2.0",
+    "parse-dashboard": "^5.1.0",
     "parse-server": "^2.7.4",
     "pixrem": "^4.0.1",
     "pleeease-filters": "^4.0.0",

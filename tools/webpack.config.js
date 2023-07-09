@@ -356,6 +356,11 @@ const clientConfig = {
           // https://github.com/th0r/webpack-bundle-analyzer
           ...(isAnalyze ? [new BundleAnalyzerPlugin()] : []),
         ]),
+
+    // fix "process is not defined" error:
+    new webpack.ProvidePlugin({
+      process: 'process/browser',
+    }),
   ],
 
   // Move modules that occur in multiple entry chunks to a new entry chunk (the commons chunk).
@@ -486,11 +491,6 @@ const serverConfig = {
       banner: 'require("source-map-support").install();',
       raw: true,
       entryOnly: false,
-    }),
-
-    // fix "process is not defined" error:
-    new webpack.ProvidePlugin({
-      process: 'process/browser',
     }),
   ],
 

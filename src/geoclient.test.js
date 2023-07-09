@@ -49,9 +49,10 @@ describe('processValidation', () => {
       processValidation({
         lat: 40.6435893,
         long: -73.7820064,
+        validateLocationImplementation: async () => ({ valid: false }),
       }),
     ).rejects.toThrow(
       'could not reverse-geocode lat/long pair (40.6435893, -73.7820064)',
     );
-  }, 99999);
+  });
 });

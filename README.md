@@ -126,6 +126,35 @@ Responses from Justin:
 > * refresh
 > * typing in description box is now laggy
 
+More debugging info from https://reportedcab.slack.com/archives/C9VNM3DL4/p1690233028016149?thread_ts=1690137347.880569&cid=C9VNM3DL4:
+
+> > My next step might be to add some profiling in to make it clearer how long each save is taking
+> 
+> **TL;DR: I've made some good progress finding the source of the issue**
+> 
+> back on the code that uses localStorage, I'm doing some debugging locally on my
+> MacOS desktop, and _I am able to reproduce the issue_ by typing quickly and
+> seeing the letters not instantly appear!
+> 
+> I tried [removing just the auto-save behavior while keeping the other
+> localStorage usage](https://github.com/josephfrazier/reported-web/commit/2bac6d970bf906885d88626c12d80c04d7d080ef) (mainly, loading the username/password/etc when the app is
+> first loaded, but **that doesn't fix the problem**.
+> 
+> However, if I [go on to remove the localStorage usage entirely](https://github.com/josephfrazier/reported-web/compare/josephfrazier:091a41d...josephfrazier:9b99eee), **the problem goes
+> away for me**, so it seems like the problem is indeed in the localStorage code,
+> but not necessarily the auto-saving part of it.
+
+and https://reportedcab.slack.com/archives/C9VNM3DL4/p1690235477916519?thread_ts=1690137347.880569&cid=C9VNM3DL4:
+
+> back to the debugging, I tried [adding a bunch of logging to the React
+> component that uses localstorage](https://github.com/josephfrazier/react-localstorage/compare/josephfrazier:f10d44b...josephfrazier:7f9673e), to see if it was being called even without
+> the auto-saving behavior in the webapp, but I don't see any extra logs in the
+> console when typing in the description field, so now I'm thinking that
+> something about the component itself being present in the React component
+> tree is causing the slowness
+> 
+> ![image](https://github.com/josephfrazier/reported-web/assets/6473925/e5713d97-2fd3-4c1d-a4ea-3cfded5b0f23)
+
 ---
 
 This project is based on [React Starter Kit](https://github.com/kriasoft/react-starter-kit). See its README below:

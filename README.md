@@ -121,10 +121,10 @@ Responses from Justin:
 > The issue reappears shortly after clearing the local storage. Can it just be caused by hammering the save every 500ms? Or maybe the debounce is broken and its saving more often?
 
 > as a test, after clearing local storage
-> login
-> type something in the description box
-> refresh
-> typing in description box is now laggy
+> * login
+> * type something in the description box
+> * refresh
+> * typing in description box is now laggy
 
 ---
 

@@ -379,8 +379,6 @@ class Home extends React.Component {
           isPasswordRevealed: true,
         });
       });
-    } else if (this.state.email) {
-      this.loadPreviousSubmissions();
     }
 
     // Allow users to paste image data
@@ -436,6 +434,7 @@ class Home extends React.Component {
   }
 
   getStateFilterKeys() {
+    // used by react-localstorage to determine which `state` keys to save, see https://github.com/josephfrazier/react-localstorage/tree/75f0303aa775e1625ef9cb0d936b6aa0bcdbaffc#filtering
     return Object.keys(this.initialStatePersistent);
   }
 
@@ -1429,7 +1428,7 @@ class Home extends React.Component {
                 Previous Submissions (
                 {this.state.submissions.length > 0
                   ? this.state.submissions.length
-                  : 'loading...'}
+                  : 'click to load'}
                 )
               </summary>
 

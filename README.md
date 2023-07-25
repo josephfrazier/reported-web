@@ -155,6 +155,21 @@ and https://reportedcab.slack.com/archives/C9VNM3DL4/p1690235477916519?thread_ts
 > 
 > ![image](https://github.com/josephfrazier/reported-web/assets/6473925/e5713d97-2fd3-4c1d-a4ea-3cfded5b0f23)
 
+We've managed to work around the problem by not loading Previous Submissions until clicked on, see https://reportedcab.slack.com/archives/C9VNM3DL4/p1690318259649319?thread_ts=1690137347.880569&cid=C9VNM3DL4:
+
+> ok, it's definitely related to the presence of the Previous
+> Submissions section, as I've found by removing it and seeing performance
+> go back to normal: https://github.com/josephfrazier/reported-web/commit/884365086c56d8af001290eebda9c644a58a0ee5
+
+> Interesting! Does it vary with number of previous submissions? Could explain
+> why it’s gotten worse for me over time
+
+> yeah, I think it must. Still don't know why it affects the performance
+> of saving the state, but I can make it so that the Previous Submissions
+> don't load until you expand the section, which works around the problem
+> for me in that I can type quickly as long as I don't expand that
+> section, but it's still available to me if I want it
+
 ---
 
 This project is based on [React Starter Kit](https://github.com/kriasoft/react-starter-kit). See its README below:

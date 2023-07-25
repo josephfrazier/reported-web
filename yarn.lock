@@ -11839,9 +11839,9 @@ react-loadable@^5.4.0:
   dependencies:
     prop-types "^15.5.0"
 
-"react-localstorage@https://github.com/josephfrazier/react-localstorage#higher-ordered-component":
+"react-localstorage@https://github.com/josephfrazier/react-localstorage":
   version "1.0.0"
-  resolved "https://github.com/josephfrazier/react-localstorage#f10d44bf02fafb5c07bb2f62b35d92ef1ba04462"
+  resolved "https://github.com/josephfrazier/react-localstorage#75f0303aa775e1625ef9cb0d936b6aa0bcdbaffc"
   dependencies:
     synchronous-promise "^2.0.5"
 

@@ -75,7 +75,7 @@
     "react-file-reader-input": "^2.0.0",
     "react-google-maps": "^9.4.5",
     "react-loadable": "^5.4.0",
-    "react-localstorage": "https://github.com/josephfrazier/react-localstorage/",
+    "react-localstorage": "https://github.com/josephfrazier/react-localstorage",
     "react-modal": "^3.4.5",
     "react-social-icons": "^2.8.1",
     "react-toastify": "9.1.3",

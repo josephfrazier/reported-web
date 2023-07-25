@@ -379,8 +379,6 @@ class Home extends React.Component {
           isPasswordRevealed: true,
         });
       });
-    } else if (this.state.email) {
-      this.loadPreviousSubmissions();
     }
 
     // Allow users to paste image data
@@ -1430,7 +1428,7 @@ class Home extends React.Component {
                 Previous Submissions (
                 {this.state.submissions.length > 0
                   ? this.state.submissions.length
-                  : 'loading...'}
+                  : 'click to load'}
                 )
               </summary>
 

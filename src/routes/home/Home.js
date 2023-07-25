@@ -1423,51 +1423,53 @@ class Home extends React.Component {
 
             <br />
 
-            <details
-              onToggle={evt => {
-                if (!evt.target.open) {
-                  return;
-                }
-                this.loadPreviousSubmissions();
-              }}
-            >
-              <summary>
-                Previous Submissions (
-                {this.state.submissions.length > 0
-                  ? this.state.submissions.length
-                  : 'loading...'}
-                )
-              </summary>
+            {/*
+              <details
+                onToggle={evt => {
+                  if (!evt.target.open) {
+                    return;
+                  }
+                  this.loadPreviousSubmissions();
+                }}
+              >
+                <summary>
+                  Previous Submissions (
+                  {this.state.submissions.length > 0
+                    ? this.state.submissions.length
+                    : 'loading...'}
+                  )
+                </summary>
 
-              {this.state.submissions.length === 0 ? (
-                'Loading submissions...'
-              ) : (
-                <>
-                  <CSVLink
-                    separator="	"
-                    data={this.state.submissions.map(submission =>
-                      objectMap(submission, value =>
-                        typeof value === 'object'
-                          ? JSON.stringify(value)
-                          : value,
-                      ),
-                    )}
-                  >
-                    Download as CSV
-                  </CSVLink>
-                  <ul>
-                    {this.state.submissions.map(submission => (
-                      <li key={submission.objectId}>
-                        <SubmissionDetails
-                          submission={submission}
-                          onDeleteSubmission={this.onDeleteSubmission}
-                        />
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              )}
-            </details>
+                {this.state.submissions.length === 0 ? (
+                  'Loading submissions...'
+                ) : (
+                  <>
+                    <CSVLink
+                      separator="	"
+                      data={this.state.submissions.map(submission =>
+                        objectMap(submission, value =>
+                          typeof value === 'object'
+                            ? JSON.stringify(value)
+                            : value,
+                        ),
+                      )}
+                    >
+                      Download as CSV
+                    </CSVLink>
+                    <ul>
+                      {this.state.submissions.map(submission => (
+                        <li key={submission.objectId}>
+                          <SubmissionDetails
+                            submission={submission}
+                            onDeleteSubmission={this.onDeleteSubmission}
+                          />
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </details>
+            */}
 
             <div style={{ float: 'right' }}>
               <SocialIcon

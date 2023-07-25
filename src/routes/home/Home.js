@@ -23,7 +23,7 @@ import {
   Marker,
 } from 'react-google-maps';
 import { SearchBox } from 'react-google-maps/lib/components/places/SearchBox';
-// import withLocalStorage from 'react-localstorage';
+import withLocalStorage from 'react-localstorage';
 import debounce from 'debounce-promise';
 import { SocialIcon } from 'react-social-icons';
 import FileType from 'file-type/browser';
@@ -923,7 +923,7 @@ class Home extends React.Component {
                           testify: testify || state.testify,
                         }),
                         () => {
-                          // this.saveStateToLocalStorage();
+                          this.saveStateToLocalStorage();
                           this.userFormSubmitRef.current.click();
                         },
                       );
@@ -1091,7 +1091,7 @@ class Home extends React.Component {
                     });
                   })
                   .then(() => {
-                    // this.saveStateToLocalStorage();
+                    this.saveStateToLocalStorage();
                   });
               }}
             >
@@ -1571,5 +1571,4 @@ const MyMapComponent = compose(
   withGoogleMap,
 )(MyMapComponentPure);
 
-// export default withStyles(marx, s, toastifyStyles)(withLocalStorage(Home));
-export default withStyles(marx, s, toastifyStyles)(Home);
+export default withStyles(marx, s, toastifyStyles)(withLocalStorage(Home));

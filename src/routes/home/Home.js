@@ -1438,18 +1438,20 @@ class Home extends React.Component {
                 'Loading submissions...'
               ) : (
                 <>
-                  <CSVLink
-                    separator="	"
-                    data={this.state.submissions.map(submission =>
-                      objectMap(submission, value =>
-                        typeof value === 'object'
-                          ? JSON.stringify(value)
-                          : value,
-                      ),
-                    )}
-                  >
-                    Download as CSV
-                  </CSVLink>
+                  {/*
+                    <CSVLink
+                      separator="	"
+                      data={this.state.submissions.map(submission =>
+                        objectMap(submission, value =>
+                          typeof value === 'object'
+                            ? JSON.stringify(value)
+                            : value,
+                        ),
+                      )}
+                    >
+                      Download as CSV
+                    </CSVLink>
+                  */}
                   <ul>
                     {this.state.submissions.map(submission => (
                       <li key={submission.objectId}>

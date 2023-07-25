@@ -436,6 +436,7 @@ class Home extends React.Component {
   }
 
   getStateFilterKeys() {
+    // used by react-localstorage to determine which `state` keys to save, see https://github.com/josephfrazier/react-localstorage/tree/75f0303aa775e1625ef9cb0d936b6aa0bcdbaffc#filtering
     return Object.keys(this.initialStatePersistent);
   }
 

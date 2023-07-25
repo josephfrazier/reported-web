@@ -925,7 +925,7 @@ class Home extends React.Component {
                           testify: testify || state.testify,
                         }),
                         () => {
-                          // this.saveStateToLocalStorage();
+                          this.saveStateToLocalStorage();
                           this.userFormSubmitRef.current.click();
                         },
                       );
@@ -1093,7 +1093,7 @@ class Home extends React.Component {
                     });
                   })
                   .then(() => {
-                    // this.saveStateToLocalStorage();
+                    this.saveStateToLocalStorage();
                   });
               }}
             >

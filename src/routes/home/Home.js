@@ -47,7 +47,7 @@ import PolygonLookup from 'polygon-lookup';
 import { CSVLink } from 'react-csv';
 
 import marx from 'marx-css/css/marx.css';
-import s from './Home.css';
+import homeStyles from './Home.css';
 
 import SubmissionDetails from '../../components/SubmissionDetails.js';
 import { isImage, isVideo } from '../../isImage.js';
@@ -753,7 +753,7 @@ class Home extends React.Component {
   render() {
     return (
       <Dropzone
-        className={s.root}
+        className={homeStyles.root}
         onDrop={attachmentData => {
           this.handleAttachmentData({ attachmentData });
         }}
@@ -767,7 +767,7 @@ class Home extends React.Component {
         }}
         disableClick
       >
-        <div className={s.container}>
+        <div className={homeStyles.container}>
           <main>
             <h1>
               <a
@@ -1269,7 +1269,8 @@ class Home extends React.Component {
 
                 <Modal
                   parentSelector={() =>
-                    document.querySelector(`.${s.root}`) || document.body
+                    document.querySelector(`.${homeStyles.root}`) ||
+                    document.body
                   }
                   isOpen={this.state.isMapOpen}
                   onRequestClose={() => this.setState({ isMapOpen: false })}
@@ -1570,4 +1571,8 @@ const MyMapComponent = compose(
   withGoogleMap,
 )(MyMapComponentPure);
 
-export default withStyles(marx, s, toastifyStyles)(withLocalStorage(Home));
+export default withStyles(
+  marx,
+  homeStyles,
+  toastifyStyles,
+)(withLocalStorage(Home));

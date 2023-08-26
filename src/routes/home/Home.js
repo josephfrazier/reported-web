@@ -47,7 +47,7 @@ import PolygonLookup from 'polygon-lookup';
 import { CSVLink } from 'react-csv';
 
 import marx from 'marx-css/css/marx.css';
-import s from './Home.css';
+import homeStyles from './Home.css';
 
 import SubmissionDetails from '../../components/SubmissionDetails.js';
 import { isImage, isVideo } from '../../isImage.js';
@@ -1570,4 +1570,4 @@ const MyMapComponent = compose(
   withGoogleMap,
 )(MyMapComponentPure);
 
-export default withStyles(marx, s, toastifyStyles)(withLocalStorage(Home));
+export default withStyles(marx, homeStyles, toastifyStyles)(withLocalStorage(Home));

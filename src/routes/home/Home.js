@@ -46,7 +46,7 @@ import { zip } from 'zip-array';
 import PolygonLookup from 'polygon-lookup';
 import { CSVLink } from 'react-csv';
 
-import marx from 'marx-css/css/marx.css';
+import marx from 'simpledotcss';
 import homeStyles from './Home.css';
 
 import SubmissionDetails from '../../components/SubmissionDetails.js';

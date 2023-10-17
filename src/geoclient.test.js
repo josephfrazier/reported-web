@@ -6,10 +6,10 @@
 import { validateLocation, processValidation } from './geoclient.js';
 
 describe('validateLocation', () => {
-  test('returns the right object', async () => {
+  test('returns the right object around the Empire State Building', async () => {
     const result = await validateLocation({
-      lat: 40.713007655065155,
-      long: -74.00592677275506,
+      lat: 40.748817,
+      long: -73.985428,
     });
 
     expect(result).toMatchSnapshot();

@@ -981,9 +981,8 @@ class Home extends React.Component {
                       name="testify"
                       onChange={this.handleInputChange}
                     />{' '}
-                    {
-                      "I'm willing to testify at a hearing, which can be done by phone."
-                    }
+                    I&apos;m willing to testify at a hearing, which can be done
+                    by phone.
                   </label>
                   <button
                     type="submit"

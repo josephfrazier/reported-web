@@ -1,6 +1,26 @@
 {
+  "env": {
+    "JEMALLOC_ENABLED": {
+      "value": "true"
+    },
+    "NODE_MODULES_CACHE": {
+      "value": "false"
+    },
+    "VIPS_VERSION": {
+      "value": "8.10.6"
+    }
+  },
   "stack": "heroku-22",
   "buildpacks": [
+    {
+      "url": "https://github.com/gaffneyc/heroku-buildpack-jemalloc"
+    },
+    {
+      "url": "heroku-community/apt"
+    },
+    {
+      "url": "https://github.com/brandoncc/heroku-buildpack-vips"
+    },
     {
       "url": "heroku/nodejs"
     },

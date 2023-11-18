@@ -503,6 +503,12 @@ app.use('/submit', (req, res) => {
   });
 });
 
+function heicConvert({ buffer }) {
+  return sharp(buffer)
+    .toFormat('jpeg')
+    .toBuffer();
+}
+
 // https://app.platerecognizer.com/upload-limit/
 const downscaleForPlateRecognizer = buffer => {
   const fileSize = buffer.length;
@@ -537,40 +543,61 @@ const downscaleForPlateRecognizer = buffer => {
 };
 
 // adapted from https://docs.platerecognizer.com/?javascript#license-plate-recognition
-app.use('/platerecognizer', upload.single('attachmentFile'), (req, res) => {
-  const attachmentBuffer = req.file.buffer;
+app.use(
+  '/platerecognizer',
+  upload.single('attachmentFile'),
+  async (req, res) => {
+    let attachmentBuffer = req.file.buffer;
+    const { ext } = await FileType.fromBuffer(attachmentBuffer);
 
-  orientImageBuffer({ attachmentBuffer })
-    .then(downscaleForPlateRecognizer)
-    .then(buffer => buffer.toString('base64'))
-    .then(attachmentBytesRotated => {
-      console.log('STARTING platerecognizer'); // eslint-disable-line no-console
-      console.time(`/platerecognizer plate-reader`); // eslint-disable-line no-console
+    if (ext === 'heic') {
+      console.info('HEIC file detected, trying to convert to JPEG');
 
-      const body = new FormData();
+      try {
+        console.time('heicConvert'); // eslint-disable-line no-console
+        attachmentBuffer = await heicConvert({ buffer: attachmentBuffer });
+      } catch (e) {
+        console.error('could not convert file from heic to jpg');
+        console.error(e);
+      } finally {
+        console.timeEnd('heicConvert'); // eslint-disable-line no-console
+      }
+    }
 
-      body.append('upload', attachmentBytesRotated);
+    orientImageBuffer({ attachmentBuffer })
+      .then(downscaleForPlateRecognizer)
+      .then(buffer => buffer.toString('base64'))
+      .then(attachmentBytesRotated => {
+        console.log('STARTING platerecognizer'); // eslint-disable-line no-console
+        console.time(`/platerecognizer plate-reader`); // eslint-disable-line no-console
 
-      // body.append("regions", "us-ny"); // Change to your country
-      body.append('regions', 'us'); // Change to your country
+        const body = new FormData();
 
-      return nodeFetch('https://api.platerecognizer.com/v1/plate-reader/', {
-        method: 'POST',
-        headers: {
-          Authorization: `Token ${PLATERECOGNIZER_TOKEN}`,
-        },
-        body,
-      })
-        .then(platerecognizerRes => {
-          console.info('/platerecognizer plate-reader', { platerecognizerRes });
-          return platerecognizerRes;
+        body.append('upload', attachmentBytesRotated);
+
+        // body.append("regions", "us-ny"); // Change to your country
+        body.append('regions', 'us'); // Change to your country
+
+        return nodeFetch('https://api.platerecognizer.com/v1/plate-reader/', {
+          method: 'POST',
+          headers: {
+            Authorization: `Token ${PLATERECOGNIZER_TOKEN}`,
+          },
+          body,
         })
-        .then(platerecognizerRes => platerecognizerRes.json())
-        .finally(() => console.timeEnd(`/platerecognizer plate-reader`)); // eslint-disable-line no-console
-    })
-    .then(data => res.json(data))
-    .catch(handlePromiseRejection(res));
-});
+          .then(platerecognizerRes => {
+            console.info('/platerecognizer plate-reader', {
+              platerecognizerRes,
+            });
+            return platerecognizerRes;
+          })
+          .then(platerecognizerRes => platerecognizerRes.json())
+          .finally(() => console.timeEnd(`/platerecognizer plate-reader`)); // eslint-disable-line no-console
+      })
+      .then(data => res.json(data))
+      .catch(handlePromiseRejection(res));
+  },
+);
 
 // ported from https://github.com/jeffrono/Reported/blob/19b588171315a3093d53986f9fb995059f5084b4/v2/enrich_functions.rb#L325-L346
 app.use('/getVehicleType/:licensePlate/:licenseState?', (req, res) => {

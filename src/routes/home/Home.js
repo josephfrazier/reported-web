@@ -197,8 +197,7 @@ async function extractPlate({
     );
     console.timeEnd(`bufferToBlob(${attachmentFile.name})`); // eslint-disable-line no-console
 
-    const formData = new window.FormData();
-    formData.append('attachmentFile', attachmentBlob);
+    const formData = objectToFormData({ attachmentFile: attachmentBlob });
     const { data } = await axios.post('/platerecognizer', formData);
     const result = data.results[0];
     try {

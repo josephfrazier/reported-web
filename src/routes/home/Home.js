@@ -169,6 +169,8 @@ async function extractPlate({
   attachmentBuffer,
   ext,
   isAlprEnabled,
+  email,
+  password,
 }) {
   try {
     console.time('extractPlate'); // eslint-disable-line no-console
@@ -197,7 +199,11 @@ async function extractPlate({
     );
     console.timeEnd(`bufferToBlob(${attachmentFile.name})`); // eslint-disable-line no-console
 
-    const formData = objectToFormData({ attachmentFile: attachmentBlob });
+    const formData = objectToFormData({
+      attachmentFile: attachmentBlob,
+      email,
+      password,
+    });
     const { data } = await axios.post('/platerecognizer', formData);
     const result = data.results[0];
     try {
@@ -647,6 +653,8 @@ class Home extends React.Component {
                 attachmentBuffer,
                 ext,
                 isAlprEnabled: this.state.isAlprEnabled,
+                email: this.state.email,
+                password: this.state.password,
               }).then(result => {
                 if (
                   this.state.plate === '' &&

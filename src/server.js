@@ -537,40 +537,50 @@ const downscaleForPlateRecognizer = buffer => {
 };
 
 // adapted from https://docs.platerecognizer.com/?javascript#license-plate-recognition
-app.use('/platerecognizer', upload.single('attachmentFile'), (req, res) => {
-  const attachmentBuffer = req.file.buffer;
+app.use(
+  '/platerecognizer',
+  upload.single('attachmentFile'),
+  async (req, res) => {
+    const { email, password } = req.body;
 
-  orientImageBuffer({ attachmentBuffer })
-    .then(downscaleForPlateRecognizer)
-    .then(buffer => buffer.toString('base64'))
-    .then(attachmentBytesRotated => {
-      console.log('STARTING platerecognizer'); // eslint-disable-line no-console
-      console.time(`/platerecognizer plate-reader`); // eslint-disable-line no-console
+    await logIn({ email, password });
 
-      const body = new FormData();
+    const attachmentBuffer = req.file.buffer;
 
-      body.append('upload', attachmentBytesRotated);
+    orientImageBuffer({ attachmentBuffer })
+      .then(downscaleForPlateRecognizer)
+      .then(buffer => buffer.toString('base64'))
+      .then(attachmentBytesRotated => {
+        console.log('STARTING platerecognizer'); // eslint-disable-line no-console
+        console.time(`/platerecognizer plate-reader`); // eslint-disable-line no-console
 
-      // body.append("regions", "us-ny"); // Change to your country
-      body.append('regions', 'us'); // Change to your country
+        const body = new FormData();
 
-      return nodeFetch('https://api.platerecognizer.com/v1/plate-reader/', {
-        method: 'POST',
-        headers: {
-          Authorization: `Token ${PLATERECOGNIZER_TOKEN}`,
-        },
-        body,
-      })
-        .then(platerecognizerRes => {
-          console.info('/platerecognizer plate-reader', { platerecognizerRes });
-          return platerecognizerRes;
+        body.append('upload', attachmentBytesRotated);
+
+        // body.append("regions", "us-ny"); // Change to your country
+        body.append('regions', 'us'); // Change to your country
+
+        return nodeFetch('https://api.platerecognizer.com/v1/plate-reader/', {
+          method: 'POST',
+          headers: {
+            Authorization: `Token ${PLATERECOGNIZER_TOKEN}`,
+          },
+          body,
         })
-        .then(platerecognizerRes => platerecognizerRes.json())
-        .finally(() => console.timeEnd(`/platerecognizer plate-reader`)); // eslint-disable-line no-console
-    })
-    .then(data => res.json(data))
-    .catch(handlePromiseRejection(res));
-});
+          .then(platerecognizerRes => {
+            console.info('/platerecognizer plate-reader', {
+              platerecognizerRes,
+            });
+            return platerecognizerRes;
+          })
+          .then(platerecognizerRes => platerecognizerRes.json())
+          .finally(() => console.timeEnd(`/platerecognizer plate-reader`)); // eslint-disable-line no-console
+      })
+      .then(data => res.json(data))
+      .catch(handlePromiseRejection(res));
+  },
+);
 
 // ported from https://github.com/jeffrono/Reported/blob/19b588171315a3093d53986f9fb995059f5084b4/v2/enrich_functions.rb#L325-L346
 app.use('/getVehicleType/:licensePlate/:licenseState?', (req, res) => {

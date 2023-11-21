@@ -543,7 +543,12 @@ app.use(
   async (req, res) => {
     const { email, password } = req.body;
 
-    await logIn({ email, password });
+    try {
+      await logIn({ email, password });
+    } catch (error) {
+      handlePromiseRejection(res)(error);
+      return;
+    }
 
     const attachmentBuffer = req.file.buffer;
 

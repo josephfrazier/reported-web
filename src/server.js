@@ -27,6 +27,7 @@ import stringify from 'json-stringify-safe';
 import DelayedResponse from 'http-delayed-response';
 import { JSDOM } from 'jsdom';
 import FormData from 'form-data';
+import exifr from 'exifr/dist/full.umd.js';
 
 import { isImage, isVideo } from './isImage.js';
 import { validateLocation, processValidation } from './geoclient.js';
@@ -450,10 +451,24 @@ app.use('/submit', (req, res) => {
         // http://docs.parseplatform.org/js/guide/#creating-a-parsefile
 
         const attachmentsWithFormats = await Promise.all(
-          attachmentData.map(async ({ buffer: attachmentBuffer }) => ({
-            attachmentBuffer,
-            ext: (await FileType.fromBuffer(attachmentBuffer)).ext,
-          })),
+          attachmentData.map(async ({ buffer: attachmentBuffer }) => {
+            const gps = await exifr.gps(attachmentBuffer);
+            console.info(
+              'Extracted GPS latitude/longitude location from EXIF metadata',
+              gps, // { latitude, longitude },
+            ); // eslint-disable-line no-console
+
+            const timestamp = await exifr.parse(attachmentBuffer, [
+              'CreateDate',
+              'OffsetTimeDigitized',
+            ]);
+            console.log(timestamp); // eslint-disable-line no-console
+
+            return {
+              attachmentBuffer,
+              ext: (await FileType.fromBuffer(attachmentBuffer)).ext,
+            };
+          }),
         );
 
         const images = attachmentsWithFormats.filter(isImage);

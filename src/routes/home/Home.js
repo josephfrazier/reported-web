@@ -275,7 +275,7 @@ async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
       'OffsetTimeDigitized',
     ]);
 
-    // console.log({ CreateDate, OffsetTimeDigitized });
+    console.log({ CreateDate, OffsetTimeDigitized }); // eslint-disable-line no-console
 
     return {
       millisecondsSinceEpoch: CreateDate.getTime(),

@@ -27,6 +27,7 @@ import stringify from 'json-stringify-safe';
 import DelayedResponse from 'http-delayed-response';
 import { JSDOM } from 'jsdom';
 import FormData from 'form-data';
+import exifr from 'exifr/dist/full.umd.js';
 
 import { isImage, isVideo } from './isImage.js';
 import { validateLocation, processValidation } from './geoclient.js';
@@ -326,7 +327,17 @@ app.use('/requestPasswordReset', (req, res) => {
     .catch(handlePromiseRejection(res));
 });
 
-function orientImageBuffer({ attachmentBuffer }) {
+async function orientImageBuffer({ attachmentBuffer }) {
+  console.info(
+    'Extracted GPS latitude/longitude location from EXIF metadata',
+    await exifr.gps(attachmentBuffer),
+  ); // eslint-disable-line no-console
+
+  // eslint-disable-next-line no-console
+  console.log(
+    await exifr.parse(attachmentBuffer, ['CreateDate', 'OffsetTimeDigitized']),
+  );
+
   console.time(`orientImageBuffer`); // eslint-disable-line no-console
   // eslint-disable-next-line no-console
   console.log(
@@ -337,7 +348,17 @@ function orientImageBuffer({ attachmentBuffer }) {
     .toBuffer()
     .catch(() => attachmentBuffer)
     .then(buffer => Buffer.from(buffer))
-    .then(buffer => {
+    .then(async buffer => {
+      console.info(
+        'Extracted GPS latitude/longitude location from EXIF metadata',
+        await exifr.gps(buffer),
+      ); // eslint-disable-line no-console
+
+      // eslint-disable-next-line no-console
+      console.log(
+        await exifr.parse(buffer, ['CreateDate', 'OffsetTimeDigitized']),
+      );
+
       console.log(`image buffer length AFTER sharp: ${buffer.length} bytes`); // eslint-disable-line no-console
       console.timeEnd(`orientImageBuffer`); // eslint-disable-line no-console
       return buffer;
@@ -463,13 +484,9 @@ app.use('/submit', (req, res) => {
           ...images
             .slice(0, 3)
             .map(async ({ attachmentBuffer, ext }, index) => {
-              const attachmentBufferRotated = await orientImageBuffer({
-                attachmentBuffer,
-              });
-
               const key = `photoData${index}`;
               const file = new Parse.File(`${key}.${ext}`, [
-                ...attachmentBufferRotated,
+                ...attachmentBuffer,
               ]);
               await file.save();
               submission.set(key, file);

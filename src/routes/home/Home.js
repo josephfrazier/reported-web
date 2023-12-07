@@ -633,6 +633,8 @@ class Home extends React.Component {
   };
 
   handleAttachmentData = async ({ attachmentData }) => {
+    // TODO: check isImage or isVideo here, show warning/error toast if there's 3 of the given type already, see https://twitter.com/josephfrazier_/status/1698419554915954932
+    // TODO: Note that `attachmentData` is an array of `attachmentFile`s, and could be a mix of images and videos
     this.setState(
       state => ({
         attachmentData: state.attachmentData.concat(attachmentData),

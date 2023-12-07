@@ -482,6 +482,18 @@ app.use('/submit', (req, res) => {
                 attachmentBuffer,
               });
 
+              const gps = await exifr.gps(attachmentBufferRotated);
+              console.info(
+                'Extracted GPS latitude/longitude location from EXIF metadata',
+                gps, // { latitude, longitude },
+              ); // eslint-disable-line no-console
+
+              const timestamp = await exifr.parse(attachmentBufferRotated, [
+                'CreateDate',
+                'OffsetTimeDigitized',
+              ]);
+              console.log(timestamp); // eslint-disable-line no-console
+
               const key = `photoData${index}`;
               const file = new Parse.File(`${key}.${ext}`, [
                 ...attachmentBufferRotated,

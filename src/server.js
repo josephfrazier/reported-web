@@ -484,13 +484,9 @@ app.use('/submit', (req, res) => {
           ...images
             .slice(0, 3)
             .map(async ({ attachmentBuffer, ext }, index) => {
-              const attachmentBufferRotated = await orientImageBuffer({
-                attachmentBuffer,
-              });
-
               const key = `photoData${index}`;
               const file = new Parse.File(`${key}.${ext}`, [
-                ...attachmentBufferRotated,
+                ...attachmentBuffer,
               ]);
               await file.save();
               submission.set(key, file);

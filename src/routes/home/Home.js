@@ -103,7 +103,7 @@ const geolocate = () =>
 const jsDateToCreateDate = jsDate =>
   jsDate.toISOString().replace(/:\d\d\..*/g, '');
 
-async function blobToBuffer({ attachmentFile }) {
+async function blobToBufferAndExt({ attachmentFile }) {
   console.time(`blobUtil.blobToArrayBuffer(attachmentFile)`); // eslint-disable-line no-console
   const attachmentArrayBuffer = await blobUtil.blobToArrayBuffer(
     attachmentFile,
@@ -114,7 +114,11 @@ async function blobToBuffer({ attachmentFile }) {
   const attachmentBuffer = Buffer.from(attachmentArrayBuffer);
   console.timeEnd(`Buffer.from(attachmentArrayBuffer)`); // eslint-disable-line no-console
 
-  return { attachmentBuffer, attachmentArrayBuffer };
+  console.time(`FileType.fromBuffer(attachmentBuffer)`); // eslint-disable-line no-console
+  const { ext } = await FileType.fromBuffer(attachmentBuffer);
+  console.timeEnd(`FileType.fromBuffer(attachmentBuffer)`); // eslint-disable-line no-console
+
+  return { attachmentBuffer, attachmentArrayBuffer, ext };
 }
 
 // TODO decouple location/date extraction
@@ -640,12 +644,10 @@ class Home extends React.Component {
             const {
               attachmentBuffer,
               attachmentArrayBuffer,
-            } = await blobToBuffer({
+              ext,
+            } = await blobToBufferAndExt({
               attachmentFile,
             });
-
-            // eslint-disable-next-line no-await-in-loop
-            const { ext } = await FileType.fromBuffer(attachmentBuffer);
 
             return Promise.allSettled([
               extractPlate({

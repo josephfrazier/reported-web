@@ -327,7 +327,18 @@ app.use('/requestPasswordReset', (req, res) => {
     .catch(handlePromiseRejection(res));
 });
 
-function orientImageBuffer({ attachmentBuffer }) {
+// TODO
+async function orientImageBuffer({ attachmentBuffer }) {
+  console.info(
+    'Extracted GPS latitude/longitude location from EXIF metadata',
+    await exifr.gps(attachmentBuffer),
+  ); // eslint-disable-line no-console
+
+  // eslint-disable-next-line no-console
+  console.log(
+    await exifr.parse(attachmentBuffer, ['CreateDate', 'OffsetTimeDigitized']),
+  );
+
   console.time(`orientImageBuffer`); // eslint-disable-line no-console
   // eslint-disable-next-line no-console
   console.log(
@@ -338,7 +349,17 @@ function orientImageBuffer({ attachmentBuffer }) {
     .toBuffer()
     .catch(() => attachmentBuffer)
     .then(buffer => Buffer.from(buffer))
-    .then(buffer => {
+    .then(async buffer => {
+      console.info(
+        'Extracted GPS latitude/longitude location from EXIF metadata',
+        await exifr.gps(buffer),
+      ); // eslint-disable-line no-console
+
+      // eslint-disable-next-line no-console
+      console.log(
+        await exifr.parse(buffer, ['CreateDate', 'OffsetTimeDigitized']),
+      );
+
       console.log(`image buffer length AFTER sharp: ${buffer.length} bytes`); // eslint-disable-line no-console
       console.timeEnd(`orientImageBuffer`); // eslint-disable-line no-console
       return buffer;
@@ -451,24 +472,10 @@ app.use('/submit', (req, res) => {
         // http://docs.parseplatform.org/js/guide/#creating-a-parsefile
 
         const attachmentsWithFormats = await Promise.all(
-          attachmentData.map(async ({ buffer: attachmentBuffer }) => {
-            const gps = await exifr.gps(attachmentBuffer);
-            console.info(
-              'Extracted GPS latitude/longitude location from EXIF metadata',
-              gps, // { latitude, longitude },
-            ); // eslint-disable-line no-console
-
-            const timestamp = await exifr.parse(attachmentBuffer, [
-              'CreateDate',
-              'OffsetTimeDigitized',
-            ]);
-            console.log(timestamp); // eslint-disable-line no-console
-
-            return {
-              attachmentBuffer,
-              ext: (await FileType.fromBuffer(attachmentBuffer)).ext,
-            };
-          }),
+          attachmentData.map(async ({ buffer: attachmentBuffer }) => ({
+            attachmentBuffer,
+            ext: (await FileType.fromBuffer(attachmentBuffer)).ext,
+          })),
         );
 
         const images = attachmentsWithFormats.filter(isImage);
@@ -481,18 +488,6 @@ app.use('/submit', (req, res) => {
               const attachmentBufferRotated = await orientImageBuffer({
                 attachmentBuffer,
               });
-
-              const gps = await exifr.gps(attachmentBufferRotated);
-              console.info(
-                'Extracted GPS latitude/longitude location from EXIF metadata',
-                gps, // { latitude, longitude },
-              ); // eslint-disable-line no-console
-
-              const timestamp = await exifr.parse(attachmentBufferRotated, [
-                'CreateDate',
-                'OffsetTimeDigitized',
-              ]);
-              console.log(timestamp); // eslint-disable-line no-console
 
               const key = `photoData${index}`;
               const file = new Parse.File(`${key}.${ext}`, [

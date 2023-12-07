@@ -327,7 +327,6 @@ app.use('/requestPasswordReset', (req, res) => {
     .catch(handlePromiseRejection(res));
 });
 
-// TODO
 async function orientImageBuffer({ attachmentBuffer }) {
   console.info(
     'Extracted GPS latitude/longitude location from EXIF metadata',

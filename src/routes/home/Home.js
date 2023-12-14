@@ -25,7 +25,6 @@ import {
 import { SearchBox } from 'react-google-maps/lib/components/places/SearchBox';
 import withLocalStorage from 'react-localstorage';
 import debounce from 'debounce-promise';
-import { SocialIcon } from 'react-social-icons';
 import FileType from 'file-type/browser';
 import MP4Box from 'mp4box';
 import execall from 'execall';
@@ -1470,11 +1469,6 @@ class Home extends React.Component {
             </details>
 
             <div style={{ float: 'right' }}>
-              <SocialIcon
-                url="https://twitter.com/Reported_NYC"
-                rel="noopener"
-              />
-              &nbsp;
               <a
                 href="/electricitibikes"
                 style={{

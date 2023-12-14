@@ -3383,7 +3383,7 @@ class-utils@^0.3.5:
     isobject "^3.0.0"
     static-extend "^0.1.1"
 
-classnames@^2.2.5, classnames@^2.2.6:
+classnames@^2.2.6:
   version "2.2.6"
   resolved "https://registry.yarnpkg.com/classnames/-/classnames-2.2.6.tgz#43935bffdd291f326dad0a205309b38d00f650ce"
 
@@ -11981,13 +11981,6 @@ react-side-effect@^2.1.0:
   version "2.1.2"
   resolved "https://registry.yarnpkg.com/react-side-effect/-/react-side-effect-2.1.2.tgz#dc6345b9e8f9906dc2eeb68700b615e0b4fe752a"
   integrity sha512-PVjOcvVOyIILrYoyGEpDN3vmYNLdy1CajSFNt4TDsVQC5KpTijDvWVoR+/7Rz2xT978D8/ZtFceXxzsPwZEDvw==
-
-react-social-icons@^2.8.1:
-  version "2.9.0"
-  resolved "https://registry.yarnpkg.com/react-social-icons/-/react-social-icons-2.9.0.tgz#7cda7a0d138307ed06947473141ea0c3d23a6277"
-  dependencies:
-    babel-runtime "^6.11.6"
-    classnames "^2.2.5"
 
 react-style-singleton@^2.2.1:
   version "2.2.1"

@@ -52,6 +52,7 @@ import SubmissionDetails from '../../components/SubmissionDetails.js';
 import { isImage, isVideo } from '../../isImage.js';
 import getNycTimezoneOffset from '../../timezone.js';
 import { getBoroNameMemoized } from '../../getBoroName.js';
+import { vehicleTypeUrl } from '../../getVehicleType.js';
 
 usStateNames.DC = 'District of Columbia';
 
@@ -570,14 +571,24 @@ class Home extends React.Component {
         if (plate) {
           this.setState({
             vehicleInfoComponent: (
-              <a
-                href="https://github.com/josephfrazier/Reported-Web/issues/295"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Could not look up make/model of {plate} in{' '}
-                {usStateNames[licenseState]}, click here for details
-              </a>
+              <React.Fragment>
+                <a
+                  href="https://github.com/josephfrazier/Reported-Web/issues/295"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Could not look up make/model of {plate} in{' '}
+                  {usStateNames[licenseState]}, click here for details
+                </a>
+                <br />
+                <a
+                  href={vehicleTypeUrl({ licensePlate: plate, licenseState })}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Click here to manually look it up
+                </a>
+              </React.Fragment>
             ),
           });
 

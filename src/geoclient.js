@@ -1,6 +1,8 @@
 import axios from 'axios';
 import axiosRetry from 'axios-retry';
 
+import cbData from './districts-info.json';
+
 const { GEO_APP_KEY, GOOGLE_API_KEY } = process.env;
 
 // ported from https://github.com/jeffrono/Reported/blob/6d9e1d8c087ee53954037b4e80a72481a8425045/v2/enrich_functions.rb#L405-L411
@@ -8,8 +10,7 @@ axiosRetry(axios, { retryDelay: () => 5000 });
 
 // ported from https://github.com/jeffrono/Reported/blob/19b588171315a3093d53986f9fb995059f5084b4/v2/enrich_functions.rb#L149-L154
 function getCbData(id) {
-  const response = require('./districts-info.json');
-  return response[id];
+  return cbData[id];
 }
 
 // takes lat long

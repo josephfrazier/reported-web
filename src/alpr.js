@@ -1,19 +1,8 @@
-import exifr from 'exifr/dist/full.umd.js';
 import sharp from 'sharp';
 import nodeFetch from 'node-fetch';
 import FormData from 'form-data';
 
 async function orientImageBuffer({ attachmentBuffer }) {
-  console.info(
-    'Extracted GPS latitude/longitude location from EXIF metadata',
-    await exifr.gps(attachmentBuffer),
-  ); // eslint-disable-line no-console
-
-  // eslint-disable-next-line no-console
-  console.log(
-    await exifr.parse(attachmentBuffer, ['CreateDate', 'OffsetTimeDigitized']),
-  );
-
   console.time(`orientImageBuffer`); // eslint-disable-line no-console
   // eslint-disable-next-line no-console
   console.log(
@@ -25,16 +14,6 @@ async function orientImageBuffer({ attachmentBuffer }) {
     .catch(() => attachmentBuffer)
     .then(buffer => Buffer.from(buffer))
     .then(async buffer => {
-      console.info(
-        'Extracted GPS latitude/longitude location from EXIF metadata',
-        await exifr.gps(buffer),
-      ); // eslint-disable-line no-console
-
-      // eslint-disable-next-line no-console
-      console.log(
-        await exifr.parse(buffer, ['CreateDate', 'OffsetTimeDigitized']),
-      );
-
       console.log(`image buffer length AFTER sharp: ${buffer.length} bytes`); // eslint-disable-line no-console
       console.timeEnd(`orientImageBuffer`); // eslint-disable-line no-console
       return buffer;

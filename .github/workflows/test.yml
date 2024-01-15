@@ -25,4 +25,5 @@ jobs:
         GEO_APP_ID: ${{ secrets.GEO_APP_ID }}
         GEO_APP_KEY: ${{ secrets.GEO_APP_KEY }}
         GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+        PLATERECOGNIZER_TOKEN: ${{ secrets.PLATERECOGNIZER_TOKEN }}
       run: yarn test

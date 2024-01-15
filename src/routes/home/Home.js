@@ -572,13 +572,14 @@ class Home extends React.Component {
           this.setState({
             vehicleInfoComponent: (
               <React.Fragment>
+                Could not look up make/model of {plate} in{' '}
+                {usStateNames[licenseState]},
                 <a
                   href="https://github.com/josephfrazier/Reported-Web/issues/295"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  Could not look up make/model of {plate} in{' '}
-                  {usStateNames[licenseState]}, click here for details
+                  click here for details
                 </a>
                 <br />
                 <a

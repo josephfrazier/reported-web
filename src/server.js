@@ -20,14 +20,11 @@ import ReactDOM from 'react-dom/server';
 import PrettyError from 'pretty-error';
 import Parse from 'parse/node';
 import FileType from 'file-type/browser';
-import sharp from 'sharp';
 import axios from 'axios';
 import multer from 'multer';
 import stringify from 'json-stringify-safe';
 import DelayedResponse from 'http-delayed-response';
 import { JSDOM } from 'jsdom';
-import FormData from 'form-data';
-import exifr from 'exifr/dist/full.umd.js';
 
 import { isImage, isVideo } from './isImage.js';
 import { validateLocation, processValidation } from './geoclient.js';
@@ -43,6 +40,7 @@ import router from './router';
 // import assets from './asset-manifest.json'; // eslint-disable-line import/no-unresolved
 import chunks from './chunk-manifest.json'; // eslint-disable-line import/no-unresolved
 import config from './config';
+import readLicenseViaALPR from './alpr';
 
 require('dotenv').config();
 
@@ -327,44 +325,6 @@ app.use('/requestPasswordReset', (req, res) => {
     .catch(handlePromiseRejection(res));
 });
 
-async function orientImageBuffer({ attachmentBuffer }) {
-  console.info(
-    'Extracted GPS latitude/longitude location from EXIF metadata',
-    await exifr.gps(attachmentBuffer),
-  ); // eslint-disable-line no-console
-
-  // eslint-disable-next-line no-console
-  console.log(
-    await exifr.parse(attachmentBuffer, ['CreateDate', 'OffsetTimeDigitized']),
-  );
-
-  console.time(`orientImageBuffer`); // eslint-disable-line no-console
-  // eslint-disable-next-line no-console
-  console.log(
-    `image buffer length BEFORE sharp: ${attachmentBuffer.length} bytes`,
-  );
-  return sharp(attachmentBuffer)
-    .rotate()
-    .toBuffer()
-    .catch(() => attachmentBuffer)
-    .then(buffer => Buffer.from(buffer))
-    .then(async buffer => {
-      console.info(
-        'Extracted GPS latitude/longitude location from EXIF metadata',
-        await exifr.gps(buffer),
-      ); // eslint-disable-line no-console
-
-      // eslint-disable-next-line no-console
-      console.log(
-        await exifr.parse(buffer, ['CreateDate', 'OffsetTimeDigitized']),
-      );
-
-      console.log(`image buffer length AFTER sharp: ${buffer.length} bytes`); // eslint-disable-line no-console
-      console.timeEnd(`orientImageBuffer`); // eslint-disable-line no-console
-      return buffer;
-    });
-}
-
 app.use('/submit', (req, res) => {
   // Call upload.array directly to intercept errors and respond with JSON, see the following:
   // https://github.com/expressjs/multer/tree/80ee2f52432cc0c81c93b03c6b0b448af1f626e5#error-handling
@@ -520,39 +480,6 @@ app.use('/submit', (req, res) => {
   });
 });
 
-// https://app.platerecognizer.com/upload-limit/
-const downscaleForPlateRecognizer = buffer => {
-  const fileSize = buffer.length;
-  const maxFilesize = 2411654;
-
-  if (fileSize >= maxFilesize) {
-    const targetWidth = 4096;
-
-    // eslint-disable-next-line no-console
-    console.log(
-      `file size is greater than maximum of ${maxFilesize} bytes, attempting to scale down to width of ${targetWidth}`,
-    );
-
-    return sharp(buffer)
-      .resize({ width: targetWidth })
-      .toBuffer()
-      .catch(error => {
-        console.error('could not scale down, using unscaled image', { error });
-        return buffer;
-      })
-      .then(resizedBufferish => {
-        const resizedBuffer = Buffer.from(resizedBufferish);
-        // eslint-disable-next-line no-console
-        console.log(
-          `file size after scaling down: ${resizedBuffer.length} bytes`,
-        );
-        return resizedBuffer;
-      });
-  }
-
-  return buffer;
-};
-
 // adapted from https://docs.platerecognizer.com/?javascript#license-plate-recognition
 app.use(
   '/platerecognizer',
@@ -569,36 +496,7 @@ app.use(
 
     const attachmentBuffer = req.file.buffer;
 
-    orientImageBuffer({ attachmentBuffer })
-      .then(downscaleForPlateRecognizer)
-      .then(buffer => buffer.toString('base64'))
-      .then(attachmentBytesRotated => {
-        console.log('STARTING platerecognizer'); // eslint-disable-line no-console
-        console.time(`/platerecognizer plate-reader`); // eslint-disable-line no-console
-
-        const body = new FormData();
-
-        body.append('upload', attachmentBytesRotated);
-
-        // body.append("regions", "us-ny"); // Change to your country
-        body.append('regions', 'us'); // Change to your country
-
-        return nodeFetch('https://api.platerecognizer.com/v1/plate-reader/', {
-          method: 'POST',
-          headers: {
-            Authorization: `Token ${PLATERECOGNIZER_TOKEN}`,
-          },
-          body,
-        })
-          .then(platerecognizerRes => {
-            console.info('/platerecognizer plate-reader', {
-              platerecognizerRes,
-            });
-            return platerecognizerRes;
-          })
-          .then(platerecognizerRes => platerecognizerRes.json())
-          .finally(() => console.timeEnd(`/platerecognizer plate-reader`)); // eslint-disable-line no-console
-      })
+    readLicenseViaALPR({ attachmentBuffer, PLATERECOGNIZER_TOKEN })
       .then(data => res.json(data))
       .catch(handlePromiseRejection(res));
   },

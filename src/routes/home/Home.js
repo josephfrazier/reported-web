@@ -573,7 +573,7 @@ class Home extends React.Component {
             vehicleInfoComponent: (
               <React.Fragment>
                 Could not look up make/model of {plate} in{' '}
-                {usStateNames[licenseState]},
+                {usStateNames[licenseState]},{' '}
                 <a
                   href="https://github.com/josephfrazier/Reported-Web/issues/295"
                   target="_blank"

@@ -56,6 +56,7 @@ const downscaleForPlateRecognizer = buffer => {
 export default function readLicenseViaALPR({
   attachmentBuffer,
   PLATERECOGNIZER_TOKEN,
+  PLATERECOGNIZER_TOKEN_TWO,
 }) {
   return orientImageBuffer({ attachmentBuffer })
     .then(downscaleForPlateRecognizer)
@@ -78,6 +79,29 @@ export default function readLicenseViaALPR({
         },
         body,
       })
+        .then(platerecognizerRes => {
+          if (platerecognizerRes.ok) {
+            return platerecognizerRes;
+          }
+
+          console.info(
+            '/platerecognizer plate-reader got an error with first token, trying second',
+          );
+          const body = new FormData();
+
+          body.append('upload', attachmentBytesRotated);
+
+          // body.append("regions", "us-ny"); // Change to your country
+          body.append('regions', 'us'); // Change to your country
+
+          return nodeFetch('https://api.platerecognizer.com/v1/plate-reader/', {
+            method: 'POST',
+            headers: {
+              Authorization: `Token ${PLATERECOGNIZER_TOKEN_TWO}`,
+            },
+            body,
+          });
+        })
         .then(platerecognizerRes => {
           console.info('/platerecognizer plate-reader', {
             platerecognizerRes,

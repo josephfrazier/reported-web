@@ -57,6 +57,7 @@ const {
   PARSE_SERVER_URL,
   HEROKU_RELEASE_VERSION,
   PLATERECOGNIZER_TOKEN,
+  PLATERECOGNIZER_TOKEN_TWO,
 } = process.env;
 
 require('heroku-self-ping').default(config.api.serverUrl, {
@@ -496,7 +497,11 @@ app.use(
 
     const attachmentBuffer = req.file.buffer;
 
-    readLicenseViaALPR({ attachmentBuffer, PLATERECOGNIZER_TOKEN })
+    readLicenseViaALPR({
+      attachmentBuffer,
+      PLATERECOGNIZER_TOKEN,
+      PLATERECOGNIZER_TOKEN_TWO,
+    })
       .then(data => res.json(data))
       .catch(handlePromiseRejection(res));
   },

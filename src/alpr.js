@@ -53,6 +53,23 @@ const downscaleForPlateRecognizer = buffer => {
   return buffer;
 };
 
+function platerecognizer({ attachmentBytesRotated, PLATERECOGNIZER_TOKEN }) {
+  const body = new FormData();
+
+  body.append('upload', attachmentBytesRotated);
+
+  // body.append("regions", "us-ny"); // Change to your country
+  body.append('regions', 'us'); // Change to your country
+
+  return nodeFetch('https://api.platerecognizer.com/v1/plate-reader/', {
+    method: 'POST',
+    headers: {
+      Authorization: `Token ${PLATERECOGNIZER_TOKEN}`,
+    },
+    body,
+  });
+}
+
 export default function readLicenseViaALPR({
   attachmentBuffer,
   PLATERECOGNIZER_TOKEN,
@@ -65,20 +82,7 @@ export default function readLicenseViaALPR({
       console.log('STARTING platerecognizer'); // eslint-disable-line no-console
       console.time(`/platerecognizer plate-reader`); // eslint-disable-line no-console
 
-      const body = new FormData();
-
-      body.append('upload', attachmentBytesRotated);
-
-      // body.append("regions", "us-ny"); // Change to your country
-      body.append('regions', 'us'); // Change to your country
-
-      return nodeFetch('https://api.platerecognizer.com/v1/plate-reader/', {
-        method: 'POST',
-        headers: {
-          Authorization: `Token ${PLATERECOGNIZER_TOKEN}`,
-        },
-        body,
-      })
+      return platerecognizer({ attachmentBytesRotated, PLATERECOGNIZER_TOKEN })
         .then(platerecognizerRes => {
           if (platerecognizerRes.ok) {
             return platerecognizerRes;
@@ -87,19 +91,10 @@ export default function readLicenseViaALPR({
           console.info(
             '/platerecognizer plate-reader got an error with first token, trying second',
           );
-          const body = new FormData();
 
-          body.append('upload', attachmentBytesRotated);
-
-          // body.append("regions", "us-ny"); // Change to your country
-          body.append('regions', 'us'); // Change to your country
-
-          return nodeFetch('https://api.platerecognizer.com/v1/plate-reader/', {
-            method: 'POST',
-            headers: {
-              Authorization: `Token ${PLATERECOGNIZER_TOKEN_TWO}`,
-            },
-            body,
+          return platerecognizer({
+            attachmentBytesRotated,
+            PLATERECOGNIZER_TOKEN: PLATERECOGNIZER_TOKEN_TWO,
           });
         })
         .then(platerecognizerRes => {

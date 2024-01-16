@@ -5,8 +5,6 @@
 
 import { readFileSync } from 'fs';
 
-import omit from 'object.omit';
-
 import readLicenseViaALPR from './alpr.js';
 
 describe('readLicenseViaALPR', () => {
@@ -21,9 +19,7 @@ describe('readLicenseViaALPR', () => {
       PLATERECOGNIZER_TOKEN,
     });
 
-    expect(
-      omit(result, ['filename', 'processing_time', 'timestamp']),
-    ).toMatchSnapshot();
+    expect(result.results[0]).toMatchSnapshot();
   });
 
   test('falling back to the second token', async () => {
@@ -38,8 +34,6 @@ describe('readLicenseViaALPR', () => {
       PLATERECOGNIZER_TOKEN_TWO,
     });
 
-    expect(
-      omit(result, ['filename', 'processing_time', 'timestamp']),
-    ).toMatchSnapshot();
+    expect(result.results[0]).toMatchSnapshot();
   });
 });

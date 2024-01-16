@@ -10,7 +10,7 @@ import omit from 'object.omit';
 import readLicenseViaALPR from './alpr.js';
 
 describe('readLicenseViaALPR', () => {
-  test('returns the right object', async () => {
+  test('using only the first token', async () => {
     const attachmentBuffer = readFileSync(
       './src/4d81b7e083843d949a73cc1178227fe8_photoData0.jpg',
     );
@@ -19,6 +19,23 @@ describe('readLicenseViaALPR', () => {
     const result = await readLicenseViaALPR({
       attachmentBuffer,
       PLATERECOGNIZER_TOKEN,
+    });
+
+    expect(
+      omit(result, ['filename', 'processing_time', 'timestamp']),
+    ).toMatchSnapshot();
+  });
+
+  test('falling back to the second token', async () => {
+    const attachmentBuffer = readFileSync(
+      './src/4d81b7e083843d949a73cc1178227fe8_photoData0.jpg',
+    );
+    const { PLATERECOGNIZER_TOKEN_TWO } = process.env;
+
+    const result = await readLicenseViaALPR({
+      attachmentBuffer,
+      PLATERECOGNIZER_TOKEN: 'INVALID TOKEN',
+      PLATERECOGNIZER_TOKEN_TWO,
     });
 
     expect(

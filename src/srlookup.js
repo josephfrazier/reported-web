@@ -20,5 +20,26 @@ export default async function srlookup({ reqnumber }) {
     result[key] = value;
   }
 
+  const srdatereported = /\$\("#srdatereported"\).text\(getESTDate\("([^"]+)"\)\)/.exec(
+    data,
+  );
+  if (srdatereported) {
+    result['Date Reported'] = srdatereported[1];
+  }
+
+  const srupdatedon = /\$\("#srupdatedon"\).text\(getESTDate\("([^"]+)"\)\)/.exec(
+    data,
+  );
+  if (srupdatedon) {
+    result['Updated On'] = srupdatedon[1];
+  }
+
+  const srdateclosed = /\$\("#srdateclosed"\).text\(getESTDate\("([^"]+)"\)\)/.exec(
+    data,
+  );
+  if (srdateclosed) {
+    result['Date Closed'] = srdateclosed[1];
+  }
+
   return result;
 }

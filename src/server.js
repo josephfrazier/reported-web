@@ -20,16 +20,15 @@ import ReactDOM from 'react-dom/server';
 import PrettyError from 'pretty-error';
 import Parse from 'parse/node';
 import FileType from 'file-type/browser';
-import axios from 'axios';
 import multer from 'multer';
 import stringify from 'json-stringify-safe';
 import DelayedResponse from 'http-delayed-response';
-import { JSDOM } from 'jsdom';
 
 import { isImage, isVideo } from './isImage.js';
 import { validateLocation, processValidation } from './geoclient.js';
 import getVehicleType from './getVehicleType.js';
 import { submit_311_illegal_parking_report } from './311.js'; // eslint-disable-line camelcase
+import srlookup from './srlookup.js';
 
 import App from './components/App';
 import Html from './components/Html';
@@ -279,34 +278,11 @@ app.use('/api/deleteSubmission', (req, res) => {
     .catch(handlePromiseRejection(res));
 });
 
-async function srlookup({ reqnumber }) {
-  const url = `https://portal.311.nyc.gov/sr-details/?srnum=${reqnumber}`;
-
-  return axios.get(url);
-}
-
 app.get('/srlookup/:reqnumber', (req, res) => {
   const { reqnumber } = req.params;
 
   srlookup({ reqnumber })
-    .then(({ data }) => {
-      const { document } = new JSDOM(data).window;
-
-      const result = {};
-      result.description = document.querySelector(
-        '#page-wrapper p',
-      )?.textContent;
-      const fields = [...document.querySelectorAll('.info, .control')];
-      for (let i = 0; i < fields.length; i += 2) {
-        const keyField = fields[i];
-        const valueField = fields[i + 1];
-
-        const key = keyField.textContent;
-        const value = valueField.textContent;
-
-        result[key] = value;
-      }
-
+    .then(result => {
       res.json(result);
     })
     .catch(handlePromiseRejection(res));

@@ -280,13 +280,7 @@ app.use('/api/deleteSubmission', (req, res) => {
 });
 
 async function srlookup({ reqnumber }) {
-  const response = await axios.get(
-    `https://portal.311.nyc.gov/api-get-sr-or-correspondence-by-number/?number=${reqnumber}`,
-  );
-  const {
-    data: { srid },
-  } = response;
-  const url = `https://portal.311.nyc.gov/sr-details/?id=${srid}`;
+  const url = `https://portal.311.nyc.gov/sr-details/?srnum=${reqnumber}`
 
   return axios.get(url);
 }
@@ -302,15 +296,18 @@ app.get('/srlookup/:reqnumber', (req, res) => {
       result.description = document.querySelector(
         '#page-wrapper p',
       ).textContent;
-      [
-        ...document.querySelectorAll('#page-wrapper td.form-control-cell'),
-      ].forEach(e => {
-        const key = e.querySelector('label').textContent;
-        const input = e.querySelector('input');
-        const value = input && input.value;
+      const fields = [
+        ...document.querySelectorAll('.info, .control'),
+      ]
+      for(let i = 0; i < fields.length; i += 2) {
+        const keyField = fields[i]
+        const valueField = fields[i + 1]
+
+        const key = keyField.textContent;
+        const value = valueField.textContent;
 
         result[key] = value;
-      });
+      }
 
       res.json(result);
     })

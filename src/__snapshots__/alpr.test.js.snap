@@ -3,32 +3,32 @@
 exports[`readLicenseViaALPR falling back to the second token 1`] = `
 Object {
   "box": Object {
-    "xmax": 1841,
-    "xmin": 1639,
-    "ymax": 2123,
-    "ymin": 2017,
+    "xmax": 1842,
+    "xmin": 1638,
+    "ymax": 2113,
+    "ymin": 2009,
   },
   "candidates": Array [
     Object {
       "plate": "t736394c",
-      "score": 0.897,
+      "score": 0.9,
     },
   ],
-  "dscore": 0.829,
+  "dscore": 0.729,
   "plate": "t736394c",
   "region": Object {
     "code": "us-ny",
-    "score": 0.722,
+    "score": 0.628,
   },
-  "score": 0.897,
+  "score": 0.9,
   "vehicle": Object {
     "box": Object {
-      "xmax": 2423,
-      "xmin": 1223,
-      "ymax": 2200,
-      "ymin": 1162,
+      "xmax": 2439,
+      "xmin": 1258,
+      "ymax": 2238,
+      "ymin": 1176,
     },
-    "score": 0.624,
+    "score": 0.893,
     "type": "Sedan",
   },
 }
@@ -37,32 +37,32 @@ Object {
 exports[`readLicenseViaALPR using only the first token 1`] = `
 Object {
   "box": Object {
-    "xmax": 1841,
-    "xmin": 1639,
-    "ymax": 2123,
-    "ymin": 2017,
+    "xmax": 1842,
+    "xmin": 1638,
+    "ymax": 2113,
+    "ymin": 2009,
   },
   "candidates": Array [
     Object {
       "plate": "t736394c",
-      "score": 0.897,
+      "score": 0.9,
     },
   ],
-  "dscore": 0.829,
+  "dscore": 0.729,
   "plate": "t736394c",
   "region": Object {
     "code": "us-ny",
-    "score": 0.722,
+    "score": 0.628,
   },
-  "score": 0.897,
+  "score": 0.9,
   "vehicle": Object {
     "box": Object {
-      "xmax": 2423,
-      "xmin": 1223,
-      "ymax": 2200,
-      "ymin": 1162,
+      "xmax": 2439,
+      "xmin": 1258,
+      "ymax": 2238,
+      "ymin": 1176,
     },
-    "score": 0.624,
+    "score": 0.893,
     "type": "Sedan",
   },
 }

@@ -280,7 +280,7 @@ app.use('/api/deleteSubmission', (req, res) => {
 });
 
 async function srlookup({ reqnumber }) {
-  const url = `https://portal.311.nyc.gov/sr-details/?srnum=${reqnumber}`
+  const url = `https://portal.311.nyc.gov/sr-details/?srnum=${reqnumber}`;
 
   return axios.get(url);
 }
@@ -296,12 +296,10 @@ app.get('/srlookup/:reqnumber', (req, res) => {
       result.description = document.querySelector(
         '#page-wrapper p',
       )?.textContent;
-      const fields = [
-        ...document.querySelectorAll('.info, .control'),
-      ]
-      for(let i = 0; i < fields.length; i += 2) {
-        const keyField = fields[i]
-        const valueField = fields[i + 1]
+      const fields = [...document.querySelectorAll('.info, .control')];
+      for (let i = 0; i < fields.length; i += 2) {
+        const keyField = fields[i];
+        const valueField = fields[i + 1];
 
         const key = keyField.textContent;
         const value = valueField.textContent;

@@ -295,7 +295,7 @@ app.get('/srlookup/:reqnumber', (req, res) => {
       const result = {};
       result.description = document.querySelector(
         '#page-wrapper p',
-      ).textContent;
+      )?.textContent;
       const fields = [
         ...document.querySelectorAll('.info, .control'),
       ]

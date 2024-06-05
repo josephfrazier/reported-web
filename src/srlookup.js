@@ -24,21 +24,27 @@ export default async function srlookup({ reqnumber }) {
     data,
   );
   if (srdatereported) {
-    result['Date Reported'] = srdatereported[1];
+    result['Date Reported'] = new Date(
+      srdatereported[1],
+    ).toLocaleString('en-US', { timeZone: 'America/New_York' });
   }
 
   const srupdatedon = /\$\("#srupdatedon"\).text\(getESTDate\("([^"]+)"\)\)/.exec(
     data,
   );
   if (srupdatedon) {
-    result['Updated On'] = srupdatedon[1];
+    result['Updated On'] = new Date(srupdatedon[1]).toLocaleString('en-US', {
+      timeZone: 'America/New_York',
+    });
   }
 
   const srdateclosed = /\$\("#srdateclosed"\).text\(getESTDate\("([^"]+)"\)\)/.exec(
     data,
   );
   if (srdateclosed) {
-    result['Date Closed'] = srdateclosed[1];
+    result['Date Closed'] = new Date(srdateclosed[1]).toLocaleString('en-US', {
+      timeZone: 'America/New_York',
+    });
   }
 
   return result;

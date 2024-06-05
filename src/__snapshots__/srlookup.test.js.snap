@@ -3,15 +3,15 @@
 exports[`srlookup returns the right object 1`] = `
 Object {
   "Additional Details": "Unsafe Driving",
-  "Date Closed": "2019-09-16T16:02:00Z",
-  "Date Reported": "2019-07-03T14:43:28Z",
+  "Date Closed": "9/16/2019, 12:02:00 PM",
+  "Date Reported": "7/3/2019, 10:43:28 AM",
   "Problem": "For Hire Vehicle Complaint",
   "Problem Details": "Driver Complaint - Non Passenger",
   "SR Address": "",
   "SR Number": "311-00039062",
   "SR Status": "Closed",
   "Time To Next Update": " N/A ",
-  "Updated On": "2019-09-16T16:02:22Z",
+  "Updated On": "9/16/2019, 12:02:22 PM",
   "description": "A hearing was scheduled at the OATH/Taxi and Limousine Tribunal.",
 }
 `;

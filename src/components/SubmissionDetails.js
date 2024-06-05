@@ -2,7 +2,6 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import Loadable from 'react-loadable';
 import axios from 'axios';
-import humanizeString from 'humanize-string';
 
 class SubmissionDetails extends React.Component {
   constructor(props) {
@@ -77,10 +76,8 @@ class SubmissionDetails extends React.Component {
         axios.get(`/srlookup/${reqnumber}`).then(({ data }) => () => {
           const items = Object.entries(data).map(([key, value]) => (
             <React.Fragment key={key}>
-              <dt>{humanizeString(key)}:</dt>
-              <dd>
-                {key.endsWith('Date') ? new Date(value).toString() : value}
-              </dd>
+              <dt>{key}:</dt>
+              <dd>{value}</dd>
             </React.Fragment>
           ));
           return <dl>{items}</dl>;

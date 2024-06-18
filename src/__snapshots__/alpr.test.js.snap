@@ -18,7 +18,7 @@ Object {
   "plate": "t736394c",
   "region": Object {
     "code": "us-ny",
-    "score": 0.628,
+    "score": 0.654,
   },
   "score": 0.9,
   "vehicle": Object {

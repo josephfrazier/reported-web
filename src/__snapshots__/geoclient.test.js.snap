@@ -276,6 +276,7 @@ New York, NY 10123",
             ],
           },
         ],
+        "entrances": Array [],
         "formatted_address": "1356 Broadway, New York, NY 10018, USA",
         "geometry": Object {
           "location": Object {
@@ -368,6 +369,7 @@ New York, NY 10123",
             ],
           },
         ],
+        "entrances": Array [],
         "formatted_address": "98 Park Row, New York, NY 10038, USA",
         "geometry": Object {
           "location": Object {
@@ -666,6 +668,7 @@ Bronx, NY 10471",
             ],
           },
         ],
+        "entrances": Array [],
         "formatted_address": "3017 Riverdale Ave, Bronx, NY 10463, USA",
         "geometry": Object {
           "location": Object {
@@ -758,6 +761,7 @@ Bronx, NY 10471",
             ],
           },
         ],
+        "entrances": Array [],
         "formatted_address": "3014 Irwin Ave, Bronx, NY 10463, USA",
         "geometry": Object {
           "location": Object {
@@ -1058,6 +1062,7 @@ Astoria, NY 11105",
             ],
           },
         ],
+        "entrances": Array [],
         "formatted_address": "27-01 21st St, Long Island City, NY 11102, USA",
         "geometry": Object {
           "location": Object {
@@ -1150,6 +1155,7 @@ Astoria, NY 11105",
             ],
           },
         ],
+        "entrances": Array [],
         "formatted_address": "26-98 21st St, Astoria, NY 11102, USA",
         "geometry": Object {
           "location": Object {
@@ -1449,6 +1455,7 @@ New York, NY 10123",
             ],
           },
         ],
+        "entrances": Array [],
         "formatted_address": "7 W 34th St., New York, NY 10001, USA",
         "geometry": Object {
           "location": Object {

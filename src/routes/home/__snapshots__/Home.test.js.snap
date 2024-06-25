@@ -264,6 +264,7 @@ exports[`Home renders children correctly 1`] = `
           >
             License/Medallion:
             <input
+              autoComplete="off"
               list="plateSuggestion"
               name="plate"
               onChange={[Function]}
@@ -640,6 +641,7 @@ exports[`Home renders children correctly 1`] = `
             Description:
              
             <textarea
+              autoComplete="off"
               name="reportDescription"
               onChange={[Function]}
               value=""

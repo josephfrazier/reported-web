@@ -1212,7 +1212,7 @@ class Home extends React.Component {
                     value={this.state.plate}
                     name="plate"
                     list="plateSuggestion"
-                    autocomplete="off"
+                    autoComplete="off"
                     ref={this.plateRef}
                     placeholder={this.state.plateSuggestion}
                     onChange={event => {
@@ -1392,7 +1392,7 @@ class Home extends React.Component {
                     value={this.state.reportDescription}
                     name="reportDescription"
                     onChange={this.handleInputChange}
-                    autocomplete="off"
+                    autoComplete="off"
                   />
                 </label>
 

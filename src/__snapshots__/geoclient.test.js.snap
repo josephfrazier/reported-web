@@ -276,7 +276,6 @@ New York, NY 10123",
             ],
           },
         ],
-        "entrances": Array [],
         "formatted_address": "1356 Broadway, New York, NY 10018, USA",
         "geometry": Object {
           "location": Object {
@@ -307,15 +306,15 @@ New York, NY 10123",
       Object {
         "address_components": Array [
           Object {
-            "long_name": "98",
-            "short_name": "98",
+            "long_name": "1",
+            "short_name": "1",
             "types": Array [
               "street_number",
             ],
           },
           Object {
-            "long_name": "Park Row",
-            "short_name": "Park Row",
+            "long_name": "Centre Street",
+            "short_name": "Centre St",
             "types": Array [
               "route",
             ],
@@ -362,33 +361,32 @@ New York, NY 10123",
             ],
           },
           Object {
-            "long_name": "10038",
-            "short_name": "10038",
+            "long_name": "10007",
+            "short_name": "10007",
             "types": Array [
               "postal_code",
             ],
           },
         ],
-        "entrances": Array [],
-        "formatted_address": "98 Park Row, New York, NY 10038, USA",
+        "formatted_address": "1 Centre St, New York, NY 10007, USA",
         "geometry": Object {
           "location": Object {
-            "lat": 40.7120298,
-            "lng": -74.006121,
+            "lat": 40.7121488,
+            "lng": -74.00560200000001,
           },
           "location_type": "RANGE_INTERPOLATED",
           "viewport": Object {
             "northeast": Object {
-              "lat": 40.71337878029149,
-              "lng": -74.00477201970848,
+              "lat": 40.7134977802915,
+              "lng": -74.00425301970851,
             },
             "southwest": Object {
-              "lat": 40.7106808197085,
-              "lng": -74.0074699802915,
+              "lat": 40.71079981970851,
+              "lng": -74.00695098029152,
             },
           },
         },
-        "place_id": "EiQ5OCBQYXJrIFJvdywgTmV3IFlvcmssIE5ZIDEwMDM4LCBVU0EiGhIYChQKEgkt6bp5IlrCiREKznXnu8kflxBi",
+        "place_id": "EiQxIENlbnRyZSBTdCwgTmV3IFlvcmssIE5ZIDEwMDA3LCBVU0EiGhIYChQKEgmpy8trIlrCiREEGIzBS0lyXBAB",
         "types": Array [
           "street_address",
         ],
@@ -668,7 +666,6 @@ Bronx, NY 10471",
             ],
           },
         ],
-        "entrances": Array [],
         "formatted_address": "3017 Riverdale Ave, Bronx, NY 10463, USA",
         "geometry": Object {
           "location": Object {
@@ -761,7 +758,6 @@ Bronx, NY 10471",
             ],
           },
         ],
-        "entrances": Array [],
         "formatted_address": "3014 Irwin Ave, Bronx, NY 10463, USA",
         "geometry": Object {
           "location": Object {
@@ -1062,7 +1058,6 @@ Astoria, NY 11105",
             ],
           },
         ],
-        "entrances": Array [],
         "formatted_address": "27-01 21st St, Long Island City, NY 11102, USA",
         "geometry": Object {
           "location": Object {
@@ -1155,7 +1150,6 @@ Astoria, NY 11105",
             ],
           },
         ],
-        "entrances": Array [],
         "formatted_address": "26-98 21st St, Astoria, NY 11102, USA",
         "geometry": Object {
           "location": Object {
@@ -1455,7 +1449,6 @@ New York, NY 10123",
             ],
           },
         ],
-        "entrances": Array [],
         "formatted_address": "7 W 34th St., New York, NY 10001, USA",
         "geometry": Object {
           "location": Object {

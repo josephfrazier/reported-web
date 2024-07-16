@@ -481,7 +481,7 @@ class Home extends React.Component {
 
     debouncedProcessValidation({ latitude, longitude }).then(data => {
       this.setState({
-        formatted_address: data.google_response.results[0].formatted_address,
+        formatted_address: `${data.geoclient_response.address.houseNumber} ${data.geoclient_response.address.streetName1In}, ${data.geoclient_response.address.firstBoroughName}`,
       });
     });
   };

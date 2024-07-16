@@ -161,7 +161,7 @@
     "webpack": "^5.84.1",
     "webpack-assets-manifest": "^3.0.2",
     "webpack-bundle-analyzer": "^4.9.0",
-    "webpack-dev-middleware": "^3.3.0",
+    "webpack-dev-middleware": "^7.2.1",
     "webpack-hot-middleware": "^2.24.2",
     "webpack-node-externals": "^1.7.2"
   },

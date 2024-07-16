@@ -125,7 +125,7 @@
     "front-matter": "^2.3.0",
     "glob": "^10.3.3",
     "identity-obj-proxy": "^3.0.0",
-    "jest": "24",
+    "jest": "25",
     "jest-mock-now": "^1.2.0",
     "localtunnel": "^1.9.1",
     "markdown-it": "^12.3.2",

@@ -80,7 +80,7 @@ module.exports = {
   // setupFiles: // [array]
   // setupTestFrameworkScriptFile: // [string]
   // snapshotSerializers: // [array<string>]
-  // testEnvironment: // [string]
+  testEnvironment: 'jsdom',
   // testMatch: // [array<string>]
   // testPathIgnorePatterns: // [array<string>]
   // testRegex: // [string]

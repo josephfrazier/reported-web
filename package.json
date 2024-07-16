@@ -21,6 +21,7 @@
     "body-parser": "^1.20.2",
     "buffer": "^6.0.3",
     "buffer-to-arraybuffer": "^0.0.6",
+    "capitalize": "^2.0.4",
     "capture-frame": "^4.0.0",
     "classnames": "^2.2.6",
     "compression": "^1.7.2",

@@ -761,18 +761,18 @@ Bronx, NY 10471",
         "formatted_address": "3014 Irwin Ave, Bronx, NY 10463, USA",
         "geometry": Object {
           "location": Object {
-            "lat": 40.8807116,
-            "lng": -73.9103267,
+            "lat": 40.8807133,
+            "lng": -73.9103282,
           },
           "location_type": "RANGE_INTERPOLATED",
           "viewport": Object {
             "northeast": Object {
-              "lat": 40.8820605802915,
-              "lng": -73.90897771970849,
+              "lat": 40.88206228029149,
+              "lng": -73.90897921970848,
             },
             "southwest": Object {
-              "lat": 40.8793626197085,
-              "lng": -73.91167568029151,
+              "lat": 40.8793643197085,
+              "lng": -73.91167718029149,
             },
           },
         },
@@ -1153,18 +1153,18 @@ Astoria, NY 11105",
         "formatted_address": "26-98 21st St, Astoria, NY 11102, USA",
         "geometry": Object {
           "location": Object {
-            "lat": 40.7722291,
-            "lng": -73.9259393,
+            "lat": 40.7722329,
+            "lng": -73.9259404,
           },
           "location_type": "RANGE_INTERPOLATED",
           "viewport": Object {
             "northeast": Object {
-              "lat": 40.77357808029149,
-              "lng": -73.9245903197085,
+              "lat": 40.77358188029149,
+              "lng": -73.92459141970849,
             },
             "southwest": Object {
-              "lat": 40.7708801197085,
-              "lng": -73.9272882802915,
+              "lat": 40.7708839197085,
+              "lng": -73.92728938029151,
             },
           },
         },

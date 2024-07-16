@@ -1,28 +1,28 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
 exports[`readLicenseViaALPR falling back to the second token 1`] = `
-{
-  "box": {
+Object {
+  "box": Object {
     "xmax": 1842,
     "xmin": 1638,
     "ymax": 2113,
     "ymin": 2009,
   },
-  "candidates": [
-    {
+  "candidates": Array [
+    Object {
       "plate": "t736394c",
       "score": 0.9,
     },
   ],
   "dscore": 0.729,
   "plate": "t736394c",
-  "region": {
+  "region": Object {
     "code": "us-ny",
     "score": 0.654,
   },
   "score": 0.9,
-  "vehicle": {
-    "box": {
+  "vehicle": Object {
+    "box": Object {
       "xmax": 2439,
       "xmin": 1258,
       "ymax": 2238,
@@ -35,28 +35,28 @@ exports[`readLicenseViaALPR falling back to the second token 1`] = `
 `;
 
 exports[`readLicenseViaALPR using only the first token 1`] = `
-{
-  "box": {
+Object {
+  "box": Object {
     "xmax": 1842,
     "xmin": 1638,
     "ymax": 2113,
     "ymin": 2009,
   },
-  "candidates": [
-    {
+  "candidates": Array [
+    Object {
       "plate": "t736394c",
       "score": 0.9,
     },
   ],
   "dscore": 0.729,
   "plate": "t736394c",
-  "region": {
+  "region": Object {
     "code": "us-ny",
     "score": 0.654,
   },
   "score": 0.9,
-  "vehicle": {
-    "box": {
+  "vehicle": Object {
+    "box": Object {
       "xmax": 2439,
       "xmin": 1258,
       "ymax": 2238,

@@ -288,7 +288,7 @@ exports[`SubmissionDetails renders delete button correctly 1`] = `
   <button
     onClick={[Function]}
     style={
-      {
+      Object {
         "background": "white",
         "color": "red",
         "margin": "1px",

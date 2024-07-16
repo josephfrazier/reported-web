@@ -1,12 +1,12 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
 exports[`processValidation returns the right object 1`] = `
-{
-  "cb_data": {
+Object {
+  "cb_data": Object {
     "address": "450 7th Avenue, Rm. 2109
 New York, NY 10123",
     "borough": "Manhattan",
-    "calendar": {
+    "calendar": Object {
       "scraperId": "manhattan-cb5",
       "web": "https://www.cb5.org/cb5/calendar/",
     },
@@ -19,8 +19,8 @@ New York, NY 10123",
     "twitter": "manhattancb5",
     "website": "http://www.cb5.org",
   },
-  "geoclient_response": {
-    "address": {
+  "geoclient_response": Object {
+    "address": Object {
       "assemblyDistrict": "75",
       "bbl": "1008120029",
       "bblBoroughCode": "1",
@@ -205,189 +205,189 @@ New York, NY 10123",
       "zipCode": "10018",
     },
   },
-  "google_response": {
-    "plus_code": {
+  "google_response": Object {
+    "plus_code": Object {
       "compound_code": "PX7V+4HH New York, NY, USA",
       "global_code": "87G7PX7V+4HH",
     },
-    "results": [
-      {
-        "address_components": [
-          {
+    "results": Array [
+      Object {
+        "address_components": Array [
+          Object {
             "long_name": "1356",
             "short_name": "1356",
-            "types": [
+            "types": Array [
               "street_number",
             ],
           },
-          {
+          Object {
             "long_name": "Broadway",
             "short_name": "Broadway",
-            "types": [
+            "types": Array [
               "route",
             ],
           },
-          {
+          Object {
             "long_name": "Manhattan",
             "short_name": "Manhattan",
-            "types": [
+            "types": Array [
               "political",
               "sublocality",
               "sublocality_level_1",
             ],
           },
-          {
+          Object {
             "long_name": "New York",
             "short_name": "New York",
-            "types": [
+            "types": Array [
               "locality",
               "political",
             ],
           },
-          {
+          Object {
             "long_name": "New York County",
             "short_name": "New York County",
-            "types": [
+            "types": Array [
               "administrative_area_level_2",
               "political",
             ],
           },
-          {
+          Object {
             "long_name": "New York",
             "short_name": "NY",
-            "types": [
+            "types": Array [
               "administrative_area_level_1",
               "political",
             ],
           },
-          {
+          Object {
             "long_name": "United States",
             "short_name": "US",
-            "types": [
+            "types": Array [
               "country",
               "political",
             ],
           },
-          {
+          Object {
             "long_name": "10018",
             "short_name": "10018",
-            "types": [
+            "types": Array [
               "postal_code",
             ],
           },
         ],
         "formatted_address": "1356 Broadway, New York, NY 10018, USA",
-        "geometry": {
-          "location": {
+        "geometry": Object {
+          "location": Object {
             "lat": 40.7127753,
             "lng": -74.0059728,
           },
           "location_type": "ROOFTOP",
-          "viewport": {
-            "northeast": {
+          "viewport": Object {
+            "northeast": Object {
               "lat": 40.7141242802915,
               "lng": -74.0046238197085,
             },
-            "southwest": {
+            "southwest": Object {
               "lat": 40.7114263197085,
               "lng": -74.0073217802915,
             },
           },
         },
         "place_id": "ChIJSyX8DCJawokRQzG7RkXmPO4",
-        "plus_code": {
+        "plus_code": Object {
           "compound_code": "PX7V+4J New York, NY, USA",
           "global_code": "87G7PX7V+4J",
         },
-        "types": [
+        "types": Array [
           "street_address",
         ],
       },
-      {
-        "address_components": [
-          {
+      Object {
+        "address_components": Array [
+          Object {
             "long_name": "1",
             "short_name": "1",
-            "types": [
+            "types": Array [
               "street_number",
             ],
           },
-          {
+          Object {
             "long_name": "Centre Street",
             "short_name": "Centre St",
-            "types": [
+            "types": Array [
               "route",
             ],
           },
-          {
+          Object {
             "long_name": "Manhattan",
             "short_name": "Manhattan",
-            "types": [
+            "types": Array [
               "political",
               "sublocality",
               "sublocality_level_1",
             ],
           },
-          {
+          Object {
             "long_name": "New York",
             "short_name": "New York",
-            "types": [
+            "types": Array [
               "locality",
               "political",
             ],
           },
-          {
+          Object {
             "long_name": "New York County",
             "short_name": "New York County",
-            "types": [
+            "types": Array [
               "administrative_area_level_2",
               "political",
             ],
           },
-          {
+          Object {
             "long_name": "New York",
             "short_name": "NY",
-            "types": [
+            "types": Array [
               "administrative_area_level_1",
               "political",
             ],
           },
-          {
+          Object {
             "long_name": "United States",
             "short_name": "US",
-            "types": [
+            "types": Array [
               "country",
               "political",
             ],
           },
-          {
+          Object {
             "long_name": "10007",
             "short_name": "10007",
-            "types": [
+            "types": Array [
               "postal_code",
             ],
           },
         ],
         "formatted_address": "1 Centre St, New York, NY 10007, USA",
-        "geometry": {
-          "location": {
+        "geometry": Object {
+          "location": Object {
             "lat": 40.7121488,
             "lng": -74.00560200000001,
           },
           "location_type": "RANGE_INTERPOLATED",
-          "viewport": {
-            "northeast": {
+          "viewport": Object {
+            "northeast": Object {
               "lat": 40.7134977802915,
               "lng": -74.00425301970851,
             },
-            "southwest": {
+            "southwest": Object {
               "lat": 40.71079981970851,
               "lng": -74.00695098029152,
             },
           },
         },
         "place_id": "EiQxIENlbnRyZSBTdCwgTmV3IFlvcmssIE5ZIDEwMDA3LCBVU0EiGhIYChQKEgmpy8trIlrCiREEGIzBS0lyXBAB",
-        "types": [
+        "types": Array [
           "street_address",
         ],
       },
@@ -401,12 +401,12 @@ New York, NY 10123",
 `;
 
 exports[`processValidation returns the right object around 3521-3501 Riverdale Ave, The Bronx, NY 10463 1`] = `
-{
-  "cb_data": {
+Object {
+  "cb_data": Object {
     "address": "5676 Riverdale Avenue,
 Bronx, NY 10471",
     "borough": "Bronx",
-    "calendar": {
+    "calendar": Object {
       "web": "http://www.nyc.gov/html/bxcb8/html/calendar/calendar.shtml",
     },
     "email": "bx08@cb.nyc.gov",
@@ -418,8 +418,8 @@ Bronx, NY 10471",
     "twitter": "bxcb8",
     "website": "http://www.nyc.gov/bronxcb8",
   },
-  "geoclient_response": {
-    "address": {
+  "geoclient_response": Object {
+    "address": Object {
       "alleyCrossStreetsFlag": "X",
       "assemblyDistrict": "81",
       "bbl": "2057380353",
@@ -595,189 +595,189 @@ Bronx, NY 10471",
       "zipCode": "10463",
     },
   },
-  "google_response": {
-    "plus_code": {
+  "google_response": Object {
+    "plus_code": Object {
       "compound_code": "V3JQ+8RX New York, NY, USA",
       "global_code": "87G8V3JQ+8RX",
     },
-    "results": [
-      {
-        "address_components": [
-          {
+    "results": Array [
+      Object {
+        "address_components": Array [
+          Object {
             "long_name": "3017",
             "short_name": "3017",
-            "types": [
+            "types": Array [
               "street_number",
             ],
           },
-          {
+          Object {
             "long_name": "Riverdale Avenue",
             "short_name": "Riverdale Ave",
-            "types": [
+            "types": Array [
               "route",
             ],
           },
-          {
+          Object {
             "long_name": "Spuyten Duyvil",
             "short_name": "Spuyten Duyvil",
-            "types": [
+            "types": Array [
               "neighborhood",
               "political",
             ],
           },
-          {
+          Object {
             "long_name": "The Bronx",
             "short_name": "Bronx",
-            "types": [
+            "types": Array [
               "political",
               "sublocality",
               "sublocality_level_1",
             ],
           },
-          {
+          Object {
             "long_name": "Bronx County",
             "short_name": "Bronx County",
-            "types": [
+            "types": Array [
               "administrative_area_level_2",
               "political",
             ],
           },
-          {
+          Object {
             "long_name": "New York",
             "short_name": "NY",
-            "types": [
+            "types": Array [
               "administrative_area_level_1",
               "political",
             ],
           },
-          {
+          Object {
             "long_name": "United States",
             "short_name": "US",
-            "types": [
+            "types": Array [
               "country",
               "political",
             ],
           },
-          {
+          Object {
             "long_name": "10463",
             "short_name": "10463",
-            "types": [
+            "types": Array [
               "postal_code",
             ],
           },
         ],
         "formatted_address": "3017 Riverdale Ave, Bronx, NY 10463, USA",
-        "geometry": {
-          "location": {
+        "geometry": Object {
+          "location": Object {
             "lat": 40.880985,
             "lng": -73.9102329,
           },
           "location_type": "ROOFTOP",
-          "viewport": {
-            "northeast": {
+          "viewport": Object {
+            "northeast": Object {
               "lat": 40.8823339802915,
               "lng": -73.9088839197085,
             },
-            "southwest": {
+            "southwest": Object {
               "lat": 40.8796360197085,
               "lng": -73.91158188029151,
             },
           },
         },
         "place_id": "ChIJUaKJHJXzwokRS0cn01bSawQ",
-        "plus_code": {
+        "plus_code": Object {
           "compound_code": "V3JQ+9W The Bronx, NY, USA",
           "global_code": "87G8V3JQ+9W",
         },
-        "types": [
+        "types": Array [
           "street_address",
         ],
       },
-      {
-        "address_components": [
-          {
+      Object {
+        "address_components": Array [
+          Object {
             "long_name": "3014",
             "short_name": "3014",
-            "types": [
+            "types": Array [
               "street_number",
             ],
           },
-          {
+          Object {
             "long_name": "Irwin Avenue",
             "short_name": "Irwin Ave",
-            "types": [
+            "types": Array [
               "route",
             ],
           },
-          {
+          Object {
             "long_name": "Spuyten Duyvil",
             "short_name": "Spuyten Duyvil",
-            "types": [
+            "types": Array [
               "neighborhood",
               "political",
             ],
           },
-          {
+          Object {
             "long_name": "The Bronx",
             "short_name": "Bronx",
-            "types": [
+            "types": Array [
               "political",
               "sublocality",
               "sublocality_level_1",
             ],
           },
-          {
+          Object {
             "long_name": "Bronx County",
             "short_name": "Bronx County",
-            "types": [
+            "types": Array [
               "administrative_area_level_2",
               "political",
             ],
           },
-          {
+          Object {
             "long_name": "New York",
             "short_name": "NY",
-            "types": [
+            "types": Array [
               "administrative_area_level_1",
               "political",
             ],
           },
-          {
+          Object {
             "long_name": "United States",
             "short_name": "US",
-            "types": [
+            "types": Array [
               "country",
               "political",
             ],
           },
-          {
+          Object {
             "long_name": "10463",
             "short_name": "10463",
-            "types": [
+            "types": Array [
               "postal_code",
             ],
           },
         ],
         "formatted_address": "3014 Irwin Ave, Bronx, NY 10463, USA",
-        "geometry": {
-          "location": {
+        "geometry": Object {
+          "location": Object {
             "lat": 40.8807133,
             "lng": -73.9103282,
           },
           "location_type": "RANGE_INTERPOLATED",
-          "viewport": {
-            "northeast": {
+          "viewport": Object {
+            "northeast": Object {
               "lat": 40.88206228029149,
               "lng": -73.90897921970848,
             },
-            "southwest": {
+            "southwest": Object {
               "lat": 40.8793643197085,
               "lng": -73.91167718029149,
             },
           },
         },
         "place_id": "EiQzMDE0IElyd2luIEF2ZSwgQnJvbngsIE5ZIDEwNDYzLCBVU0EiGxIZChQKEgmbe_cdlfPCiRF2WmhacVYmehDGFw",
-        "types": [
+        "types": Array [
           "street_address",
         ],
       },
@@ -791,13 +791,13 @@ Bronx, NY 10471",
 `;
 
 exports[`processValidation returns the right object for string lat/long 1`] = `
-{
-  "cb_data": {
+Object {
+  "cb_data": Object {
     "address": "45-02 Ditmars Boulevard
 LL Suite 125
 Astoria, NY 11105",
     "borough": "Queens",
-    "calendar": {
+    "calendar": Object {
       "web": "http://www1.nyc.gov/site/queenscb1/calendar/calendar.page",
     },
     "email": "qn01@cb.nyc.gov",
@@ -809,8 +809,8 @@ Astoria, NY 11105",
     "twitter": "cb1queens",
     "website": "http://www.nyc.gov/html/qnscb1/html/home/home.shtml",
   },
-  "geoclient_response": {
-    "address": {
+  "geoclient_response": Object {
+    "address": Object {
       "assemblyDistrict": "36",
       "bbl": "4005430015",
       "bblBoroughCode": "4",
@@ -987,189 +987,189 @@ Astoria, NY 11105",
       "zipCode": "11102",
     },
   },
-  "google_response": {
-    "plus_code": {
+  "google_response": Object {
+    "plus_code": Object {
       "compound_code": "Q3CF+VJP New York, NY, USA",
       "global_code": "87G8Q3CF+VJP",
     },
-    "results": [
-      {
-        "address_components": [
-          {
+    "results": Array [
+      Object {
+        "address_components": Array [
+          Object {
             "long_name": "27-01",
             "short_name": "27-01",
-            "types": [
+            "types": Array [
               "street_number",
             ],
           },
-          {
+          Object {
             "long_name": "21st Street",
             "short_name": "21st St",
-            "types": [
+            "types": Array [
               "route",
             ],
           },
-          {
+          Object {
             "long_name": "Long Island City",
             "short_name": "LIC",
-            "types": [
+            "types": Array [
               "neighborhood",
               "political",
             ],
           },
-          {
+          Object {
             "long_name": "Queens",
             "short_name": "Queens",
-            "types": [
+            "types": Array [
               "political",
               "sublocality",
               "sublocality_level_1",
             ],
           },
-          {
+          Object {
             "long_name": "Queens County",
             "short_name": "Queens County",
-            "types": [
+            "types": Array [
               "administrative_area_level_2",
               "political",
             ],
           },
-          {
+          Object {
             "long_name": "New York",
             "short_name": "NY",
-            "types": [
+            "types": Array [
               "administrative_area_level_1",
               "political",
             ],
           },
-          {
+          Object {
             "long_name": "United States",
             "short_name": "US",
-            "types": [
+            "types": Array [
               "country",
               "political",
             ],
           },
-          {
+          Object {
             "long_name": "11102",
             "short_name": "11102",
-            "types": [
+            "types": Array [
               "postal_code",
             ],
           },
         ],
         "formatted_address": "27-01 21st St, Long Island City, NY 11102, USA",
-        "geometry": {
-          "location": {
+        "geometry": Object {
+          "location": Object {
             "lat": 40.7720208,
             "lng": -73.92583789999999,
           },
           "location_type": "ROOFTOP",
-          "viewport": {
-            "northeast": {
+          "viewport": Object {
+            "northeast": Object {
               "lat": 40.7733697802915,
               "lng": -73.92448891970848,
             },
-            "southwest": {
+            "southwest": Object {
               "lat": 40.7706718197085,
               "lng": -73.9271868802915,
             },
           },
         },
         "place_id": "ChIJjdFLNE9fwokR5Z_HQ05oa00",
-        "plus_code": {
+        "plus_code": Object {
           "compound_code": "Q3CF+RM Long Island City, Queens, NY, USA",
           "global_code": "87G8Q3CF+RM",
         },
-        "types": [
+        "types": Array [
           "street_address",
         ],
       },
-      {
-        "address_components": [
-          {
+      Object {
+        "address_components": Array [
+          Object {
             "long_name": "26-98",
             "short_name": "26-98",
-            "types": [
+            "types": Array [
               "street_number",
             ],
           },
-          {
+          Object {
             "long_name": "21st Street",
             "short_name": "21st St",
-            "types": [
+            "types": Array [
               "route",
             ],
           },
-          {
+          Object {
             "long_name": "Astoria",
             "short_name": "Astoria",
-            "types": [
+            "types": Array [
               "neighborhood",
               "political",
             ],
           },
-          {
+          Object {
             "long_name": "Queens",
             "short_name": "Queens",
-            "types": [
+            "types": Array [
               "political",
               "sublocality",
               "sublocality_level_1",
             ],
           },
-          {
+          Object {
             "long_name": "Queens County",
             "short_name": "Queens County",
-            "types": [
+            "types": Array [
               "administrative_area_level_2",
               "political",
             ],
           },
-          {
+          Object {
             "long_name": "New York",
             "short_name": "NY",
-            "types": [
+            "types": Array [
               "administrative_area_level_1",
               "political",
             ],
           },
-          {
+          Object {
             "long_name": "United States",
             "short_name": "US",
-            "types": [
+            "types": Array [
               "country",
               "political",
             ],
           },
-          {
+          Object {
             "long_name": "11102",
             "short_name": "11102",
-            "types": [
+            "types": Array [
               "postal_code",
             ],
           },
         ],
         "formatted_address": "26-98 21st St, Astoria, NY 11102, USA",
-        "geometry": {
-          "location": {
+        "geometry": Object {
+          "location": Object {
             "lat": 40.7722329,
             "lng": -73.9259404,
           },
           "location_type": "RANGE_INTERPOLATED",
-          "viewport": {
-            "northeast": {
+          "viewport": Object {
+            "northeast": Object {
               "lat": 40.77358188029149,
               "lng": -73.92459141970849,
             },
-            "southwest": {
+            "southwest": Object {
               "lat": 40.7708839197085,
               "lng": -73.92728938029151,
             },
           },
         },
         "place_id": "EiUyNi05OCAyMXN0IFN0LCBBc3RvcmlhLCBOWSAxMTEwMiwgVVNBIhoSGAoUChIJ10SUQE9fwokROPBJGToIH2YQYg",
-        "types": [
+        "types": Array [
           "street_address",
         ],
       },
@@ -1183,12 +1183,12 @@ Astoria, NY 11105",
 `;
 
 exports[`validateLocation returns the right object around the Empire State Building 1`] = `
-{
-  "cb_data": {
+Object {
+  "cb_data": Object {
     "address": "450 7th Avenue, Rm. 2109
 New York, NY 10123",
     "borough": "Manhattan",
-    "calendar": {
+    "calendar": Object {
       "scraperId": "manhattan-cb5",
       "web": "https://www.cb5.org/cb5/calendar/",
     },
@@ -1201,8 +1201,8 @@ New York, NY 10123",
     "twitter": "manhattancb5",
     "website": "http://www.cb5.org",
   },
-  "geoclient_response": {
-    "address": {
+  "geoclient_response": Object {
+    "address": Object {
       "alleyCrossStreetsFlag": "X",
       "assemblyDistrict": "75",
       "bbl": "1008360026",
@@ -1378,97 +1378,97 @@ New York, NY 10123",
       "zipCode": "10001",
     },
   },
-  "google_response": {
-    "plus_code": {
+  "google_response": Object {
+    "plus_code": Object {
       "compound_code": "P2X7+GRG New York, NY, USA",
       "global_code": "87G8P2X7+GRG",
     },
-    "results": [
-      {
-        "address_components": [
-          {
+    "results": Array [
+      Object {
+        "address_components": Array [
+          Object {
             "long_name": "7",
             "short_name": "7",
-            "types": [
+            "types": Array [
               "street_number",
             ],
           },
-          {
+          Object {
             "long_name": "West 34th Street",
             "short_name": "W 34th St.",
-            "types": [
+            "types": Array [
               "route",
             ],
           },
-          {
+          Object {
             "long_name": "Manhattan",
             "short_name": "Manhattan",
-            "types": [
+            "types": Array [
               "political",
               "sublocality",
               "sublocality_level_1",
             ],
           },
-          {
+          Object {
             "long_name": "New York",
             "short_name": "New York",
-            "types": [
+            "types": Array [
               "locality",
               "political",
             ],
           },
-          {
+          Object {
             "long_name": "New York County",
             "short_name": "New York County",
-            "types": [
+            "types": Array [
               "administrative_area_level_2",
               "political",
             ],
           },
-          {
+          Object {
             "long_name": "New York",
             "short_name": "NY",
-            "types": [
+            "types": Array [
               "administrative_area_level_1",
               "political",
             ],
           },
-          {
+          Object {
             "long_name": "United States",
             "short_name": "US",
-            "types": [
+            "types": Array [
               "country",
               "political",
             ],
           },
-          {
+          Object {
             "long_name": "10001",
             "short_name": "10001",
-            "types": [
+            "types": Array [
               "postal_code",
             ],
           },
         ],
         "formatted_address": "7 W 34th St., New York, NY 10001, USA",
-        "geometry": {
-          "location": {
+        "geometry": Object {
+          "location": Object {
             "lat": 40.7488147,
             "lng": -73.9854297,
           },
           "location_type": "RANGE_INTERPOLATED",
-          "viewport": {
-            "northeast": {
+          "viewport": Object {
+            "northeast": Object {
               "lat": 40.7501636802915,
               "lng": -73.98408071970849,
             },
-            "southwest": {
+            "southwest": Object {
               "lat": 40.7474657197085,
               "lng": -73.9867786802915,
             },
           },
         },
         "place_id": "EiU3IFcgMzR0aCBTdC4sIE5ldyBZb3JrLCBOWSAxMDAwMSwgVVNBIhoSGAoUChIJG_w6CqlZwokRMi5UMucmRZUQBw",
-        "types": [
+        "types": Array [
           "street_address",
         ],
       },

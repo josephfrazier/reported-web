@@ -1,13 +1,13 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
 exports[`ElectriCitibikeList renders children correctly 1`] = `
-[
+Array [
   "18",
   " available as of ",
   "07:50:57 PM",
   <details
     style={
-      {
+      Object {
         "margin": "1rem 0",
       }
     }
@@ -63,7 +63,7 @@ exports[`ElectriCitibikeList renders children correctly 1`] = `
   </details>,
   <details
     style={
-      {
+      Object {
         "margin": "1rem 0",
       }
     }
@@ -100,7 +100,7 @@ exports[`ElectriCitibikeList renders children correctly 1`] = `
   </details>,
   <details
     style={
-      {
+      Object {
         "margin": "1rem 0",
       }
     }
@@ -144,7 +144,7 @@ exports[`ElectriCitibikeList renders children correctly 1`] = `
   </details>,
   <details
     style={
-      {
+      Object {
         "margin": "1rem 0",
       }
     }
@@ -188,7 +188,7 @@ exports[`ElectriCitibikeList renders children correctly 1`] = `
   </details>,
   <details
     style={
-      {
+      Object {
         "margin": "1rem 0",
       }
     }
@@ -232,7 +232,7 @@ exports[`ElectriCitibikeList renders children correctly 1`] = `
   </details>,
   <details
     style={
-      {
+      Object {
         "margin": "1rem 0",
       }
     }
@@ -276,7 +276,7 @@ exports[`ElectriCitibikeList renders children correctly 1`] = `
   </details>,
   <details
     style={
-      {
+      Object {
         "margin": "1rem 0",
       }
     }
@@ -320,7 +320,7 @@ exports[`ElectriCitibikeList renders children correctly 1`] = `
   </details>,
   <details
     style={
-      {
+      Object {
         "margin": "1rem 0",
       }
     }
@@ -364,7 +364,7 @@ exports[`ElectriCitibikeList renders children correctly 1`] = `
   </details>,
   <details
     style={
-      {
+      Object {
         "margin": "1rem 0",
       }
     }
@@ -408,7 +408,7 @@ exports[`ElectriCitibikeList renders children correctly 1`] = `
   </details>,
   <details
     style={
-      {
+      Object {
         "margin": "1rem 0",
       }
     }
@@ -445,7 +445,7 @@ exports[`ElectriCitibikeList renders children correctly 1`] = `
   </details>,
   <details
     style={
-      {
+      Object {
         "margin": "1rem 0",
       }
     }
@@ -489,7 +489,7 @@ exports[`ElectriCitibikeList renders children correctly 1`] = `
   </details>,
   <details
     style={
-      {
+      Object {
         "margin": "1rem 0",
       }
     }
@@ -533,7 +533,7 @@ exports[`ElectriCitibikeList renders children correctly 1`] = `
   </details>,
   <details
     style={
-      {
+      Object {
         "margin": "1rem 0",
       }
     }
@@ -570,7 +570,7 @@ exports[`ElectriCitibikeList renders children correctly 1`] = `
   </details>,
   <details
     style={
-      {
+      Object {
         "margin": "1rem 0",
       }
     }
@@ -614,7 +614,7 @@ exports[`ElectriCitibikeList renders children correctly 1`] = `
   </details>,
   <details
     style={
-      {
+      Object {
         "margin": "1rem 0",
       }
     }
@@ -658,7 +658,7 @@ exports[`ElectriCitibikeList renders children correctly 1`] = `
   </details>,
   <details
     style={
-      {
+      Object {
         "margin": "1rem 0",
       }
     }

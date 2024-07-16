@@ -20,18 +20,15 @@ import ReactDOM from 'react-dom/server';
 import PrettyError from 'pretty-error';
 import Parse from 'parse/node';
 import FileType from 'file-type/browser';
-import sharp from 'sharp';
-import axios from 'axios';
 import multer from 'multer';
 import stringify from 'json-stringify-safe';
 import DelayedResponse from 'http-delayed-response';
-import { JSDOM } from 'jsdom';
-import FormData from 'form-data';
 
 import { isImage, isVideo } from './isImage.js';
 import { validateLocation, processValidation } from './geoclient.js';
 import getVehicleType from './getVehicleType.js';
 import { submit_311_illegal_parking_report } from './311.js'; // eslint-disable-line camelcase
+import srlookup from './srlookup.js';
 
 import App from './components/App';
 import Html from './components/Html';
@@ -42,6 +39,7 @@ import router from './router';
 // import assets from './asset-manifest.json'; // eslint-disable-line import/no-unresolved
 import chunks from './chunk-manifest.json'; // eslint-disable-line import/no-unresolved
 import config from './config';
+import readLicenseViaALPR from './alpr';
 
 require('dotenv').config();
 
@@ -58,6 +56,7 @@ const {
   PARSE_SERVER_URL,
   HEROKU_RELEASE_VERSION,
   PLATERECOGNIZER_TOKEN,
+  PLATERECOGNIZER_TOKEN_TWO,
 } = process.env;
 
 require('heroku-self-ping').default(config.api.serverUrl, {
@@ -279,39 +278,11 @@ app.use('/api/deleteSubmission', (req, res) => {
     .catch(handlePromiseRejection(res));
 });
 
-async function srlookup({ reqnumber }) {
-  const response = await axios.get(
-    `https://portal.311.nyc.gov/api-get-sr-or-correspondence-by-number/?number=${reqnumber}`,
-  );
-  const {
-    data: { srid },
-  } = response;
-  const url = `https://portal.311.nyc.gov/sr-details/?id=${srid}`;
-
-  return axios.get(url);
-}
-
 app.get('/srlookup/:reqnumber', (req, res) => {
   const { reqnumber } = req.params;
 
   srlookup({ reqnumber })
-    .then(({ data }) => {
-      const { document } = new JSDOM(data).window;
-
-      const result = {};
-      result.description = document.querySelector(
-        '#page-wrapper p',
-      ).textContent;
-      [
-        ...document.querySelectorAll('#page-wrapper td.form-control-cell'),
-      ].forEach(e => {
-        const key = e.querySelector('label').textContent;
-        const input = e.querySelector('input');
-        const value = input && input.value;
-
-        result[key] = value;
-      });
-
+    .then(result => {
       res.json(result);
     })
     .catch(handlePromiseRejection(res));
@@ -325,24 +296,6 @@ app.use('/requestPasswordReset', (req, res) => {
     .then(() => res.end())
     .catch(handlePromiseRejection(res));
 });
-
-function orientImageBuffer({ attachmentBuffer }) {
-  console.time(`orientImageBuffer`); // eslint-disable-line no-console
-  // eslint-disable-next-line no-console
-  console.log(
-    `image buffer length BEFORE sharp: ${attachmentBuffer.length} bytes`,
-  );
-  return sharp(attachmentBuffer)
-    .rotate()
-    .toBuffer()
-    .catch(() => attachmentBuffer)
-    .then(buffer => Buffer.from(buffer))
-    .then(buffer => {
-      console.log(`image buffer length AFTER sharp: ${buffer.length} bytes`); // eslint-disable-line no-console
-      console.timeEnd(`orientImageBuffer`); // eslint-disable-line no-console
-      return buffer;
-    });
-}
 
 app.use('/submit', (req, res) => {
   // Call upload.array directly to intercept errors and respond with JSON, see the following:
@@ -463,13 +416,9 @@ app.use('/submit', (req, res) => {
           ...images
             .slice(0, 3)
             .map(async ({ attachmentBuffer, ext }, index) => {
-              const attachmentBufferRotated = await orientImageBuffer({
-                attachmentBuffer,
-              });
-
               const key = `photoData${index}`;
               const file = new Parse.File(`${key}.${ext}`, [
-                ...attachmentBufferRotated,
+                ...attachmentBuffer,
               ]);
               await file.save();
               submission.set(key, file);
@@ -503,74 +452,31 @@ app.use('/submit', (req, res) => {
   });
 });
 
-// https://app.platerecognizer.com/upload-limit/
-const downscaleForPlateRecognizer = buffer => {
-  const fileSize = buffer.length;
-  const maxFilesize = 2411654;
-
-  if (fileSize >= maxFilesize) {
-    const targetWidth = 4096;
-
-    // eslint-disable-next-line no-console
-    console.log(
-      `file size is greater than maximum of ${maxFilesize} bytes, attempting to scale down to width of ${targetWidth}`,
-    );
-
-    return sharp(buffer)
-      .resize({ width: targetWidth })
-      .toBuffer()
-      .catch(error => {
-        console.error('could not scale down, using unscaled image', { error });
-        return buffer;
-      })
-      .then(resizedBufferish => {
-        const resizedBuffer = Buffer.from(resizedBufferish);
-        // eslint-disable-next-line no-console
-        console.log(
-          `file size after scaling down: ${resizedBuffer.length} bytes`,
-        );
-        return resizedBuffer;
-      });
-  }
-
-  return buffer;
-};
-
 // adapted from https://docs.platerecognizer.com/?javascript#license-plate-recognition
-app.use('/platerecognizer', upload.single('attachmentFile'), (req, res) => {
-  const attachmentBuffer = req.file.buffer;
+app.use(
+  '/platerecognizer',
+  upload.single('attachmentFile'),
+  async (req, res) => {
+    const { email, password } = req.body;
 
-  orientImageBuffer({ attachmentBuffer })
-    .then(downscaleForPlateRecognizer)
-    .then(buffer => buffer.toString('base64'))
-    .then(attachmentBytesRotated => {
-      console.log('STARTING platerecognizer'); // eslint-disable-line no-console
-      console.time(`/platerecognizer plate-reader`); // eslint-disable-line no-console
+    try {
+      await logIn({ email, password });
+    } catch (error) {
+      handlePromiseRejection(res)(error);
+      return;
+    }
 
-      const body = new FormData();
+    const attachmentBuffer = req.file.buffer;
 
-      body.append('upload', attachmentBytesRotated);
-
-      // body.append("regions", "us-ny"); // Change to your country
-      body.append('regions', 'us'); // Change to your country
-
-      return nodeFetch('https://api.platerecognizer.com/v1/plate-reader/', {
-        method: 'POST',
-        headers: {
-          Authorization: `Token ${PLATERECOGNIZER_TOKEN}`,
-        },
-        body,
-      })
-        .then(platerecognizerRes => {
-          console.info('/platerecognizer plate-reader', { platerecognizerRes });
-          return platerecognizerRes;
-        })
-        .then(platerecognizerRes => platerecognizerRes.json())
-        .finally(() => console.timeEnd(`/platerecognizer plate-reader`)); // eslint-disable-line no-console
+    readLicenseViaALPR({
+      attachmentBuffer,
+      PLATERECOGNIZER_TOKEN,
+      PLATERECOGNIZER_TOKEN_TWO,
     })
-    .then(data => res.json(data))
-    .catch(handlePromiseRejection(res));
-});
+      .then(data => res.json(data))
+      .catch(handlePromiseRejection(res));
+  },
+);
 
 // ported from https://github.com/jeffrono/Reported/blob/19b588171315a3093d53986f9fb995059f5084b4/v2/enrich_functions.rb#L325-L346
 app.use('/getVehicleType/:licensePlate/:licenseState?', (req, res) => {

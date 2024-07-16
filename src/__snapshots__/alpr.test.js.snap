@@ -1,0 +1,69 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`readLicenseViaALPR falling back to the second token 1`] = `
+Object {
+  "box": Object {
+    "xmax": 1842,
+    "xmin": 1638,
+    "ymax": 2113,
+    "ymin": 2009,
+  },
+  "candidates": Array [
+    Object {
+      "plate": "t736394c",
+      "score": 0.9,
+    },
+  ],
+  "dscore": 0.729,
+  "plate": "t736394c",
+  "region": Object {
+    "code": "us-ny",
+    "score": 0.654,
+  },
+  "score": 0.9,
+  "vehicle": Object {
+    "box": Object {
+      "xmax": 2439,
+      "xmin": 1258,
+      "ymax": 2238,
+      "ymin": 1176,
+    },
+    "score": 0.893,
+    "type": "Sedan",
+  },
+}
+`;
+
+exports[`readLicenseViaALPR using only the first token 1`] = `
+Object {
+  "box": Object {
+    "xmax": 1842,
+    "xmin": 1638,
+    "ymax": 2113,
+    "ymin": 2009,
+  },
+  "candidates": Array [
+    Object {
+      "plate": "t736394c",
+      "score": 0.9,
+    },
+  ],
+  "dscore": 0.729,
+  "plate": "t736394c",
+  "region": Object {
+    "code": "us-ny",
+    "score": 0.654,
+  },
+  "score": 0.9,
+  "vehicle": Object {
+    "box": Object {
+      "xmax": 2439,
+      "xmin": 1258,
+      "ymax": 2238,
+      "ymin": 1176,
+    },
+    "score": 0.893,
+    "type": "Sedan",
+  },
+}
+`;

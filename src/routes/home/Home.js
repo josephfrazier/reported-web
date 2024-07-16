@@ -44,6 +44,7 @@ import toastifyStyles from 'react-toastify/dist/ReactToastify.css';
 import { zip } from 'zip-array';
 import PolygonLookup from 'polygon-lookup';
 import { CSVLink } from 'react-csv';
+import capitalize from 'capitalize';
 
 import marx from 'marx-css/css/marx.css';
 import homeStyles from './Home.css';
@@ -481,7 +482,9 @@ class Home extends React.Component {
 
     debouncedProcessValidation({ latitude, longitude }).then(data => {
       this.setState({
-        formatted_address: `${data.geoclient_response.address.houseNumber} ${data.geoclient_response.address.streetName1In}, ${data.geoclient_response.address.firstBoroughName}`,
+        formatted_address: capitalize.words(
+          `${data.geoclient_response.address.houseNumber} ${data.geoclient_response.address.streetName1In}, ${data.geoclient_response.address.firstBoroughName}`,
+        ),
       });
     });
   };

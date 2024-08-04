@@ -620,19 +620,13 @@ class Home extends React.Component {
   };
 
   getVehicleMakeLogoUrl = function getVehicleMakeLogoUrl({ vehicleMake }) {
-    if (vehicleMake === 'Nissan') {
-      return 'https://logo.clearbit.com/Nissanusa.com';
+    if (vehicleMake.toLowerCase() === 'nissan') {
+      return 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Nissan_2020_logo.svg/287px-Nissan_2020_logo.svg.png';
     }
-    if (vehicleMake === 'Toyota') {
-      return 'https://logo.clearbit.com/toyota.com';
-    }
-    if (vehicleMake === 'Honda') {
+    if (vehicleMake.toLowerCase() === 'honda') {
       return 'https://upload.wikimedia.org/wikipedia/commons/3/38/Honda.svg';
     }
-    if (vehicleMake === 'Kia') {
-      return 'https://logo.clearbit.com/kia.com';
-    }
-    return `https://logo.clearbit.com/${vehicleMake}.com`;
+    return `https://img.logo.dev/${vehicleMake}.com?token=pk_dUmX4e3CQxqMliLAmNRIqA`;
   };
 
   // adapted from https://github.com/ngokevin/react-file-reader-input/tree/f970257f271b8c3bba9d529ffdbfa4f4731e0799#usage

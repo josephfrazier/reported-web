@@ -372,18 +372,18 @@ New York, NY 10123",
         "formatted_address": "1 Centre St, New York, NY 10007, USA",
         "geometry": {
           "location": {
-            "lat": 40.7121488,
-            "lng": -74.00560200000001,
+            "lat": 40.7121656,
+            "lng": -74.0055196,
           },
           "location_type": "RANGE_INTERPOLATED",
           "viewport": {
             "northeast": {
-              "lat": 40.7134977802915,
-              "lng": -74.00425301970851,
+              "lat": 40.71351458029149,
+              "lng": -74.0041706197085,
             },
             "southwest": {
-              "lat": 40.71079981970851,
-              "lng": -74.00695098029152,
+              "lat": 40.7108166197085,
+              "lng": -74.00686858029151,
             },
           },
         },
@@ -1155,18 +1155,18 @@ Astoria, NY 11105",
         "formatted_address": "26-98 21st St, Astoria, NY 11102, USA",
         "geometry": {
           "location": {
-            "lat": 40.7722315,
-            "lng": -73.92594590000002,
+            "lat": 40.7722325,
+            "lng": -73.9259495,
           },
           "location_type": "RANGE_INTERPOLATED",
           "viewport": {
             "northeast": {
-              "lat": 40.77358048029149,
-              "lng": -73.92459691970852,
+              "lat": 40.7735814802915,
+              "lng": -73.9246005197085,
             },
             "southwest": {
-              "lat": 40.7708825197085,
-              "lng": -73.92729488029153,
+              "lat": 40.7708835197085,
+              "lng": -73.92729848029151,
             },
           },
         },

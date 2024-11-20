@@ -506,7 +506,9 @@ class Home extends React.Component {
   };
 
   setLicensePlate = ({ plate, licenseState }) => {
-    licenseState = licenseState || this.state.licenseState; // eslint-disable-line no-param-reassign
+    if (licenseState == null || licenseState === undefined) {
+      licenseState = this.state.licenseState; // eslint-disable-line no-param-reassign
+    }
     this.setState({
       plate,
       licenseState,
@@ -1223,29 +1225,34 @@ class Home extends React.Component {
                       <option value={this.state.plateSuggestion} />
                     )}
                   </datalist>
-                  <select
+                  <input
+                    required
+                    type="search"
                     style={{
                       marginTop: '0.5rem',
                     }}
                     value={this.state.licenseState}
                     name="licenseState"
+                    list="stateSuggestion"
+                    autoComplete="off"
                     onChange={event => {
                       this.setLicensePlate({
                         plate: this.state.plate,
                         licenseState: event.target.value,
                       });
                     }}
-                  >
+                  />
+                  <datalist id="stateSuggestion">
                     {Object.entries(usStateNames)
                       .sort(([, name1], [, name2]) =>
                         name1.toUpperCase().localeCompare(name2.toUpperCase()),
                       )
                       .map(([abbr, name]) => (
                         <option key={abbr} value={abbr}>
-                          {name}
+                          {name} ({abbr})
                         </option>
                       ))}
-                  </select>
+                  </datalist>
                   {this.state.vehicleInfoComponent}
                 </label>
 

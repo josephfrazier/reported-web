@@ -506,6 +506,9 @@ class Home extends React.Component {
   };
 
   setLicensePlate = ({ plate, licenseState }) => {
+    if (licenseState == null || licenseState === undefined) {
+      licenseState = this.state.licenseState; // eslint-disable-line no-param-reassign
+    }
     this.setState({
       plate,
       licenseState,

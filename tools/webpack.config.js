@@ -384,6 +384,9 @@ const clientConfig = {
   // https://github.com/webpack/webpack/issues/4817
   resolve: {
     ...config.resolve,
+    alias: {
+      process: "process/browser"
+    },
     fallback: {
       fs: false,
       net: false,

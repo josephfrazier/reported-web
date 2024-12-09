@@ -1,4 +1,4 @@
-import axios from 'axios';
+const axios = require('axios');
 
 export function vehicleTypeUrl({ licensePlate, licenseState }) {
   return `https://www.carfax.com/api/mobile-homepage-quickvin-check?plate=${licensePlate}&state=${licenseState}`;

@@ -25,7 +25,6 @@ import {
 import { SearchBox } from 'react-google-maps/lib/components/places/SearchBox';
 import withLocalStorage from 'react-localstorage';
 import debounce from 'debounce-promise';
-import { SocialIcon } from 'react-social-icons';
 import FileType from 'file-type/browser';
 import MP4Box from 'mp4box';
 import execall from 'execall';
@@ -45,14 +44,16 @@ import toastifyStyles from 'react-toastify/dist/ReactToastify.css';
 import { zip } from 'zip-array';
 import PolygonLookup from 'polygon-lookup';
 import { CSVLink } from 'react-csv';
+import capitalize from 'capitalize';
 
 import marx from 'marx-css/css/marx.css';
-import s from './Home.css';
+import homeStyles from './Home.css';
 
 import SubmissionDetails from '../../components/SubmissionDetails.js';
 import { isImage, isVideo } from '../../isImage.js';
 import getNycTimezoneOffset from '../../timezone.js';
 import { getBoroNameMemoized } from '../../getBoroName.js';
+import { vehicleTypeUrl } from '../../getVehicleType.js';
 
 usStateNames.DC = 'District of Columbia';
 
@@ -169,6 +170,8 @@ async function extractPlate({
   attachmentBuffer,
   ext,
   isAlprEnabled,
+  email,
+  password,
 }) {
   try {
     console.time('extractPlate'); // eslint-disable-line no-console
@@ -197,8 +200,11 @@ async function extractPlate({
     );
     console.timeEnd(`bufferToBlob(${attachmentFile.name})`); // eslint-disable-line no-console
 
-    const formData = new window.FormData();
-    formData.append('attachmentFile', attachmentBlob);
+    const formData = objectToFormData({
+      attachmentFile: attachmentBlob,
+      email,
+      password,
+    });
     const { data } = await axios.post('/platerecognizer', formData);
     const result = data.results[0];
     try {
@@ -270,7 +276,7 @@ async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
       'OffsetTimeDigitized',
     ]);
 
-    // console.log({ CreateDate, OffsetTimeDigitized });
+    console.log({ CreateDate, OffsetTimeDigitized }); // eslint-disable-line no-console
 
     return {
       millisecondsSinceEpoch: CreateDate.getTime(),
@@ -476,7 +482,9 @@ class Home extends React.Component {
 
     debouncedProcessValidation({ latitude, longitude }).then(data => {
       this.setState({
-        formatted_address: data.google_response.results[0].formatted_address,
+        formatted_address: capitalize.words(
+          `${data.geoclient_response.address.houseNumber} ${data.geoclient_response.address.streetName1In}, ${data.geoclient_response.address.firstBoroughName}`,
+        ),
       });
     });
   };
@@ -566,14 +574,25 @@ class Home extends React.Component {
         if (plate) {
           this.setState({
             vehicleInfoComponent: (
-              <a
-                href="https://github.com/josephfrazier/Reported-Web/issues/295"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
+              <React.Fragment>
                 Could not look up make/model of {plate} in{' '}
-                {usStateNames[licenseState]}, click here for details
-              </a>
+                {usStateNames[licenseState]},{' '}
+                <a
+                  href="https://github.com/josephfrazier/Reported-Web/issues/295"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  click here for details
+                </a>
+                <br />
+                <a
+                  href={vehicleTypeUrl({ licensePlate: plate, licenseState })}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Click here to manually look it up
+                </a>
+              </React.Fragment>
             ),
           });
 
@@ -601,19 +620,13 @@ class Home extends React.Component {
   };
 
   getVehicleMakeLogoUrl = function getVehicleMakeLogoUrl({ vehicleMake }) {
-    if (vehicleMake === 'Nissan') {
-      return 'https://logo.clearbit.com/Nissanusa.com';
+    if (vehicleMake.toLowerCase() === 'nissan') {
+      return 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Nissan_2020_logo.svg/287px-Nissan_2020_logo.svg.png';
     }
-    if (vehicleMake === 'Toyota') {
-      return 'https://logo.clearbit.com/toyota.com';
-    }
-    if (vehicleMake === 'Honda') {
+    if (vehicleMake.toLowerCase() === 'honda') {
       return 'https://upload.wikimedia.org/wikipedia/commons/3/38/Honda.svg';
     }
-    if (vehicleMake === 'Kia') {
-      return 'https://logo.clearbit.com/kia.com';
-    }
-    return `https://logo.clearbit.com/${vehicleMake}.com`;
+    return `https://img.logo.dev/${vehicleMake}.com?token=pk_dUmX4e3CQxqMliLAmNRIqA`;
   };
 
   // adapted from https://github.com/ngokevin/react-file-reader-input/tree/f970257f271b8c3bba9d529ffdbfa4f4731e0799#usage
@@ -648,6 +661,8 @@ class Home extends React.Component {
                 attachmentBuffer,
                 ext,
                 isAlprEnabled: this.state.isAlprEnabled,
+                email: this.state.email,
+                password: this.state.password,
               }).then(result => {
                 if (
                   this.state.plate === '' &&
@@ -753,7 +768,7 @@ class Home extends React.Component {
   render() {
     return (
       <Dropzone
-        className={s.root}
+        className={homeStyles.root}
         onDrop={attachmentData => {
           this.handleAttachmentData({ attachmentData });
         }}
@@ -767,7 +782,7 @@ class Home extends React.Component {
         }}
         disableClick
       >
-        <div className={s.container}>
+        <div className={homeStyles.container}>
           <main>
             <h1>
               <a
@@ -981,9 +996,8 @@ class Home extends React.Component {
                       name="testify"
                       onChange={this.handleInputChange}
                     />{' '}
-                    {
-                      "I'm willing to testify at a hearing, which can be done by phone."
-                    }
+                    I&apos;m willing to testify at a hearing, which can be done
+                    by phone.
                   </label>
                   <button
                     type="submit"
@@ -1195,6 +1209,7 @@ class Home extends React.Component {
                     value={this.state.plate}
                     name="plate"
                     list="plateSuggestion"
+                    autoComplete="off"
                     ref={this.plateRef}
                     placeholder={this.state.plateSuggestion}
                     onChange={event => {
@@ -1269,7 +1284,8 @@ class Home extends React.Component {
 
                 <Modal
                   parentSelector={() =>
-                    document.querySelector(`.${s.root}`) || document.body
+                    document.querySelector(`.${homeStyles.root}`) ||
+                    document.body
                   }
                   isOpen={this.state.isMapOpen}
                   onRequestClose={() => this.setState({ isMapOpen: false })}
@@ -1373,6 +1389,7 @@ class Home extends React.Component {
                     value={this.state.reportDescription}
                     name="reportDescription"
                     onChange={this.handleInputChange}
+                    autoComplete="off"
                   />
                 </label>
 
@@ -1463,11 +1480,6 @@ class Home extends React.Component {
             </details>
 
             <div style={{ float: 'right' }}>
-              <SocialIcon
-                url="https://twitter.com/Reported_NYC"
-                rel="noopener"
-              />
-              &nbsp;
               <a
                 href="/electricitibikes"
                 style={{
@@ -1570,4 +1582,8 @@ const MyMapComponent = compose(
   withGoogleMap,
 )(MyMapComponentPure);
 
-export default withStyles(marx, s, toastifyStyles)(withLocalStorage(Home));
+export default withStyles(
+  marx,
+  homeStyles,
+  toastifyStyles,
+)(withLocalStorage(Home));

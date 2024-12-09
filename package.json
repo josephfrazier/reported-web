@@ -15,7 +15,7 @@
   "dependencies": {
     "@babel/polyfill": "^7.0.0",
     "@josephfrazier/react-dropzone": "4.2.13-development",
-    "axios": "^0.21.2",
+    "axios": "^0.28.0",
     "axios-retry": "^3.4.0",
     "blob-util": "^2.0.2",
     "body-parser": "^1.20.3",
@@ -161,7 +161,7 @@
     "webpack": "^5.84.1",
     "webpack-assets-manifest": "^3.0.2",
     "webpack-bundle-analyzer": "^4.9.0",
-    "webpack-dev-middleware": "^3.3.0",
+    "webpack-dev-middleware": "^5.3.4",
     "webpack-hot-middleware": "^2.24.2",
     "webpack-node-externals": "^1.7.2"
   },

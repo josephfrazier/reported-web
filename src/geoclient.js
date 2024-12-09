@@ -1,4 +1,4 @@
-import axios from 'axios';
+const axios = require('axios');
 import axiosRetry from 'axios-retry';
 
 import cbData from './districts-info.json';

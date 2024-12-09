@@ -1,4 +1,4 @@
-import axios from 'axios';
+const axios = require('axios');
 import { JSDOM } from 'jsdom';
 
 export default async function srlookup({ reqnumber }) {

@@ -11,7 +11,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import withStyles from 'isomorphic-style-loader/lib/withStyles';
 import FileReaderInput from 'react-file-reader-input';
-import blobUtil from 'blob-util';
+import * as blobUtil from 'blob-util';
 import exifr from 'exifr/dist/full.umd.js';
 import axios from 'axios';
 import promisedLocation from 'promised-location';
@@ -44,6 +44,7 @@ import toastifyStyles from 'react-toastify/dist/ReactToastify.css';
 import { zip } from 'zip-array';
 import PolygonLookup from 'polygon-lookup';
 import { CSVLink } from 'react-csv';
+import capitalize from 'capitalize';
 
 import marx from 'marx-css/css/marx.css';
 import homeStyles from './Home.css';
@@ -481,7 +482,9 @@ class Home extends React.Component {
 
     debouncedProcessValidation({ latitude, longitude }).then(data => {
       this.setState({
-        formatted_address: data.google_response.results[0].formatted_address,
+        formatted_address: capitalize.words(
+          `${data.geoclient_response.address.houseNumber} ${data.geoclient_response.address.streetName1In}, ${data.geoclient_response.address.firstBoroughName}`,
+        ),
       });
     });
   };
@@ -617,19 +620,13 @@ class Home extends React.Component {
   };
 
   getVehicleMakeLogoUrl = function getVehicleMakeLogoUrl({ vehicleMake }) {
-    if (vehicleMake === 'Nissan') {
-      return 'https://logo.clearbit.com/Nissanusa.com';
+    if (vehicleMake.toLowerCase() === 'nissan') {
+      return 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Nissan_2020_logo.svg/287px-Nissan_2020_logo.svg.png';
     }
-    if (vehicleMake === 'Toyota') {
-      return 'https://logo.clearbit.com/toyota.com';
-    }
-    if (vehicleMake === 'Honda') {
+    if (vehicleMake.toLowerCase() === 'honda') {
       return 'https://upload.wikimedia.org/wikipedia/commons/3/38/Honda.svg';
     }
-    if (vehicleMake === 'Kia') {
-      return 'https://logo.clearbit.com/kia.com';
-    }
-    return `https://logo.clearbit.com/${vehicleMake}.com`;
+    return `https://img.logo.dev/${vehicleMake}.com?token=pk_dUmX4e3CQxqMliLAmNRIqA`;
   };
 
   // adapted from https://github.com/ngokevin/react-file-reader-input/tree/f970257f271b8c3bba9d529ffdbfa4f4731e0799#usage
@@ -1212,6 +1209,7 @@ class Home extends React.Component {
                     value={this.state.plate}
                     name="plate"
                     list="plateSuggestion"
+                    autoComplete="off"
                     ref={this.plateRef}
                     placeholder={this.state.plateSuggestion}
                     onChange={event => {
@@ -1391,6 +1389,7 @@ class Home extends React.Component {
                     value={this.state.reportDescription}
                     name="reportDescription"
                     onChange={this.handleInputChange}
+                    autoComplete="off"
                   />
                 </label>
 

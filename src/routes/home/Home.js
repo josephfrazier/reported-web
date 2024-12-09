@@ -11,7 +11,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import withStyles from 'isomorphic-style-loader/lib/withStyles';
 import FileReaderInput from 'react-file-reader-input';
-import blobUtil from 'blob-util';
+import * as blobUtil from 'blob-util';
 import exifr from 'exifr/dist/full.umd.js';
 import axios from 'axios';
 import promisedLocation from 'promised-location';

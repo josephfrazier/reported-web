@@ -1,7 +1,7 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
 exports[`srlookup returns the right object 1`] = `
-Object {
+{
   "Additional Details": "Unsafe Driving",
   "Date Closed": "9/16/2019, 12:02:00 PM",
   "Date Reported": "7/3/2019, 10:43:28 AM",

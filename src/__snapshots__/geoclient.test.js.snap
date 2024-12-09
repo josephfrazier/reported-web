@@ -372,18 +372,18 @@ New York, NY 10123",
         "formatted_address": "1 Centre St, New York, NY 10007, USA",
         "geometry": {
           "location": {
-            "lat": 40.7121656,
-            "lng": -74.0055196,
+            "lat": 40.7121704,
+            "lng": -74.00551120000002,
           },
           "location_type": "RANGE_INTERPOLATED",
           "viewport": {
             "northeast": {
-              "lat": 40.71351458029149,
-              "lng": -74.0041706197085,
+              "lat": 40.71351938029149,
+              "lng": -74.00416221970852,
             },
             "southwest": {
-              "lat": 40.7108166197085,
-              "lng": -74.00686858029151,
+              "lat": 40.71082141970849,
+              "lng": -74.00686018029153,
             },
           },
         },
@@ -1155,18 +1155,18 @@ Astoria, NY 11105",
         "formatted_address": "26-98 21st St, Astoria, NY 11102, USA",
         "geometry": {
           "location": {
-            "lat": 40.7722325,
-            "lng": -73.9259495,
+            "lat": 40.7722322,
+            "lng": -73.9259462,
           },
           "location_type": "RANGE_INTERPOLATED",
           "viewport": {
             "northeast": {
-              "lat": 40.7735814802915,
-              "lng": -73.9246005197085,
+              "lat": 40.7735811802915,
+              "lng": -73.9245972197085,
             },
             "southwest": {
-              "lat": 40.7708835197085,
-              "lng": -73.92729848029151,
+              "lat": 40.7708832197085,
+              "lng": -73.92729518029151,
             },
           },
         },
@@ -1455,18 +1455,18 @@ New York, NY 10123",
         "formatted_address": "7 W 34th St., New York, NY 10001, USA",
         "geometry": {
           "location": {
-            "lat": 40.7488135,
-            "lng": -73.98542909999999,
+            "lat": 40.7488087,
+            "lng": -73.98543289999999,
           },
           "location_type": "RANGE_INTERPOLATED",
           "viewport": {
             "northeast": {
-              "lat": 40.7501624802915,
-              "lng": -73.9840801197085,
+              "lat": 40.75015768029151,
+              "lng": -73.98408391970848,
             },
             "southwest": {
-              "lat": 40.7474645197085,
-              "lng": -73.9867780802915,
+              "lat": 40.74745971970851,
+              "lng": -73.98678188029149,
             },
           },
         },

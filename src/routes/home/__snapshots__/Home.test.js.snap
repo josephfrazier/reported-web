@@ -11,7 +11,7 @@ exports[`Home renders children correctly 1`] = `
   onDragStart={[Function]}
   onDrop={[Function]}
   style={
-    Object {
+    {
       "bottom": 0,
       "left": 0,
       "overflowY": "scroll",
@@ -29,7 +29,7 @@ exports[`Home renders children correctly 1`] = `
         <a
           href="https://reportedly.weebly.com/"
           style={
-            Object {
+            {
               "textDecoration": "underline",
             }
           }
@@ -74,7 +74,7 @@ exports[`Home renders children correctly 1`] = `
               Password (this is saved on your device, so use a password you don't use anywhere else): 
               <div
                 style={
-                  Object {
+                  {
                     "display": "flex",
                   }
                 }
@@ -190,7 +190,7 @@ exports[`Home renders children correctly 1`] = `
       <form
         onSubmit={[Function]}
         style={
-          Object {
+          {
             "display": "none",
           }
         }
@@ -202,7 +202,7 @@ exports[`Home renders children correctly 1`] = `
             className="_react-file-reader-input"
             onClick={[Function]}
             style={
-              Object {
+              {
                 "float": "left",
                 "margin": "1px",
               }
@@ -213,7 +213,7 @@ exports[`Home renders children correctly 1`] = `
               onChange={[Function]}
               onClick={[Function]}
               style={
-                Object {
+                {
                   "position": "absolute",
                   "top": "-9999px",
                 }
@@ -228,7 +228,7 @@ exports[`Home renders children correctly 1`] = `
           </div>
           <div
             style={
-              Object {
+              {
                 "clear": "both",
                 "display": "flex",
                 "flexWrap": "wrap",
@@ -264,6 +264,7 @@ exports[`Home renders children correctly 1`] = `
           >
             License/Medallion:
             <input
+              autoComplete="off"
               list="plateSuggestion"
               name="plate"
               onChange={[Function]}
@@ -281,7 +282,7 @@ exports[`Home renders children correctly 1`] = `
               name="licenseState"
               onChange={[Function]}
               style={
-                Object {
+                {
                   "marginTop": "0.5rem",
                 }
               }
@@ -612,7 +613,7 @@ exports[`Home renders children correctly 1`] = `
               name="where"
               onClick={[Function]}
               style={
-                Object {
+                {
                   "width": "100%",
                 }
               }
@@ -631,7 +632,7 @@ exports[`Home renders children correctly 1`] = `
               onChange={[Function]}
               required={true}
               type="datetime-local"
-              value="2016-11-17T20:00"
+              value="2016-11-17T19:00"
             />
           </label>
           <label
@@ -640,6 +641,7 @@ exports[`Home renders children correctly 1`] = `
             Description:
              
             <textarea
+              autoComplete="off"
               name="reportDescription"
               onChange={[Function]}
               value=""
@@ -660,7 +662,7 @@ exports[`Home renders children correctly 1`] = `
           <button
             disabled={false}
             style={
-              Object {
+              {
                 "width": "100%",
               }
             }
@@ -683,7 +685,7 @@ exports[`Home renders children correctly 1`] = `
       </details>
       <div
         style={
-          Object {
+          {
             "float": "right",
           }
         }
@@ -691,7 +693,7 @@ exports[`Home renders children correctly 1`] = `
         <a
           href="/electricitibikes"
           style={
-            Object {
+            {
               "background": "black",
               "border": "1em solid black",
               "borderRadius": "2em",
@@ -715,7 +717,7 @@ exports[`Home renders children correctly 1`] = `
     multiple={true}
     onChange={[Function]}
     style={
-      Object {
+      {
         "bottom": 0,
         "left": 0,
         "opacity": 0.00001,

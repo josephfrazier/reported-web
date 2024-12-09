@@ -1,68 +1,68 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
 exports[`readLicenseViaALPR falling back to the second token 1`] = `
-Object {
-  "box": Object {
-    "xmax": 1842,
-    "xmin": 1638,
-    "ymax": 2113,
-    "ymin": 2009,
+{
+  "box": {
+    "xmax": 1839,
+    "xmin": 1639,
+    "ymax": 2112,
+    "ymin": 2012,
   },
-  "candidates": Array [
-    Object {
+  "candidates": [
+    {
       "plate": "t736394c",
-      "score": 0.9,
+      "score": 1,
     },
   ],
-  "dscore": 0.729,
+  "dscore": 0.763,
   "plate": "t736394c",
-  "region": Object {
+  "region": {
     "code": "us-ny",
-    "score": 0.628,
+    "score": 0.914,
   },
-  "score": 0.9,
-  "vehicle": Object {
-    "box": Object {
-      "xmax": 2439,
-      "xmin": 1258,
-      "ymax": 2238,
-      "ymin": 1176,
+  "score": 1,
+  "vehicle": {
+    "box": {
+      "xmax": 2444,
+      "xmin": 1267,
+      "ymax": 2220,
+      "ymin": 1189,
     },
-    "score": 0.893,
+    "score": 0.861,
     "type": "Sedan",
   },
 }
 `;
 
 exports[`readLicenseViaALPR using only the first token 1`] = `
-Object {
-  "box": Object {
-    "xmax": 1842,
-    "xmin": 1638,
-    "ymax": 2113,
-    "ymin": 2009,
+{
+  "box": {
+    "xmax": 1839,
+    "xmin": 1639,
+    "ymax": 2112,
+    "ymin": 2012,
   },
-  "candidates": Array [
-    Object {
+  "candidates": [
+    {
       "plate": "t736394c",
-      "score": 0.9,
+      "score": 1,
     },
   ],
-  "dscore": 0.729,
+  "dscore": 0.763,
   "plate": "t736394c",
-  "region": Object {
+  "region": {
     "code": "us-ny",
-    "score": 0.628,
+    "score": 0.914,
   },
-  "score": 0.9,
-  "vehicle": Object {
-    "box": Object {
-      "xmax": 2439,
-      "xmin": 1258,
-      "ymax": 2238,
-      "ymin": 1176,
+  "score": 1,
+  "vehicle": {
+    "box": {
+      "xmax": 2444,
+      "xmin": 1267,
+      "ymax": 2220,
+      "ymin": 1189,
     },
-    "score": 0.893,
+    "score": 0.861,
     "type": "Sedan",
   },
 }

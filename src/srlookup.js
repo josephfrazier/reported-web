@@ -1,5 +1,6 @@
-const axios = require('axios');
 import { JSDOM } from 'jsdom';
+
+const axios = require('axios');
 
 export default async function srlookup({ reqnumber }) {
   const url = `https://portal.311.nyc.gov/sr-details/?srnum=${reqnumber}`;

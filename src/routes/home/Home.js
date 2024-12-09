@@ -13,7 +13,6 @@ import withStyles from 'isomorphic-style-loader/lib/withStyles';
 import FileReaderInput from 'react-file-reader-input';
 import * as blobUtil from 'blob-util';
 import exifr from 'exifr/dist/full.umd.js';
-const axios = require('axios');
 import promisedLocation from 'promised-location';
 import { compose, withProps } from 'recompose';
 import {
@@ -54,6 +53,8 @@ import { isImage, isVideo } from '../../isImage.js';
 import getNycTimezoneOffset from '../../timezone.js';
 import { getBoroNameMemoized } from '../../getBoroName.js';
 import { vehicleTypeUrl } from '../../getVehicleType.js';
+
+const axios = require('axios');
 
 usStateNames.DC = 'District of Columbia';
 

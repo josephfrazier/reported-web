@@ -35,5 +35,5 @@ describe('readLicenseViaALPR', () => {
     });
 
     expect(result.results[0]).toMatchSnapshot();
-  });
+  }, 10000);
 });

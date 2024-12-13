@@ -1494,18 +1494,18 @@ New York, NY 10123",
         "formatted_address": "7 W 34th St., New York, NY 10001, USA",
         "geometry": {
           "location": {
-            "lat": 40.7488087,
-            "lng": -73.98543289999999,
+            "lat": 40.7488089,
+            "lng": -73.9854328,
           },
           "location_type": "RANGE_INTERPOLATED",
           "viewport": {
             "northeast": {
-              "lat": 40.75015768029151,
-              "lng": -73.98408391970848,
+              "lat": 40.7501578802915,
+              "lng": -73.9840838197085,
             },
             "southwest": {
-              "lat": 40.74745971970851,
-              "lng": -73.98678188029149,
+              "lat": 40.7474599197085,
+              "lng": -73.98678178029151,
             },
           },
         },

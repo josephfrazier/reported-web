@@ -295,6 +295,26 @@ New York, NY 10123",
             },
           },
         },
+        "navigation_points": [
+          {
+            "location": {
+              "latitude": 40.7130105,
+              "longitude": -74.0057716,
+            },
+            "restricted_travel_modes": [
+              "DRIVE",
+            ],
+          },
+          {
+            "location": {
+              "latitude": 40.7127712,
+              "longitude": -74.0066088,
+            },
+            "restricted_travel_modes": [
+              "WALK",
+            ],
+          },
+        ],
         "place_id": "ChIJSyX8DCJawokRQzG7RkXmPO4",
         "plus_code": {
           "compound_code": "PX7V+4J New York, NY, USA",
@@ -372,18 +392,18 @@ New York, NY 10123",
         "formatted_address": "1 Centre St, New York, NY 10007, USA",
         "geometry": {
           "location": {
-            "lat": 40.7121704,
-            "lng": -74.00551120000002,
+            "lat": 40.7121697,
+            "lng": -74.005507,
           },
           "location_type": "RANGE_INTERPOLATED",
           "viewport": {
             "northeast": {
-              "lat": 40.71351938029149,
-              "lng": -74.00416221970852,
+              "lat": 40.7135186802915,
+              "lng": -74.0041580197085,
             },
             "southwest": {
-              "lat": 40.71082141970849,
-              "lng": -74.00686018029153,
+              "lat": 40.7108207197085,
+              "lng": -74.0068559802915,
             },
           },
         },
@@ -686,6 +706,17 @@ Bronx, NY 10471",
             },
           },
         },
+        "navigation_points": [
+          {
+            "location": {
+              "latitude": 40.8807098,
+              "longitude": -73.9104323,
+            },
+            "restricted_travel_modes": [
+              "WALK",
+            ],
+          },
+        ],
         "place_id": "ChIJUaKJHJXzwokRS0cn01bSawQ",
         "plus_code": {
           "compound_code": "V3JQ+9W The Bronx, NY, USA",
@@ -1078,6 +1109,14 @@ Astoria, NY 11105",
             },
           },
         },
+        "navigation_points": [
+          {
+            "location": {
+              "latitude": 40.7720823,
+              "longitude": -73.925974,
+            },
+          },
+        ],
         "place_id": "ChIJjdFLNE9fwokR5Z_HQ05oa00",
         "plus_code": {
           "compound_code": "Q3CF+RM Long Island City, Queens, NY, USA",
@@ -1155,18 +1194,18 @@ Astoria, NY 11105",
         "formatted_address": "26-98 21st St, Astoria, NY 11102, USA",
         "geometry": {
           "location": {
-            "lat": 40.7722322,
-            "lng": -73.9259462,
+            "lat": 40.7722349,
+            "lng": -73.9259539,
           },
           "location_type": "RANGE_INTERPOLATED",
           "viewport": {
             "northeast": {
-              "lat": 40.7735811802915,
-              "lng": -73.9245972197085,
+              "lat": 40.7735838802915,
+              "lng": -73.9246049197085,
             },
             "southwest": {
-              "lat": 40.7708832197085,
-              "lng": -73.92729518029151,
+              "lat": 40.7708859197085,
+              "lng": -73.9273028802915,
             },
           },
         },

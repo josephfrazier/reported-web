@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "engines": {
-    "node": "20.8.0",
+    "node": "20.18.1",
     "npm": ">=3.10.10"
   },
   "browserslist": [

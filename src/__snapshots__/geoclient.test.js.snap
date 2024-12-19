@@ -1112,8 +1112,8 @@ Astoria, NY 11105",
         "navigation_points": [
           {
             "location": {
-              "latitude": 40.7720823,
-              "longitude": -73.925974,
+              "latitude": 40.7720866,
+              "longitude": -73.9259786,
             },
           },
         ],
@@ -1194,18 +1194,18 @@ Astoria, NY 11105",
         "formatted_address": "26-98 21st St, Astoria, NY 11102, USA",
         "geometry": {
           "location": {
-            "lat": 40.7722349,
-            "lng": -73.9259539,
+            "lat": 40.7722335,
+            "lng": -73.925955,
           },
           "location_type": "RANGE_INTERPOLATED",
           "viewport": {
             "northeast": {
-              "lat": 40.7735838802915,
-              "lng": -73.9246049197085,
+              "lat": 40.77358248029149,
+              "lng": -73.9246060197085,
             },
             "southwest": {
-              "lat": 40.7708859197085,
-              "lng": -73.9273028802915,
+              "lat": 40.7708845197085,
+              "lng": -73.92730398029151,
             },
           },
         },

@@ -53,7 +53,7 @@ import SubmissionDetails from '../../components/SubmissionDetails.js';
 import { isImage, isVideo } from '../../isImage.js';
 import getNycTimezoneOffset from '../../timezone.js';
 import { getBoroNameMemoized } from '../../getBoroName.js';
-import { vehicleTypeUrl } from '../../getVehicleType.js';
+import { vehicleTypeUrl } from '../../vehicleTypeUrl.js';
 
 usStateNames.DC = 'District of Columbia';
 
@@ -519,7 +519,6 @@ class Home extends React.Component {
 
     debouncedGetVehicleType({ plate, licenseState })
       .then(({ data }) => {
-        console.log({data})
         const {
           vehicleYear,
           vehicleMake,

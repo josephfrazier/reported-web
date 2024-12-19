@@ -1129,8 +1129,8 @@ Astoria, NY 11105",
       {
         "address_components": [
           {
-            "long_name": "26-99",
-            "short_name": "26-99",
+            "long_name": "26-98",
+            "short_name": "26-98",
             "types": [
               "street_number",
             ],
@@ -1190,15 +1190,8 @@ Astoria, NY 11105",
               "postal_code",
             ],
           },
-          {
-            "long_name": "3544",
-            "short_name": "3544",
-            "types": [
-              "postal_code_suffix",
-            ],
-          },
         ],
-        "formatted_address": "26-99 21st St, Astoria, NY 11102, USA",
+        "formatted_address": "26-98 21st St, Astoria, NY 11102, USA",
         "geometry": {
           "location": {
             "lat": 40.7722335,
@@ -1216,7 +1209,7 @@ Astoria, NY 11105",
             },
           },
         },
-        "place_id": "EiUyNi05OSAyMXN0IFN0LCBBc3RvcmlhLCBOWSAxMTEwMiwgVVNBIhoSGAoUChIJ10SUQE9fwokROfBJGToIH2YQYw",
+        "place_id": "EiUyNi05OCAyMXN0IFN0LCBBc3RvcmlhLCBOWSAxMTEwMiwgVVNBIhoSGAoUChIJ10SUQE9fwokROPBJGToIH2YQYg",
         "types": [
           "street_address",
         ],

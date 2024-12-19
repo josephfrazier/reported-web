@@ -29,6 +29,7 @@ export default function getVehicleType({ licensePlate, licenseState }) {
       },
     })
     .then(({ data }) => {
+      console.timeEnd(url); // eslint-disable-line no-console
       const { document } = new JSDOM(data).window;
 
       return {

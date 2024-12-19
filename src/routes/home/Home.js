@@ -53,7 +53,7 @@ import SubmissionDetails from '../../components/SubmissionDetails.js';
 import { isImage, isVideo } from '../../isImage.js';
 import getNycTimezoneOffset from '../../timezone.js';
 import { getBoroNameMemoized } from '../../getBoroName.js';
-import { vehicleTypeUrl } from '../../vehicleTypeUrl.js';
+import vehicleTypeUrl from '../../vehicleTypeUrl.js';
 
 usStateNames.DC = 'District of Columbia';
 

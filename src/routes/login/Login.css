@@ -6,7 +6,7 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE.txt file in the root directory of this source tree.
  */
-@import '../../components/variables.css';
+@import url('../../components/variables.css');
 
 .root {
   padding-left: 20px;
@@ -23,7 +23,7 @@
   font-size: 1.25em;
 }
 
-.formGroup {
+.formGroup { /* stylelint-disable-line selector-class-pattern */
   margin-bottom: 15px;
 }
 
@@ -43,16 +43,16 @@
   border: 1px solid #ccc;
   border-radius: 0;
   background: #fff;
-  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075);
+  box-shadow: inset 0 1px 1px rgb(0 0 0 / 7.5%);
   color: #616161;
   font-size: 18px;
-  line-height: 1.3333333;
+  line-height: 1.3333;
   transition: border-color ease-in-out 0.15s, box-shadow ease-in-out 0.15s;
 }
 
 .input:focus {
   border-color: #0074c2;
-  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075), 0 0 8px rgba(0, 116, 194, 0.6);
+  box-shadow: inset 0 1px 1px rgb(0 0 0 / 7.5%), 0 0 8px rgb(0 116 194 / 60%);
 }
 
 .button {
@@ -69,17 +69,17 @@
   text-align: center;
   text-decoration: none;
   font-size: 18px;
-  line-height: 1.3333333;
+  line-height: 1.3333;
   cursor: pointer;
 }
 
 .button:hover {
-  background: rgba(54, 50, 119, 0.8);
+  background: rgb(54 50 119 / 80%);
 }
 
 .button:focus {
   border-color: #0074c2;
-  box-shadow: 0 0 8px rgba(0, 116, 194, 0.6);
+  box-shadow: 0 0 8px rgb(0 116 194 / 60%);
 }
 
 .facebook {
@@ -118,10 +118,10 @@
   width: 20px;
   height: 20px;
   vertical-align: middle;
-  fill: currentColor;
+  fill: currentcolor;
 }
 
-.lineThrough {
+.lineThrough { /* stylelint-disable-line selector-class-pattern */
   position: relative;
   z-index: 1;
   display: block;
@@ -132,7 +132,7 @@
   font-size: 80%;
 }
 
-.lineThrough::before {
+.lineThrough::before { /* stylelint-disable-line selector-class-pattern */
   position: absolute;
   top: 50%;
   left: 50%;
@@ -145,7 +145,7 @@
   content: '';
 }
 
-.lineThrough::after {
+.lineThrough::after { /* stylelint-disable-line selector-class-pattern */
   position: absolute;
   top: 49%;
   z-index: -2;

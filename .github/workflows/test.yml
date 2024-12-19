@@ -1,9 +1,9 @@
-name: Node.js CI - build
+name: Node.js CI - test
 
 on: [push]
 
 jobs:
-  build:
+  test:
 
     runs-on: ubuntu-latest
 
@@ -20,6 +20,12 @@ jobs:
     - run: curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.22.19
     - run: export PATH=$HOME/.yarn/bin:$PATH
     - run: yarn
-    - run: yarn build
+    - run: yarn add sharp --ignore-engines
+    - shell: bash
       env:
-        CI: true
+        GEO_APP_ID: ${{ secrets.GEO_APP_ID }}
+        GEO_APP_KEY: ${{ secrets.GEO_APP_KEY }}
+        GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+        PLATERECOGNIZER_TOKEN: ${{ secrets.PLATERECOGNIZER_TOKEN }}
+        PLATERECOGNIZER_TOKEN_TWO: ${{ secrets.PLATERECOGNIZER_TOKEN_TWO }}
+      run: yarn test

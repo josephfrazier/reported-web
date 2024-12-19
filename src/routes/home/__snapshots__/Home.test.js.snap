@@ -11,7 +11,7 @@ exports[`Home renders children correctly 1`] = `
   onDragStart={[Function]}
   onDrop={[Function]}
   style={
-    Object {
+    {
       "bottom": 0,
       "left": 0,
       "overflowY": "scroll",
@@ -29,7 +29,7 @@ exports[`Home renders children correctly 1`] = `
         <a
           href="https://reportedly.weebly.com/"
           style={
-            Object {
+            {
               "textDecoration": "underline",
             }
           }
@@ -37,6 +37,9 @@ exports[`Home renders children correctly 1`] = `
           Reported
         </a>
       </h1>
+      <div
+        className="Toastify"
+      />
       <details
         onToggle={[Function]}
         open={true}
@@ -71,7 +74,7 @@ exports[`Home renders children correctly 1`] = `
               Password (this is saved on your device, so use a password you don't use anywhere else): 
               <div
                 style={
-                  Object {
+                  {
                     "display": "flex",
                   }
                 }
@@ -187,7 +190,7 @@ exports[`Home renders children correctly 1`] = `
       <form
         onSubmit={[Function]}
         style={
-          Object {
+          {
             "display": "none",
           }
         }
@@ -199,19 +202,18 @@ exports[`Home renders children correctly 1`] = `
             className="_react-file-reader-input"
             onClick={[Function]}
             style={
-              Object {
+              {
                 "float": "left",
                 "margin": "1px",
               }
             }
           >
             <input
-              accept="image/*"
               multiple={true}
               onChange={[Function]}
               onClick={[Function]}
               style={
-                Object {
+                {
                   "position": "absolute",
                   "top": "-9999px",
                 }
@@ -221,41 +223,12 @@ exports[`Home renders children correctly 1`] = `
             <button
               type="button"
             >
-              Add picture(s)
-            </button>
-          </div>
-          <div
-            className="_react-file-reader-input"
-            onClick={[Function]}
-            style={
-              Object {
-                "float": "left",
-                "margin": "1px",
-              }
-            }
-          >
-            <input
-              accept="video/*"
-              multiple={true}
-              onChange={[Function]}
-              onClick={[Function]}
-              style={
-                Object {
-                  "position": "absolute",
-                  "top": "-9999px",
-                }
-              }
-              type="file"
-            />
-            <button
-              type="button"
-            >
-              Add video(s)
+              Add pictures/videos
             </button>
           </div>
           <div
             style={
-              Object {
+              {
                 "clear": "both",
                 "display": "flex",
                 "flexWrap": "wrap",
@@ -263,10 +236,35 @@ exports[`Home renders children correctly 1`] = `
             }
           />
           <label
+            htmlFor="isAlprEnabled"
+          >
+            <input
+              checked={true}
+              name="isAlprEnabled"
+              onChange={[Function]}
+              type="checkbox"
+            />
+             
+            Automatically read license plates from pictures/videos
+          </label>
+          <label
+            htmlFor="isReverseGeocodingEnabled"
+          >
+            <input
+              checked={true}
+              name="isReverseGeocodingEnabled"
+              onChange={[Function]}
+              type="checkbox"
+            />
+             
+            Automatically read addresses from pictures/videos
+          </label>
+          <label
             htmlFor="plate"
           >
             License/Medallion:
             <input
+              autoComplete="off"
               list="plateSuggestion"
               name="plate"
               onChange={[Function]}
@@ -284,7 +282,7 @@ exports[`Home renders children correctly 1`] = `
               name="licenseState"
               onChange={[Function]}
               style={
-                Object {
+                {
                   "marginTop": "0.5rem",
                 }
               }
@@ -329,6 +327,11 @@ exports[`Home renders children correctly 1`] = `
                 value="DE"
               >
                 Delaware
+              </option>
+              <option
+                value="DC"
+              >
+                District of Columbia
               </option>
               <option
                 value="FL"
@@ -603,13 +606,14 @@ exports[`Home renders children correctly 1`] = `
           <label
             htmlFor="where"
           >
-            Where:
+            Where: 
+            
             <br />
             <button
               name="where"
               onClick={[Function]}
               style={
-                Object {
+                {
                   "width": "100%",
                 }
               }
@@ -628,7 +632,7 @@ exports[`Home renders children correctly 1`] = `
               onChange={[Function]}
               required={true}
               type="datetime-local"
-              value="2016-11-17T20:00"
+              value="2016-11-17T19:00"
             />
           </label>
           <label
@@ -637,6 +641,7 @@ exports[`Home renders children correctly 1`] = `
             Description:
              
             <textarea
+              autoComplete="off"
               name="reportDescription"
               onChange={[Function]}
               value=""
@@ -657,7 +662,7 @@ exports[`Home renders children correctly 1`] = `
           <button
             disabled={false}
             style={
-              Object {
+              {
                 "width": "100%",
               }
             }
@@ -672,124 +677,23 @@ exports[`Home renders children correctly 1`] = `
         onToggle={[Function]}
       >
         <summary>
-          Previous Submissions
+          Previous Submissions (
+          click to load
+          )
         </summary>
-        <ul>
-          Loading submissions...
-        </ul>
+        Loading submissions...
       </details>
       <div
         style={
-          Object {
+          {
             "float": "right",
           }
         }
       >
         <a
-          aria-label="twitter"
-          className="social-icon"
-          href="https://twitter.com/Reported_NYC"
-          rel="noopener"
-          style={
-            Object {
-              "display": "inline-block",
-              "height": "50px",
-              "overflow": "hidden",
-              "position": "relative",
-              "verticalAlign": "middle",
-              "width": "50px",
-            }
-          }
-          target="_blank"
-        >
-          <div
-            className="social-container"
-            style={
-              Object {
-                "height": "100%",
-                "left": 0,
-                "position": "absolute",
-                "top": 0,
-                "width": "100%",
-              }
-            }
-          >
-            <svg
-              className="social-svg"
-              style={
-                Object {
-                  "borderRadius": "50%",
-                  "fillRule": "evenodd",
-                  "height": "100%",
-                  "left": 0,
-                  "position": "absolute",
-                  "top": 0,
-                  "width": "100%",
-                }
-              }
-              viewBox="0 0 64 64"
-            >
-              <g
-                className="social-svg-background"
-                style={
-                  Object {
-                    "MozTransition": "fill 170ms ease-in-out",
-                    "OTransition": "fill 170ms ease-in-out",
-                    "WebkitTransition": "fill 170ms ease-in-out",
-                    "fill": "transparent",
-                    "msTransition": "fill 170ms ease-in-out",
-                    "transition": "fill 170ms ease-in-out",
-                  }
-                }
-              >
-                <circle
-                  cx="32"
-                  cy="32"
-                  r="31"
-                />
-              </g>
-              <g
-                className="social-svg-icon"
-                style={
-                  Object {
-                    "MozTransition": "fill 170ms ease-in-out",
-                    "OTransition": "fill 170ms ease-in-out",
-                    "WebkitTransition": "fill 170ms ease-in-out",
-                    "fill": "transparent",
-                    "msTransition": "fill 170ms ease-in-out",
-                    "transition": "fill 170ms ease-in-out",
-                  }
-                }
-              >
-                <path
-                  d="M48,22.1c-1.2,0.5-2.4,0.9-3.8,1c1.4-0.8,2.4-2.1,2.9-3.6c-1.3,0.8-2.7,1.3-4.2,1.6 C41.7,19.8,40,19,38.2,19c-3.6,0-6.6,2.9-6.6,6.6c0,0.5,0.1,1,0.2,1.5c-5.5-0.3-10.3-2.9-13.5-6.9c-0.6,1-0.9,2.1-0.9,3.3 c0,2.3,1.2,4.3,2.9,5.5c-1.1,0-2.1-0.3-3-0.8c0,0,0,0.1,0,0.1c0,3.2,2.3,5.8,5.3,6.4c-0.6,0.1-1.1,0.2-1.7,0.2c-0.4,0-0.8,0-1.2-0.1 c0.8,2.6,3.3,4.5,6.1,4.6c-2.2,1.8-5.1,2.8-8.2,2.8c-0.5,0-1.1,0-1.6-0.1c2.9,1.9,6.4,2.9,10.1,2.9c12.1,0,18.7-10,18.7-18.7 c0-0.3,0-0.6,0-0.8C46,24.5,47.1,23.4,48,22.1z"
-                />
-              </g>
-              <g
-                className="social-svg-mask"
-                style={
-                  Object {
-                    "MozTransition": "fill 170ms ease-in-out",
-                    "OTransition": "fill 170ms ease-in-out",
-                    "WebkitTransition": "fill 170ms ease-in-out",
-                    "fill": "#00aced",
-                    "msTransition": "fill 170ms ease-in-out",
-                    "transition": "fill 170ms ease-in-out",
-                  }
-                }
-              >
-                <path
-                  d="M0,0v64h64V0H0z M44.7,25.5c0,0.3,0,0.6,0,0.8C44.7,35,38.1,45,26.1,45c-3.7,0-7.2-1.1-10.1-2.9 c0.5,0.1,1,0.1,1.6,0.1c3.1,0,5.9-1,8.2-2.8c-2.9-0.1-5.3-2-6.1-4.6c0.4,0.1,0.8,0.1,1.2,0.1c0.6,0,1.2-0.1,1.7-0.2 c-3-0.6-5.3-3.3-5.3-6.4c0,0,0-0.1,0-0.1c0.9,0.5,1.9,0.8,3,0.8c-1.8-1.2-2.9-3.2-2.9-5.5c0-1.2,0.3-2.3,0.9-3.3 c3.2,4,8.1,6.6,13.5,6.9c-0.1-0.5-0.2-1-0.2-1.5c0-3.6,2.9-6.6,6.6-6.6c1.9,0,3.6,0.8,4.8,2.1c1.5-0.3,2.9-0.8,4.2-1.6 c-0.5,1.5-1.5,2.8-2.9,3.6c1.3-0.2,2.6-0.5,3.8-1C47.1,23.4,46,24.5,44.7,25.5z"
-                />
-              </g>
-            </svg>
-          </div>
-        </a>
-         
-        <a
           href="/electricitibikes"
           style={
-            Object {
+            {
               "background": "black",
               "border": "1em solid black",
               "borderRadius": "2em",
@@ -808,13 +712,12 @@ exports[`Home renders children correctly 1`] = `
     </main>
   </div>
   <input
-    accept="image/*, video/*"
     autoComplete="off"
     disabled={false}
     multiple={true}
     onChange={[Function]}
     style={
-      Object {
+      {
         "bottom": 0,
         "left": 0,
         "opacity": 0.00001,

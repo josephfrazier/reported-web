@@ -519,6 +519,7 @@ class Home extends React.Component {
 
     debouncedGetVehicleType({ plate, licenseState })
       .then(({ data }) => {
+        console.log({data})
         const {
           vehicleYear,
           vehicleMake,

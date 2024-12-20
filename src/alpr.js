@@ -25,30 +25,30 @@ const downscaleForPlateRecognizer = ({ buffer, targetWidth }) => {
   const fileSize = buffer.length;
   const maxFilesize = 2411654;
 
-  if (fileSize >= maxFilesize) {
-    // eslint-disable-next-line no-console
-    console.log(
-      `file size is greater than maximum of ${maxFilesize} bytes, attempting to scale down to width of ${targetWidth}`,
-    );
-
-    return sharp(buffer)
-      .resize({ width: targetWidth })
-      .toBuffer()
-      .catch(error => {
-        console.error('could not scale down, using unscaled image', { error });
-        return buffer;
-      })
-      .then(resizedBufferish => {
-        const resizedBuffer = Buffer.from(resizedBufferish);
-        // eslint-disable-next-line no-console
-        console.log(
-          `file size after scaling down: ${resizedBuffer.length} bytes`,
-        );
-        return resizedBuffer;
-      });
+  if (fileSize < maxFilesize) {
+    return buffer;
   }
 
-  return buffer;
+  // eslint-disable-next-line no-console
+  console.log(
+    `file size is greater than maximum of ${maxFilesize} bytes, attempting to scale down to width of ${targetWidth}`,
+  );
+
+  return sharp(buffer)
+    .resize({ width: targetWidth })
+    .toBuffer()
+    .catch(error => {
+      console.error('could not scale down, using unscaled image', { error });
+      return buffer;
+    })
+    .then(resizedBufferish => {
+      const resizedBuffer = Buffer.from(resizedBufferish);
+      // eslint-disable-next-line no-console
+      console.log(
+        `file size after scaling down: ${resizedBuffer.length} bytes`,
+      );
+      return resizedBuffer;
+    });
 };
 
 function platerecognizer({ attachmentBytesRotated, PLATERECOGNIZER_TOKEN }) {

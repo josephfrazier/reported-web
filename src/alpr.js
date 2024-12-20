@@ -21,13 +21,11 @@ async function orientImageBuffer({ attachmentBuffer }) {
 }
 
 // https://app.platerecognizer.com/upload-limit/
-const downscaleForPlateRecognizer = buffer => {
+const downscaleForPlateRecognizer = ({ buffer, targetWidth }) => {
   const fileSize = buffer.length;
   const maxFilesize = 2411654;
 
   if (fileSize >= maxFilesize) {
-    const targetWidth = 4096;
-
     // eslint-disable-next-line no-console
     console.log(
       `file size is greater than maximum of ${maxFilesize} bytes, attempting to scale down to width of ${targetWidth}`,
@@ -76,7 +74,8 @@ export default function readLicenseViaALPR({
   PLATERECOGNIZER_TOKEN_TWO,
 }) {
   return orientImageBuffer({ attachmentBuffer })
-    .then(downscaleForPlateRecognizer)
+    .then(buffer => downscaleForPlateRecognizer({ buffer, targetWidth: 4096 }))
+    .then(buffer => downscaleForPlateRecognizer({ buffer, targetWidth: 2048 }))
     .then(buffer => buffer.toString('base64'))
     .then(attachmentBytesRotated => {
       console.log('STARTING platerecognizer'); // eslint-disable-line no-console

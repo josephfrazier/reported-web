@@ -265,19 +265,16 @@ exports[`Home renders children correctly 1`] = `
             License/Medallion:
             <input
               autoComplete="off"
-              list="plateSuggestion"
+              list="plateSuggestions"
               name="plate"
               onChange={[Function]}
-              placeholder=""
               required={true}
               type="search"
               value=""
             />
             <datalist
-              id="plateSuggestion"
-            >
-              
-            </datalist>
+              id="plateSuggestions"
+            />
             <select
               name="licenseState"
               onChange={[Function]}

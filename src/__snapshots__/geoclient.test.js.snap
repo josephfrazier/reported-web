@@ -392,18 +392,18 @@ New York, NY 10123",
         "formatted_address": "1 Centre St, New York, NY 10007, USA",
         "geometry": {
           "location": {
-            "lat": 40.7121697,
-            "lng": -74.005507,
+            "lat": 40.7121708,
+            "lng": -74.0055067,
           },
           "location_type": "RANGE_INTERPOLATED",
           "viewport": {
             "northeast": {
-              "lat": 40.7135186802915,
-              "lng": -74.0041580197085,
+              "lat": 40.71351978029149,
+              "lng": -74.0041577197085,
             },
             "southwest": {
-              "lat": 40.7108207197085,
-              "lng": -74.0068559802915,
+              "lat": 40.71082181970849,
+              "lng": -74.00685568029151,
             },
           },
         },
@@ -1215,18 +1215,18 @@ New York, NY 10123",
         "formatted_address": "1 Centre St, New York, NY 10007, USA",
         "geometry": {
           "location": {
-            "lat": 40.7121697,
-            "lng": -74.005507,
+            "lat": 40.7121708,
+            "lng": -74.0055067,
           },
           "location_type": "RANGE_INTERPOLATED",
           "viewport": {
             "northeast": {
-              "lat": 40.7135186802915,
-              "lng": -74.0041580197085,
+              "lat": 40.71351978029149,
+              "lng": -74.0041577197085,
             },
             "southwest": {
-              "lat": 40.7108207197085,
-              "lng": -74.0068559802915,
+              "lat": 40.71082181970849,
+              "lng": -74.00685568029151,
             },
           },
         },
@@ -1515,18 +1515,18 @@ New York, NY 10123",
         "formatted_address": "7 W 34th St., New York, NY 10001, USA",
         "geometry": {
           "location": {
-            "lat": 40.7488089,
-            "lng": -73.9854328,
+            "lat": 40.7488091,
+            "lng": -73.9854326,
           },
           "location_type": "RANGE_INTERPOLATED",
           "viewport": {
             "northeast": {
-              "lat": 40.7501578802915,
-              "lng": -73.9840838197085,
+              "lat": 40.75015808029151,
+              "lng": -73.98408361970849,
             },
             "southwest": {
-              "lat": 40.7474599197085,
-              "lng": -73.98678178029151,
+              "lat": 40.74746011970851,
+              "lng": -73.9867815802915,
             },
           },
         },

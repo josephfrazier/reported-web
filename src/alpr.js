@@ -21,36 +21,34 @@ async function orientImageBuffer({ attachmentBuffer }) {
 }
 
 // https://app.platerecognizer.com/upload-limit/
-const downscaleForPlateRecognizer = buffer => {
+const downscaleForPlateRecognizer = ({ buffer, targetWidth }) => {
   const fileSize = buffer.length;
   const maxFilesize = 2411654;
 
-  if (fileSize >= maxFilesize) {
-    const targetWidth = 4096;
-
-    // eslint-disable-next-line no-console
-    console.log(
-      `file size is greater than maximum of ${maxFilesize} bytes, attempting to scale down to width of ${targetWidth}`,
-    );
-
-    return sharp(buffer)
-      .resize({ width: targetWidth })
-      .toBuffer()
-      .catch(error => {
-        console.error('could not scale down, using unscaled image', { error });
-        return buffer;
-      })
-      .then(resizedBufferish => {
-        const resizedBuffer = Buffer.from(resizedBufferish);
-        // eslint-disable-next-line no-console
-        console.log(
-          `file size after scaling down: ${resizedBuffer.length} bytes`,
-        );
-        return resizedBuffer;
-      });
+  if (fileSize < maxFilesize) {
+    return buffer;
   }
 
-  return buffer;
+  // eslint-disable-next-line no-console
+  console.log(
+    `file size is greater than maximum of ${maxFilesize} bytes, attempting to scale down to width of ${targetWidth}`,
+  );
+
+  return sharp(buffer)
+    .resize({ width: targetWidth })
+    .toBuffer()
+    .catch(error => {
+      console.error('could not scale down, using unscaled image', { error });
+      return buffer;
+    })
+    .then(resizedBufferish => {
+      const resizedBuffer = Buffer.from(resizedBufferish);
+      // eslint-disable-next-line no-console
+      console.log(
+        `file size after scaling down: ${resizedBuffer.length} bytes`,
+      );
+      return resizedBuffer;
+    });
 };
 
 function platerecognizer({ attachmentBytesRotated, PLATERECOGNIZER_TOKEN }) {
@@ -76,7 +74,8 @@ export default function readLicenseViaALPR({
   PLATERECOGNIZER_TOKEN_TWO,
 }) {
   return orientImageBuffer({ attachmentBuffer })
-    .then(downscaleForPlateRecognizer)
+    .then(buffer => downscaleForPlateRecognizer({ buffer, targetWidth: 4096 }))
+    .then(buffer => downscaleForPlateRecognizer({ buffer, targetWidth: 2048 }))
     .then(buffer => buffer.toString('base64'))
     .then(attachmentBytesRotated => {
       console.log('STARTING platerecognizer'); // eslint-disable-line no-console

@@ -53,7 +53,7 @@ import SubmissionDetails from '../../components/SubmissionDetails.js';
 import { isImage, isVideo } from '../../isImage.js';
 import getNycTimezoneOffset from '../../timezone.js';
 import { getBoroNameMemoized } from '../../getBoroName.js';
-import { vehicleTypeUrl } from '../../getVehicleType.js';
+import vehicleTypeUrl from '../../vehicleTypeUrl.js';
 
 usStateNames.DC = 'District of Columbia';
 
@@ -213,6 +213,7 @@ async function extractPlate({
       result.licenseState = null;
     }
     result.plate = result.plate.toUpperCase();
+    result.plateSuggestions = data.results.map(r => r.plate.toUpperCase());
 
     attachmentPlates.set(attachmentFile, result);
     return result;
@@ -333,7 +334,7 @@ class Home extends React.Component {
       isPasswordRevealed: false,
       isUserInfoSaving: false,
       isSubmitting: false,
-      plateSuggestion: '',
+      plateSuggestions: [],
       vehicleInfoComponent: <br />,
       submissions: [],
       addressProvenance: '',
@@ -671,7 +672,7 @@ class Home extends React.Component {
                   this.setLicensePlate(result);
                 }
                 this.setState({
-                  plateSuggestion: result.plate,
+                  plateSuggestions: result.plateSuggestions,
                 });
               }),
               extractDate({
@@ -1077,7 +1078,7 @@ class Home extends React.Component {
                     this.setState(state => ({
                       attachmentData: [],
                       submissions: [submission].concat(state.submissions),
-                      plateSuggestion: '',
+                      plateSuggestions: [],
                       reportDescription: '',
                     }));
                     this.setLicensePlate({ plate: '', licenseState: 'NY' });
@@ -1208,20 +1209,20 @@ class Home extends React.Component {
                     type="search"
                     value={this.state.plate}
                     name="plate"
-                    list="plateSuggestion"
+                    list="plateSuggestions"
                     autoComplete="off"
                     ref={this.plateRef}
-                    placeholder={this.state.plateSuggestion}
+                    placeholder={this.state.plateSuggestions[0]}
                     onChange={event => {
                       this.setLicensePlate({
                         plate: event.target.value.toUpperCase(),
                       });
                     }}
                   />
-                  <datalist id="plateSuggestion">
-                    {this.state.plateSuggestion && (
-                      <option value={this.state.plateSuggestion} />
-                    )}
+                  <datalist id="plateSuggestions">
+                    {this.state.plateSuggestions.map(plateSuggestion => (
+                      <option value={plateSuggestion} />
+                    ))}
                   </datalist>
                   <select
                     style={{

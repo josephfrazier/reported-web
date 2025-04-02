@@ -265,19 +265,16 @@ exports[`Home renders children correctly 1`] = `
             License/Medallion:
             <input
               autoComplete="off"
-              list="plateSuggestion"
+              list="plateSuggestions"
               name="plate"
               onChange={[Function]}
-              placeholder=""
               required={true}
               type="search"
               value=""
             />
             <datalist
-              id="plateSuggestion"
-            >
-              
-            </datalist>
+              id="plateSuggestions"
+            />
             <select
               name="licenseState"
               onChange={[Function]}
@@ -632,7 +629,7 @@ exports[`Home renders children correctly 1`] = `
               onChange={[Function]}
               required={true}
               type="datetime-local"
-              value="2016-11-17T19:00"
+              value="2016-11-17T20:00"
             />
           </label>
           <label

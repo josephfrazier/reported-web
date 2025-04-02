@@ -35,6 +35,141 @@ yarn dashboard # Runs a dashboard for the Parse server
 yarn mongo-stop # Stops MongoDB
 ```
 
+## Context on `localStorage` use (w.r.t performance concerns about lag/delay/slowness/latency when typing)
+
+Over the years, reports of slow typing have come from multiple users, and it periodically gets (re)discussed in our Slack.
+Since our Slack currently doesn't preserve old messages, I often find myself re-investigating the issue and re-typing previous responses.
+This section is meant to provide more central and permanent documentation of these investigations.
+
+For example: here's one of my posts from a conversation from July 2023 where this came up: https://reportedcab.slack.com/archives/C9VNM3DL4/p1690221553212389?thread_ts=1690137347.880569&cid=C9VNM3DL4
+
+> hey y'all, "happy" to see it's not just Rich Mintz and Justin with this issue,
+> that makes it easier to investigate. As @Justin found, this does seem to
+> have to do with the webapp's use of localStorage to save the form's state
+> locally.
+>
+> [The original intent of this change](https://github.com/josephfrazier/reported-web/commit/4ad4c316aeb2d8a8e7bc8eb8e462aa722ca56a3a) was to make it so that fields like your
+> username/password and violation type would be saved across sessions, so
+> that you don't have to log back in every time you open the website.
+> However, it sounds like this may be storing more data than intended,
+> possibly the "Previous Submissions" section as Rich mentioned.
+>
+> I'm hesitant to remove the use of localStorage entirely, as that could cause
+> other issues like one that was previously reported when I [tried to stop using localStorage as much](https://github.com/josephfrazier/reported-web/pull/391),
+> and led to [it being reintroduced](https://github.com/josephfrazier/reported-web/pull/394):
+> > Not sure if this is an app problem or a me and my phone problem, but when I
+> > am starting a report, then leave the tab or browser before I finish, it makes
+> > me start all over from the login screen when I come back
+>
+> For reference, the [periodic saving of form state was added to fix a bug where
+> "swiping away" the webapp (when installed as a "progressive web app" or PWA)
+> didn't actually save the form state.](https://github.com/josephfrazier/reported-web/commit/4b22f2d957a08712e65cca065b2c11d7c384b47e)
+>
+> If the latency issues are indeed related to the number of previous submissions
+> made, then hopefully I can make it so that those aren't part of the saved
+> state, and speed things back up for our power users, without losing the upsides
+> of keeping saved state across webapp loads.
+
+> Hmm, looking into the localStorage usage, I currently only see the following
+> fields being saved (specifically, not Previous Submissions), when I run
+> `Object.keys(JSON.parse(localStorage.Function))`:
+>
+> ```
+> [
+>   "email",
+>   "password",
+>   "FirstName",
+>   "LastName",
+>   "Phone",
+>   "testify",
+>   "plate",
+>   "licenseState",
+>   "typeofcomplaint",
+>   "reportDescription",
+>   "can_be_shared_publicly",
+>   "latitude",
+>   "longitude",
+>   "coordsAreInNyc",
+>   "formatted_address",
+>   "CreateDate",
+>   "isAlprEnabled",
+>   "isReverseGeocodingEnabled",
+>   "isUserInfoOpen",
+>   "isMapOpen"
+> ]
+> ```
+>
+> And the saved data is only 597 characters long, according to `localStorage.Function.length`
+>
+> Seth, Rich Mintz, Justin, and anyone else affected by this issue, could you run
+> the above commands in your JS console, or find another way to tell me how big
+> the `localStorage` usage of the webapp is?
+>
+> If clearing localStorage speeds things up for you, that makes me wonder if some
+> browsers implement it in a way that gets slower over time, even though I
+> believe the code overwrites any previously stored data, rather than appending
+> to a list of "previous form states" or anything like that
+
+Responses from Justin:
+
+> `(20) ['email', 'password', 'FirstName', 'LastName', 'Phone', 'testify',
+> 'plate', 'licenseState', 'typeofcomplaint', 'reportDescription',
+> 'can_be_shared_publicly', 'latitude', 'longitude', 'coordsAreInNyc',
+> 'formatted_address', 'CreateDate', 'isAlprEnabled',
+> 'isReverseGeocodingEnabled', 'isUserInfoOpen', 'isMapOpen']`
+
+> The issue reappears shortly after clearing the local storage. Can it just be caused by hammering the save every 500ms? Or maybe the debounce is broken and its saving more often?
+
+> as a test, after clearing local storage
+> * login
+> * type something in the description box
+> * refresh
+> * typing in description box is now laggy
+
+More debugging info from https://reportedcab.slack.com/archives/C9VNM3DL4/p1690233028016149?thread_ts=1690137347.880569&cid=C9VNM3DL4:
+
+> > My next step might be to add some profiling in to make it clearer how long each save is taking
+> 
+> **TL;DR: I've made some good progress finding the source of the issue**
+> 
+> back on the code that uses localStorage, I'm doing some debugging locally on my
+> MacOS desktop, and _I am able to reproduce the issue_ by typing quickly and
+> seeing the letters not instantly appear!
+> 
+> I tried [removing just the auto-save behavior while keeping the other
+> localStorage usage](https://github.com/josephfrazier/reported-web/commit/2bac6d970bf906885d88626c12d80c04d7d080ef) (mainly, loading the username/password/etc when the app is
+> first loaded, but **that doesn't fix the problem**.
+> 
+> However, if I [go on to remove the localStorage usage entirely](https://github.com/josephfrazier/reported-web/compare/josephfrazier:091a41d...josephfrazier:9b99eee), **the problem goes
+> away for me**, so it seems like the problem is indeed in the localStorage code,
+> but not necessarily the auto-saving part of it.
+
+and https://reportedcab.slack.com/archives/C9VNM3DL4/p1690235477916519?thread_ts=1690137347.880569&cid=C9VNM3DL4:
+
+> back to the debugging, I tried [adding a bunch of logging to the React
+> component that uses localstorage](https://github.com/josephfrazier/react-localstorage/compare/josephfrazier:f10d44b...josephfrazier:7f9673e), to see if it was being called even without
+> the auto-saving behavior in the webapp, but I don't see any extra logs in the
+> console when typing in the description field, so now I'm thinking that
+> something about the component itself being present in the React component
+> tree is causing the slowness
+> 
+> ![image](https://github.com/josephfrazier/reported-web/assets/6473925/e5713d97-2fd3-4c1d-a4ea-3cfded5b0f23)
+
+We've managed to work around the problem by not loading Previous Submissions until clicked on, see https://reportedcab.slack.com/archives/C9VNM3DL4/p1690318259649319?thread_ts=1690137347.880569&cid=C9VNM3DL4:
+
+> ok, it's definitely related to the presence of the Previous
+> Submissions section, as I've found by removing it and seeing performance
+> go back to normal: https://github.com/josephfrazier/reported-web/commit/884365086c56d8af001290eebda9c644a58a0ee5
+
+> Interesting! Does it vary with number of previous submissions? Could explain
+> why it’s gotten worse for me over time
+
+> yeah, I think it must. Still don't know why it affects the performance
+> of saving the state, but I can make it so that the Previous Submissions
+> don't load until you expand the section, which works around the problem
+> for me in that I can type quickly as long as I don't expand that
+> section, but it's still available to me if I want it
+
 ---
 
 This project is based on [React Starter Kit](https://github.com/kriasoft/react-starter-kit). See its README below:

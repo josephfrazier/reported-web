@@ -6,10 +6,10 @@
 import { validateLocation, processValidation } from './geoclient.js';
 
 describe('validateLocation', () => {
-  test('returns the right object', async () => {
+  test('returns the right object around the Empire State Building', async () => {
     const result = await validateLocation({
-      lat: 40.713007655065155,
-      long: -74.00592677275506,
+      lat: 40.748817,
+      long: -73.985428,
     });
 
     expect(result).toMatchSnapshot();
@@ -28,8 +28,8 @@ describe('processValidation', () => {
 
   test('returns the right object for string lat/long', async () => {
     const result = await processValidation({
-      lat: '40.772204329580426',
-      long: '-73.92590668144963',
+      lat: '40.7128',
+      long: '-74.006',
     });
 
     expect(result).toMatchSnapshot();
@@ -49,9 +49,10 @@ describe('processValidation', () => {
       processValidation({
         lat: 40.6435893,
         long: -73.7820064,
+        validateLocationImplementation: async () => ({ valid: false }),
       }),
     ).rejects.toThrow(
       'could not reverse-geocode lat/long pair (40.6435893, -73.7820064)',
     );
-  }, 99999);
+  });
 });

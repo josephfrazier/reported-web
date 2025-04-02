@@ -1,314 +1,556 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
 exports[`processValidation returns the right object 1`] = `
-Object {
-  "cb_data": Object {
-    "address": "435 Graham Avenue,
-Brooklyn, NY 11211",
-    "borough": "Brooklyn",
-    "calendar": Object {
-      "scraperId": "brooklyn-cb1",
-      "web": "http://www.nyc.gov/html/bkncb1/html/calendar/calendar.shtml",
-    },
-    "email": "bk01@cb.nyc.gov",
-    "fax": "718-389-0098",
-    "id": 301,
-    "neighborhoods": "Flushing Avenue, Williamsburg, Greenpoint, Northside, and Southside",
+{
+  "cb_data": {
+    "address": "49-51 Chambers Street, Room 715
+New York, NY 10007",
+    "borough": "Manhattan",
+    "email": "man01@cb.nyc.gov",
+    "fax": "212-442-5055",
+    "id": 101,
+    "neighborhoods": "Tribeca, Seaport/Civic Center, Financial District, Battery Park City",
     "number": 1,
-    "phone": "718-389-0009",
-    "website": "http://www.nyc.gov/brooklyncb1",
+    "phone": "212-442-5050",
+    "twitter": "CommunityBoard1",
+    "website": "http://www.nyc.gov/html/mancb1/html/home/home.shtml",
   },
-  "geoclient_response": Object {
-    "address": Object {
-      "alleyCrossStreetsFlag": "X",
-      "assemblyDistrict": "50",
-      "bbl": "3021400021",
-      "bblBoroughCode": "3",
-      "bblTaxBlock": "02140",
-      "bblTaxLot": "0021",
-      "blockfaceId": "1922603463",
+  "geoclient_response": {
+    "address": {
+      "assemblyDistrict": "66",
+      "bbl": "1001357501",
+      "bblBoroughCode": "1",
+      "bblTaxBlock": "00135",
+      "bblTaxLot": "7501",
+      "blockfaceId": "0212260698",
       "boardOfElectionsPreferredLgc": "1",
       "boePreferredStreetName": "BROADWAY",
-      "boePreferredstreetCode": "32323001",
-      "boroughCode1In": "3",
-      "buildingIdentificationNumber": "3059650",
-      "censusBlock2000": "1008",
-      "censusBlock2010": "1008",
-      "censusTract1990": " 525  ",
-      "censusTract2000": " 525  ",
-      "censusTract2010": " 525  ",
-      "cityCouncilDistrict": "34",
-      "civilCourtDistrict": "03",
+      "boePreferredstreetCode": "11361001",
+      "boroughCode1In": "1",
+      "buildingIdentificationNumber": "1001473",
+      "censusBlock2000": "1011",
+      "censusBlock2010": "1002",
+      "censusTract1990": "  21  ",
+      "censusTract2000": "  21  ",
+      "censusTract2010": "  21  ",
+      "cityCouncilDistrict": "01",
+      "civilCourtDistrict": "01",
       "coincidentSegmentCount": "1",
-      "communityDistrict": "301",
-      "communityDistrictBoroughCode": "3",
+      "communityDistrict": "101",
+      "communityDistrictBoroughCode": "1",
       "communityDistrictNumber": "01",
-      "communitySchoolDistrict": "14",
-      "condominiumBillingBbl": "0000000000",
-      "congressionalDistrict": "07",
+      "communitySchoolDistrict": "02",
+      "condominiumBillingBbl": "1001357501",
+      "condominiumFlag": "C",
+      "congressionalDistrict": "10",
+      "continuousParityIndicator1e": "L",
       "cooperativeIdNumber": "0000",
-      "cornerCode": "SW",
+      "cornerCode": "NE",
       "crossStreetNamesFlagIn": "E",
-      "dcpCommercialStudyArea": "33006",
+      "dcpCommercialStudyArea": "11007",
       "dcpPreferredLgc": "01",
-      "dcpZoningMap": "12D",
-      "dotStreetLightContractorArea": "3",
-      "dynamicBlock": "114",
-      "electionDistrict": "041",
-      "fireBattalion": "35",
-      "fireCompanyNumber": "104",
+      "dcpZoningMap": "12B",
+      "dofCondominiumIdentificationNumber": "0025",
+      "dotStreetLightContractorArea": "1",
+      "dynamicBlock": "104",
+      "electionDistrict": "073",
+      "fireBattalion": "01",
+      "fireCompanyNumber": "010",
       "fireCompanyType": "L",
-      "fireDivision": "11",
-      "firstBoroughName": "BROOKLYN",
-      "firstStreetCode": "32323001010",
+      "fireDivision": "01",
+      "firstBoroughName": "MANHATTAN",
+      "firstStreetCode": "11361001010",
       "firstStreetNameNormalized": "BROADWAY",
-      "fromActualSegmentNodeId": "0019605",
-      "fromLionNodeId": "0019599",
+      "fromActualSegmentNodeId": "0015374",
+      "fromLionNodeId": "0015374",
       "fromPreferredLgcsFirstSetOf5": "01",
-      "genericId": "0037801",
+      "genericId": "0000389",
       "geosupportFunctionCode": "1B",
       "geosupportReturnCode": "00",
       "geosupportReturnCode2": "00",
-      "gi5DigitStreetCode1": "23230",
-      "gi5DigitStreetCode2": "48030",
-      "giBoroughCode1": "3",
-      "giBoroughCode2": "3",
-      "giBuildingIdentificationNumber1": "3059650",
-      "giBuildingIdentificationNumber2": "3059650",
+      "gi5DigitStreetCode1": "13610",
+      "gi5DigitStreetCode2": "32940",
+      "gi5DigitStreetCode3": "13610",
+      "giBoroughCode1": "1",
+      "giBoroughCode2": "1",
+      "giBoroughCode3": "1",
+      "giBuildingIdentificationNumber1": "1001473",
+      "giBuildingIdentificationNumber2": "1001473",
+      "giBuildingIdentificationNumber3": "1001473",
       "giDcpPreferredLgc1": "01",
       "giDcpPreferredLgc2": "01",
+      "giDcpPreferredLgc3": "01",
       "giHighHouseNumber1": "260",
-      "giHighHouseNumber2": "232",
-      "giLowHouseNumber1": "258",
-      "giLowHouseNumber2": "232",
-      "giSideOfStreetIndicator1": "R",
+      "giHighHouseNumber2": "6",
+      "giHighHouseNumber3": "261",
+      "giLowHouseNumber1": "260",
+      "giLowHouseNumber2": "2",
+      "giLowHouseNumber3": "261",
+      "giSideOfStreetIndicator1": "L",
       "giSideOfStreetIndicator2": "R",
-      "giStreetCode1": "32323001",
-      "giStreetCode2": "34803001",
+      "giSideOfStreetIndicator3": "L",
+      "giStreetCode1": "11361001",
+      "giStreetCode2": "13294001",
+      "giStreetCode3": "11361001",
       "giStreetName1": "BROADWAY",
-      "giStreetName2": "HAVEMEYER STREET",
-      "healthArea": "0600",
-      "healthCenterDistrict": "30",
-      "highBblOfThisBuildingsCondominiumUnits": "3021400021",
-      "highCrossStreetB5SC1": "348030",
-      "highCrossStreetB5SC2": "367047",
-      "highCrossStreetCode1": "34803001",
-      "highCrossStreetCode2": "36704725",
-      "highCrossStreetName1": "HAVEMEYER STREET",
-      "highCrossStreetName2": "JAMAICA LINE",
-      "highHouseNumberOfBlockfaceSortFormat": "000262000AA",
+      "giStreetName2": "WARREN STREET",
+      "giStreetName3": "BROADWAY",
+      "healthArea": "7700",
+      "healthCenterDistrict": "15",
+      "highBblOfThisBuildingsCondominiumUnits": "1001351002",
+      "highCrossStreetB5SC1": "114710",
+      "highCrossStreetCode1": "11471001",
+      "highCrossStreetName1": "CHAMBERS STREET",
+      "highHouseNumberOfBlockfaceSortFormat": "000272000AA",
       "houseNumber": "260",
       "houseNumberIn": "260",
       "houseNumberSortFormat": "000260000AA",
-      "hurricaneEvacuationZone": "X",
-      "individualSegmentLength": "00162",
-      "instructionalRegion": "BN",
-      "interimAssistanceEligibilityIndicator": "E",
-      "internalLabelXCoordinate": "0995461",
-      "internalLabelYCoordinate": "0197483",
-      "latitude": 40.708934347552976,
-      "latitudeInternalLabel": 40.70871482874307,
-      "legacySegmentId": "0030756",
-      "lionBoroughCode": "3",
-      "lionBoroughCodeForVanityAddress": "3",
-      "lionFaceCode": "1708",
-      "lionFaceCodeForVanityAddress": "1708",
-      "lionKey": "3170800120",
-      "lionKeyForVanityAddress": "3170800120",
-      "lionSequenceNumber": "00120",
-      "lionSequenceNumberForVanityAddress": "00120",
-      "listOf4Lgcs": "01",
-      "longitude": -73.95938590604783,
-      "longitudeInternalLabel": -73.95956277906774,
-      "lowBblOfThisBuildingsCondominiumUnits": "3021400021",
-      "lowCrossStreetB5SC1": "373650",
-      "lowCrossStreetCode1": "37365001",
-      "lowCrossStreetName1": "ROEBLING STREET",
-      "lowHouseNumberOfBlockfaceSortFormat": "000246000AA",
-      "lowHouseNumberOfDefiningAddressRange": "000258000AA",
-      "noCrossStreetCalculationFlag": "Y",
-      "nta": "BK73",
-      "numberOfCrossStreetB5SCsHighAddressEnd": "2",
+      "hurricaneEvacuationZone": "6",
+      "individualSegmentLength": "00242",
+      "instructionalRegion": "MS",
+      "interimAssistanceEligibilityIndicator": "I",
+      "internalLabelXCoordinate": "0982317",
+      "internalLabelYCoordinate": "0199384",
+      "latitude": 40.713695244415426,
+      "latitudeInternalLabel": 40.7139395131608,
+      "legacySegmentId": "0023401",
+      "lionBoroughCode": "1",
+      "lionBoroughCodeForVanityAddress": "1",
+      "lionFaceCode": "0755",
+      "lionFaceCodeForVanityAddress": "0755",
+      "lionKey": "1075501200",
+      "lionKeyForVanityAddress": "1075501200",
+      "lionSequenceNumber": "01200",
+      "lionSequenceNumberForVanityAddress": "01200",
+      "listOf4Lgcs": "0107",
+      "longitude": -74.00672020060928,
+      "longitudeInternalLabel": -74.0069727296749,
+      "lowBblOfThisBuildingsCondominiumUnits": "1001351001",
+      "lowCrossStreetB5SC1": "132940",
+      "lowCrossStreetCode1": "13294001",
+      "lowCrossStreetName1": "WARREN STREET",
+      "lowHouseNumberOfBlockfaceSortFormat": "000260000AA",
+      "lowHouseNumberOfDefiningAddressRange": "000260000AA",
+      "nta": "MN24",
+      "numberOfCrossStreetB5SCsHighAddressEnd": "1",
       "numberOfCrossStreetB5SCsLowAddressEnd": "1",
-      "numberOfCrossStreetsHighAddressEnd": "2",
+      "numberOfCrossStreetsHighAddressEnd": "1",
       "numberOfCrossStreetsLowAddressEnd": "1",
-      "numberOfEntriesInListOfGeographicIdentifiers": "0002",
+      "numberOfEntriesInListOfGeographicIdentifiers": "0003",
       "numberOfExistingStructuresOnLot": "0001",
-      "numberOfParkingLanesOnTheStreet": "2",
+      "numberOfParkingLanesOnTheStreet": "1",
       "numberOfStreetFrontagesOfLot": "02",
-      "numberOfTotalLanesOnTheStreet": "4",
-      "numberOfTravelLanesOnTheStreet": "2",
-      "physicalId": "0043945",
-      "policePatrolBoroughCommand": "5",
-      "policePrecinct": "090",
-      "policeSector": "90B",
-      "pumaCode": "04001",
+      "numberOfTotalLanesOnTheStreet": "5",
+      "numberOfTravelLanesOnTheStreet": "4",
+      "physicalId": "0000502",
+      "policePatrolBoroughCommand": "1",
+      "policePrecinct": "001",
+      "policeSector": "1C",
+      "pumaCode": "03810",
       "returnCode1a": "00",
       "returnCode1e": "00",
       "roadwayType": "1",
-      "rpadBuildingClassificationCode": "O5",
-      "rpadSelfCheckCodeForBbl": "8",
-      "sanbornBoroughCode": "3",
-      "sanbornPageNumber": "014",
-      "sanbornVolumeNumber": "03",
-      "sanitationBulkPickupSchedule": "ETTHS",
-      "sanitationCollectionSchedulingSectionAndSubsection": "2B",
-      "sanitationDistrict": "301",
-      "sanitationRecyclingCollectionSchedule": "ETH",
-      "sanitationRegularCollectionSchedule": "TTHS",
-      "sanitationSection": "012",
+      "rpadBuildingClassificationCode": "RK",
+      "rpadSelfCheckCodeForBbl": "4",
+      "sanbornBoroughCode": "1",
+      "sanbornPageNumber": "018",
+      "sanbornVolumeNumber": "01",
+      "sanbornVolumeNumberSuffix": "S",
+      "sanitationBulkPickupSchedule": "EMW",
+      "sanitationCollectionSchedulingSectionAndSubsection": "1A",
+      "sanitationDistrict": "101",
+      "sanitationOrganicsCollectionSchedule": "EF",
+      "sanitationRecyclingCollectionSchedule": "EF",
+      "sanitationRegularCollectionSchedule": "MWF",
+      "sanitationSection": "011",
       "sanitationSnowPriorityCode": "C",
-      "segmentAzimuth": "338",
-      "segmentIdentifier": "0030756",
-      "segmentLengthInFeet": "00462",
-      "segmentOrientation": "4",
+      "segmentAzimuth": "057",
+      "segmentIdentifier": "0023401",
+      "segmentLengthInFeet": "00242",
+      "segmentOrientation": "N",
       "segmentTypeCode": "U",
-      "sideOfStreetIndicator": "R",
-      "sideOfStreetOfVanityAddress": "R",
+      "selfCheckCodeOfBillingBbl": "4",
+      "sideOfStreetIndicator": "L",
+      "sideOfStreetOfVanityAddress": "L",
       "speedLimit": "25",
-      "splitLowHouseNumber": "000246000AA",
-      "stateSenatorialDistrict": "18",
+      "splitLowHouseNumber": "000260000AA",
+      "stateSenatorialDistrict": "27",
       "streetName1In": "BROADWAY",
       "streetStatus": "2",
-      "streetWidth": "58",
-      "streetWidthMaximum": "62",
-      "taxMapNumberSectionAndVolume": "30801",
-      "toActualSegmentNodeId": "0019606",
-      "toLionNodeId": "0019606",
-      "toPreferredLgcsFirstSetOf5": "0125",
-      "trafficDirection": "T",
-      "underlyingStreetCode": "32323001",
-      "uspsPreferredCityName": "BROOKLYN",
+      "streetWidth": "52",
+      "streetWidthMaximum": "54",
+      "taxMapNumberSectionAndVolume": "10104",
+      "toActualSegmentNodeId": "0015375",
+      "toLionNodeId": "0015375",
+      "toPreferredLgcsFirstSetOf5": "01",
+      "trafficDirection": "A",
+      "underlyingStreetCode": "11361001",
+      "uspsPreferredCityName": "NEW YORK",
       "workAreaFormatIndicatorIn": "C",
-      "xCoordActualSegmentHighAddressEnd": "0995547",
-      "xCoordActualSegmentLowAddressEnd": "0995396",
-      "xCoordinate": "0995510",
-      "xCoordinateHighAddressEnd": "0995547",
-      "xCoordinateLowAddressEnd": "0995122",
+      "xCoordActualSegmentHighAddressEnd": "0982501",
+      "xCoordActualSegmentLowAddressEnd": "0982370",
+      "xCoordinate": "0982387",
+      "xCoordinateHighAddressEnd": "0982501",
+      "xCoordinateLowAddressEnd": "0982370",
       "xCoordinateOfCenterofCurvature": "0000000",
-      "yCoordActualSegmentHighAddressEnd": "0197552",
-      "yCoordActualSegmentLowAddressEnd": "0197610",
-      "yCoordinate": "0197563",
-      "yCoordinateHighAddressEnd": "0197552",
-      "yCoordinateLowAddressEnd": "0197732",
+      "yCoordActualSegmentHighAddressEnd": "0199466",
+      "yCoordActualSegmentLowAddressEnd": "0199263",
+      "yCoordinate": "0199295",
+      "yCoordinateHighAddressEnd": "0199466",
+      "yCoordinateLowAddressEnd": "0199263",
       "yCoordinateOfCenterofCurvature": "0000000",
-      "zipCode": "11211",
+      "zipCode": "10007",
     },
   },
-  "google_response": Object {
-    "plus_code": Object {
-      "compound_code": "PX7V+4HH New York, NY, USA",
-      "global_code": "87G7PX7V+4HH",
+  "google_response": {
+    "plus_code": {
+      "compound_code": "PX7V+2HX New York, NY, USA",
+      "global_code": "87G7PX7V+2HX",
     },
-    "results": Array [
-      Object {
-        "address_components": Array [
-          Object {
+    "results": [
+      {
+        "address_components": [
+          {
             "long_name": "260",
             "short_name": "260",
-            "types": Array [
+            "types": [
               "street_number",
             ],
           },
-          Object {
+          {
             "long_name": "Broadway",
             "short_name": "Broadway",
-            "types": Array [
+            "types": [
               "route",
             ],
           },
-          Object {
-            "long_name": "Brooklyn",
-            "short_name": "Brooklyn",
-            "types": Array [
+          {
+            "long_name": "Manhattan",
+            "short_name": "Manhattan",
+            "types": [
               "political",
               "sublocality",
               "sublocality_level_1",
             ],
           },
-          Object {
+          {
             "long_name": "New York",
             "short_name": "New York",
-            "types": Array [
+            "types": [
               "locality",
               "political",
             ],
           },
-          Object {
+          {
             "long_name": "New York County",
             "short_name": "New York County",
-            "types": Array [
+            "types": [
               "administrative_area_level_2",
               "political",
             ],
           },
-          Object {
+          {
             "long_name": "New York",
             "short_name": "NY",
-            "types": Array [
+            "types": [
               "administrative_area_level_1",
               "political",
             ],
           },
-          Object {
+          {
             "long_name": "United States",
             "short_name": "US",
-            "types": Array [
+            "types": [
               "country",
               "political",
             ],
           },
-          Object {
+          {
             "long_name": "10007",
             "short_name": "10007",
-            "types": Array [
+            "types": [
               "postal_code",
             ],
           },
         ],
-        "formatted_address": "260 Broadway, Brooklyn, NY 10007, USA",
-        "geometry": Object {
-          "location": Object {
+        "formatted_address": "260 Broadway, New York, NY 10007, USA",
+        "geometry": {
+          "location": {
             "lat": 40.7127042,
             "lng": -74.00594199999999,
           },
           "location_type": "ROOFTOP",
-          "viewport": Object {
-            "northeast": Object {
+          "viewport": {
+            "northeast": {
               "lat": 40.7140531802915,
               "lng": -74.00459301970848,
             },
-            "southwest": Object {
+            "southwest": {
               "lat": 40.7113552197085,
               "lng": -74.00729098029149,
             },
           },
         },
+        "navigation_points": [
+          {
+            "location": {
+              "latitude": 40.7127398,
+              "longitude": -74.0064308,
+            },
+            "restricted_travel_modes": [
+              "WALK",
+            ],
+          },
+          {
+            "location": {
+              "latitude": 40.713009,
+              "longitude": -74.005767,
+            },
+            "restricted_travel_modes": [
+              "DRIVE",
+            ],
+          },
+        ],
         "place_id": "ChIJgeN7FVFbwokRBk7mnDW6Krc",
-        "plus_code": Object {
+        "plus_code": {
           "compound_code": "PX7V+3J New York, NY, USA",
           "global_code": "87G7PX7V+3J",
         },
-        "types": Array [
+        "types": [
+          "street_address",
+        ],
+      },
+      {
+        "address_components": [
+          {
+            "long_name": "230",
+            "short_name": "230",
+            "types": [
+              "street_number",
+            ],
+          },
+          {
+            "long_name": "Broadway",
+            "short_name": "Broadway",
+            "types": [
+              "route",
+            ],
+          },
+          {
+            "long_name": "Manhattan",
+            "short_name": "Manhattan",
+            "types": [
+              "political",
+              "sublocality",
+              "sublocality_level_1",
+            ],
+          },
+          {
+            "long_name": "New York",
+            "short_name": "New York",
+            "types": [
+              "locality",
+              "political",
+            ],
+          },
+          {
+            "long_name": "New York County",
+            "short_name": "New York County",
+            "types": [
+              "administrative_area_level_2",
+              "political",
+            ],
+          },
+          {
+            "long_name": "New York",
+            "short_name": "NY",
+            "types": [
+              "administrative_area_level_1",
+              "political",
+            ],
+          },
+          {
+            "long_name": "United States",
+            "short_name": "US",
+            "types": [
+              "country",
+              "political",
+            ],
+          },
+          {
+            "long_name": "10007",
+            "short_name": "10007",
+            "types": [
+              "postal_code",
+            ],
+          },
+        ],
+        "formatted_address": "230 Broadway, New York, NY 10007, USA",
+        "geometry": {
+          "location": {
+            "lat": 40.7127421,
+            "lng": -74.00596890000001,
+          },
+          "location_type": "ROOFTOP",
+          "viewport": {
+            "northeast": {
+              "lat": 40.7140910802915,
+              "lng": -74.00461991970852,
+            },
+            "southwest": {
+              "lat": 40.7113931197085,
+              "lng": -74.00731788029152,
+            },
+          },
+        },
+        "navigation_points": [
+          {
+            "location": {
+              "latitude": 40.7127838,
+              "longitude": -74.0064357,
+            },
+            "restricted_travel_modes": [
+              "WALK",
+            ],
+          },
+          {
+            "location": {
+              "latitude": 40.7130105,
+              "longitude": -74.0057716,
+            },
+            "restricted_travel_modes": [
+              "DRIVE",
+            ],
+          },
+        ],
+        "place_id": "ChIJgTPiDCJawokRvv8VZ1znWC0",
+        "types": [
+          "street_address",
+          "subpremise",
+        ],
+      },
+      {
+        "address_components": [
+          {
+            "long_name": "New York City Hall",
+            "short_name": "New York City Hall",
+            "types": [
+              "premise",
+            ],
+          },
+          {
+            "long_name": "Manhattan",
+            "short_name": "Manhattan",
+            "types": [
+              "political",
+              "sublocality",
+              "sublocality_level_1",
+            ],
+          },
+          {
+            "long_name": "New York",
+            "short_name": "New York",
+            "types": [
+              "locality",
+              "political",
+            ],
+          },
+          {
+            "long_name": "New York County",
+            "short_name": "New York County",
+            "types": [
+              "administrative_area_level_2",
+              "political",
+            ],
+          },
+          {
+            "long_name": "New York",
+            "short_name": "NY",
+            "types": [
+              "administrative_area_level_1",
+              "political",
+            ],
+          },
+          {
+            "long_name": "United States",
+            "short_name": "US",
+            "types": [
+              "country",
+              "political",
+            ],
+          },
+          {
+            "long_name": "10007",
+            "short_name": "10007",
+            "types": [
+              "postal_code",
+            ],
+          },
+        ],
+        "formatted_address": "New York City Hall, New York, NY 10007, USA",
+        "geometry": {
+          "bounds": {
+            "northeast": {
+              "lat": 40.7130243,
+              "lng": -74.0055682,
+            },
+            "southwest": {
+              "lat": 40.7124519,
+              "lng": -74.0064381,
+            },
+          },
+          "location": {
+            "lat": 40.7127503,
+            "lng": -74.0059765,
+          },
+          "location_type": "ROOFTOP",
+          "viewport": {
+            "northeast": {
+              "lat": 40.7140870802915,
+              "lng": -74.00465416970849,
+            },
+            "southwest": {
+              "lat": 40.7113891197085,
+              "lng": -74.0073521302915,
+            },
+          },
+        },
+        "navigation_points": [
+          {
+            "location": {
+              "latitude": 40.7127159,
+              "longitude": -74.006543,
+            },
+          },
+          {
+            "location": {
+              "latitude": 40.7121692,
+              "longitude": -74.0057323,
+            },
+          },
+        ],
+        "place_id": "ChIJMfxeDCJawokRaUdk7prx_pY",
+        "types": [
+          "premise",
           "street_address",
         ],
       },
     ],
     "status": "OK",
   },
-  "lat": 40.7128,
+  "lat": 40.7126,
   "long": -74.006,
   "valid": true,
 }
 `;
 
 exports[`processValidation returns the right object around 3521-3501 Riverdale Ave, The Bronx, NY 10463 1`] = `
-Object {
-  "cb_data": Object {
+{
+  "cb_data": {
     "address": "5676 Riverdale Avenue,
 Bronx, NY 10471",
     "borough": "Bronx",
-    "calendar": Object {
+    "calendar": {
       "web": "http://www.nyc.gov/html/bxcb8/html/calendar/calendar.shtml",
     },
     "email": "bx08@cb.nyc.gov",
@@ -320,8 +562,8 @@ Bronx, NY 10471",
     "twitter": "bxcb8",
     "website": "http://www.nyc.gov/bronxcb8",
   },
-  "geoclient_response": Object {
-    "address": Object {
+  "geoclient_response": {
+    "address": {
       "alleyCrossStreetsFlag": "X",
       "assemblyDistrict": "81",
       "bbl": "2057380353",
@@ -456,9 +698,10 @@ Bronx, NY 10471",
       "sanbornBoroughCode": "2",
       "sanbornPageNumber": "010",
       "sanbornVolumeNumber": "13",
-      "sanitationBulkPickupSchedule": "EMWF",
+      "sanitationBulkPickupSchedule": "EMF",
       "sanitationCollectionSchedulingSectionAndSubsection": "2A",
       "sanitationDistrict": "208",
+      "sanitationOrganicsCollectionSchedule": "EW",
       "sanitationRecyclingCollectionSchedule": "EW",
       "sanitationRegularCollectionSchedule": "MWF",
       "sanitationSection": "082",
@@ -497,189 +740,200 @@ Bronx, NY 10471",
       "zipCode": "10463",
     },
   },
-  "google_response": Object {
-    "plus_code": Object {
+  "google_response": {
+    "plus_code": {
       "compound_code": "V3JQ+8RX New York, NY, USA",
       "global_code": "87G8V3JQ+8RX",
     },
-    "results": Array [
-      Object {
-        "address_components": Array [
-          Object {
+    "results": [
+      {
+        "address_components": [
+          {
             "long_name": "3017",
             "short_name": "3017",
-            "types": Array [
+            "types": [
               "street_number",
             ],
           },
-          Object {
+          {
             "long_name": "Riverdale Avenue",
             "short_name": "Riverdale Ave",
-            "types": Array [
+            "types": [
               "route",
             ],
           },
-          Object {
+          {
             "long_name": "Spuyten Duyvil",
             "short_name": "Spuyten Duyvil",
-            "types": Array [
+            "types": [
               "neighborhood",
               "political",
             ],
           },
-          Object {
+          {
             "long_name": "The Bronx",
             "short_name": "Bronx",
-            "types": Array [
+            "types": [
               "political",
               "sublocality",
               "sublocality_level_1",
             ],
           },
-          Object {
+          {
             "long_name": "Bronx County",
             "short_name": "Bronx County",
-            "types": Array [
+            "types": [
               "administrative_area_level_2",
               "political",
             ],
           },
-          Object {
+          {
             "long_name": "New York",
             "short_name": "NY",
-            "types": Array [
+            "types": [
               "administrative_area_level_1",
               "political",
             ],
           },
-          Object {
+          {
             "long_name": "United States",
             "short_name": "US",
-            "types": Array [
+            "types": [
               "country",
               "political",
             ],
           },
-          Object {
+          {
             "long_name": "10463",
             "short_name": "10463",
-            "types": Array [
+            "types": [
               "postal_code",
             ],
           },
         ],
         "formatted_address": "3017 Riverdale Ave, Bronx, NY 10463, USA",
-        "geometry": Object {
-          "location": Object {
+        "geometry": {
+          "location": {
             "lat": 40.880985,
             "lng": -73.9102329,
           },
           "location_type": "ROOFTOP",
-          "viewport": Object {
-            "northeast": Object {
+          "viewport": {
+            "northeast": {
               "lat": 40.8823339802915,
               "lng": -73.9088839197085,
             },
-            "southwest": Object {
+            "southwest": {
               "lat": 40.8796360197085,
               "lng": -73.91158188029151,
             },
           },
         },
+        "navigation_points": [
+          {
+            "location": {
+              "latitude": 40.8807098,
+              "longitude": -73.9104323,
+            },
+            "restricted_travel_modes": [
+              "WALK",
+            ],
+          },
+        ],
         "place_id": "ChIJUaKJHJXzwokRS0cn01bSawQ",
-        "plus_code": Object {
-          "compound_code": "V3JQ+9W New York, NY, USA",
+        "plus_code": {
+          "compound_code": "V3JQ+9W The Bronx, NY, USA",
           "global_code": "87G8V3JQ+9W",
         },
-        "types": Array [
+        "types": [
           "street_address",
         ],
       },
-      Object {
-        "address_components": Array [
-          Object {
-            "long_name": "398",
-            "short_name": "398",
-            "types": Array [
+      {
+        "address_components": [
+          {
+            "long_name": "3014",
+            "short_name": "3014",
+            "types": [
               "street_number",
             ],
           },
-          Object {
-            "long_name": "West 230th Street",
-            "short_name": "W 230th St",
-            "types": Array [
+          {
+            "long_name": "Irwin Avenue",
+            "short_name": "Irwin Ave",
+            "types": [
               "route",
             ],
           },
-          Object {
-            "long_name": "West Bronx",
-            "short_name": "West Bronx",
-            "types": Array [
+          {
+            "long_name": "Spuyten Duyvil",
+            "short_name": "Spuyten Duyvil",
+            "types": [
               "neighborhood",
               "political",
             ],
           },
-          Object {
+          {
             "long_name": "The Bronx",
             "short_name": "Bronx",
-            "types": Array [
+            "types": [
               "political",
               "sublocality",
               "sublocality_level_1",
             ],
           },
-          Object {
+          {
             "long_name": "Bronx County",
             "short_name": "Bronx County",
-            "types": Array [
+            "types": [
               "administrative_area_level_2",
               "political",
             ],
           },
-          Object {
+          {
             "long_name": "New York",
             "short_name": "NY",
-            "types": Array [
+            "types": [
               "administrative_area_level_1",
               "political",
             ],
           },
-          Object {
+          {
             "long_name": "United States",
             "short_name": "US",
-            "types": Array [
+            "types": [
               "country",
               "political",
             ],
           },
-          Object {
+          {
             "long_name": "10463",
             "short_name": "10463",
-            "types": Array [
+            "types": [
               "postal_code",
             ],
           },
         ],
-        "formatted_address": "398 W 230th St, Bronx, NY 10463, USA",
-        "geometry": Object {
-          "location": Object {
-            "lat": 40.8804521,
-            "lng": -73.910551,
+        "formatted_address": "3014 Irwin Ave, Bronx, NY 10463, USA",
+        "geometry": {
+          "location": {
+            "lat": 40.8807176,
+            "lng": -73.9103228,
           },
           "location_type": "RANGE_INTERPOLATED",
-          "viewport": Object {
-            "northeast": Object {
-              "lat": 40.8818010802915,
-              "lng": -73.90920201970849,
+          "viewport": {
+            "northeast": {
+              "lat": 40.8820665802915,
+              "lng": -73.90897381970849,
             },
-            "southwest": Object {
-              "lat": 40.8791031197085,
-              "lng": -73.91189998029151,
+            "southwest": {
+              "lat": 40.8793686197085,
+              "lng": -73.91167178029151,
             },
           },
         },
-        "place_id": "EiQzOTggVyAyMzB0aCBTdCwgQnJvbngsIE5ZIDEwNDYzLCBVU0EiGxIZChQKEgl_DqPjlPPCiRE0YAdabYvxhxCOAw",
-        "types": Array [
+        "place_id": "EiQzMDE0IElyd2luIEF2ZSwgQnJvbngsIE5ZIDEwNDYzLCBVU0EiGxIZChQKEgmbe_cdlfPCiRF2WmhacVYmehDGFw",
+        "types": [
           "street_address",
         ],
       },
@@ -693,400 +947,8 @@ Bronx, NY 10471",
 `;
 
 exports[`processValidation returns the right object for string lat/long 1`] = `
-Object {
-  "cb_data": Object {
-    "address": "45-02 Ditmars Boulevard
-LL Suite 125
-Astoria, NY 11105",
-    "borough": "Queens",
-    "calendar": Object {
-      "web": "http://www1.nyc.gov/site/queenscb1/calendar/calendar.page",
-    },
-    "email": "qn01@cb.nyc.gov",
-    "fax": "718-626-1072",
-    "id": 401,
-    "neighborhoods": "Astoria, Old Astoria, Long Island City, Queensbridge, Ditmars, Ravenswood, Steinway, Garden Bay, and Woodside",
-    "number": 1,
-    "phone": "718-626-1021",
-    "twitter": "cb1queens",
-    "website": "http://www.nyc.gov/html/qnscb1/html/home/home.shtml",
-  },
-  "geoclient_response": Object {
-    "address": Object {
-      "assemblyDistrict": "36",
-      "bbl": "4005430015",
-      "bblBoroughCode": "4",
-      "bblTaxBlock": "00543",
-      "bblTaxLot": "0015",
-      "blockfaceId": "0102263904",
-      "boardOfElectionsPreferredLgc": "1",
-      "boePreferredStreetName": "21 STREET",
-      "boePreferredstreetCode": "40674001",
-      "boroughCode1In": "4",
-      "buildingIdentificationNumber": "4458141",
-      "censusBlock2000": "1000",
-      "censusBlock2010": "1000",
-      "censusTract1990": "  71  ",
-      "censusTract2000": "  71  ",
-      "censusTract2010": "  71  ",
-      "cityCouncilDistrict": "22",
-      "civilCourtDistrict": "01",
-      "coincidentSegmentCount": "1",
-      "communityDistrict": "401",
-      "communityDistrictBoroughCode": "4",
-      "communityDistrictNumber": "01",
-      "communitySchoolDistrict": "30",
-      "condominiumBillingBbl": "0000000000",
-      "congressionalDistrict": "14",
-      "cornerCode": "SE",
-      "crossStreetNamesFlagIn": "E",
-      "dcpCommercialStudyArea": "43003",
-      "dcpPreferredLgc": "01",
-      "dcpZoningMap": "9A",
-      "dotStreetLightContractorArea": "4",
-      "dynamicBlock": "101",
-      "electionDistrict": "014",
-      "fireBattalion": "49",
-      "fireCompanyNumber": "262",
-      "fireCompanyType": "E",
-      "fireDivision": "14",
-      "firstBoroughName": "QUEENS",
-      "firstStreetCode": "40674001010",
-      "firstStreetNameNormalized": "21 STREET",
-      "fromActualSegmentNodeId": "0042176",
-      "fromLionNodeId": "0042176",
-      "fromPreferredLgcsFirstSetOf5": "010101",
-      "genericId": "0009841",
-      "geosupportFunctionCode": "1B",
-      "geosupportReturnCode": "00",
-      "geosupportReturnCode2": "00",
-      "gi5DigitStreetCode1": "06740",
-      "gi5DigitStreetCode2": "57390",
-      "giBoroughCode1": "4",
-      "giBoroughCode2": "4",
-      "giBuildingIdentificationNumber1": "4458141",
-      "giBuildingIdentificationNumber2": "4458141",
-      "giDcpPreferredLgc1": "01",
-      "giDcpPreferredLgc2": "01",
-      "giHighHouseNumber1": "27-11",
-      "giHighHouseNumber2": "21-04",
-      "giLowHouseNumber1": "27-01",
-      "giLowHouseNumber2": "21-02",
-      "giSideOfStreetIndicator1": "L",
-      "giSideOfStreetIndicator2": "R",
-      "giStreetCode1": "40674001",
-      "giStreetCode2": "45739001",
-      "giStreetName1": "21 STREET",
-      "giStreetName2": "NEWTOWN AVENUE",
-      "healthArea": "0300",
-      "healthCenterDistrict": "41",
-      "highBblOfThisBuildingsCondominiumUnits": "4005430015",
-      "highCrossStreetB5SC1": "407450",
-      "highCrossStreetCode1": "40745001",
-      "highCrossStreetName1": "27 ROAD",
-      "highHouseNumberOfBlockfaceSortFormat": "100027019AA",
-      "houseNumber": "27-01",
-      "houseNumberIn": "27-01",
-      "houseNumberSortFormat": "100027001AA",
-      "hurricaneEvacuationZone": "6",
-      "individualSegmentLength": "00267",
-      "instructionalRegion": "QN",
-      "interimAssistanceEligibilityIndicator": "I",
-      "internalLabelXCoordinate": "1004768",
-      "internalLabelYCoordinate": "0220510",
-      "latitude": 40.77216228771581,
-      "latitudeInternalLabel": 40.77190150745826,
-      "legacySegmentId": "0068622",
-      "lionBoroughCode": "4",
-      "lionBoroughCodeForVanityAddress": "4",
-      "lionFaceCode": "5256",
-      "lionFaceCodeForVanityAddress": "5256",
-      "lionKey": "4525600225",
-      "lionKeyForVanityAddress": "4525600225",
-      "lionSequenceNumber": "00225",
-      "lionSequenceNumberForVanityAddress": "00225",
-      "listOf4Lgcs": "01",
-      "longitude": -73.92596956044154,
-      "longitudeInternalLabel": -73.92592291582544,
-      "lowBblOfThisBuildingsCondominiumUnits": "4005430015",
-      "lowCrossStreetB5SC1": "407440",
-      "lowCrossStreetB5SC2": "428790",
-      "lowCrossStreetB5SC3": "457390",
-      "lowCrossStreetCode1": "40744001",
-      "lowCrossStreetCode2": "42879001",
-      "lowCrossStreetCode3": "45739001",
-      "lowCrossStreetName1": "27 AVENUE",
-      "lowCrossStreetName2": "ASTORIA BOULEVARD",
-      "lowCrossStreetName3": "NEWTOWN AVENUE",
-      "lowHouseNumberOfBlockfaceSortFormat": "100027001AA",
-      "lowHouseNumberOfDefiningAddressRange": "100027001AA",
-      "nta": "QN71",
-      "numberOfCrossStreetB5SCsHighAddressEnd": "1",
-      "numberOfCrossStreetB5SCsLowAddressEnd": "3",
-      "numberOfCrossStreetsHighAddressEnd": "1",
-      "numberOfCrossStreetsLowAddressEnd": "3",
-      "numberOfEntriesInListOfGeographicIdentifiers": "0002",
-      "numberOfExistingStructuresOnLot": "0001",
-      "numberOfParkingLanesOnTheStreet": "2",
-      "numberOfStreetFrontagesOfLot": "02",
-      "numberOfTotalLanesOnTheStreet": "6",
-      "numberOfTravelLanesOnTheStreet": "4",
-      "physicalId": "0011640",
-      "policePatrolBoroughCommand": "6",
-      "policePrecinct": "114",
-      "policeSector": "114C",
-      "pumaCode": "04101",
-      "returnCode1a": "00",
-      "returnCode1e": "00",
-      "roadwayType": "1",
-      "rpadBuildingClassificationCode": "K2",
-      "rpadSelfCheckCodeForBbl": "7",
-      "sanbornBoroughCode": "4",
-      "sanbornPageNumber": "015",
-      "sanbornVolumeNumber": "02",
-      "sanitationBulkPickupSchedule": "ETH",
-      "sanitationCollectionSchedulingSectionAndSubsection": "3C",
-      "sanitationDistrict": "401",
-      "sanitationOrganicsCollectionSchedule": "EM",
-      "sanitationRecyclingCollectionSchedule": "EM",
-      "sanitationRegularCollectionSchedule": "MTH",
-      "sanitationSection": "013",
-      "sanitationSnowPriorityCode": "C",
-      "segmentAzimuth": "238",
-      "segmentIdentifier": "0068622",
-      "segmentLengthInFeet": "00267",
-      "segmentOrientation": "3",
-      "segmentTypeCode": "U",
-      "sideOfStreetIndicator": "L",
-      "sideOfStreetOfVanityAddress": "L",
-      "speedLimit": "25",
-      "splitLowHouseNumber": "100027001AA",
-      "stateSenatorialDistrict": "59",
-      "streetName1In": "21ST ST",
-      "streetStatus": "2",
-      "streetWidth": "60",
-      "streetWidthMaximum": "60",
-      "taxMapNumberSectionAndVolume": "40402",
-      "toActualSegmentNodeId": "0042175",
-      "toLionNodeId": "0042175",
-      "toPreferredLgcsFirstSetOf5": "01",
-      "trafficDirection": "T",
-      "underlyingStreetCode": "40674001",
-      "uspsPreferredCityName": "ASTORIA",
-      "workAreaFormatIndicatorIn": "C",
-      "xCoordActualSegmentHighAddressEnd": "1004634",
-      "xCoordActualSegmentLowAddressEnd": "1004774",
-      "xCoordinate": "1004755",
-      "xCoordinateHighAddressEnd": "1004634",
-      "xCoordinateLowAddressEnd": "1004774",
-      "xCoordinateOfCenterofCurvature": "0000000",
-      "yCoordActualSegmentHighAddressEnd": "0220415",
-      "yCoordActualSegmentLowAddressEnd": "0220641",
-      "yCoordinate": "0220605",
-      "yCoordinateHighAddressEnd": "0220415",
-      "yCoordinateLowAddressEnd": "0220641",
-      "yCoordinateOfCenterofCurvature": "0000000",
-      "zipCode": "11102",
-    },
-  },
-  "google_response": Object {
-    "plus_code": Object {
-      "compound_code": "Q3CF+VJP New York, NY, USA",
-      "global_code": "87G8Q3CF+VJP",
-    },
-    "results": Array [
-      Object {
-        "address_components": Array [
-          Object {
-            "long_name": "27-01",
-            "short_name": "27-01",
-            "types": Array [
-              "street_number",
-            ],
-          },
-          Object {
-            "long_name": "21st Street",
-            "short_name": "21st St",
-            "types": Array [
-              "route",
-            ],
-          },
-          Object {
-            "long_name": "Long Island City",
-            "short_name": "LIC",
-            "types": Array [
-              "neighborhood",
-              "political",
-            ],
-          },
-          Object {
-            "long_name": "Queens",
-            "short_name": "Queens",
-            "types": Array [
-              "political",
-              "sublocality",
-              "sublocality_level_1",
-            ],
-          },
-          Object {
-            "long_name": "Queens County",
-            "short_name": "Queens County",
-            "types": Array [
-              "administrative_area_level_2",
-              "political",
-            ],
-          },
-          Object {
-            "long_name": "New York",
-            "short_name": "NY",
-            "types": Array [
-              "administrative_area_level_1",
-              "political",
-            ],
-          },
-          Object {
-            "long_name": "United States",
-            "short_name": "US",
-            "types": Array [
-              "country",
-              "political",
-            ],
-          },
-          Object {
-            "long_name": "11102",
-            "short_name": "11102",
-            "types": Array [
-              "postal_code",
-            ],
-          },
-        ],
-        "formatted_address": "27-01 21st St, Long Island City, NY 11102, USA",
-        "geometry": Object {
-          "location": Object {
-            "lat": 40.7720208,
-            "lng": -73.92583789999999,
-          },
-          "location_type": "ROOFTOP",
-          "viewport": Object {
-            "northeast": Object {
-              "lat": 40.7733697802915,
-              "lng": -73.92448891970848,
-            },
-            "southwest": Object {
-              "lat": 40.7706718197085,
-              "lng": -73.9271868802915,
-            },
-          },
-        },
-        "place_id": "ChIJjdFLNE9fwokR5Z_HQ05oa00",
-        "plus_code": Object {
-          "compound_code": "Q3CF+RM Long Island City, Queens, NY, USA",
-          "global_code": "87G8Q3CF+RM",
-        },
-        "types": Array [
-          "street_address",
-        ],
-      },
-      Object {
-        "address_components": Array [
-          Object {
-            "long_name": "18-99",
-            "short_name": "18-99",
-            "types": Array [
-              "street_number",
-            ],
-          },
-          Object {
-            "long_name": "Astoria Boulevard",
-            "short_name": "Astoria Blvd",
-            "types": Array [
-              "route",
-            ],
-          },
-          Object {
-            "long_name": "Astoria",
-            "short_name": "Astoria",
-            "types": Array [
-              "neighborhood",
-              "political",
-            ],
-          },
-          Object {
-            "long_name": "Queens",
-            "short_name": "Queens",
-            "types": Array [
-              "political",
-              "sublocality",
-              "sublocality_level_1",
-            ],
-          },
-          Object {
-            "long_name": "Queens County",
-            "short_name": "Queens County",
-            "types": Array [
-              "administrative_area_level_2",
-              "political",
-            ],
-          },
-          Object {
-            "long_name": "New York",
-            "short_name": "NY",
-            "types": Array [
-              "administrative_area_level_1",
-              "political",
-            ],
-          },
-          Object {
-            "long_name": "United States",
-            "short_name": "US",
-            "types": Array [
-              "country",
-              "political",
-            ],
-          },
-          Object {
-            "long_name": "11102",
-            "short_name": "11102",
-            "types": Array [
-              "postal_code",
-            ],
-          },
-        ],
-        "formatted_address": "18-99 Astoria Blvd, Astoria, NY 11102, USA",
-        "geometry": Object {
-          "location": Object {
-            "lat": 40.7722307,
-            "lng": -73.9259443,
-          },
-          "location_type": "RANGE_INTERPOLATED",
-          "viewport": Object {
-            "northeast": Object {
-              "lat": 40.7735796802915,
-              "lng": -73.92459531970849,
-            },
-            "southwest": Object {
-              "lat": 40.7708817197085,
-              "lng": -73.9272932802915,
-            },
-          },
-        },
-        "place_id": "EioxOC05OSBBc3RvcmlhIEJsdmQsIEFzdG9yaWEsIE5ZIDExMTAyLCBVU0EiGhIYChQKEgk7EFE3T1_CiRHQ8F1dLzhZRxBj",
-        "types": Array [
-          "street_address",
-        ],
-      },
-    ],
-    "status": "OK",
-  },
-  "lat": 40.772204329580426,
-  "long": -73.92590668144963,
-  "valid": true,
-}
-`;
-
-exports[`validateLocation returns the right object 1`] = `
-Object {
-  "cb_data": Object {
+{
+  "cb_data": {
     "address": "49-51 Chambers Street, Room 715
 New York, NY 10007",
     "borough": "Manhattan",
@@ -1099,325 +961,938 @@ New York, NY 10007",
     "twitter": "CommunityBoard1",
     "website": "http://www.nyc.gov/html/mancb1/html/home/home.shtml",
   },
-  "geoclient_response": Object {
-    "address": Object {
-      "alleyCrossStreetsFlag": "X",
+  "geoclient_response": {
+    "address": {
       "assemblyDistrict": "66",
-      "bbl": "1001220001",
+      "bbl": "1001357501",
       "bblBoroughCode": "1",
-      "bblTaxBlock": "00122",
-      "bblTaxLot": "0001",
-      "blockfaceId": "0212261102",
+      "bblTaxBlock": "00135",
+      "bblTaxLot": "7501",
+      "blockfaceId": "0212260698",
       "boardOfElectionsPreferredLgc": "1",
       "boePreferredStreetName": "BROADWAY",
       "boePreferredstreetCode": "11361001",
       "boroughCode1In": "1",
-      "buildingIdentificationNumber": "1079147",
-      "censusBlock2000": "2004",
-      "censusBlock2010": "1021",
-      "censusBlockSuffix2000": "B",
-      "censusTract1990": "  31  ",
-      "censusTract2000": "  31  ",
-      "censusTract2010": "  31  ",
+      "buildingIdentificationNumber": "1001473",
+      "censusBlock2000": "1011",
+      "censusBlock2010": "1002",
+      "censusTract1990": "  21  ",
+      "censusTract2000": "  21  ",
+      "censusTract2010": "  21  ",
       "cityCouncilDistrict": "01",
       "civilCourtDistrict": "01",
-      "coincidentSegmentCount": "2",
+      "coincidentSegmentCount": "1",
       "communityDistrict": "101",
       "communityDistrictBoroughCode": "1",
       "communityDistrictNumber": "01",
       "communitySchoolDistrict": "02",
-      "condominiumBillingBbl": "0000000000",
+      "condominiumBillingBbl": "1001357501",
+      "condominiumFlag": "C",
       "congressionalDistrict": "10",
+      "continuousParityIndicator1e": "L",
       "cooperativeIdNumber": "0000",
-      "cornerCode": "CR",
+      "cornerCode": "NE",
       "crossStreetNamesFlagIn": "E",
+      "dcpCommercialStudyArea": "11007",
       "dcpPreferredLgc": "01",
       "dcpZoningMap": "12B",
+      "dofCondominiumIdentificationNumber": "0025",
       "dotStreetLightContractorArea": "1",
-      "dynamicBlock": "213",
-      "electionDistrict": "072",
+      "dynamicBlock": "104",
+      "electionDistrict": "073",
       "fireBattalion": "01",
-      "fireCompanyNumber": "006",
-      "fireCompanyType": "E",
+      "fireCompanyNumber": "010",
+      "fireCompanyType": "L",
       "fireDivision": "01",
       "firstBoroughName": "MANHATTAN",
       "firstStreetCode": "11361001010",
       "firstStreetNameNormalized": "BROADWAY",
-      "fromActualSegmentNodeId": "9045003",
-      "fromLionNodeId": "0015373",
-      "fromPreferredLgcsFirstSetOf5": "0101",
-      "genericId": "0158218",
+      "fromActualSegmentNodeId": "0015374",
+      "fromLionNodeId": "0015374",
+      "fromPreferredLgcsFirstSetOf5": "01",
+      "genericId": "0000389",
       "geosupportFunctionCode": "1B",
       "geosupportReturnCode": "00",
       "geosupportReturnCode2": "00",
       "gi5DigitStreetCode1": "13610",
-      "gi5DigitStreetCode2": "15390",
-      "gi5DigitStreetCode3": "27890",
-      "gi5DigitStreetCode4": "14710",
-      "gi5DigitStreetCode5": "13610",
-      "gi5DigitStreetCode6": "14590",
-      "gi5DigitStreetCode7": "11555",
+      "gi5DigitStreetCode2": "32940",
+      "gi5DigitStreetCode3": "13610",
       "giBoroughCode1": "1",
       "giBoroughCode2": "1",
       "giBoroughCode3": "1",
-      "giBoroughCode4": "1",
-      "giBoroughCode5": "1",
-      "giBoroughCode6": "1",
-      "giBoroughCode7": "1",
-      "giBuildingIdentificationNumber1": "1079147",
-      "giBuildingIdentificationNumber2": "1079147",
-      "giBuildingIdentificationNumber3": "1079147",
-      "giBuildingIdentificationNumber4": "1079146",
-      "giBuildingIdentificationNumber5": "1079146",
-      "giBuildingIdentificationNumber6": "1079146",
-      "giBuildingIdentificationNumber7": "1000000",
+      "giBuildingIdentificationNumber1": "1001473",
+      "giBuildingIdentificationNumber2": "1001473",
+      "giBuildingIdentificationNumber3": "1001473",
       "giDcpPreferredLgc1": "01",
       "giDcpPreferredLgc2": "01",
       "giDcpPreferredLgc3": "01",
-      "giDcpPreferredLgc4": "01",
-      "giDcpPreferredLgc5": "01",
-      "giDcpPreferredLgc6": "01",
-      "giDcpPreferredLgc7": "01",
-      "giGeographicIdentifier2": "N",
-      "giGeographicIdentifier3": "W",
-      "giGeographicIdentifier5": "W",
-      "giGeographicIdentifier6": "W",
-      "giGeographicIdentifier7": "N",
-      "giHighHouseNumber1": "254",
-      "giHighHouseNumber4": "52",
-      "giLowHouseNumber1": "254",
-      "giLowHouseNumber4": "52",
-      "giSideOfStreetIndicator1": "R",
+      "giHighHouseNumber1": "260",
+      "giHighHouseNumber2": "6",
+      "giHighHouseNumber3": "261",
+      "giLowHouseNumber1": "260",
+      "giLowHouseNumber2": "2",
+      "giLowHouseNumber3": "261",
+      "giSideOfStreetIndicator1": "L",
       "giSideOfStreetIndicator2": "R",
-      "giSideOfStreetIndicator4": "L",
-      "giSideOfStreetIndicator7": "R",
+      "giSideOfStreetIndicator3": "L",
       "giStreetCode1": "11361001",
-      "giStreetCode2": "11539001",
-      "giStreetCode3": "12789001",
-      "giStreetCode4": "11471001",
-      "giStreetCode5": "11361001",
-      "giStreetCode6": "11459001",
-      "giStreetCode7": "11155501",
+      "giStreetCode2": "13294001",
+      "giStreetCode3": "11361001",
       "giStreetName1": "BROADWAY",
-      "giStreetName2": "CITY HALL",
-      "giStreetName3": "PARK ROW",
-      "giStreetName4": "CHAMBERS STREET",
-      "giStreetName5": "BROADWAY",
-      "giStreetName6": "CENTRE STREET",
-      "giStreetName7": "CITY HALL PARK",
+      "giStreetName2": "WARREN STREET",
+      "giStreetName3": "BROADWAY",
       "healthArea": "7700",
       "healthCenterDistrict": "15",
-      "highBblOfThisBuildingsCondominiumUnits": "1001220001",
-      "highCrossStreetB5SC1": "132940",
-      "highCrossStreetCode1": "13294001",
-      "highCrossStreetName1": "WARREN STREET",
-      "highHouseNumberOfBlockfaceSortFormat": "000254000AA",
-      "houseNumber": "254",
-      "houseNumberIn": "254",
-      "houseNumberSortFormat": "000254000AA",
+      "highBblOfThisBuildingsCondominiumUnits": "1001351002",
+      "highCrossStreetB5SC1": "114710",
+      "highCrossStreetCode1": "11471001",
+      "highCrossStreetName1": "CHAMBERS STREET",
+      "highHouseNumberOfBlockfaceSortFormat": "000272000AA",
+      "houseNumber": "260",
+      "houseNumberIn": "260",
+      "houseNumberSortFormat": "000260000AA",
       "hurricaneEvacuationZone": "6",
-      "individualSegmentLength": "00132",
+      "individualSegmentLength": "00242",
       "instructionalRegion": "MS",
       "interimAssistanceEligibilityIndicator": "I",
-      "internalLabelXCoordinate": "0982543",
-      "internalLabelYCoordinate": "0198970",
-      "latitude": 40.71344546088473,
-      "latitudeInternalLabel": 40.7128032283751,
-      "legacySegmentId": "0023399",
+      "internalLabelXCoordinate": "0982317",
+      "internalLabelYCoordinate": "0199384",
+      "latitude": 40.713695244415426,
+      "latitudeInternalLabel": 40.7139395131608,
+      "legacySegmentId": "0023401",
       "lionBoroughCode": "1",
       "lionBoroughCodeForVanityAddress": "1",
       "lionFaceCode": "0755",
       "lionFaceCodeForVanityAddress": "0755",
-      "lionKey": "1075501195",
-      "lionKeyForVanityAddress": "1075501195",
-      "lionSequenceNumber": "01195",
-      "lionSequenceNumberForVanityAddress": "01195",
-      "listOf4Lgcs": "01",
-      "longitude": -74.00689332004244,
-      "longitudeInternalLabel": -74.00615739609289,
-      "lowBblOfThisBuildingsCondominiumUnits": "1001220001",
-      "lowCrossStreetB5SC1": "127050",
-      "lowCrossStreetB5SC2": "112645",
-      "lowCrossStreetCode1": "12705001",
-      "lowCrossStreetCode2": "11264501",
-      "lowCrossStreetName1": "MURRAY STREET",
-      "lowCrossStreetName2": "STEVE FLANDERS SQUARE",
-      "lowHouseNumberOfBlockfaceSortFormat": "000254000AA",
-      "lowHouseNumberOfDefiningAddressRange": "000254000AA",
-      "noCrossStreetCalculationFlag": "Y",
+      "lionKey": "1075501200",
+      "lionKeyForVanityAddress": "1075501200",
+      "lionSequenceNumber": "01200",
+      "lionSequenceNumberForVanityAddress": "01200",
+      "listOf4Lgcs": "0107",
+      "longitude": -74.00672020060928,
+      "longitudeInternalLabel": -74.0069727296749,
+      "lowBblOfThisBuildingsCondominiumUnits": "1001351001",
+      "lowCrossStreetB5SC1": "132940",
+      "lowCrossStreetCode1": "13294001",
+      "lowCrossStreetName1": "WARREN STREET",
+      "lowHouseNumberOfBlockfaceSortFormat": "000260000AA",
+      "lowHouseNumberOfDefiningAddressRange": "000260000AA",
       "nta": "MN24",
       "numberOfCrossStreetB5SCsHighAddressEnd": "1",
-      "numberOfCrossStreetB5SCsLowAddressEnd": "2",
+      "numberOfCrossStreetB5SCsLowAddressEnd": "1",
       "numberOfCrossStreetsHighAddressEnd": "1",
-      "numberOfCrossStreetsLowAddressEnd": "2",
-      "numberOfEntriesInListOfGeographicIdentifiers": "0007",
-      "numberOfExistingStructuresOnLot": "0002",
+      "numberOfCrossStreetsLowAddressEnd": "1",
+      "numberOfEntriesInListOfGeographicIdentifiers": "0003",
+      "numberOfExistingStructuresOnLot": "0001",
       "numberOfParkingLanesOnTheStreet": "1",
-      "numberOfStreetFrontagesOfLot": "04",
+      "numberOfStreetFrontagesOfLot": "02",
       "numberOfTotalLanesOnTheStreet": "5",
       "numberOfTravelLanesOnTheStreet": "4",
-      "physicalId": "0171872",
+      "physicalId": "0000502",
       "policePatrolBoroughCommand": "1",
       "policePrecinct": "001",
-      "policeSector": "1A",
+      "policeSector": "1C",
       "pumaCode": "03810",
       "returnCode1a": "00",
       "returnCode1e": "00",
       "roadwayType": "1",
-      "rpadBuildingClassificationCode": "O2",
-      "rpadSelfCheckCodeForBbl": "0",
+      "rpadBuildingClassificationCode": "RK",
+      "rpadSelfCheckCodeForBbl": "4",
       "sanbornBoroughCode": "1",
-      "sanbornPageNumber": "020",
+      "sanbornPageNumber": "018",
       "sanbornVolumeNumber": "01",
       "sanbornVolumeNumberSuffix": "S",
-      "sanitationBulkPickupSchedule": "EMWF",
+      "sanitationBulkPickupSchedule": "EMW",
       "sanitationCollectionSchedulingSectionAndSubsection": "1A",
       "sanitationDistrict": "101",
+      "sanitationOrganicsCollectionSchedule": "EF",
       "sanitationRecyclingCollectionSchedule": "EF",
       "sanitationRegularCollectionSchedule": "MWF",
       "sanitationSection": "011",
       "sanitationSnowPriorityCode": "C",
-      "segmentAzimuth": "059",
-      "segmentIdentifier": "0293660",
-      "segmentLengthInFeet": "00236",
+      "segmentAzimuth": "057",
+      "segmentIdentifier": "0023401",
+      "segmentLengthInFeet": "00242",
       "segmentOrientation": "N",
       "segmentTypeCode": "U",
-      "sideOfStreetIndicator": "R",
-      "sideOfStreetOfVanityAddress": "R",
-      "specialAddressGeneratedRecordFlag": "A",
+      "selfCheckCodeOfBillingBbl": "4",
+      "sideOfStreetIndicator": "L",
+      "sideOfStreetOfVanityAddress": "L",
       "speedLimit": "25",
-      "splitLowHouseNumber": "000254000AA",
+      "splitLowHouseNumber": "000260000AA",
       "stateSenatorialDistrict": "27",
       "streetName1In": "BROADWAY",
       "streetStatus": "2",
       "streetWidth": "52",
-      "streetWidthMaximum": "52",
+      "streetWidthMaximum": "54",
       "taxMapNumberSectionAndVolume": "10104",
-      "toActualSegmentNodeId": "0015374",
-      "toLionNodeId": "0015374",
+      "toActualSegmentNodeId": "0015375",
+      "toLionNodeId": "0015375",
       "toPreferredLgcsFirstSetOf5": "01",
       "trafficDirection": "A",
       "underlyingStreetCode": "11361001",
       "uspsPreferredCityName": "NEW YORK",
       "workAreaFormatIndicatorIn": "C",
-      "xCoordActualSegmentHighAddressEnd": "0982370",
-      "xCoordActualSegmentLowAddressEnd": "0982303",
-      "xCoordinate": "0982339",
-      "xCoordinateHighAddressEnd": "0982370",
-      "xCoordinateLowAddressEnd": "0982247",
+      "xCoordActualSegmentHighAddressEnd": "0982501",
+      "xCoordActualSegmentLowAddressEnd": "0982370",
+      "xCoordinate": "0982387",
+      "xCoordinateHighAddressEnd": "0982501",
+      "xCoordinateLowAddressEnd": "0982370",
       "xCoordinateOfCenterofCurvature": "0000000",
-      "yCoordActualSegmentHighAddressEnd": "0199263",
-      "yCoordActualSegmentLowAddressEnd": "0199149",
-      "yCoordinate": "0199204",
-      "yCoordinateHighAddressEnd": "0199263",
-      "yCoordinateLowAddressEnd": "0199062",
+      "yCoordActualSegmentHighAddressEnd": "0199466",
+      "yCoordActualSegmentLowAddressEnd": "0199263",
+      "yCoordinate": "0199295",
+      "yCoordinateHighAddressEnd": "0199466",
+      "yCoordinateLowAddressEnd": "0199263",
       "yCoordinateOfCenterofCurvature": "0000000",
       "zipCode": "10007",
     },
   },
-  "google_response": Object {
-    "plus_code": Object {
-      "compound_code": "PX7V+6J4 New York, NY, USA",
-      "global_code": "87G7PX7V+6J4",
+  "google_response": {
+    "plus_code": {
+      "compound_code": "PX7V+2HX New York, NY, USA",
+      "global_code": "87G7PX7V+2HX",
     },
-    "results": Array [
-      Object {
-        "address_components": Array [
-          Object {
-            "long_name": "254",
-            "short_name": "254",
-            "types": Array [
+    "results": [
+      {
+        "address_components": [
+          {
+            "long_name": "260",
+            "short_name": "260",
+            "types": [
               "street_number",
             ],
           },
-          Object {
+          {
             "long_name": "Broadway",
             "short_name": "Broadway",
-            "types": Array [
+            "types": [
               "route",
             ],
           },
-          Object {
+          {
             "long_name": "Manhattan",
             "short_name": "Manhattan",
-            "types": Array [
+            "types": [
               "political",
               "sublocality",
               "sublocality_level_1",
             ],
           },
-          Object {
+          {
             "long_name": "New York",
             "short_name": "New York",
-            "types": Array [
+            "types": [
               "locality",
               "political",
             ],
           },
-          Object {
+          {
             "long_name": "New York County",
             "short_name": "New York County",
-            "types": Array [
+            "types": [
               "administrative_area_level_2",
               "political",
             ],
           },
-          Object {
+          {
             "long_name": "New York",
             "short_name": "NY",
-            "types": Array [
+            "types": [
               "administrative_area_level_1",
               "political",
             ],
           },
-          Object {
+          {
             "long_name": "United States",
             "short_name": "US",
-            "types": Array [
+            "types": [
               "country",
               "political",
             ],
           },
-          Object {
+          {
             "long_name": "10007",
             "short_name": "10007",
-            "types": Array [
+            "types": [
               "postal_code",
             ],
           },
         ],
-        "formatted_address": "254 Broadway, New York, NY 10007, USA",
-        "geometry": Object {
-          "location": Object {
-            "lat": 40.712841,
-            "lng": -74.0062031,
+        "formatted_address": "260 Broadway, New York, NY 10007, USA",
+        "geometry": {
+          "location": {
+            "lat": 40.7127042,
+            "lng": -74.00594199999999,
           },
           "location_type": "ROOFTOP",
-          "viewport": Object {
-            "northeast": Object {
-              "lat": 40.7141899802915,
-              "lng": -74.0048541197085,
+          "viewport": {
+            "northeast": {
+              "lat": 40.7140531802915,
+              "lng": -74.00459301970848,
             },
-            "southwest": Object {
-              "lat": 40.7114920197085,
-              "lng": -74.0075520802915,
+            "southwest": {
+              "lat": 40.7113552197085,
+              "lng": -74.00729098029149,
             },
           },
         },
-        "place_id": "ChIJD13PfChbwokRUQwRhHkLoaQ",
-        "plus_code": Object {
-          "compound_code": "PX7V+4G New York, NY, USA",
-          "global_code": "87G7PX7V+4G",
+        "navigation_points": [
+          {
+            "location": {
+              "latitude": 40.7127398,
+              "longitude": -74.0064308,
+            },
+            "restricted_travel_modes": [
+              "WALK",
+            ],
+          },
+          {
+            "location": {
+              "latitude": 40.713009,
+              "longitude": -74.005767,
+            },
+            "restricted_travel_modes": [
+              "DRIVE",
+            ],
+          },
+        ],
+        "place_id": "ChIJgeN7FVFbwokRBk7mnDW6Krc",
+        "plus_code": {
+          "compound_code": "PX7V+3J New York, NY, USA",
+          "global_code": "87G7PX7V+3J",
         },
-        "types": Array [
+        "types": [
+          "street_address",
+        ],
+      },
+      {
+        "address_components": [
+          {
+            "long_name": "230",
+            "short_name": "230",
+            "types": [
+              "street_number",
+            ],
+          },
+          {
+            "long_name": "Broadway",
+            "short_name": "Broadway",
+            "types": [
+              "route",
+            ],
+          },
+          {
+            "long_name": "Manhattan",
+            "short_name": "Manhattan",
+            "types": [
+              "political",
+              "sublocality",
+              "sublocality_level_1",
+            ],
+          },
+          {
+            "long_name": "New York",
+            "short_name": "New York",
+            "types": [
+              "locality",
+              "political",
+            ],
+          },
+          {
+            "long_name": "New York County",
+            "short_name": "New York County",
+            "types": [
+              "administrative_area_level_2",
+              "political",
+            ],
+          },
+          {
+            "long_name": "New York",
+            "short_name": "NY",
+            "types": [
+              "administrative_area_level_1",
+              "political",
+            ],
+          },
+          {
+            "long_name": "United States",
+            "short_name": "US",
+            "types": [
+              "country",
+              "political",
+            ],
+          },
+          {
+            "long_name": "10007",
+            "short_name": "10007",
+            "types": [
+              "postal_code",
+            ],
+          },
+        ],
+        "formatted_address": "230 Broadway, New York, NY 10007, USA",
+        "geometry": {
+          "location": {
+            "lat": 40.7127421,
+            "lng": -74.00596890000001,
+          },
+          "location_type": "ROOFTOP",
+          "viewport": {
+            "northeast": {
+              "lat": 40.7140910802915,
+              "lng": -74.00461991970852,
+            },
+            "southwest": {
+              "lat": 40.7113931197085,
+              "lng": -74.00731788029152,
+            },
+          },
+        },
+        "navigation_points": [
+          {
+            "location": {
+              "latitude": 40.7127838,
+              "longitude": -74.0064357,
+            },
+            "restricted_travel_modes": [
+              "WALK",
+            ],
+          },
+          {
+            "location": {
+              "latitude": 40.7130105,
+              "longitude": -74.0057716,
+            },
+            "restricted_travel_modes": [
+              "DRIVE",
+            ],
+          },
+        ],
+        "place_id": "ChIJgTPiDCJawokRvv8VZ1znWC0",
+        "types": [
+          "street_address",
+          "subpremise",
+        ],
+      },
+      {
+        "address_components": [
+          {
+            "long_name": "New York City Hall",
+            "short_name": "New York City Hall",
+            "types": [
+              "premise",
+            ],
+          },
+          {
+            "long_name": "Manhattan",
+            "short_name": "Manhattan",
+            "types": [
+              "political",
+              "sublocality",
+              "sublocality_level_1",
+            ],
+          },
+          {
+            "long_name": "New York",
+            "short_name": "New York",
+            "types": [
+              "locality",
+              "political",
+            ],
+          },
+          {
+            "long_name": "New York County",
+            "short_name": "New York County",
+            "types": [
+              "administrative_area_level_2",
+              "political",
+            ],
+          },
+          {
+            "long_name": "New York",
+            "short_name": "NY",
+            "types": [
+              "administrative_area_level_1",
+              "political",
+            ],
+          },
+          {
+            "long_name": "United States",
+            "short_name": "US",
+            "types": [
+              "country",
+              "political",
+            ],
+          },
+          {
+            "long_name": "10007",
+            "short_name": "10007",
+            "types": [
+              "postal_code",
+            ],
+          },
+        ],
+        "formatted_address": "New York City Hall, New York, NY 10007, USA",
+        "geometry": {
+          "bounds": {
+            "northeast": {
+              "lat": 40.7130243,
+              "lng": -74.0055682,
+            },
+            "southwest": {
+              "lat": 40.7124519,
+              "lng": -74.0064381,
+            },
+          },
+          "location": {
+            "lat": 40.7127503,
+            "lng": -74.0059765,
+          },
+          "location_type": "ROOFTOP",
+          "viewport": {
+            "northeast": {
+              "lat": 40.7140870802915,
+              "lng": -74.00465416970849,
+            },
+            "southwest": {
+              "lat": 40.7113891197085,
+              "lng": -74.0073521302915,
+            },
+          },
+        },
+        "navigation_points": [
+          {
+            "location": {
+              "latitude": 40.7127159,
+              "longitude": -74.006543,
+            },
+          },
+          {
+            "location": {
+              "latitude": 40.7121692,
+              "longitude": -74.0057323,
+            },
+          },
+        ],
+        "place_id": "ChIJMfxeDCJawokRaUdk7prx_pY",
+        "types": [
+          "premise",
           "street_address",
         ],
       },
     ],
     "status": "OK",
   },
-  "lat": 40.713007655065155,
-  "long": -74.00592677275506,
+  "lat": 40.7126,
+  "long": -74.006,
+  "valid": true,
+}
+`;
+
+exports[`validateLocation returns the right object around the Empire State Building 1`] = `
+{
+  "cb_data": {
+    "address": "450 7th Avenue, Rm. 2109
+New York, NY 10123",
+    "borough": "Manhattan",
+    "calendar": {
+      "scraperId": "manhattan-cb5",
+      "web": "https://www.cb5.org/cb5/calendar/",
+    },
+    "email": "office@cb5.org",
+    "fax": "212-465-1628",
+    "id": 105,
+    "neighborhoods": "Midtown",
+    "number": 5,
+    "phone": "212-465-0907",
+    "twitter": "manhattancb5",
+    "website": "http://www.cb5.org",
+  },
+  "geoclient_response": {
+    "address": {
+      "alleyCrossStreetsFlag": "X",
+      "assemblyDistrict": "75",
+      "bbl": "1008360026",
+      "bblBoroughCode": "1",
+      "bblTaxBlock": "00836",
+      "bblTaxLot": "0026",
+      "blockfaceId": "1222604878",
+      "boardOfElectionsPreferredLgc": "1",
+      "boePreferredStreetName": "WEST   34 STREET",
+      "boePreferredstreetCode": "13445001",
+      "boroughCode1In": "1",
+      "buildingIdentificationNumber": "1082920",
+      "businessImprovementDistrict": "113090",
+      "censusBlock2000": "1000",
+      "censusBlock2010": "1000",
+      "censusTract1990": "  76  ",
+      "censusTract2000": "  76  ",
+      "censusTract2010": "  76  ",
+      "cityCouncilDistrict": "04",
+      "civilCourtDistrict": "09",
+      "coincidentSegmentCount": "1",
+      "communityDistrict": "105",
+      "communityDistrictBoroughCode": "1",
+      "communityDistrictNumber": "05",
+      "communitySchoolDistrict": "02",
+      "condominiumBillingBbl": "0000000000",
+      "congressionalDistrict": "12",
+      "cooperativeIdNumber": "0000",
+      "crossStreetNamesFlagIn": "E",
+      "dcpCommercialStudyArea": "11021",
+      "dcpPreferredLgc": "01",
+      "dcpZoningMap": "8D",
+      "dotStreetLightContractorArea": "1",
+      "dynamicBlock": "101",
+      "electionDistrict": "015",
+      "fireBattalion": "08",
+      "fireCompanyNumber": "065",
+      "fireCompanyType": "E",
+      "fireDivision": "03",
+      "firstBoroughName": "MANHATTAN",
+      "firstStreetCode": "13445001010",
+      "firstStreetNameNormalized": "WEST   34 STREET",
+      "fromActualSegmentNodeId": "0021445",
+      "fromLionNodeId": "0021445",
+      "fromPreferredLgcsFirstSetOf5": "0101",
+      "genericId": "0160377",
+      "geosupportFunctionCode": "1B",
+      "geosupportReturnCode": "00",
+      "geosupportReturnCode2": "00",
+      "gi5DigitStreetCode1": "34450",
+      "gi5DigitStreetCode2": "34470",
+      "giBoroughCode1": "1",
+      "giBoroughCode2": "1",
+      "giBuildingIdentificationNumber1": "1082920",
+      "giBuildingIdentificationNumber2": "1082920",
+      "giDcpPreferredLgc1": "01",
+      "giDcpPreferredLgc2": "01",
+      "giHighHouseNumber1": "9",
+      "giHighHouseNumber2": "22",
+      "giLowHouseNumber1": "3",
+      "giLowHouseNumber2": "4",
+      "giSideOfStreetIndicator1": "R",
+      "giSideOfStreetIndicator2": "L",
+      "giStreetCode1": "13445001",
+      "giStreetCode2": "13447001",
+      "giStreetName1": "WEST   34 STREET",
+      "giStreetName2": "WEST   35 STREET",
+      "healthArea": "5200",
+      "healthCenterDistrict": "15",
+      "highBblOfThisBuildingsCondominiumUnits": "1008360026",
+      "highCrossStreetB5SC1": "110510",
+      "highCrossStreetCode1": "11051001",
+      "highCrossStreetName1": "AVENUE OF THE AMERICAS",
+      "highHouseNumberOfBlockfaceSortFormat": "000099000AA",
+      "houseNumber": "7",
+      "houseNumberIn": "7",
+      "houseNumberSortFormat": "000007000AA",
+      "hurricaneEvacuationZone": "X",
+      "individualSegmentLength": "00481",
+      "instructionalRegion": "MS",
+      "interimAssistanceEligibilityIndicator": "I",
+      "internalLabelXCoordinate": "0988350",
+      "internalLabelYCoordinate": "0212230",
+      "latitude": 40.748690106612294,
+      "latitudeInternalLabel": 40.74919789336642,
+      "legacySegmentId": "0034027",
+      "lionBoroughCode": "1",
+      "lionBoroughCodeForVanityAddress": "1",
+      "lionFaceCode": "4935",
+      "lionFaceCodeForVanityAddress": "4935",
+      "lionKey": "1493500010",
+      "lionKeyForVanityAddress": "1493500010",
+      "lionSequenceNumber": "00010",
+      "lionSequenceNumberForVanityAddress": "00010",
+      "listOf4Lgcs": "01",
+      "longitude": -73.98513777602362,
+      "longitudeInternalLabel": -73.98520262681646,
+      "lowBblOfThisBuildingsCondominiumUnits": "1008360026",
+      "lowCrossStreetB5SC1": "110410",
+      "lowCrossStreetB5SC2": "117670",
+      "lowCrossStreetCode1": "11041001",
+      "lowCrossStreetCode2": "11767001",
+      "lowCrossStreetName1": "5 AVENUE",
+      "lowCrossStreetName2": "EAST   34 STREET",
+      "lowHouseNumberOfBlockfaceSortFormat": "000001000AA",
+      "lowHouseNumberOfDefiningAddressRange": "000003000AA",
+      "noCrossStreetCalculationFlag": "Y",
+      "nta": "MN17",
+      "numberOfCrossStreetB5SCsHighAddressEnd": "1",
+      "numberOfCrossStreetB5SCsLowAddressEnd": "2",
+      "numberOfCrossStreetsHighAddressEnd": "1",
+      "numberOfCrossStreetsLowAddressEnd": "2",
+      "numberOfEntriesInListOfGeographicIdentifiers": "0002",
+      "numberOfExistingStructuresOnLot": "0001",
+      "numberOfParkingLanesOnTheStreet": "2",
+      "numberOfStreetFrontagesOfLot": "02",
+      "numberOfTotalLanesOnTheStreet": "6",
+      "numberOfTravelLanesOnTheStreet": "4",
+      "physicalId": "0174147",
+      "policePatrolBoroughCommand": "1",
+      "policePrecinct": "014",
+      "policeSector": "14D",
+      "pumaCode": "03807",
+      "returnCode1a": "00",
+      "returnCode1e": "00",
+      "roadwayType": "1",
+      "rpadBuildingClassificationCode": "O6",
+      "rpadSelfCheckCodeForBbl": "2",
+      "sanbornBoroughCode": "1",
+      "sanbornPageNumber": "027",
+      "sanbornVolumeNumber": "04",
+      "sanitationBulkPickupSchedule": "ETS",
+      "sanitationCollectionSchedulingSectionAndSubsection": "2B",
+      "sanitationDistrict": "105",
+      "sanitationOrganicsCollectionSchedule": "ETH",
+      "sanitationRecyclingCollectionSchedule": "ETH",
+      "sanitationRegularCollectionSchedule": "TTHS",
+      "sanitationSection": "052",
+      "sanitationSnowPriorityCode": "C",
+      "segmentAzimuth": "151",
+      "segmentIdentifier": "0297753",
+      "segmentLengthInFeet": "01016",
+      "segmentOrientation": "W",
+      "segmentTypeCode": "U",
+      "sideOfStreetIndicator": "R",
+      "sideOfStreetOfVanityAddress": "R",
+      "speedLimit": "25",
+      "splitLowHouseNumber": "000001000AA",
+      "stateSenatorialDistrict": "28",
+      "streetName1In": "W 34TH ST.",
+      "streetStatus": "2",
+      "streetWidth": "52",
+      "streetWidthMaximum": "54",
+      "taxMapNumberSectionAndVolume": "10306",
+      "toActualSegmentNodeId": "9046322",
+      "toLionNodeId": "0021392",
+      "toPreferredLgcsFirstSetOf5": "01",
+      "trafficDirection": "T",
+      "underlyingStreetCode": "13445001",
+      "uspsPreferredCityName": "NEW YORK",
+      "workAreaFormatIndicatorIn": "C",
+      "xCoordActualSegmentHighAddressEnd": "0988107",
+      "xCoordActualSegmentLowAddressEnd": "0988528",
+      "xCoordinate": "0988368",
+      "xCoordinateHighAddressEnd": "0987639",
+      "xCoordinateLowAddressEnd": "0988528",
+      "xCoordinateOfCenterofCurvature": "0000000",
+      "yCoordActualSegmentHighAddressEnd": "0212186",
+      "yCoordActualSegmentLowAddressEnd": "0211953",
+      "yCoordinate": "0212045",
+      "yCoordinateHighAddressEnd": "0212445",
+      "yCoordinateLowAddressEnd": "0211953",
+      "yCoordinateOfCenterofCurvature": "0000000",
+      "zipCode": "10001",
+    },
+  },
+  "google_response": {
+    "plus_code": {
+      "compound_code": "P2X7+GRG New York, NY, USA",
+      "global_code": "87G8P2X7+GRG",
+    },
+    "results": [
+      {
+        "address_components": [
+          {
+            "long_name": "7",
+            "short_name": "7",
+            "types": [
+              "street_number",
+            ],
+          },
+          {
+            "long_name": "West 34th Street",
+            "short_name": "W 34th St.",
+            "types": [
+              "route",
+            ],
+          },
+          {
+            "long_name": "Manhattan",
+            "short_name": "Manhattan",
+            "types": [
+              "political",
+              "sublocality",
+              "sublocality_level_1",
+            ],
+          },
+          {
+            "long_name": "New York",
+            "short_name": "New York",
+            "types": [
+              "locality",
+              "political",
+            ],
+          },
+          {
+            "long_name": "New York County",
+            "short_name": "New York County",
+            "types": [
+              "administrative_area_level_2",
+              "political",
+            ],
+          },
+          {
+            "long_name": "New York",
+            "short_name": "NY",
+            "types": [
+              "administrative_area_level_1",
+              "political",
+            ],
+          },
+          {
+            "long_name": "United States",
+            "short_name": "US",
+            "types": [
+              "country",
+              "political",
+            ],
+          },
+          {
+            "long_name": "10001",
+            "short_name": "10001",
+            "types": [
+              "postal_code",
+            ],
+          },
+        ],
+        "formatted_address": "7 W 34th St., New York, NY 10001, USA",
+        "geometry": {
+          "bounds": {
+            "northeast": {
+              "lat": 40.7496057,
+              "lng": -73.984766,
+            },
+            "southwest": {
+              "lat": 40.7488177,
+              "lng": -73.9855935,
+            },
+          },
+          "location": {
+            "lat": 40.7490211,
+            "lng": -73.98530459999999,
+          },
+          "location_type": "ROOFTOP",
+          "viewport": {
+            "northeast": {
+              "lat": 40.7505606802915,
+              "lng": -73.98383076970849,
+            },
+            "southwest": {
+              "lat": 40.7478627197085,
+              "lng": -73.9865287302915,
+            },
+          },
+        },
+        "navigation_points": [
+          {
+            "location": {
+              "latitude": 40.7488504,
+              "longitude": -73.9854022,
+            },
+          },
+        ],
+        "place_id": "ChIJu1PNn6lZwokRHx2_eabv-Bs",
+        "types": [
+          "premise",
+          "street_address",
+        ],
+      },
+      {
+        "address_components": [
+          {
+            "long_name": "7",
+            "short_name": "7",
+            "types": [
+              "street_number",
+            ],
+          },
+          {
+            "long_name": "West 34th Street",
+            "short_name": "W 34th St.",
+            "types": [
+              "route",
+            ],
+          },
+          {
+            "long_name": "Manhattan",
+            "short_name": "Manhattan",
+            "types": [
+              "political",
+              "sublocality",
+              "sublocality_level_1",
+            ],
+          },
+          {
+            "long_name": "New York",
+            "short_name": "New York",
+            "types": [
+              "locality",
+              "political",
+            ],
+          },
+          {
+            "long_name": "New York County",
+            "short_name": "New York County",
+            "types": [
+              "administrative_area_level_2",
+              "political",
+            ],
+          },
+          {
+            "long_name": "New York",
+            "short_name": "NY",
+            "types": [
+              "administrative_area_level_1",
+              "political",
+            ],
+          },
+          {
+            "long_name": "United States",
+            "short_name": "US",
+            "types": [
+              "country",
+              "political",
+            ],
+          },
+          {
+            "long_name": "10001",
+            "short_name": "10001",
+            "types": [
+              "postal_code",
+            ],
+          },
+        ],
+        "formatted_address": "7 W 34th St., New York, NY 10001, USA",
+        "geometry": {
+          "location": {
+            "lat": 40.7488148,
+            "lng": -73.9854283,
+          },
+          "location_type": "RANGE_INTERPOLATED",
+          "viewport": {
+            "northeast": {
+              "lat": 40.75016378029149,
+              "lng": -73.98407931970848,
+            },
+            "southwest": {
+              "lat": 40.7474658197085,
+              "lng": -73.9867772802915,
+            },
+          },
+        },
+        "place_id": "EiU3IFcgMzR0aCBTdC4sIE5ldyBZb3JrLCBOWSAxMDAwMSwgVVNBIhoSGAoUChIJG_w6CqlZwokRMi5UMucmRZUQBw",
+        "types": [
+          "street_address",
+        ],
+      },
+    ],
+    "status": "OK",
+  },
+  "lat": 40.748817,
+  "long": -73.985428,
   "valid": true,
 }
 `;

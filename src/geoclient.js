@@ -1,17 +1,16 @@
 import axios from 'axios';
 import axiosRetry from 'axios-retry';
 
+import cbData from './districts-info.json';
+
 const { GEO_APP_KEY, GOOGLE_API_KEY } = process.env;
 
 // ported from https://github.com/jeffrono/Reported/blob/6d9e1d8c087ee53954037b4e80a72481a8425045/v2/enrich_functions.rb#L405-L411
 axiosRetry(axios, { retryDelay: () => 5000 });
 
 // ported from https://github.com/jeffrono/Reported/blob/19b588171315a3093d53986f9fb995059f5084b4/v2/enrich_functions.rb#L149-L154
-async function getCbData(id) {
-  const url =
-    'https://raw.githubusercontent.com/codebutler/59boards/fc7255aac18d67e08b4ae20c671540a6f80dc6e3/frontend/src/shared/data/districts-info.json';
-  const { data: response } = await axios.get(url);
-  return response[id];
+function getCbData(id) {
+  return cbData[id];
 }
 
 // takes lat long
@@ -100,7 +99,7 @@ export async function validateLocation({ lat, long }) {
     response.valid = true;
     // get community board meta data
     const cbid = geoclientResponse.address.communityDistrict;
-    response.cb_data = await getCbData(cbid);
+    response.cb_data = getCbData(cbid);
   }
 
   return response;
@@ -110,7 +109,11 @@ export async function validateLocation({ lat, long }) {
 // spirals around that point, calling validateLocation until it succeeds
 // returns hash with google response, geoclient response, and status
 // ported from `process_validation` at https://github.com/jeffrono/Reported/blob/19b588171315a3093d53986f9fb995059f5084b4/v2/enrich_functions.rb#L48-L88
-export async function processValidation({ lat, long }) {
+export async function processValidation({
+  lat,
+  long,
+  validateLocationImplementation = validateLocation,
+}) {
   lat = Number(lat); // eslint-disable-line no-param-reassign
   long = Number(long); // eslint-disable-line no-param-reassign
 
@@ -123,7 +126,7 @@ export async function processValidation({ lat, long }) {
     let r;
     // test version 1
     // eslint-disable-next-line no-await-in-loop
-    r = await validateLocation({
+    r = await validateLocationImplementation({
       lat: lat + i * RADIUS,
       long,
     });
@@ -133,7 +136,7 @@ export async function processValidation({ lat, long }) {
     }
 
     // eslint-disable-next-line no-await-in-loop
-    r = await validateLocation({
+    r = await validateLocationImplementation({
       lat: lat - i * RADIUS,
       long,
     });
@@ -143,7 +146,7 @@ export async function processValidation({ lat, long }) {
     }
 
     // eslint-disable-next-line no-await-in-loop
-    r = await validateLocation({
+    r = await validateLocationImplementation({
       lat,
       long: long + i * RADIUS,
     });
@@ -153,7 +156,7 @@ export async function processValidation({ lat, long }) {
     }
 
     // eslint-disable-next-line no-await-in-loop
-    r = await validateLocation({
+    r = await validateLocationImplementation({
       lat,
       long: long - i * RADIUS,
     });

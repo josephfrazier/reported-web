@@ -1,0 +1,69 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`readLicenseViaALPR falling back to the second token 1`] = `
+{
+  "box": {
+    "xmax": 1839,
+    "xmin": 1639,
+    "ymax": 2115,
+    "ymin": 2011,
+  },
+  "candidates": [
+    {
+      "plate": "t736394c",
+      "score": 1,
+    },
+  ],
+  "dscore": 0.82,
+  "plate": "t736394c",
+  "region": {
+    "code": "us-ny",
+    "score": 0.879,
+  },
+  "score": 1,
+  "vehicle": {
+    "box": {
+      "xmax": 2455,
+      "xmin": 1286,
+      "ymax": 2214,
+      "ymin": 1201,
+    },
+    "score": 0.71,
+    "type": "Sedan",
+  },
+}
+`;
+
+exports[`readLicenseViaALPR using only the first token 1`] = `
+{
+  "box": {
+    "xmax": 1839,
+    "xmin": 1639,
+    "ymax": 2115,
+    "ymin": 2011,
+  },
+  "candidates": [
+    {
+      "plate": "t736394c",
+      "score": 1,
+    },
+  ],
+  "dscore": 0.82,
+  "plate": "t736394c",
+  "region": {
+    "code": "us-ny",
+    "score": 0.879,
+  },
+  "score": 1,
+  "vehicle": {
+    "box": {
+      "xmax": 2455,
+      "xmin": 1286,
+      "ymax": 2214,
+      "ymin": 1201,
+    },
+    "score": 0.71,
+    "type": "Sedan",
+  },
+}
+`;

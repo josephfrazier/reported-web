@@ -3,33 +3,61 @@
 exports[`readLicenseViaALPR falling back to the second token 1`] = `
 {
   "box": {
-    "xmax": 1839,
-    "xmin": 1639,
-    "ymax": 2115,
-    "ymin": 2011,
+    "xmax": 2633,
+    "xmin": 2576,
+    "ymax": 1280,
+    "ymin": 1248,
   },
   "candidates": [
     {
-      "plate": "t736394c",
-      "score": 1,
+      "plate": "8911",
+      "score": 0.897,
+    },
+    {
+      "plate": "89i1",
+      "score": 0.756,
+    },
+    {
+      "plate": "b911",
+      "score": 0.662,
+    },
+    {
+      "plate": "891i",
+      "score": 0.661,
+    },
+    {
+      "plate": "89ii",
+      "score": 0.52,
+    },
+    {
+      "plate": "b9i1",
+      "score": 0.52,
+    },
+    {
+      "plate": "b91i",
+      "score": 0.425,
+    },
+    {
+      "plate": "b9ii",
+      "score": 0.284,
     },
   ],
-  "dscore": 0.82,
-  "plate": "t736394c",
+  "dscore": 0.902,
+  "plate": "8911",
   "region": {
-    "code": "us-ny",
-    "score": 0.879,
+    "code": "unknown",
+    "score": 0.006,
   },
-  "score": 1,
+  "score": 0.897,
   "vehicle": {
     "box": {
-      "xmax": 2455,
-      "xmin": 1286,
-      "ymax": 2214,
-      "ymin": 1201,
+      "xmax": 2978,
+      "xmin": 2408,
+      "ymax": 1453,
+      "ymin": 834,
     },
-    "score": 0.71,
-    "type": "Sedan",
+    "score": 0.175,
+    "type": "Van",
   },
 }
 `;
@@ -37,33 +65,61 @@ exports[`readLicenseViaALPR falling back to the second token 1`] = `
 exports[`readLicenseViaALPR using only the first token 1`] = `
 {
   "box": {
-    "xmax": 1839,
-    "xmin": 1639,
-    "ymax": 2115,
-    "ymin": 2011,
+    "xmax": 2633,
+    "xmin": 2576,
+    "ymax": 1280,
+    "ymin": 1248,
   },
   "candidates": [
     {
-      "plate": "t736394c",
-      "score": 1,
+      "plate": "8911",
+      "score": 0.897,
+    },
+    {
+      "plate": "89i1",
+      "score": 0.756,
+    },
+    {
+      "plate": "b911",
+      "score": 0.662,
+    },
+    {
+      "plate": "891i",
+      "score": 0.661,
+    },
+    {
+      "plate": "89ii",
+      "score": 0.52,
+    },
+    {
+      "plate": "b9i1",
+      "score": 0.52,
+    },
+    {
+      "plate": "b91i",
+      "score": 0.425,
+    },
+    {
+      "plate": "b9ii",
+      "score": 0.284,
     },
   ],
-  "dscore": 0.82,
-  "plate": "t736394c",
+  "dscore": 0.902,
+  "plate": "8911",
   "region": {
-    "code": "us-ny",
-    "score": 0.879,
+    "code": "unknown",
+    "score": 0.006,
   },
-  "score": 1,
+  "score": 0.897,
   "vehicle": {
     "box": {
-      "xmax": 2455,
-      "xmin": 1286,
-      "ymax": 2214,
-      "ymin": 1201,
+      "xmax": 2978,
+      "xmin": 2408,
+      "ymax": 1453,
+      "ymin": 834,
     },
-    "score": 0.71,
-    "type": "Sedan",
+    "score": 0.175,
+    "type": "Van",
   },
 }
 `;

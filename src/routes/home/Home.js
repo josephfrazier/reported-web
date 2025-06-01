@@ -208,7 +208,9 @@ async function extractPlate({
     const { data } = await axios.post('/platerecognizer', formData);
 
     // Choose first result with T######C plate if it exists, see https://github.com/josephfrazier/reported-web/issues/584
-    let result = data.results.filter(result => result.plate.toUpperCase().match(/^T\d\d\d\d\d\dC$/))[0]
+    let result = data.results.filter(r =>
+      r.plate.toUpperCase().match(/^T\d\d\d\d\d\dC$/),
+    )[0];
     if (!result) {
       result = data.results[0];
     }

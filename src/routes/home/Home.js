@@ -206,7 +206,15 @@ async function extractPlate({
       password,
     });
     const { data } = await axios.post('/platerecognizer', formData);
-    const result = data.results[0];
+
+    // Choose first result with T######C plate if it exists, see https://github.com/josephfrazier/reported-web/issues/584
+    let result = data.results.filter(r =>
+      r.plate.toUpperCase().match(/^T\d\d\d\d\d\dC$/),
+    )[0];
+    if (!result) {
+      result = data.results[0];
+    }
+
     try {
       result.licenseState = result.region.code.split('-')[1].toUpperCase();
     } catch (err) {

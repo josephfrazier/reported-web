@@ -178,7 +178,7 @@ async function extractPlate({
 
     if (isAlprEnabled === false) {
       console.info('ALPR is disabled, skipping');
-      return { plate: '', licenseState: '' };
+      return { plate: '', licenseState: '', plateSuggestions: [] };
     }
 
     if (attachmentPlates.has(attachmentFile)) {

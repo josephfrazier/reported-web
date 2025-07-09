@@ -210,7 +210,7 @@
     "deploy": "babel-node tools/run deploy",
     "render": "babel-node tools/run render",
     "serve": "babel-node tools/run runServer",
-    "start": "babel-node tools/run start --inspect",
+    "start": "node -r dotenv/config node_modules/.bin/babel-node tools/run start --inspect",
     "localtunnel": "while true; do yarn lt --port 3000 --subdomain reported-web; done"
   }
 }

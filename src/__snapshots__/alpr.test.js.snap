@@ -3,56 +3,56 @@
 exports[`readLicenseViaALPR falling back to the second token 1`] = `
 {
   "box": {
-    "xmax": 2633,
-    "xmin": 2576,
-    "ymax": 1280,
+    "xmax": 2634,
+    "xmin": 2578,
+    "ymax": 1282,
     "ymin": 1248,
   },
   "candidates": [
     {
       "plate": "8911",
-      "score": 0.897,
-    },
-    {
-      "plate": "89i1",
-      "score": 0.756,
-    },
-    {
-      "plate": "b911",
-      "score": 0.662,
+      "score": 0.999,
     },
     {
       "plate": "891i",
-      "score": 0.661,
+      "score": 0.762,
+    },
+    {
+      "plate": "89i1",
+      "score": 0.762,
+    },
+    {
+      "plate": "b911",
+      "score": 0.762,
     },
     {
       "plate": "89ii",
-      "score": 0.52,
-    },
-    {
-      "plate": "b9i1",
-      "score": 0.52,
+      "score": 0.525,
     },
     {
       "plate": "b91i",
-      "score": 0.425,
+      "score": 0.525,
+    },
+    {
+      "plate": "b9i1",
+      "score": 0.525,
     },
     {
       "plate": "b9ii",
-      "score": 0.284,
+      "score": 0.287,
     },
   ],
-  "dscore": 0.902,
+  "dscore": 0.879,
   "plate": "8911",
   "region": {
     "code": "unknown",
-    "score": 0.006,
+    "score": 0.01,
   },
-  "score": 0.897,
+  "score": 0.999,
   "vehicle": {
     "box": {
-      "xmax": 2978,
-      "xmin": 2408,
+      "xmax": 2979,
+      "xmin": 2409,
       "ymax": 1453,
       "ymin": 834,
     },
@@ -65,56 +65,56 @@ exports[`readLicenseViaALPR falling back to the second token 1`] = `
 exports[`readLicenseViaALPR using only the first token 1`] = `
 {
   "box": {
-    "xmax": 2633,
-    "xmin": 2576,
-    "ymax": 1280,
+    "xmax": 2634,
+    "xmin": 2578,
+    "ymax": 1282,
     "ymin": 1248,
   },
   "candidates": [
     {
       "plate": "8911",
-      "score": 0.897,
-    },
-    {
-      "plate": "89i1",
-      "score": 0.756,
-    },
-    {
-      "plate": "b911",
-      "score": 0.662,
+      "score": 0.999,
     },
     {
       "plate": "891i",
-      "score": 0.661,
+      "score": 0.762,
+    },
+    {
+      "plate": "89i1",
+      "score": 0.762,
+    },
+    {
+      "plate": "b911",
+      "score": 0.762,
     },
     {
       "plate": "89ii",
-      "score": 0.52,
-    },
-    {
-      "plate": "b9i1",
-      "score": 0.52,
+      "score": 0.525,
     },
     {
       "plate": "b91i",
-      "score": 0.425,
+      "score": 0.525,
+    },
+    {
+      "plate": "b9i1",
+      "score": 0.525,
     },
     {
       "plate": "b9ii",
-      "score": 0.284,
+      "score": 0.287,
     },
   ],
-  "dscore": 0.902,
+  "dscore": 0.879,
   "plate": "8911",
   "region": {
     "code": "unknown",
-    "score": 0.006,
+    "score": 0.01,
   },
-  "score": 0.897,
+  "score": 0.999,
   "vehicle": {
     "box": {
-      "xmax": 2978,
-      "xmin": 2408,
+      "xmax": 2979,
+      "xmin": 2409,
       "ymax": 1453,
       "ymin": 834,
     },

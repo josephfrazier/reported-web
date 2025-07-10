@@ -71,7 +71,7 @@ Parse.serverURL = PARSE_SERVER_URL;
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 20 * 1000 * 1000, // just under 20MB
+    fileSize: 20 * 1000 * 1000, // just under 20MB, should match attachmentFile.size in Home.js
     files: 6,
   },
 });

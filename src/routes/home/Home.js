@@ -339,6 +339,7 @@ class Home extends React.Component {
     const initialStatePerSession = {
       attachmentData: [],
 
+      isAlprLoading: false,
       isPasswordRevealed: false,
       isUserInfoSaving: false,
       isSubmitting: false,
@@ -652,7 +653,19 @@ class Home extends React.Component {
       }),
       async () => {
         const listsOfExtractions = await Promise.all(
-          this.state.attachmentData.map(async attachmentFile => {
+          this.state.attachmentData.map(async (attachmentFile, index) => {
+            if (attachmentFile.size > 20 * 1000 * 1000) {
+              // just under 20MB, should match fileSize in server.js
+              this.notifyWarning(
+                <React.Fragment>
+                  <p>
+                    File #{index + 1} is too big, over 20MB, please remove it
+                    and select a smaller one
+                  </p>
+                </React.Fragment>,
+              );
+            }
+
             // eslint-disable-next-line no-await-in-loop
             const {
               attachmentBuffer,
@@ -664,6 +677,7 @@ class Home extends React.Component {
             // eslint-disable-next-line no-await-in-loop
             const { ext } = await FileType.fromBuffer(attachmentBuffer);
 
+            this.setState({ isAlprLoading: true });
             return Promise.allSettled([
               extractPlate({
                 attachmentFile,
@@ -672,17 +686,21 @@ class Home extends React.Component {
                 isAlprEnabled: this.state.isAlprEnabled,
                 email: this.state.email,
                 password: this.state.password,
-              }).then(result => {
-                if (
-                  this.state.plate === '' &&
-                  document.activeElement !== this.plateRef.current
-                ) {
-                  this.setLicensePlate(result);
-                }
-                this.setState({
-                  plateSuggestions: result.plateSuggestions,
-                });
-              }),
+              })
+                .then(result => {
+                  if (
+                    this.state.plate === '' &&
+                    document.activeElement !== this.plateRef.current
+                  ) {
+                    this.setLicensePlate(result);
+                  }
+                  this.setState({
+                    plateSuggestions: result.plateSuggestions,
+                  });
+                })
+                .finally(() => {
+                  this.setState({ isAlprLoading: false });
+                }),
               extractDate({
                 attachmentFile,
                 attachmentArrayBuffer,
@@ -1127,7 +1145,9 @@ class Home extends React.Component {
                     margin: '1px',
                   }}
                 >
-                  <button type="button">Add pictures/videos</button>
+                  <button type="button">
+                    Add pictures/videos (up to 3 each, 20MB max each)
+                  </button>
                 </FileReaderInput>
 
                 <div
@@ -1212,6 +1232,7 @@ class Home extends React.Component {
 
                 <label htmlFor="plate">
                   License/Medallion:
+                  {this.state.isAlprLoading && ' (reading from picture/video)'}
                   <input
                     required
                     type="search"

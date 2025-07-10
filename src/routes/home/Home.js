@@ -339,6 +339,7 @@ class Home extends React.Component {
     const initialStatePerSession = {
       attachmentData: [],
 
+      isAlprLoading: false,
       isPasswordRevealed: false,
       isUserInfoSaving: false,
       isSubmitting: false,
@@ -676,6 +677,7 @@ class Home extends React.Component {
             // eslint-disable-next-line no-await-in-loop
             const { ext } = await FileType.fromBuffer(attachmentBuffer);
 
+            this.setState({ isAlprLoading: true });
             return Promise.allSettled([
               extractPlate({
                 attachmentFile,
@@ -684,17 +686,21 @@ class Home extends React.Component {
                 isAlprEnabled: this.state.isAlprEnabled,
                 email: this.state.email,
                 password: this.state.password,
-              }).then(result => {
-                if (
-                  this.state.plate === '' &&
-                  document.activeElement !== this.plateRef.current
-                ) {
-                  this.setLicensePlate(result);
-                }
-                this.setState({
-                  plateSuggestions: result.plateSuggestions,
-                });
-              }),
+              })
+                .then(result => {
+                  if (
+                    this.state.plate === '' &&
+                    document.activeElement !== this.plateRef.current
+                  ) {
+                    this.setLicensePlate(result);
+                  }
+                  this.setState({
+                    plateSuggestions: result.plateSuggestions,
+                  });
+                })
+                .finally(() => {
+                  this.setState({ isAlprLoading: false });
+                }),
               extractDate({
                 attachmentFile,
                 attachmentArrayBuffer,
@@ -1226,6 +1232,7 @@ class Home extends React.Component {
 
                 <label htmlFor="plate">
                   License/Medallion:
+                  {this.state.isAlprLoading && ' (reading from picture/video)'}
                   <input
                     required
                     type="search"

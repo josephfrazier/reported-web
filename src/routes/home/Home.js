@@ -652,7 +652,19 @@ class Home extends React.Component {
       }),
       async () => {
         const listsOfExtractions = await Promise.all(
-          this.state.attachmentData.map(async attachmentFile => {
+          this.state.attachmentData.map(async (attachmentFile, index) => {
+            if (attachmentFile.size > 20 * 1000 * 1000) {
+              // just under 20MB, should match fileSize in server.js
+              this.notifyWarning(
+                <React.Fragment>
+                  <p>
+                    File #{index + 1} is too big, over 20MB, please remove it
+                    and select a smaller one
+                  </p>
+                </React.Fragment>,
+              );
+            }
+
             // eslint-disable-next-line no-await-in-loop
             const {
               attachmentBuffer,

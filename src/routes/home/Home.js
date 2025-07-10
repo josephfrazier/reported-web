@@ -45,6 +45,7 @@ import { zip } from 'zip-array';
 import PolygonLookup from 'polygon-lookup';
 import { CSVLink } from 'react-csv';
 import capitalize from 'capitalize';
+import CircularProgress from '@mui/material/CircularProgress';
 
 import marx from 'marx-css/css/marx.css';
 import homeStyles from './Home.css';
@@ -1232,7 +1233,7 @@ class Home extends React.Component {
 
                 <label htmlFor="plate">
                   License/Medallion:
-                  {this.state.isAlprLoading && ' (reading from picture/video)'}
+                  {this.state.isAlprLoading && <CircularProgress size="1em" />}
                   <input
                     required
                     type="search"

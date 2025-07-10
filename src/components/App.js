@@ -61,7 +61,7 @@ class App extends React.PureComponent {
       <React.StrictMode>
         {React.Children.only(this.props.children)}
       </React.StrictMode>
-    )
+    );
   }
 }
 

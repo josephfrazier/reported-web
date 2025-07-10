@@ -654,7 +654,7 @@ class Home extends React.Component {
         const listsOfExtractions = await Promise.all(
           this.state.attachmentData.map(async (attachmentFile, index) => {
             if (attachmentFile.size > 20 * 1000 * 1000) {
-              // just under 20MB, should match attachmentFile.size in Home.js
+              // just under 20MB, should match fileSize in server.js
               this.notifyWarning(
                 <React.Fragment>
                   <p>

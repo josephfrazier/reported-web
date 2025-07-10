@@ -223,7 +223,7 @@ exports[`Home renders children correctly 1`] = `
             <button
               type="button"
             >
-              Add pictures/videos
+              Add pictures/videos (up to 3 each, 20MB max each)
             </button>
           </div>
           <div

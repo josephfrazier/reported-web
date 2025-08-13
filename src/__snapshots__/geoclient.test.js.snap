@@ -268,15 +268,6 @@ New York, NY 10007",
               "DRIVE",
             ],
           },
-          {
-            "location": {
-              "latitude": 40.7127838,
-              "longitude": -74.0064357,
-            },
-            "restricted_travel_modes": [
-              "WALK",
-            ],
-          },
         ],
         "place_id": "ChIJgTPiDCJawokRZqACvDgMnm8",
         "types": [
@@ -969,15 +960,6 @@ New York, NY 10007",
             },
             "restricted_travel_modes": [
               "DRIVE",
-            ],
-          },
-          {
-            "location": {
-              "latitude": 40.7127838,
-              "longitude": -74.0064357,
-            },
-            "restricted_travel_modes": [
-              "WALK",
             ],
           },
         ],

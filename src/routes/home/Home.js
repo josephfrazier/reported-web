@@ -723,6 +723,10 @@ class Home extends React.Component {
           }),
         );
 
+        if (listsOfExtractions.length === 0) {
+          return;
+        }
+
         const groupedByExtractionType = zip(...listsOfExtractions);
         const rejected = groupedByExtractionType
           .filter(results => results.every(r => r.status === 'rejected'))

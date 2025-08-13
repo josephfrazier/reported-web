@@ -863,7 +863,11 @@ class Home extends React.Component {
                     .post('/saveUser', this.state)
                     .then(() => {
                       this.setState({ isUserInfoOpen: false });
-                      window.scrollTo(0, 0);
+                      document.querySelector(`.${homeStyles.root}`).scrollTo({
+                        top: 100,
+                        left: 100,
+                        behavior: 'smooth',
+                      });
                     })
                     .catch(this.handleAxiosError)
                     .then(() => {
@@ -1102,7 +1106,11 @@ class Home extends React.Component {
                   )
                   .then(({ data }) => {
                     const { submission } = data;
-                    window.scrollTo(0, 0);
+                    document.querySelector(`.${homeStyles.root}`).scrollTo({
+                      top: 100,
+                      left: 100,
+                      behavior: 'smooth',
+                    });
                     console.info(
                       `submitted successfully. Returned data: ${JSON.stringify(
                         data,

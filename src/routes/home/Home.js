@@ -406,6 +406,11 @@ class Home extends React.Component {
       const attachmentData = [].map
         .call(items, item => item.getAsFile())
         .filter(file => !!file);
+
+      if (attachmentData.length === 0) {
+        return;
+      }
+
       this.handleAttachmentData({ attachmentData });
     });
 

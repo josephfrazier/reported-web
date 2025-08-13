@@ -171,8 +171,8 @@ New York, NY 10007",
   },
   "google_response": {
     "plus_code": {
-      "compound_code": "PX7V+2HX New York, NY, USA",
-      "global_code": "87G7PX7V+2HX",
+      "compound_code": "PX7V+4HH New York, NY, USA",
+      "global_code": "87G7PX7V+4HH",
     },
     "results": [
       {
@@ -261,20 +261,20 @@ New York, NY 10007",
         "navigation_points": [
           {
             "location": {
-              "latitude": 40.7127838,
-              "longitude": -74.0064357,
-            },
-            "restricted_travel_modes": [
-              "WALK",
-            ],
-          },
-          {
-            "location": {
               "latitude": 40.7130105,
               "longitude": -74.0057713,
             },
             "restricted_travel_modes": [
               "DRIVE",
+            ],
+          },
+          {
+            "location": {
+              "latitude": 40.7127838,
+              "longitude": -74.0064357,
+            },
+            "restricted_travel_modes": [
+              "WALK",
             ],
           },
         ],
@@ -287,7 +287,7 @@ New York, NY 10007",
     ],
     "status": "OK",
   },
-  "lat": 40.7126,
+  "lat": 40.7128,
   "long": -74.006,
   "valid": true,
 }
@@ -577,8 +577,8 @@ Bronx, NY 10471",
             },
           },
           "location": {
-            "lat": 40.8804447,
-            "lng": -73.90996419999999,
+            "lat": 40.8804542,
+            "lng": -73.9099671,
           },
           "location_type": "ROOFTOP",
           "viewport": {
@@ -874,8 +874,8 @@ New York, NY 10007",
   },
   "google_response": {
     "plus_code": {
-      "compound_code": "PX7V+2HX New York, NY, USA",
-      "global_code": "87G7PX7V+2HX",
+      "compound_code": "PX7V+4HH New York, NY, USA",
+      "global_code": "87G7PX7V+4HH",
     },
     "results": [
       {
@@ -964,20 +964,20 @@ New York, NY 10007",
         "navigation_points": [
           {
             "location": {
-              "latitude": 40.7127838,
-              "longitude": -74.0064357,
-            },
-            "restricted_travel_modes": [
-              "WALK",
-            ],
-          },
-          {
-            "location": {
               "latitude": 40.7130105,
               "longitude": -74.0057713,
             },
             "restricted_travel_modes": [
               "DRIVE",
+            ],
+          },
+          {
+            "location": {
+              "latitude": 40.7127838,
+              "longitude": -74.0064357,
+            },
+            "restricted_travel_modes": [
+              "WALK",
             ],
           },
         ],
@@ -990,7 +990,7 @@ New York, NY 10007",
     ],
     "status": "OK",
   },
-  "lat": 40.7126,
+  "lat": 40.7128,
   "long": -74.006,
   "valid": true,
 }

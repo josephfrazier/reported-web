@@ -531,15 +531,14 @@ class Home extends React.Component {
     if (
       this.state.submissions.some(
         submission =>
-          (submission.license === plate ||
-            submission.medallionNo === plate) &&
+          (submission.license === plate || submission.medallionNo === plate) &&
           submission.state === licenseState,
       )
     ) {
       this.notifyWarning(
         <p>
-          You have already submitted a report for {plate} in {licenseState},
-          are you sure you want to submit another?
+          You have already submitted a report for {plate} in {licenseState}, are
+          you sure you want to submit another?
         </p>,
       );
     }

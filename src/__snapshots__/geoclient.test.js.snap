@@ -370,6 +370,20 @@ New York, NY 10007",
             },
           },
         },
+        "navigation_points": [
+          {
+            "location": {
+              "latitude": 40.7127159,
+              "longitude": -74.006543,
+            },
+          },
+          {
+            "location": {
+              "latitude": 40.7121692,
+              "longitude": -74.0057323,
+            },
+          },
+        ],
         "place_id": "ChIJMfxeDCJawokRaUdk7prx_pY",
         "types": [
           "premise",
@@ -1165,6 +1179,20 @@ New York, NY 10007",
             },
           },
         },
+        "navigation_points": [
+          {
+            "location": {
+              "latitude": 40.7127159,
+              "longitude": -74.006543,
+            },
+          },
+          {
+            "location": {
+              "latitude": 40.7121692,
+              "longitude": -74.0057323,
+            },
+          },
+        ],
         "place_id": "ChIJMfxeDCJawokRaUdk7prx_pY",
         "types": [
           "premise",

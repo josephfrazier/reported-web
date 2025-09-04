@@ -377,7 +377,7 @@ class Home extends React.Component {
         this.setCoords({
           latitude,
           longitude,
-          addressProvenance: '(from device)',
+          addressProvenance: `(from device: ${latitude}, ${longitude})`,
         });
       }
     });
@@ -1396,7 +1396,7 @@ class Home extends React.Component {
                           this.setCoords({
                             latitude,
                             longitude,
-                            addressProvenance: '(from device)',
+                            addressProvenance: `(from device: ${latitude}, ${longitude})`,
                           });
                         })
                         .catch(err => {

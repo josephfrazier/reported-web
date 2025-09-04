@@ -780,18 +780,18 @@ Bronx, NY 10471",
         "formatted_address": "327 W 230th St, Bronx, NY 10463, USA",
         "geometry": {
           "location": {
-            "lat": 40.8804564,
-            "lng": -73.91051209999999,
+            "lat": 40.8804544,
+            "lng": -73.91051279999999,
           },
           "location_type": "RANGE_INTERPOLATED",
           "viewport": {
             "northeast": {
-              "lat": 40.8818053802915,
-              "lng": -73.9091631197085,
+              "lat": 40.8818033802915,
+              "lng": -73.90916381970848,
             },
             "southwest": {
-              "lat": 40.8791074197085,
-              "lng": -73.9118610802915,
+              "lat": 40.8791054197085,
+              "lng": -73.9118617802915,
             },
           },
         },

@@ -99,7 +99,10 @@ const geolocate = () =>
   promisedLocation().catch(async () => {
     const { data } = await axios.get('https://ipapi.co/json');
     const { latitude, longitude } = data;
-    return { coords: { latitude, longitude } };
+    return {
+      coords: { latitude, longitude },
+      ipProvenance: 'https://ipapi.co/json',
+    };
   });
 
 const jsDateToCreateDate = jsDate =>
@@ -367,20 +370,22 @@ class Home extends React.Component {
     if (this.state.attachmentData.length === 0 || !this.state.CreateDate) {
       this.setCreateDate({ millisecondsSinceEpoch: Date.now() });
     }
-    geolocate().then(({ coords: { latitude, longitude } }) => {
-      // if there's no attachments or a location couldn't be extracted, just use here
-      if (
-        this.state.attachmentData.length === 0 ||
-        (this.state.latitude === defaultLatitude &&
-          this.state.longitude === defaultLongitude)
-      ) {
-        this.setCoords({
-          latitude,
-          longitude,
-          addressProvenance: `(from device: ${latitude}, ${longitude})`,
-        });
-      }
-    });
+    geolocate().then(
+      ({ coords: { latitude, longitude }, ipProvenance = 'device' }) => {
+        // if there's no attachments or a location couldn't be extracted, just use here
+        if (
+          this.state.attachmentData.length === 0 ||
+          (this.state.latitude === defaultLatitude &&
+            this.state.longitude === defaultLongitude)
+        ) {
+          this.setCoords({
+            latitude,
+            longitude,
+            addressProvenance: `(from ${ipProvenance}: ${latitude}, ${longitude})`,
+          });
+        }
+      },
+    );
 
     // generate a random passphrase for first-time users and show it to them
     if (!this.state.password) {
@@ -1392,13 +1397,18 @@ class Home extends React.Component {
                     }}
                     onClick={() => {
                       geolocate()
-                        .then(({ coords: { latitude, longitude } }) => {
-                          this.setCoords({
-                            latitude,
-                            longitude,
-                            addressProvenance: `(from device: ${latitude}, ${longitude})`,
-                          });
-                        })
+                        .then(
+                          ({
+                            coords: { latitude, longitude },
+                            ipProvenance = 'device',
+                          }) => {
+                            this.setCoords({
+                              latitude,
+                              longitude,
+                              addressProvenance: `(from ${ipProvenance}: ${latitude}, ${longitude})`,
+                            });
+                          },
+                        )
                         .catch(err => {
                           this.notifyError(err.message);
                           console.error(err);

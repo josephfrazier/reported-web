@@ -4,7 +4,7 @@
   "private": true,
   "engines": {
     "node": "20.18.1",
-    "npm": ">=3.10.10"
+    "yarn": "1.22.22"
   },
   "packageManager": "yarn@1.22.22",
   "browserslist": [

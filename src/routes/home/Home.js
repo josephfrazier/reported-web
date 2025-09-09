@@ -363,9 +363,21 @@ class Home extends React.Component {
     this.initialStatePersistent = initialStatePersistent;
     this.userFormSubmitRef = React.createRef();
     this.plateRef = React.createRef();
+    this.fileInputRef = React.createRef();
   }
 
   componentDidMount() {
+    // Check for photo capture URL parameter
+    const { query } = this.props;
+    if (query && (query.capture === 'true' || query.capture === '')) {
+      // Use a timeout to ensure the component is fully mounted
+      setTimeout(() => {
+        if (this.fileInputRef.current && this.fileInputRef.current.triggerInput) {
+          this.fileInputRef.current.triggerInput();
+        }
+      }, 100);
+    }
+
     // if there's no attachments or a time couldn't be extracted, just use now
     if (this.state.attachmentData.length === 0 || !this.state.CreateDate) {
       this.setCreateDate({ millisecondsSinceEpoch: Date.now() });
@@ -1159,6 +1171,7 @@ class Home extends React.Component {
             >
               <fieldset disabled={this.state.isSubmitting}>
                 <FileReaderInput
+                  ref={this.fileInputRef}
                   multiple
                   as="buffer"
                   onChange={this.handleAttachmentInput}
@@ -1561,6 +1574,7 @@ class Home extends React.Component {
 Home.propTypes = {
   typeofcomplaintValues: PropTypes.arrayOf(PropTypes.string).isRequired,
   boroughBoundariesFeatureCollection: PropTypes.object.isRequired,
+  query: PropTypes.object,
 };
 
 const MyMapComponentPure = props => {

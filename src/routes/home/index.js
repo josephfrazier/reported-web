@@ -13,7 +13,7 @@ import Home from './Home';
 import Layout from '../../components/Layout';
 import boroughBoundariesFeatureCollection from '../../../public/borough-boundaries-clipped-to-shoreline.geo.json';
 
-async function action({ fetch }) {
+async function action({ fetch, query }) {
   // get complaint categories from server
   const resp = await fetch('/api/categories');
   const { categories } = await resp.json();
@@ -31,6 +31,7 @@ async function action({ fetch }) {
           boroughBoundariesFeatureCollection={
             boroughBoundariesFeatureCollection
           }
+          query={query}
         />
       </Layout>
     ),

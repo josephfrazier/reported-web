@@ -728,3 +728,732 @@ exports[`Home renders children correctly 1`] = `
   />
 </div>
 `;
+
+exports[`Home renders correctly with capture query parameter 1`] = `
+<div
+  aria-disabled={false}
+  className="root"
+  onClick={[Function]}
+  onDragEnter={[Function]}
+  onDragLeave={[Function]}
+  onDragOver={[Function]}
+  onDragStart={[Function]}
+  onDrop={[Function]}
+  style={
+    {
+      "bottom": 0,
+      "left": 0,
+      "overflowY": "scroll",
+      "position": "fixed",
+      "right": 0,
+      "top": 0,
+    }
+  }
+>
+  <div
+    className="container"
+  >
+    <main>
+      <h1>
+        <a
+          href="https://reportedly.weebly.com/"
+          style={
+            {
+              "textDecoration": "underline",
+            }
+          }
+        >
+          Reported
+        </a>
+      </h1>
+      <div
+        className="Toastify"
+      />
+      <details
+        onToggle={[Function]}
+        open={true}
+      >
+        <summary>
+          Create/Edit User (click to expand)
+        </summary>
+        <form
+          onSubmit={[Function]}
+        >
+          <fieldset
+            disabled={false}
+          >
+            <label
+              htmlFor="email"
+            >
+              Email:
+               
+              <input
+                autoComplete="email"
+                name="email"
+                onChange={[Function]}
+                onInvalid={[Function]}
+                required={true}
+                type="email"
+                value=""
+              />
+            </label>
+            <label
+              htmlFor="password"
+            >
+              Password (this is saved on your device, so use a password you don't use anywhere else): 
+              <div
+                style={
+                  {
+                    "display": "flex",
+                  }
+                }
+              >
+                <input
+                  autoComplete="current-password"
+                  name="password"
+                  onChange={[Function]}
+                  onInvalid={[Function]}
+                  required={true}
+                  type="password"
+                  value=""
+                />
+                 
+                <button
+                  onClick={[Function]}
+                  type="button"
+                >
+                  Show
+                </button>
+                 
+                <button
+                  onClick={[Function]}
+                  type="button"
+                >
+                  Reset
+                </button>
+              </div>
+            </label>
+            <button
+              disabled={false}
+              onClick={[Function]}
+              type="button"
+            >
+              Sign Up / Log In
+            </button>
+            <br />
+            <br />
+            (If you cannot log in even after resetting your password, email
+             
+            <a
+              href="mailto:reportedapp@gmail.com"
+            >
+              reportedapp@gmail.com
+            </a>
+            )
+            <label
+              htmlFor="FirstName"
+            >
+              First Name:
+               
+              <input
+                autoComplete="given-name"
+                name="FirstName"
+                onChange={[Function]}
+                onInvalid={[Function]}
+                required={true}
+                type="text"
+                value=""
+              />
+            </label>
+            <label
+              htmlFor="LastName"
+            >
+              Last Name:
+               
+              <input
+                autoComplete="family-name"
+                name="LastName"
+                onChange={[Function]}
+                onInvalid={[Function]}
+                required={true}
+                type="text"
+                value=""
+              />
+            </label>
+            <label
+              htmlFor="Phone"
+            >
+              Phone Number:
+               
+              <input
+                autoComplete="tel"
+                name="Phone"
+                onChange={[Function]}
+                onInvalid={[Function]}
+                required={true}
+                type="tel"
+                value=""
+              />
+            </label>
+            <label
+              htmlFor="testify"
+            >
+              <input
+                checked={false}
+                name="testify"
+                onChange={[Function]}
+                type="checkbox"
+              />
+               
+              I'm willing to testify at a hearing, which can be done by phone.
+            </label>
+            <button
+              disabled={false}
+              type="submit"
+            >
+              Save
+            </button>
+          </fieldset>
+        </form>
+      </details>
+      <form
+        onSubmit={[Function]}
+        style={
+          {
+            "display": "none",
+          }
+        }
+      >
+        <fieldset
+          disabled={false}
+        >
+          <div
+            className="_react-file-reader-input"
+            onClick={[Function]}
+            style={
+              {
+                "float": "left",
+                "margin": "1px",
+              }
+            }
+          >
+            <input
+              multiple={true}
+              onChange={[Function]}
+              onClick={[Function]}
+              style={
+                {
+                  "position": "absolute",
+                  "top": "-9999px",
+                }
+              }
+              type="file"
+            />
+            <button
+              type="button"
+            >
+              Add pictures/videos (up to 3 each, 20MB max each)
+            </button>
+          </div>
+          <div
+            style={
+              {
+                "clear": "both",
+                "display": "flex",
+                "flexWrap": "wrap",
+              }
+            }
+          />
+          <label
+            htmlFor="isAlprEnabled"
+          >
+            <input
+              checked={true}
+              name="isAlprEnabled"
+              onChange={[Function]}
+              type="checkbox"
+            />
+             
+            Automatically read license plates from pictures/videos
+          </label>
+          <label
+            htmlFor="isReverseGeocodingEnabled"
+          >
+            <input
+              checked={true}
+              name="isReverseGeocodingEnabled"
+              onChange={[Function]}
+              type="checkbox"
+            />
+             
+            Automatically read addresses from pictures/videos
+          </label>
+          <label
+            htmlFor="plate"
+          >
+            License/Medallion:
+            <input
+              autoComplete="off"
+              list="plateSuggestions"
+              name="plate"
+              onChange={[Function]}
+              required={true}
+              type="search"
+              value=""
+            />
+            <datalist
+              id="plateSuggestions"
+            />
+            <select
+              name="licenseState"
+              onChange={[Function]}
+              style={
+                {
+                  "marginTop": "0.5rem",
+                }
+              }
+              value="NY"
+            >
+              <option
+                value="AL"
+              >
+                Alabama
+              </option>
+              <option
+                value="AK"
+              >
+                Alaska
+              </option>
+              <option
+                value="AZ"
+              >
+                Arizona
+              </option>
+              <option
+                value="AR"
+              >
+                Arkansas
+              </option>
+              <option
+                value="CA"
+              >
+                California
+              </option>
+              <option
+                value="CO"
+              >
+                Colorado
+              </option>
+              <option
+                value="CT"
+              >
+                Connecticut
+              </option>
+              <option
+                value="DE"
+              >
+                Delaware
+              </option>
+              <option
+                value="DC"
+              >
+                District of Columbia
+              </option>
+              <option
+                value="FL"
+              >
+                Florida
+              </option>
+              <option
+                value="GA"
+              >
+                Georgia
+              </option>
+              <option
+                value="HI"
+              >
+                Hawaii
+              </option>
+              <option
+                value="ID"
+              >
+                Idaho
+              </option>
+              <option
+                value="IL"
+              >
+                Illinois
+              </option>
+              <option
+                value="IN"
+              >
+                Indiana
+              </option>
+              <option
+                value="IA"
+              >
+                Iowa
+              </option>
+              <option
+                value="KS"
+              >
+                Kansas
+              </option>
+              <option
+                value="KY"
+              >
+                Kentucky
+              </option>
+              <option
+                value="LA"
+              >
+                Louisiana
+              </option>
+              <option
+                value="ME"
+              >
+                Maine
+              </option>
+              <option
+                value="MD"
+              >
+                Maryland
+              </option>
+              <option
+                value="MA"
+              >
+                Massachusetts
+              </option>
+              <option
+                value="MI"
+              >
+                Michigan
+              </option>
+              <option
+                value="MN"
+              >
+                Minnesota
+              </option>
+              <option
+                value="MS"
+              >
+                Mississippi
+              </option>
+              <option
+                value="MO"
+              >
+                Missouri
+              </option>
+              <option
+                value="MT"
+              >
+                Montana
+              </option>
+              <option
+                value="NE"
+              >
+                Nebraska
+              </option>
+              <option
+                value="NV"
+              >
+                Nevada
+              </option>
+              <option
+                value="NH"
+              >
+                New Hampshire
+              </option>
+              <option
+                value="NJ"
+              >
+                New Jersey
+              </option>
+              <option
+                value="NM"
+              >
+                New Mexico
+              </option>
+              <option
+                value="NY"
+              >
+                New York
+              </option>
+              <option
+                value="NC"
+              >
+                North Carolina
+              </option>
+              <option
+                value="ND"
+              >
+                North Dakota
+              </option>
+              <option
+                value="OH"
+              >
+                Ohio
+              </option>
+              <option
+                value="OK"
+              >
+                Oklahoma
+              </option>
+              <option
+                value="OR"
+              >
+                Oregon
+              </option>
+              <option
+                value="PA"
+              >
+                Pennsylvania
+              </option>
+              <option
+                value="RI"
+              >
+                Rhode Island
+              </option>
+              <option
+                value="SC"
+              >
+                South Carolina
+              </option>
+              <option
+                value="SD"
+              >
+                South Dakota
+              </option>
+              <option
+                value="TN"
+              >
+                Tennessee
+              </option>
+              <option
+                value="TX"
+              >
+                Texas
+              </option>
+              <option
+                value="UT"
+              >
+                Utah
+              </option>
+              <option
+                value="VT"
+              >
+                Vermont
+              </option>
+              <option
+                value="VA"
+              >
+                Virginia
+              </option>
+              <option
+                value="WA"
+              >
+                Washington
+              </option>
+              <option
+                value="WV"
+              >
+                West Virginia
+              </option>
+              <option
+                value="WI"
+              >
+                Wisconsin
+              </option>
+              <option
+                value="WY"
+              >
+                Wyoming
+              </option>
+            </select>
+            <br />
+          </label>
+          <label
+            htmlFor="typeofcomplaint"
+          >
+            Type:
+             
+            <select
+              name="typeofcomplaint"
+              onChange={[Function]}
+              value="Blocked the bike lane"
+            >
+              <option
+                value="Blocked the bike lane"
+              >
+                Blocked the bike lane
+              </option>
+              <option
+                value="Blocked the crosswalk"
+              >
+                Blocked the crosswalk
+              </option>
+              <option
+                value="Honked horn (no emergency)"
+              >
+                Honked horn (no emergency)
+              </option>
+              <option
+                value="Failed to yield to pedestrian"
+              >
+                Failed to yield to pedestrian
+              </option>
+              <option
+                value="Drove aggressively"
+              >
+                Drove aggressively
+              </option>
+              <option
+                value="Was on a cell phone while driving"
+              >
+                Was on a cell phone while driving
+              </option>
+              <option
+                value="Refused to pick me up"
+              >
+                Refused to pick me up
+              </option>
+              <option
+                value="Was courteous, kind or polite"
+              >
+                Was courteous, kind or polite
+              </option>
+              <option
+                value="Went above and beyond to help"
+              >
+                Went above and beyond to help
+              </option>
+            </select>
+          </label>
+          <label
+            htmlFor="where"
+          >
+            Where: 
+            
+            <br />
+            <button
+              name="where"
+              onClick={[Function]}
+              style={
+                {
+                  "width": "100%",
+                }
+              }
+              type="button"
+            >
+              
+            </button>
+          </label>
+          <label
+            htmlFor="CreateDate"
+          >
+            When:
+             
+            <input
+              name="CreateDate"
+              onChange={[Function]}
+              required={true}
+              type="datetime-local"
+              value="2016-11-17T20:00"
+            />
+          </label>
+          <label
+            htmlFor="reportDescription"
+          >
+            Description:
+             
+            <textarea
+              autoComplete="off"
+              name="reportDescription"
+              onChange={[Function]}
+              value=""
+            />
+          </label>
+          <label
+            htmlFor="can_be_shared_publicly"
+          >
+            <input
+              checked={false}
+              name="can_be_shared_publicly"
+              onChange={[Function]}
+              type="checkbox"
+            />
+             
+            Allow the photos/videos, description, category, and location to be publicly displayed
+          </label>
+          <button
+            disabled={false}
+            style={
+              {
+                "width": "100%",
+              }
+            }
+            type="submit"
+          >
+            Submit
+          </button>
+        </fieldset>
+      </form>
+      <br />
+      <details
+        onToggle={[Function]}
+      >
+        <summary>
+          Previous Submissions (
+          click to load
+          )
+        </summary>
+        Loading submissions...
+      </details>
+      <div
+        style={
+          {
+            "float": "right",
+          }
+        }
+      >
+        <a
+          href="/electricitibikes"
+          style={
+            {
+              "background": "black",
+              "border": "1em solid black",
+              "borderRadius": "2em",
+              "textDecoration": "none",
+            }
+          }
+        >
+          <span
+            aria-label="high voltage"
+            role="img"
+          >
+            ⚡
+          </span>
+        </a>
+      </div>
+    </main>
+  </div>
+  <input
+    autoComplete="off"
+    disabled={false}
+    multiple={true}
+    onChange={[Function]}
+    style={
+      {
+        "bottom": 0,
+        "left": 0,
+        "opacity": 0.00001,
+        "pointerEvents": "none",
+        "position": "absolute",
+        "right": 0,
+        "top": 0,
+      }
+    }
+    type="file"
+  />
+</div>
+`;

@@ -372,7 +372,10 @@ class Home extends React.Component {
     if (query && (query.capture === 'true' || query.capture === '')) {
       // Use a timeout to ensure the component is fully mounted
       setTimeout(() => {
-        if (this.fileInputRef.current && this.fileInputRef.current.triggerInput) {
+        if (
+          this.fileInputRef.current &&
+          this.fileInputRef.current.triggerInput
+        ) {
           this.fileInputRef.current.triggerInput();
         }
       }, 100);
@@ -1575,6 +1578,10 @@ Home.propTypes = {
   typeofcomplaintValues: PropTypes.arrayOf(PropTypes.string).isRequired,
   boroughBoundariesFeatureCollection: PropTypes.object.isRequired,
   query: PropTypes.object,
+};
+
+Home.defaultProps = {
+  query: {},
 };
 
 const MyMapComponentPure = props => {

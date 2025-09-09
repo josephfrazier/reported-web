@@ -367,19 +367,6 @@ class Home extends React.Component {
   }
 
   componentDidMount() {
-    // Check for photo capture URL parameter
-    const { query } = this.props;
-    if (query && (query.capture === 'true' || query.capture === '')) {
-      // Use a timeout to ensure the component is fully mounted
-      setTimeout(() => {
-        if (
-          this.fileInputRef.current &&
-          this.fileInputRef.current.triggerInput
-        ) {
-          this.fileInputRef.current.triggerInput();
-        }
-      }, 100);
-    }
 
     // if there's no attachments or a time couldn't be extracted, just use now
     if (this.state.attachmentData.length === 0 || !this.state.CreateDate) {
@@ -821,6 +808,15 @@ class Home extends React.Component {
       .catch(this.handleAxiosError);
   };
 
+  handleCaptureClick = () => {
+    if (
+      this.fileInputRef.current &&
+      this.fileInputRef.current.triggerInput
+    ) {
+      this.fileInputRef.current.triggerInput();
+    }
+  };
+
   render() {
     return (
       <Dropzone
@@ -863,6 +859,44 @@ class Home extends React.Component {
               pauseOnHover
               theme="dark"
             />
+
+            {/* Capture prompt when URL has capture parameter */}
+            {this.props.query && (this.props.query.capture === 'true' || this.props.query.capture === '') && (
+              <div
+                style={{
+                  backgroundColor: '#007bff',
+                  color: 'white',
+                  padding: '1rem',
+                  marginBottom: '1rem',
+                  borderRadius: '0.25rem',
+                  textAlign: 'center',
+                  fontSize: '1.1rem',
+                }}
+              >
+                <p style={{ margin: '0 0 0.5rem 0', fontWeight: 'bold' }}>
+                  📸 Quick Photo Capture
+                </p>
+                <p style={{ margin: '0 0 1rem 0' }}>
+                  Ready to submit a photo? Click the button below to open your camera or file picker.
+                </p>
+                <button
+                  type="button"
+                  onClick={this.handleCaptureClick}
+                  style={{
+                    backgroundColor: 'white',
+                    color: '#007bff',
+                    border: 'none',
+                    padding: '0.75rem 1.5rem',
+                    borderRadius: '0.25rem',
+                    fontSize: '1rem',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                  }}
+                >
+                  📷 Open Camera/File Picker
+                </button>
+              </div>
+            )}
 
             {/* TODO use tabbed interface instead of toggling <details> ? */}
             <details

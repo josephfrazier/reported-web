@@ -3,10 +3,10 @@
 exports[`readLicenseViaALPR falling back to the second token 1`] = `
 {
   "box": {
-    "xmax": 1839,
-    "xmin": 1639,
-    "ymax": 2115,
-    "ymin": 2011,
+    "xmax": 1844,
+    "xmin": 1642,
+    "ymax": 2116,
+    "ymin": 2012,
   },
   "candidates": [
     {
@@ -14,22 +14,22 @@ exports[`readLicenseViaALPR falling back to the second token 1`] = `
       "score": 1,
     },
   ],
-  "dscore": 0.82,
+  "dscore": 0.856,
   "plate": "t736394c",
   "region": {
     "code": "us-ny",
-    "score": 0.879,
+    "score": 0.883,
   },
   "score": 1,
   "vehicle": {
     "box": {
-      "xmax": 2455,
-      "xmin": 1286,
-      "ymax": 2214,
-      "ymin": 1201,
+      "xmax": 2460,
+      "xmin": 1230,
+      "ymax": 2268,
+      "ymin": 1184,
     },
-    "score": 0.71,
-    "type": "Sedan",
+    "score": 0.448,
+    "type": "SUV",
   },
 }
 `;
@@ -37,10 +37,10 @@ exports[`readLicenseViaALPR falling back to the second token 1`] = `
 exports[`readLicenseViaALPR using only the first token 1`] = `
 {
   "box": {
-    "xmax": 1839,
-    "xmin": 1639,
-    "ymax": 2115,
-    "ymin": 2011,
+    "xmax": 1844,
+    "xmin": 1642,
+    "ymax": 2116,
+    "ymin": 2012,
   },
   "candidates": [
     {
@@ -48,22 +48,22 @@ exports[`readLicenseViaALPR using only the first token 1`] = `
       "score": 1,
     },
   ],
-  "dscore": 0.82,
+  "dscore": 0.856,
   "plate": "t736394c",
   "region": {
     "code": "us-ny",
-    "score": 0.879,
+    "score": 0.883,
   },
   "score": 1,
   "vehicle": {
     "box": {
-      "xmax": 2455,
-      "xmin": 1286,
-      "ymax": 2214,
-      "ymin": 1201,
+      "xmax": 2460,
+      "xmin": 1230,
+      "ymax": 2268,
+      "ymin": 1184,
     },
-    "score": 0.71,
-    "type": "Sedan",
+    "score": 0.448,
+    "type": "SUV",
   },
 }
 `;

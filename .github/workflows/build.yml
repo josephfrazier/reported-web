@@ -12,9 +12,9 @@ jobs:
         node-version: [20.18.1]
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v5
       with:
         node-version: ${{ matrix.node-version }}
     - run: curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.22.19

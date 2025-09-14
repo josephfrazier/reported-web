@@ -44,6 +44,7 @@ import { zip } from 'zip-array';
 import PolygonLookup from 'polygon-lookup';
 import { CSVLink } from 'react-csv';
 import capitalize from 'capitalize';
+import CircularProgress from '@mui/material/CircularProgress';
 
 import marx from 'marx-css/css/marx.css';
 import homeStyles from './Home.css';
@@ -99,7 +100,10 @@ const geolocate = () =>
   promisedLocation().catch(async () => {
     const { data } = await axios.get('https://ipapi.co/json');
     const { latitude, longitude } = data;
-    return { coords: { latitude, longitude } };
+    return {
+      coords: { latitude, longitude },
+      ipProvenance: 'https://ipapi.co/json',
+    };
   });
 
 const jsDateToCreateDate = jsDate =>
@@ -179,7 +183,7 @@ async function extractPlate({
 
     if (isAlprEnabled === false) {
       console.info('ALPR is disabled, skipping');
-      return { plate: '', licenseState: '' };
+      return { plate: '', licenseState: '', plateSuggestions: [] };
     }
 
     if (attachmentPlates.has(attachmentFile)) {
@@ -207,7 +211,15 @@ async function extractPlate({
       password,
     });
     const { data } = await axios.post('/platerecognizer', formData);
-    const result = data.results[0];
+
+    // Choose first result with T######C plate if it exists, see https://github.com/josephfrazier/reported-web/issues/584
+    let result = data.results.filter(r =>
+      r.plate.toUpperCase().match(/^T\d\d\d\d\d\dC$/),
+    )[0];
+    if (!result) {
+      result = data.results[0];
+    }
+
     try {
       result.licenseState = result.region.code.split('-')[1].toUpperCase();
     } catch (err) {
@@ -332,6 +344,7 @@ class Home extends React.Component {
     const initialStatePerSession = {
       attachmentData: [],
 
+      isAlprLoading: false,
       isPasswordRevealed: false,
       isUserInfoSaving: false,
       isSubmitting: false,
@@ -358,20 +371,22 @@ class Home extends React.Component {
     if (this.state.attachmentData.length === 0 || !this.state.CreateDate) {
       this.setCreateDate({ millisecondsSinceEpoch: Date.now() });
     }
-    geolocate().then(({ coords: { latitude, longitude } }) => {
-      // if there's no attachments or a location couldn't be extracted, just use here
-      if (
-        this.state.attachmentData.length === 0 ||
-        (this.state.latitude === defaultLatitude &&
-          this.state.longitude === defaultLongitude)
-      ) {
-        this.setCoords({
-          latitude,
-          longitude,
-          addressProvenance: '(from device)',
-        });
-      }
-    });
+    geolocate().then(
+      ({ coords: { latitude, longitude }, ipProvenance = 'device' }) => {
+        // if there's no attachments or a location couldn't be extracted, just use here
+        if (
+          this.state.attachmentData.length === 0 ||
+          (this.state.latitude === defaultLatitude &&
+            this.state.longitude === defaultLongitude)
+        ) {
+          this.setCoords({
+            latitude,
+            longitude,
+            addressProvenance: `(from ${ipProvenance}: ${latitude}, ${longitude})`,
+          });
+        }
+      },
+    );
 
     // generate a random passphrase for first-time users and show it to them
     if (!this.state.password) {
@@ -397,6 +412,11 @@ class Home extends React.Component {
       const attachmentData = [].map
         .call(items, item => item.getAsFile())
         .filter(file => !!file);
+
+      if (attachmentData.length === 0) {
+        return;
+      }
+
       this.handleAttachmentData({ attachmentData });
     });
 
@@ -519,6 +539,21 @@ class Home extends React.Component {
       ),
     });
 
+    if (
+      this.state.submissions.some(
+        submission =>
+          (submission.license === plate || submission.medallionNo === plate) &&
+          submission.state === licenseState,
+      )
+    ) {
+      this.notifyWarning(
+        <p>
+          You have already submitted a report for {plate} in {licenseState}, are
+          you sure you want to submit another?
+        </p>,
+      );
+    }
+
     debouncedGetVehicleType({ plate, licenseState })
       .then(({ data }) => {
         const {
@@ -531,22 +566,6 @@ class Home extends React.Component {
         if (plate !== this.state.plate) {
           console.info('ignoring stale plate:', plate);
           return;
-        }
-
-        if (
-          this.state.submissions.some(
-            submission =>
-              (submission.license === plate ||
-                submission.medallionNo === plate) &&
-              submission.state === licenseState,
-          )
-        ) {
-          this.notifyWarning(
-            <p>
-              You have already submitted a report for {plate} in {licenseState},
-              are you sure you want to submit another?
-            </p>,
-          );
         }
 
         this.setState({
@@ -645,7 +664,19 @@ class Home extends React.Component {
       }),
       async () => {
         const listsOfExtractions = await Promise.all(
-          this.state.attachmentData.map(async attachmentFile => {
+          this.state.attachmentData.map(async (attachmentFile, index) => {
+            if (attachmentFile.size > 20 * 1000 * 1000) {
+              // just under 20MB, should match fileSize in server.js
+              this.notifyWarning(
+                <React.Fragment>
+                  <p>
+                    File #{index + 1} is too big, over 20MB, please remove it
+                    and select a smaller one
+                  </p>
+                </React.Fragment>,
+              );
+            }
+
             // eslint-disable-next-line no-await-in-loop
             const {
               attachmentBuffer,
@@ -657,6 +688,7 @@ class Home extends React.Component {
             // eslint-disable-next-line no-await-in-loop
             const { ext } = await FileType.fromBuffer(attachmentBuffer);
 
+            this.setState({ isAlprLoading: true });
             return Promise.allSettled([
               extractPlate({
                 attachmentFile,
@@ -665,17 +697,21 @@ class Home extends React.Component {
                 isAlprEnabled: this.state.isAlprEnabled,
                 email: this.state.email,
                 password: this.state.password,
-              }).then(result => {
-                if (
-                  this.state.plate === '' &&
-                  document.activeElement !== this.plateRef.current
-                ) {
-                  this.setLicensePlate(result);
-                }
-                this.setState({
-                  plateSuggestions: result.plateSuggestions,
-                });
-              }),
+              })
+                .then(result => {
+                  if (
+                    this.state.plate === '' &&
+                    document.activeElement !== this.plateRef.current
+                  ) {
+                    this.setLicensePlate(result);
+                  }
+                  this.setState({
+                    plateSuggestions: result.plateSuggestions,
+                  });
+                })
+                .finally(() => {
+                  this.setState({ isAlprLoading: false });
+                }),
               extractDate({
                 attachmentFile,
                 attachmentArrayBuffer,
@@ -696,6 +732,10 @@ class Home extends React.Component {
             ]);
           }),
         );
+
+        if (listsOfExtractions.length === 0) {
+          return;
+        }
 
         const groupedByExtractionType = zip(...listsOfExtractions);
         const rejected = groupedByExtractionType
@@ -829,7 +869,11 @@ class Home extends React.Component {
                     .post('/saveUser', this.state)
                     .then(() => {
                       this.setState({ isUserInfoOpen: false });
-                      window.scrollTo(0, 0);
+                      document.querySelector(`.${homeStyles.root}`).scrollTo({
+                        top: 100,
+                        left: 100,
+                        behavior: 'smooth',
+                      });
                     })
                     .catch(this.handleAxiosError)
                     .then(() => {
@@ -1068,7 +1112,11 @@ class Home extends React.Component {
                   )
                   .then(({ data }) => {
                     const { submission } = data;
-                    window.scrollTo(0, 0);
+                    document.querySelector(`.${homeStyles.root}`).scrollTo({
+                      top: 100,
+                      left: 100,
+                      behavior: 'smooth',
+                    });
                     console.info(
                       `submitted successfully. Returned data: ${JSON.stringify(
                         data,
@@ -1120,7 +1168,9 @@ class Home extends React.Component {
                     margin: '1px',
                   }}
                 >
-                  <button type="button">Add pictures/videos</button>
+                  <button type="button">
+                    Add pictures/videos (up to 3 each, 20MB max each)
+                  </button>
                 </FileReaderInput>
 
                 <div
@@ -1205,6 +1255,7 @@ class Home extends React.Component {
 
                 <label htmlFor="plate">
                   License/Medallion:
+                  {this.state.isAlprLoading && <CircularProgress size="1em" />}
                   <input
                     required
                     type="search"
@@ -1347,13 +1398,18 @@ class Home extends React.Component {
                     }}
                     onClick={() => {
                       geolocate()
-                        .then(({ coords: { latitude, longitude } }) => {
-                          this.setCoords({
-                            latitude,
-                            longitude,
-                            addressProvenance: '(from device)',
-                          });
-                        })
+                        .then(
+                          ({
+                            coords: { latitude, longitude },
+                            ipProvenance = 'device',
+                          }) => {
+                            this.setCoords({
+                              latitude,
+                              longitude,
+                              addressProvenance: `(from ${ipProvenance}: ${latitude}, ${longitude})`,
+                            });
+                          },
+                        )
                         .catch(err => {
                           this.notifyError(err.message);
                           console.error(err);

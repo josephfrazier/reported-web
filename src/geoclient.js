@@ -1,8 +1,7 @@
+import axios from 'axios';
 import axiosRetry from 'axios-retry';
 
 import cbData from './districts-info.json';
-
-const axios = require('axios');
 
 const { GEO_APP_KEY, GOOGLE_API_KEY } = process.env;
 

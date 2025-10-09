@@ -59,7 +59,7 @@ import vehicleTypeUrl from '../../vehicleTypeUrl.js';
 
 usStateNames.DC = 'District of Columbia';
 
-const GOOGLE_MAPS_API_KEY = 'AIzaSyDlwm2ykA0ohTXeVepQYvkcmdjz2M2CKEI';
+const GOOGLE_MAPS_API_KEY = 'AIzaSyDGH8eFypNWvWY6Qnd85rPtvTkDnnPctFE';
 
 const objectMap = (obj, fn) =>
   Object.fromEntries(Object.entries(obj).map(([k, v], i) => [k, fn(v, k, i)]));
@@ -356,12 +356,6 @@ function getUrlParamOverrides() {
     overrides.reportDescription = decodeURIComponent(params.description);
   }
 
-  // Location parameter
-  if (params.location) {
-    overrides.formatted_address = decodeURIComponent(params.location);
-    console.log('Location parameter found:', overrides.formatted_address);
-  }
-
   // Coordinates (lat,lng)
   if (params.lat && params.lng) {
     const latitude = parseFloat(params.lat);
@@ -538,29 +532,30 @@ class Home extends React.Component {
       console.log('Keeping existing/URL CreateDate');
     }
     
-    // Don't geolocate if lat/lng or address are provided in URL
-    const hasUrlLocation = urlOverrides.latitude || urlOverrides.longitude || urlOverrides.formatted_address;
-    
-    if (!hasUrlLocation) {
-      geolocate().then(
-        ({ coords: { latitude, longitude }, ipProvenance = 'device' }) => {
-          // if there's no attachments or a location couldn't be extracted, just use here
-          if (
-            this.state.attachmentData.length === 0 ||
-            (this.state.latitude === defaultLatitude &&
-              this.state.longitude === defaultLongitude)
-          ) {
-            this.setCoords({
-              latitude,
-              longitude,
-              addressProvenance: `(from ${ipProvenance}: ${latitude}, ${longitude})`,
-            });
-          }
-        },
-      );
-    } else {
-      console.log('Skipping geolocation - location provided via URL parameters');
-    }
+    // Always geolocate, but use URL coordinates if provided
+    geolocate().then(
+      ({ coords: { latitude, longitude }, ipProvenance = 'device' }) => {
+        // Use URL coordinates if provided, otherwise use geolocated coordinates
+        const finalLatitude = (urlOverrides.latitude && urlOverrides.longitude) ? urlOverrides.latitude : latitude;
+        const finalLongitude = (urlOverrides.latitude && urlOverrides.longitude) ? urlOverrides.longitude : longitude;
+        const finalProvenance = (urlOverrides.latitude && urlOverrides.longitude)
+          ? `(from URL parameters: ${finalLatitude}, ${finalLongitude})`
+          : `(from ${ipProvenance}: ${finalLatitude}, ${finalLongitude})`;
+        
+        // if there's no attachments or a location couldn't be extracted, just use here
+        if (
+          this.state.attachmentData.length === 0 ||
+          (this.state.latitude === defaultLatitude &&
+            this.state.longitude === defaultLongitude)
+        ) {
+          this.setCoords({
+            latitude: finalLatitude,
+            longitude: finalLongitude,
+            addressProvenance: finalProvenance,
+          });
+        }
+      },
+    );
 
     // generate a random passphrase for first-time users and show it to them
     if (!this.state.password) {
@@ -897,6 +892,17 @@ class Home extends React.Component {
                 ext,
                 isReverseGeocodingEnabled: this.state.isReverseGeocodingEnabled,
               }).then(({ latitude, longitude }) => {
+                // Check if URL parameters have already set coordinates
+                const urlOverrides = getUrlParamOverrides();
+                
+                if (urlOverrides.latitude && urlOverrides.longitude) {
+                  console.log('Skipping EXIF location extraction - URL coordinates provided:', {
+                    url: { lat: urlOverrides.latitude, lng: urlOverrides.longitude },
+                    exif: { latitude, longitude }
+                  });
+                  return; // Don't override URL coordinates with EXIF data
+                }
+                
                 this.setCoords({
                   latitude,
                   longitude,

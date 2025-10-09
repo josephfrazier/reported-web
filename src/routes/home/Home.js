@@ -59,7 +59,7 @@ import vehicleTypeUrl from '../../vehicleTypeUrl.js';
 
 usStateNames.DC = 'District of Columbia';
 
-const GOOGLE_MAPS_API_KEY = 'AIzaSyDGH8eFypNWvWY6Qnd85rPtvTkDnnPctFE';
+const GOOGLE_MAPS_API_KEY = 'AIzaSyDlwm2ykA0ohTXeVepQYvkcmdjz2M2CKEI';
 
 const objectMap = (obj, fn) =>
   Object.fromEntries(Object.entries(obj).map(([k, v], i) => [k, fn(v, k, i)]));

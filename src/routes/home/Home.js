@@ -524,6 +524,21 @@ class Home extends React.Component {
     this.setState({
       CreateDate: jsDateToCreateDate(CreateDateJsLocal),
     });
+
+    // TODO clean this up, add same check in handleInputChange
+    fetch("https://worldtimeapi.org/api/timezone/America/New_York").then(response => {
+      window.response = response
+      console.log(response)
+      return response.json()
+    }).then(result => {
+      console.log(result)
+      const secondsSinceEpoch = millisecondsSinceEpoch / 1000;
+      if (secondsSinceEpoch > result.unixtime + 1) {
+        const message = `Time cannot be in future (your time: ${secondsSinceEpoch}, actual time: ${result.unixtime})`
+        this.notifyError(message);
+        console.error(message);
+      }
+    })
   };
 
   setLicensePlate = ({ plate, licenseState }) => {
@@ -777,6 +792,9 @@ class Home extends React.Component {
       },
       () => debouncedSaveStateToLocalStorage(this),
     );
+
+    // TODO add check for future timestamp when `name` is "CreateDate"
+    // TODO see `setCreateDate` function for reference
   };
 
   handleAxiosError = error =>

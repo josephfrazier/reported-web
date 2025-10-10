@@ -361,6 +361,20 @@ app.use('/submit', (req, res) => {
           }
         });
 
+        // TODO clean this up, add same check in handleInputChange
+        const response = await fetch(
+          'https://worldtimeapi.org/api/timezone/America/New_York',
+        );
+        console.info(response);
+        const result = await response.json();
+        console.info(result);
+        const millisecondsSinceEpoch = timeofreport.valueOf();
+        const secondsSinceEpoch = millisecondsSinceEpoch / 1000;
+        if (secondsSinceEpoch > result.unixtime + 1) {
+          const message = `Time cannot be in future (your time: ${secondsSinceEpoch}, actual time: ${result.unixtime})`;
+          throw { message }; // eslint-disable-line no-throw-literal
+        }
+
         const Submission = Parse.Object.extend('submission');
         const submission = new Submission();
         submission.set({

@@ -361,8 +361,11 @@ app.use('/submit', (req, res) => {
           }
         });
 
+        const timezone = process.env.TZ;
+        process.env.TZ = 'America/New_York';
         if (timeofreport.valueOf() > Date.now()) {
           const message = `Timestamp cannot be in the future (submitted time: ${timeofreport}, actual time: ${new Date()})`;
+          process.env.TZ = timezone;
           throw { message }; // eslint-disable-line no-throw-literal
         }
 

@@ -243,41 +243,21 @@ New York, NY 10007",
         "formatted_address": "230 Broadway, New York, NY 10007, USA",
         "geometry": {
           "location": {
-            "lat": 40.7127421,
-            "lng": -74.00596890000001,
+            "lat": 40.7127517,
+            "lng": -74.00596809999999,
           },
           "location_type": "ROOFTOP",
           "viewport": {
             "northeast": {
-              "lat": 40.7140910802915,
-              "lng": -74.00461991970852,
+              "lat": 40.71410068029149,
+              "lng": -74.00461911970848,
             },
             "southwest": {
-              "lat": 40.7113931197085,
-              "lng": -74.00731788029152,
+              "lat": 40.7114027197085,
+              "lng": -74.00731708029149,
             },
           },
         },
-        "navigation_points": [
-          {
-            "location": {
-              "latitude": 40.7128378,
-              "longitude": -74.0058863,
-            },
-            "restricted_travel_modes": [
-              "DRIVE",
-            ],
-          },
-          {
-            "location": {
-              "latitude": 40.7127539,
-              "longitude": -74.0064295,
-            },
-            "restricted_travel_modes": [
-              "WALK",
-            ],
-          },
-        ],
         "place_id": "ChIJgTPiDCJawokRZqACvDgMnm8",
         "types": [
           "street_address",
@@ -1052,41 +1032,21 @@ New York, NY 10007",
         "formatted_address": "230 Broadway, New York, NY 10007, USA",
         "geometry": {
           "location": {
-            "lat": 40.7127421,
-            "lng": -74.00596890000001,
+            "lat": 40.7127517,
+            "lng": -74.00596809999999,
           },
           "location_type": "ROOFTOP",
           "viewport": {
             "northeast": {
-              "lat": 40.7140910802915,
-              "lng": -74.00461991970852,
+              "lat": 40.71410068029149,
+              "lng": -74.00461911970848,
             },
             "southwest": {
-              "lat": 40.7113931197085,
-              "lng": -74.00731788029152,
+              "lat": 40.7114027197085,
+              "lng": -74.00731708029149,
             },
           },
         },
-        "navigation_points": [
-          {
-            "location": {
-              "latitude": 40.7128378,
-              "longitude": -74.0058863,
-            },
-            "restricted_travel_modes": [
-              "DRIVE",
-            ],
-          },
-          {
-            "location": {
-              "latitude": 40.7127539,
-              "longitude": -74.0064295,
-            },
-            "restricted_travel_modes": [
-              "WALK",
-            ],
-          },
-        ],
         "place_id": "ChIJgTPiDCJawokRZqACvDgMnm8",
         "types": [
           "street_address",

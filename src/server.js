@@ -361,7 +361,6 @@ app.use('/submit', (req, res) => {
           }
         });
 
-        // TODO clean this up, add same check in handleInputChange
         const response = await fetch(
           'https://worldtimeapi.org/api/timezone/America/New_York',
         );
@@ -371,7 +370,7 @@ app.use('/submit', (req, res) => {
         const millisecondsSinceEpoch = timeofreport.valueOf();
         const secondsSinceEpoch = millisecondsSinceEpoch / 1000;
         if (secondsSinceEpoch > result.unixtime + 1) {
-          const message = `Time cannot be in future (your time: ${secondsSinceEpoch}, actual time: ${result.unixtime})`;
+          const message = `Timestamp cannot be in the future (submitted time: ${new Date(millisecondsSinceEpoch)}, actual time: ${new Date(result.unixtime * 1000)})`;
           throw { message }; // eslint-disable-line no-throw-literal
         }
 

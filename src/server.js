@@ -361,6 +361,11 @@ app.use('/submit', (req, res) => {
           }
         });
 
+        if (timeofreport.valueOf() > Date.now()) {
+          const message = `Timestamp cannot be in the future (submitted time: ${timeofreport}, actual time: ${new Date()})`;
+          throw { message }; // eslint-disable-line no-throw-literal
+        }
+
         const Submission = Parse.Object.extend('submission');
         const submission = new Submission();
         submission.set({

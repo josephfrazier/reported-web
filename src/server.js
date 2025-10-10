@@ -361,16 +361,8 @@ app.use('/submit', (req, res) => {
           }
         });
 
-        const response = await fetch(
-          'https://worldtimeapi.org/api/timezone/America/New_York',
-        );
-        console.info(response);
-        const result = await response.json();
-        console.info(result);
-        const millisecondsSinceEpoch = timeofreport.valueOf();
-        const secondsSinceEpoch = millisecondsSinceEpoch / 1000;
-        if (secondsSinceEpoch > result.unixtime + 1) {
-          const message = `Timestamp cannot be in the future (submitted time: ${new Date(millisecondsSinceEpoch)}, actual time: ${new Date(result.unixtime * 1000)})`;
+        if (timeofreport.valueOf() > Date.now()) {
+          const message = `Timestamp cannot be in the future (submitted time: ${timeofreport}, actual time: ${new Date()})`;
           throw { message }; // eslint-disable-line no-throw-literal
         }
 

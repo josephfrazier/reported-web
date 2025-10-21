@@ -258,6 +258,26 @@ New York, NY 10007",
             },
           },
         },
+        "navigation_points": [
+          {
+            "location": {
+              "latitude": 40.7128404,
+              "longitude": -74.0058915,
+            },
+            "restricted_travel_modes": [
+              "DRIVE",
+            ],
+          },
+          {
+            "location": {
+              "latitude": 40.7127539,
+              "longitude": -74.0064295,
+            },
+            "restricted_travel_modes": [
+              "WALK",
+            ],
+          },
+        ],
         "place_id": "ChIJgTPiDCJawokRZqACvDgMnm8",
         "types": [
           "street_address",
@@ -1047,6 +1067,26 @@ New York, NY 10007",
             },
           },
         },
+        "navigation_points": [
+          {
+            "location": {
+              "latitude": 40.7128404,
+              "longitude": -74.0058915,
+            },
+            "restricted_travel_modes": [
+              "DRIVE",
+            ],
+          },
+          {
+            "location": {
+              "latitude": 40.7127539,
+              "longitude": -74.0064295,
+            },
+            "restricted_travel_modes": [
+              "WALK",
+            ],
+          },
+        ],
         "place_id": "ChIJgTPiDCJawokRZqACvDgMnm8",
         "types": [
           "street_address",

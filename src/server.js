@@ -293,6 +293,13 @@ app.use('/requestPasswordReset', (req, res) => {
 
   // http://docs.parseplatform.org/js/guide/#resetting-passwords
   Parse.User.requestPasswordReset(email)
+    .catch(error => {
+      if (error?.message?.startsWith('No user found with email')) {
+        return;
+      }
+
+      throw error;
+    })
     .then(() => res.end())
     .catch(handlePromiseRejection(res));
 });

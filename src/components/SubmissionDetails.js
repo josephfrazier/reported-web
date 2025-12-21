@@ -127,7 +127,7 @@ class SubmissionDetails extends React.Component {
           <br />
           TLC Service Request Number:{' '}
           {reqnumberNotApplicable ? (
-             'N/A: Either not yet submitted to 311, or is a non-TLC vehicle and therefore does not have a TLC SR'
+            'N/A: Either not yet submitted to 311, or is a non-TLC vehicle and therefore does not have a TLC SR'
           ) : (
             <a
               href={`https://portal.311.nyc.gov/sr-details/?srnum=${reqnumber}`}

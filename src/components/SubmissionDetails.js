@@ -128,7 +128,12 @@ class SubmissionDetails extends React.Component {
           {/* eslint-disable-next-line camelcase */}
           {(loc1_address || '').split(',')[0]} on {humanTimeString}
           <br />
-          TLC Service Request Number: <a href={`https://portal.311.nyc.gov/sr-details/?srnum=${displayReqnumber}`}>{displayReqnumber}</a>
+          TLC Service Request Number:{' '}
+          <a
+            href={`https://portal.311.nyc.gov/sr-details/?srnum=${displayReqnumber}`}
+          >
+            {displayReqnumber}
+          </a>
         </summary>
 
         {this.state.isDetailsOpen && (

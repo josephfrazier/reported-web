@@ -11,16 +11,16 @@ exports[`readLicenseViaALPR falling back to the second token 1`] = `
   "candidates": [
     {
       "plate": "t736394c",
-      "score": 0.999,
+      "score": 1,
     },
   ],
   "dscore": 0.873,
   "plate": "t736394c",
   "region": {
     "code": "us-ny",
-    "score": 0.672,
+    "score": 0.888,
   },
-  "score": 0.999,
+  "score": 1,
   "vehicle": {
     "box": {
       "xmax": 2450,
@@ -45,16 +45,16 @@ exports[`readLicenseViaALPR using only the first token 1`] = `
   "candidates": [
     {
       "plate": "t736394c",
-      "score": 0.999,
+      "score": 1,
     },
   ],
   "dscore": 0.873,
   "plate": "t736394c",
   "region": {
     "code": "us-ny",
-    "score": 0.672,
+    "score": 0.888,
   },
-  "score": 0.999,
+  "score": 1,
   "vehicle": {
     "box": {
       "xmax": 2450,

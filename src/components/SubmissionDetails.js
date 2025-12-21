@@ -110,9 +110,6 @@ class SubmissionDetails extends React.Component {
       );
 
     const reqnumberNotApplicable = reqnumber === 'N/A until submitted to 311';
-    const displayReqnumber = reqnumberNotApplicable
-      ? 'N/A: Either not yet submitted to 311, or is a non-TLC vehicle and therefore does not have a TLC SR'
-      : reqnumber;
 
     return (
       <details
@@ -130,12 +127,12 @@ class SubmissionDetails extends React.Component {
           <br />
           TLC Service Request Number:{' '}
           {reqnumberNotApplicable ? (
-            reqnumber
+             'N/A: Either not yet submitted to 311, or is a non-TLC vehicle and therefore does not have a TLC SR'
           ) : (
             <a
-              href={`https://portal.311.nyc.gov/sr-details/?srnum=${displayReqnumber}`}
+              href={`https://portal.311.nyc.gov/sr-details/?srnum=${reqnumber}`}
             >
-              {displayReqnumber}
+              {reqnumber}
             </a>
           )}
         </summary>

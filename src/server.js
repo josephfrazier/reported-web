@@ -89,8 +89,16 @@ const upload = multer({
 // Tell any CSS tooling (such as Material UI) to use all vendor prefixes if the
 // user agent is not known.
 // -----------------------------------------------------------------------------
-global.navigator = global.navigator || {};
-global.navigator.userAgent = global.navigator.userAgent || 'all';
+if (!global.navigator) {
+  global.navigator = {};
+}
+if (!global.navigator.userAgent) {
+  Object.defineProperty(global.navigator, 'userAgent', {
+    value: 'all',
+    writable: true,
+    configurable: true,
+  });
+}
 
 const app = express();
 app.use(compression());

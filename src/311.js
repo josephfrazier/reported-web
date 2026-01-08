@@ -6,7 +6,6 @@
 // headless puppeteer submission proof-of-concept
 // from https://reportedcab.slack.com/files/U9N03CAEM/FCB3SMUR1/headless_puppeteer_submission_proof-of-concept.js
 
-const puppeteer = require('puppeteer');
 const strftime = require('strftime');
 
 // ported from https://github.com/jeffrono/Reported/blob/8cdc7efe6532aa0fd8b83ef0bcba083a14bcf52b/v2/task_311_illegal_parking_submission.rb

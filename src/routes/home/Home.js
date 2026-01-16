@@ -29,7 +29,7 @@ import FileType from 'file-type/browser';
 import MP4Box from 'mp4box';
 import execall from 'execall';
 import captureFrame from 'capture-frame';
-import pEvent from 'p-event';
+import { pEvent } from 'p-event';
 import omit from 'object.omit';
 import bufferToArrayBuffer from 'buffer-to-arraybuffer';
 import objectToFormData from 'object-to-formdata';

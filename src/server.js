@@ -22,12 +22,10 @@ import Parse from 'parse/node';
 import FileType from 'file-type/browser';
 import multer from 'multer';
 import stringify from 'json-stringify-safe';
-import DelayedResponse from 'http-delayed-response';
 
 import { isImage, isVideo } from './isImage.js';
 import { validateLocation, processValidation } from './geoclient.js';
 import getVehicleType from './getVehicleType.js';
-import { submit_311_illegal_parking_report } from './311.js'; // eslint-disable-line camelcase
 import srlookup from './srlookup.js';
 
 import App from './components/App';
@@ -506,17 +504,6 @@ app.use('/getVehicleType/:licensePlate/:licenseState?', (req, res) => {
   const { licensePlate = 'GNS7685', licenseState = 'NY' } = req.params;
   getVehicleType({ licensePlate, licenseState })
     .then(({ result }) => res.json({ result }))
-    .catch(handlePromiseRejection(res));
-});
-
-app.use('/api/submit_311_illegal_parking_report', (req, res) => {
-  const delayed = new DelayedResponse(req, res);
-  delayed.json();
-  const delayedCallback = delayed.start();
-  submit_311_illegal_parking_report(req.body)
-    .then(result => {
-      delayedCallback(null, { result });
-    })
     .catch(handlePromiseRejection(res));
 });
 

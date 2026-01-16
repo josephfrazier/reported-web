@@ -22,7 +22,6 @@ import Parse from 'parse/node';
 import FileType from 'file-type/browser';
 import multer from 'multer';
 import stringify from 'json-stringify-safe';
-import DelayedResponse from 'http-delayed-response';
 
 import { isImage, isVideo } from './isImage.js';
 import { validateLocation, processValidation } from './geoclient.js';

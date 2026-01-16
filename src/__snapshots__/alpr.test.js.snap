@@ -18,7 +18,7 @@ exports[`readLicenseViaALPR falling back to the second token 1`] = `
   "plate": "t736394c",
   "region": {
     "code": "us-ny",
-    "score": 0.562,
+    "score": 0.626,
   },
   "score": 1,
   "vehicle": {
@@ -52,7 +52,7 @@ exports[`readLicenseViaALPR using only the first token 1`] = `
   "plate": "t736394c",
   "region": {
     "code": "us-ny",
-    "score": 0.562,
+    "score": 0.626,
   },
   "score": 1,
   "vehicle": {

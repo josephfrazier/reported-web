@@ -18,7 +18,8 @@ export default function AttachmentGallery({
   getBlobUrl,
 }) {
   if (attachments.length === 0) {
-    return null;
+    // Return empty div with clear:both to maintain layout (checkbox below button)
+    return <div style={{ clear: 'both' }} />;
   }
 
   return (

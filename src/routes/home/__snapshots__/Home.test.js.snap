@@ -226,6 +226,13 @@ exports[`Home renders children correctly 1`] = `
               Add pictures/videos (up to 3 each, 20MB max each)
             </button>
           </div>
+          <div
+            style={
+              {
+                "clear": "both",
+              }
+            }
+          />
           <label
             htmlFor="isAlprEnabled"
           >

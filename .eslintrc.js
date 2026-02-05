@@ -19,11 +19,7 @@ module.exports = {
     },
   },
 
-  extends: [
-    'airbnb',
-    'plugin:css-modules/recommended',
-    'prettier',
-  ],
+  extends: ['airbnb', 'plugin:css-modules/recommended', 'prettier'],
 
   plugins: ['css-modules', 'prettier', 'parentheses-around-await'],
 

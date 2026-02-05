@@ -221,7 +221,7 @@ async function extractPlate({
 
     try {
       result.licenseState = result.region.code.split('-')[1].toUpperCase();
-    } catch (err) {
+    } catch {
       result.licenseState = null;
     }
     result.plate = result.plate.toUpperCase();

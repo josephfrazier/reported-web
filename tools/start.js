@@ -14,9 +14,9 @@ import webpack from 'webpack';
 import webpackDevMiddleware from 'webpack-dev-middleware';
 import webpackHotMiddleware from 'webpack-hot-middleware';
 import errorOverlayMiddleware from 'react-dev-utils/errorOverlayMiddleware';
-import webpackConfig from './webpack.config';
-import run, { format } from './run';
-import clean from './clean';
+import webpackConfig from './webpack.config.js';
+import run, { format } from './run.js';
+import clean from './clean.js';
 
 const isDebug = !process.argv.includes('--release');
 
@@ -179,7 +179,7 @@ async function start() {
           console.warn(`${hmrPrefix}Cannot apply update.`);
           delete require.cache[require.resolve('../build/server')];
           // eslint-disable-next-line global-require, import/no-unresolved
-          app = require('../build/server').default;
+          app = require('../build/server.js').default;
           console.warn(`${hmrPrefix}App has been reloaded.`);
         } else {
           console.warn(
@@ -207,7 +207,7 @@ async function start() {
 
   // Load compiled src/server.js as a middleware
   // eslint-disable-next-line global-require, import/no-unresolved
-  app = require('../build/server').default;
+  app = require('../build/server.js').default;
   appPromiseIsResolved = true;
   appPromiseResolve();
 

@@ -8,7 +8,7 @@
  */
 
 import React from 'react';
-import ErrorPage from './ErrorPage';
+import ErrorPage from './ErrorPage.js';
 
 function action() {
   return {

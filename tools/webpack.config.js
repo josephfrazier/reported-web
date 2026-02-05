@@ -359,7 +359,7 @@ const clientConfig = {
 
     // fix "process is not defined" error:
     new webpack.ProvidePlugin({
-      process: 'process/browser',
+      process: 'process/browser.js',
     }),
 
     new webpack.ProvidePlugin({

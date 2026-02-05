@@ -9,8 +9,8 @@
 
 import React from 'react';
 import sortBy from 'lodash.sortby';
-import Home from './Home';
-import Layout from '../../components/Layout';
+import Home from './Home.js';
+import Layout from '../../components/Layout/Layout.js';
 import boroughBoundariesFeatureCollection from '../../../public/borough-boundaries-clipped-to-shoreline.geo.json';
 
 async function action({ fetch }) {

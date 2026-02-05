@@ -28,16 +28,16 @@ import { validateLocation, processValidation } from './geoclient.js';
 import getVehicleType from './getVehicleType.js';
 import srlookup from './srlookup.js';
 
-import App from './components/App';
-import Html from './components/Html';
-import { ErrorPageWithoutStyle } from './routes/error/ErrorPage';
+import App from './components/App.js';
+import Html from './components/Html.js';
+import { ErrorPageWithoutStyle } from './routes/error/ErrorPage.js';
 import errorPageStyle from './routes/error/ErrorPage.css';
-import createFetch from './createFetch';
-import router from './router';
+import createFetch from './createFetch.js';
+import router from './router.js';
 // import assets from './asset-manifest.json'; // eslint-disable-line import/no-unresolved
 import chunks from './chunk-manifest.json'; // eslint-disable-line import/no-unresolved
-import config from './config';
-import readLicenseViaALPR from './alpr';
+import config from './config.js';
+import readLicenseViaALPR from './alpr.js';
 
 require('dotenv').config();
 
@@ -408,11 +408,11 @@ app.use('/submit', (req, res) => {
           latitude1: latitude,
           longitude1: longitude,
           location: new Parse.GeoPoint({ latitude, longitude }),
-          loc1_address: formatted_address,
+          loc1_address: formatted_address, // eslint-disable-line camelcase
           timeofreport,
           timeofreported,
           reportDescription,
-          can_be_shared_publicly,
+          can_be_shared_publicly, // eslint-disable-line camelcase
           status: 0,
           operating_system: 'web',
           version_number: Number(HEROKU_RELEASE_VERSION.slice(1)),

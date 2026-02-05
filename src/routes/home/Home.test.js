@@ -13,8 +13,8 @@
 import '@babel/polyfill';
 import React from 'react';
 import renderer from 'react-test-renderer';
-import App from '../../components/App';
-import Home from './Home';
+import App from '../../components/App.js';
+import Home from './Home.js';
 import boroughBoundariesFeatureCollection from '../../../public/borough-boundaries-clipped-to-shoreline.geo.json';
 
 require('timezone-mock').register('US/Eastern');

@@ -4,8 +4,8 @@
 import '@babel/polyfill';
 import React from 'react';
 import renderer from 'react-test-renderer';
-import App from './App';
-import SubmissionDetails from './SubmissionDetails';
+import App from './App.js';
+import SubmissionDetails from './SubmissionDetails.js';
 
 require('timezone-mock').register('US/Eastern');
 require('jest-mock-now')();

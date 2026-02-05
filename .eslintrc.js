@@ -10,6 +10,8 @@
 // ESLint configuration
 // http://eslint.org/docs/user-guide/configuring
 module.exports = {
+  ignorePatterns: ['.git/**', 'build/'],
+
   parser: '@babel/eslint-parser',
 
   parserOptions: {

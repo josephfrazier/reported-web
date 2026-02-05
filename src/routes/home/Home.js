@@ -351,6 +351,9 @@ class Home extends React.Component {
       vehicleInfoComponent: <br />,
       submissions: [],
       addressProvenance: '',
+      reportIterationAnchor: 0,
+      reportsInIteration: 11,
+      ignoreIterationLimits: false,
     };
 
     const initialState = {
@@ -816,6 +819,45 @@ class Home extends React.Component {
         this.setState({ submissions });
       })
       .catch(this.handleAxiosError);
+  };
+
+  advanceReportIterationForward = () => {
+    const nextAnchor = this.state.reportIterationAnchor + this.state.reportsInIteration;
+    if (nextAnchor < this.state.submissions.length) {
+      this.setState({ reportIterationAnchor: nextAnchor });
+    }
+  };
+
+  retreatReportIterationBackward = () => {
+    const prevAnchor = this.state.reportIterationAnchor - this.state.reportsInIteration;
+    if (prevAnchor >= 0) {
+      this.setState({ reportIterationAnchor: prevAnchor });
+    }
+  };
+
+  toggleIterationLimits = () => {
+    this.setState({ 
+      ignoreIterationLimits: !this.state.ignoreIterationLimits,
+      reportIterationAnchor: 0 
+    });
+  };
+
+  calculateIterationBoundaries = () => {
+    const { submissions, reportIterationAnchor, reportsInIteration, ignoreIterationLimits } = this.state;
+    if (ignoreIterationLimits) {
+      return { startIdx: 0, endIdx: submissions.length };
+    }
+    const startIdx = reportIterationAnchor;
+    const endIdx = Math.min(reportIterationAnchor + reportsInIteration, submissions.length);
+    return { startIdx, endIdx };
+  };
+
+  computeTotalIterations = () => {
+    return Math.ceil(this.state.submissions.length / this.state.reportsInIteration);
+  };
+
+  getCurrentIterationNumber = () => {
+    return Math.floor(this.state.reportIterationAnchor / this.state.reportsInIteration) + 1;
   };
 
   render() {
@@ -1534,15 +1576,48 @@ class Home extends React.Component {
                   >
                     Download as CSV
                   </CSVLink>
+                  <div style={{ margin: '15px 0', padding: '10px', background: '#f5f5f5', borderRadius: '5px' }}>
+                    <button 
+                      onClick={this.retreatReportIterationBackward}
+                      disabled={this.state.reportIterationAnchor === 0 || this.state.ignoreIterationLimits}
+                      style={{ marginRight: '10px', padding: '8px 16px' }}
+                    >
+                      ← Earlier Reports
+                    </button>
+                    <button 
+                      onClick={this.advanceReportIterationForward}
+                      disabled={
+                        this.state.reportIterationAnchor + this.state.reportsInIteration >= this.state.submissions.length || 
+                        this.state.ignoreIterationLimits
+                      }
+                      style={{ marginRight: '10px', padding: '8px 16px' }}
+                    >
+                      Later Reports →
+                    </button>
+                    <button 
+                      onClick={this.toggleIterationLimits}
+                      style={{ marginRight: '10px', padding: '8px 16px', fontWeight: 'bold' }}
+                    >
+                      {this.state.ignoreIterationLimits ? 'Restore Iteration Limits' : 'Remove All Limits'}
+                    </button>
+                    {!this.state.ignoreIterationLimits && (
+                      <span style={{ marginLeft: '10px', fontWeight: 'bold' }}>
+                        Iteration {this.getCurrentIterationNumber()} of {this.computeTotalIterations()}
+                      </span>
+                    )}
+                  </div>
                   <ul>
-                    {this.state.submissions.map(submission => (
-                      <li key={submission.objectId}>
-                        <SubmissionDetails
-                          submission={submission}
-                          onDeleteSubmission={this.onDeleteSubmission}
-                        />
-                      </li>
-                    ))}
+                    {(() => {
+                      const { startIdx, endIdx } = this.calculateIterationBoundaries();
+                      return this.state.submissions.slice(startIdx, endIdx).map(submission => (
+                        <li key={submission.objectId}>
+                          <SubmissionDetails
+                            submission={submission}
+                            onDeleteSubmission={this.onDeleteSubmission}
+                          />
+                        </li>
+                      ));
+                    })()}
                   </ul>
                 </>
               )}

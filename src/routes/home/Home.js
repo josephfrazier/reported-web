@@ -538,12 +538,23 @@ class Home extends React.Component {
       ),
     });
 
+    const now = Date.now();
     if (
-      this.state.submissions.some(
-        submission =>
+      this.state.submissions.some(submission => {
+        const timeDifference =
+          now - new Date(submission.timeofreport).valueOf();
+        const thirtyDaysInMilliseconds = 30 * 24 * 60 * 60 * 1000;
+        const olderThanThirtyDays =
+          timeDifference / thirtyDaysInMilliseconds > 1;
+        if (olderThanThirtyDays) {
+          return false;
+        }
+
+        return (
           (submission.license === plate || submission.medallionNo === plate) &&
-          submission.state === licenseState,
-      )
+          submission.state === licenseState
+        );
+      })
     ) {
       this.notifyWarning(
         <p>
@@ -616,7 +627,8 @@ class Home extends React.Component {
             ),
           });
 
-          if (plate.match(/1\d\d\d\d\d\dC/)) {
+          // autocorrect common license plate typos from ALPR/OCR
+          if (plate.match(/^1\d\d\d\d\d\dC$/)) {
             this.setLicensePlate({
               plate: plate.replace('1', 'T'),
               licenseState,

@@ -230,8 +230,6 @@ exports[`Home renders children correctly 1`] = `
             style={
               {
                 "clear": "both",
-                "display": "flex",
-                "flexWrap": "wrap",
               }
             }
           />

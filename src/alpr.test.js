@@ -19,7 +19,6 @@ describe('readLicenseViaALPR', () => {
       PLATERECOGNIZER_TOKEN,
     });
 
-    console.log({result})
     expect(result.results[0]).toMatchSnapshot();
   });
 
@@ -35,7 +34,6 @@ describe('readLicenseViaALPR', () => {
       PLATERECOGNIZER_TOKEN_TWO,
     });
 
-    console.log({result})
     expect(result.results[0]).toMatchSnapshot();
   }, 10000);
 });

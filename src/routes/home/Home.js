@@ -627,7 +627,8 @@ class Home extends React.Component {
             ),
           });
 
-          if (plate.match(/1\d\d\d\d\d\dC/)) {
+          // autocorrect common license plate typos from ALPR/OCR
+          if (plate.match(/^1\d\d\d\d\d\dC$/)) {
             this.setLicensePlate({
               plate: plate.replace('1', 'T'),
               licenseState,

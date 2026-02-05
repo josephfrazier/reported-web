@@ -131,6 +131,8 @@ class SubmissionDetails extends React.Component {
           ) : (
             <a
               href={`https://portal.311.nyc.gov/sr-details/?srnum=${reqnumber}`}
+              target="_blank"
+              rel="noopener noreferrer"
             >
               {reqnumber}
             </a>

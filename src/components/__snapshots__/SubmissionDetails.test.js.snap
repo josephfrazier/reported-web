@@ -19,6 +19,8 @@ exports[`SubmissionDetails renders children correctly 1`] = `
      
     <a
       href="https://portal.311.nyc.gov/sr-details/?srnum=reqnumber"
+      rel="noopener noreferrer"
+      target="_blank"
     >
       reqnumber
     </a>
@@ -121,6 +123,8 @@ exports[`SubmissionDetails renders children correctly when medallionNo is missin
      
     <a
       href="https://portal.311.nyc.gov/sr-details/?srnum=reqnumber"
+      rel="noopener noreferrer"
+      target="_blank"
     >
       reqnumber
     </a>
@@ -223,6 +227,8 @@ exports[`SubmissionDetails renders delete button correctly 1`] = `
      
     <a
       href="https://portal.311.nyc.gov/sr-details/?srnum=reqnumber"
+      rel="noopener noreferrer"
+      target="_blank"
     >
       reqnumber
     </a>

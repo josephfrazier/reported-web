@@ -103,7 +103,6 @@
     "@babel/preset-flow": "^7.0.0",
     "@babel/preset-react": "^7.0.0",
     "@eslint/compat": "^2.0.2",
-    "@eslint/eslintrc": "^3.3.3",
     "@eslint/js": "^9.39.2",
     "babel-core": "^7.0.0-bridge.0",
     "babel-eslint": "^9.0.0",

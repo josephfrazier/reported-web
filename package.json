@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "engines": {
-    "node": "20.18.1",
+    "node": "24.12.0",
     "yarn": "1.22.22"
   },
   "packageManager": "yarn@1.22.22",
@@ -48,7 +48,6 @@
     "global": "^4.3.2",
     "heroku-self-ping": "^2.0.1",
     "history": "^4.7.2",
-    "http-delayed-response": "^0.0.4",
     "humanize-distance": "^1.0.9",
     "image-extensions": "^1.1.0",
     "intl": "^1.2.5",
@@ -71,7 +70,6 @@
     "process": "^0.11.10",
     "promised-location": "^1.0.1",
     "prop-types": "^15.6.2",
-    "puppeteer": "^1.13.0",
     "query-string": "^6.1.0",
     "react": "^16.5.2",
     "react-csv": "^2.2.2",
@@ -127,7 +125,7 @@
     "file-loader": "^2.0.0",
     "flow-bin": "^0.81.0",
     "front-matter": "^2.3.0",
-    "glob": "^10.3.3",
+    "glob": "^10.5.0",
     "identity-obj-proxy": "^3.0.0",
     "jest": "^29",
     "jest-environment-jsdom": "^29.7.0",

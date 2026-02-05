@@ -95,7 +95,10 @@ module.exports = {
       '<rootDir>/tools/lib/fileTransformer.js',
   },
 
-  // transformIgnorePatterns: // [array<string>]
+  transformIgnorePatterns: [
+    'node_modules/(?!(p-event|p-timeout)/)',
+  ],
+
   // unmockedModulePathPatterns: // [array<string>]
 
   verbose: true, // [boolean]

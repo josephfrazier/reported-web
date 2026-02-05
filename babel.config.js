@@ -26,5 +26,12 @@ module.exports = {
     '@babel/plugin-proposal-class-properties',
     '@babel/plugin-syntax-dynamic-import',
   ],
-  ignore: ['node_modules', 'build'],
+  ignore: [
+    (filename) => {
+      if (filename.includes('node_modules')) {
+        return !(filename.includes('p-event') || filename.includes('p-timeout'));
+      }
+      return filename.includes('build');
+    },
+  ],
 };

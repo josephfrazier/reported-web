@@ -29,7 +29,8 @@ module.exports = {
   ignore: [
     (filename) => {
       if (filename.includes('node_modules')) {
-        return !(filename.includes('p-event') || filename.includes('p-timeout'));
+        const packagesToParse = ['node_modules/p-event/', 'node_modules/p-timeout/'];
+        return !packagesToParse.some(pkg => filename.includes(pkg));
       }
       return filename.includes('build');
     },

@@ -11,10 +11,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import withStyles from 'isomorphic-style-loader/lib/withStyles';
 import FileReaderInput from 'react-file-reader-input';
-import * as blobUtil from 'blob-util';
-import exifr from 'exifr/dist/full.umd.js';
 import axios from 'axios';
-import promisedLocation from 'promised-location';
 import { compose, withProps } from 'recompose';
 import {
   withScriptjs,
@@ -26,12 +23,7 @@ import { SearchBox } from 'react-google-maps/lib/components/places/SearchBox';
 import withLocalStorage from 'react-localstorage';
 import debounce from 'debounce-promise';
 import FileType from 'file-type/browser';
-import MP4Box from 'mp4box';
-import execall from 'execall';
-import captureFrame from 'capture-frame';
-import pEvent from 'p-event';
 import omit from 'object.omit';
-import bufferToArrayBuffer from 'buffer-to-arraybuffer';
 import objectToFormData from 'object-to-formdata';
 import usStateNames from 'datasets-us-states-abbr-names';
 import fileExtension from 'file-extension';
@@ -39,10 +31,9 @@ import diceware from 'diceware-generator';
 import wordlist from 'diceware-wordlist-en-eff';
 import Modal from 'react-modal';
 import Dropzone from '@josephfrazier/react-dropzone';
-import { ToastContainer, toast } from 'react-toastify';
+import { ToastContainer } from 'react-toastify';
 import toastifyStyles from 'react-toastify/dist/ReactToastify.css';
 import { zip } from 'zip-array';
-import PolygonLookup from 'polygon-lookup';
 import { CSVLink } from 'react-csv';
 import capitalize from 'capitalize';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -51,10 +42,27 @@ import marx from 'marx-css/css/marx.css';
 import homeStyles from './Home.css';
 
 import SubmissionDetails from '../../components/SubmissionDetails.js';
-import { isImage, isVideo } from '../../isImage.js';
-import getNycTimezoneOffset from '../../timezone.js';
-import { getBoroNameMemoized } from '../../getBoroName.js';
+import { isImage } from '../../isImage.js';
 import vehicleTypeUrl from '../../vehicleTypeUrl.js';
+import {
+  blobToBuffer,
+  getBlobUrl,
+  extractPlate,
+  extractLocation,
+  extractDate,
+} from '../../utils/fileProcessing.js';
+import {
+  geolocate,
+  debouncedProcessValidation,
+  validateNycBoundary,
+} from '../../utils/geolocation.js';
+import { debouncedGetVehicleType } from '../../utils/plateService.js';
+import {
+  notifySuccess,
+  notifyInfo,
+  notifyWarning,
+  notifyError,
+} from '../../utils/notifications.js';
 
 usStateNames.DC = 'District of Columbia';
 
@@ -63,20 +71,6 @@ const GOOGLE_MAPS_API_KEY = 'AIzaSyDlwm2ykA0ohTXeVepQYvkcmdjz2M2CKEI';
 const objectMap = (obj, fn) =>
   Object.fromEntries(Object.entries(obj).map(([k, v], i) => [k, fn(v, k, i)]));
 
-const debouncedProcessValidation = debounce(async ({ latitude, longitude }) => {
-  const { data } = await axios.post('/api/process_validation', {
-    lat: latitude,
-    long: longitude,
-  });
-  return data;
-}, 500);
-
-const debouncedGetVehicleType = debounce(
-  ({ plate, licenseState }) =>
-    axios.get(`/getVehicleType/${plate}/${licenseState}`),
-  1000,
-);
-
 const debouncedSaveStateToLocalStorage = debounce(self => {
   self.saveStateToLocalStorage();
 }, 500);
@@ -84,227 +78,8 @@ const debouncedSaveStateToLocalStorage = debounce(self => {
 const defaultLatitude = 40.7128;
 const defaultLongitude = -74.006;
 
-// adapted from https://www.bignerdranch.com/blog/dont-over-react/
-const urls = new WeakMap();
-const getBlobUrl = blob => {
-  if (urls.has(blob)) {
-    return urls.get(blob);
-  }
-  const blobUrl = window.URL.createObjectURL(blob);
-  urls.set(blob, blobUrl);
-  return blobUrl;
-};
-
-const geolocate = () =>
-  promisedLocation().catch(async () => {
-    const { data } = await axios.get('https://ipapi.co/json');
-    const { latitude, longitude } = data;
-    return {
-      coords: { latitude, longitude },
-      ipProvenance: 'https://ipapi.co/json',
-    };
-  });
-
 const jsDateToCreateDate = jsDate =>
   jsDate.toISOString().replace(/:\d\d\..*/g, '');
-
-async function blobToBuffer({ attachmentFile }) {
-  console.time(`blobUtil.blobToArrayBuffer(attachmentFile)`); // eslint-disable-line no-console
-  const attachmentArrayBuffer = await blobUtil.blobToArrayBuffer(
-    attachmentFile,
-  );
-  console.timeEnd(`blobUtil.blobToArrayBuffer(attachmentFile)`); // eslint-disable-line no-console
-
-  console.time(`Buffer.from(attachmentArrayBuffer)`); // eslint-disable-line no-console
-  const attachmentBuffer = Buffer.from(attachmentArrayBuffer);
-  console.timeEnd(`Buffer.from(attachmentArrayBuffer)`); // eslint-disable-line no-console
-
-  return { attachmentBuffer, attachmentArrayBuffer };
-}
-
-// TODO decouple location/date extraction
-function extractLocationDateFromVideo({ attachmentArrayBuffer }) {
-  const mp4boxfile = MP4Box.createFile();
-  attachmentArrayBuffer.fileStart = 0; // eslint-disable-line no-param-reassign
-  mp4boxfile.appendBuffer(attachmentArrayBuffer);
-  const info = mp4boxfile.getInfo();
-  const { created } = info; // TODO handle missing
-
-  // https://stackoverflow.com/questions/28916329/mp4-video-file-with-gps-location/42596889#42596889
-  const uint8array = mp4boxfile.moov.udta['©xyz'].data; // TODO handle missing
-  // https://stackoverflow.com/questions/8936984/uint8array-to-string-in-javascript/36949791#36949791
-  const string = new TextDecoder('utf-8').decode(uint8array);
-  const [latitude, longitude] = execall(/[+-][\d.]+/g, string)
-    .map(m => m.match)
-    .map(Number);
-
-  // TODO make sure time is correct (ugh timezones...)
-  return [{ latitude, longitude }, created.getTime()];
-}
-
-// derived from https://github.com/feross/capture-frame/tree/06b8f5eac78fea305f7f577d1697ee3b6999c9a8#complete-example
-async function getVideoScreenshot({ attachmentFile }) {
-  const src = getBlobUrl(attachmentFile);
-  const video = document.createElement('video');
-
-  video.volume = 0;
-  video.setAttribute('crossOrigin', 'anonymous'); // optional, when cross-domain
-  video.src = src;
-  video.play();
-  await pEvent(video, 'canplay');
-
-  video.currentTime = 0; // TODO let user choose time?
-  await pEvent(video, 'seeked');
-
-  const buf = captureFrame(video).image;
-
-  // unload video element, to prevent memory leaks
-  video.pause();
-  video.src = '';
-  video.load();
-
-  return buf;
-}
-
-// adapted from https://www.bignerdranch.com/blog/dont-over-react/
-const attachmentPlates = new WeakMap();
-
-async function extractPlate({
-  attachmentFile,
-  attachmentBuffer,
-  ext,
-  isAlprEnabled,
-  email,
-  password,
-}) {
-  try {
-    console.time('extractPlate'); // eslint-disable-line no-console
-
-    if (isAlprEnabled === false) {
-      console.info('ALPR is disabled, skipping');
-      return { plate: '', licenseState: '', plateSuggestions: [] };
-    }
-
-    if (attachmentPlates.has(attachmentFile)) {
-      console.info(`found cached plate for ${attachmentFile.name}!`);
-      const result = attachmentPlates.get(attachmentFile);
-      return result;
-    }
-
-    if (isVideo({ ext })) {
-      // eslint-disable-next-line no-param-reassign
-      attachmentBuffer = await getVideoScreenshot({ attachmentFile });
-    } else if (!isImage({ ext })) {
-      throw new Error(`${attachmentFile.name} is not an image/video`);
-    }
-
-    console.time(`bufferToBlob(${attachmentFile.name})`); // eslint-disable-line no-console
-    const attachmentBlob = await blobUtil.arrayBufferToBlob(
-      bufferToArrayBuffer(attachmentBuffer),
-    );
-    console.timeEnd(`bufferToBlob(${attachmentFile.name})`); // eslint-disable-line no-console
-
-    const formData = objectToFormData({
-      attachmentFile: attachmentBlob,
-      email,
-      password,
-    });
-    const { data } = await axios.post('/platerecognizer', formData);
-
-    // Choose first result with T######C plate if it exists, see https://github.com/josephfrazier/reported-web/issues/584
-    let result = data.results.filter(r =>
-      r.plate.toUpperCase().match(/^T\d\d\d\d\d\dC$/),
-    )[0];
-    if (!result) {
-      result = data.results[0];
-    }
-
-    try {
-      result.licenseState = result.region.code.split('-')[1].toUpperCase();
-    } catch (err) {
-      result.licenseState = null;
-    }
-    result.plate = result.plate.toUpperCase();
-    result.plateSuggestions = data.results.map(r => r.plate.toUpperCase());
-
-    attachmentPlates.set(attachmentFile, result);
-    return result;
-  } catch (err) {
-    console.error(err.stack);
-
-    throw 'license plate'; // eslint-disable-line no-throw-literal
-  } finally {
-    console.timeEnd('extractPlate'); // eslint-disable-line no-console
-  }
-}
-
-async function extractLocation({
-  attachmentFile,
-  attachmentArrayBuffer,
-  ext,
-  isReverseGeocodingEnabled,
-}) {
-  if (isReverseGeocodingEnabled === false) {
-    console.info('Reverse geolocation is disabled, skipping');
-
-    throw 'location'; // eslint-disable-line no-throw-literal
-  }
-
-  try {
-    if (isVideo({ ext })) {
-      return extractLocationDateFromVideo({ attachmentArrayBuffer })[0];
-    }
-    if (!isImage({ ext })) {
-      throw new Error(`${attachmentFile.name} is not an image/video`);
-    }
-
-    const { latitude, longitude } = await exifr.gps(attachmentArrayBuffer);
-    console.info(
-      'Extracted GPS latitude/longitude location from EXIF metadata',
-      { latitude, longitude },
-    );
-
-    return { latitude, longitude };
-  } catch (err) {
-    console.error(err.stack);
-
-    throw 'location'; // eslint-disable-line no-throw-literal
-  }
-}
-
-async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
-  try {
-    if (isVideo({ ext })) {
-      return extractLocationDateFromVideo({ attachmentArrayBuffer })[1];
-    }
-    if (!isImage({ ext })) {
-      throw new Error(`${attachmentFile.name} is not an image/video`);
-    }
-
-    const {
-      CreateDate,
-      OffsetTimeDigitized,
-    } = await exifr.parse(attachmentArrayBuffer, [
-      'CreateDate',
-      'OffsetTimeDigitized',
-    ]);
-
-    console.log({ CreateDate, OffsetTimeDigitized }); // eslint-disable-line no-console
-
-    return {
-      millisecondsSinceEpoch: CreateDate.getTime(),
-      offset: OffsetTimeDigitized
-        ? parseInt(OffsetTimeDigitized, 10) * -60
-        : CreateDate
-        ? getNycTimezoneOffset(CreateDate)
-        : new Date().getTimezoneOffset(),
-    };
-  } catch (err) {
-    console.error(err.stack);
-
-    throw 'creation date'; // eslint-disable-line no-throw-literal
-  }
-}
 
 class Home extends React.Component {
   constructor(props) {
@@ -480,20 +255,19 @@ class Home extends React.Component {
     });
 
     // show error message if location is outside NYC
-    console.time('new PolygonLookup'); // eslint-disable-line no-console
-    const lookup = new PolygonLookup(
-      this.props.boroughBoundariesFeatureCollection,
-    );
-    console.timeEnd('new PolygonLookup'); // eslint-disable-line no-console
-    const end = { latitude, longitude };
-    const BoroName = getBoroNameMemoized({ lookup, end });
-    if (BoroName === '(unknown borough)') {
-      const errorMessage = `latitude/longitude (${latitude}, ${longitude}) is outside NYC. Please select a location within NYC.`;
+    const validationResult = validateNycBoundary({
+      latitude,
+      longitude,
+      boroughBoundariesFeatureCollection: this.props
+        .boroughBoundariesFeatureCollection,
+    });
+
+    if (!validationResult.coordsAreInNyc) {
       this.setState({
-        formatted_address: errorMessage,
+        formatted_address: validationResult.errorMessage,
         coordsAreInNyc: false,
       });
-      this.notifyError(errorMessage);
+      notifyError(validationResult.errorMessage);
 
       return;
     }
@@ -556,7 +330,7 @@ class Home extends React.Component {
         );
       })
     ) {
-      this.notifyWarning(
+      notifyWarning(
         <p>
           You have already submitted a report for {plate} in {licenseState}, are
           you sure you want to submit another?
@@ -678,7 +452,7 @@ class Home extends React.Component {
           this.state.attachmentData.map(async (attachmentFile, index) => {
             if (attachmentFile.size > 20 * 1000 * 1000) {
               // just under 20MB, should match fileSize in server.js
-              this.notifyWarning(
+              notifyWarning(
                 <React.Fragment>
                   <p>
                     File #{index + 1} is too big, over 20MB, please remove it
@@ -761,7 +535,7 @@ class Home extends React.Component {
         const hasMultipleAttachments = this.state.attachmentData.length > 1;
         const fileCopy = hasMultipleAttachments ? 'the files.' : 'the file.';
 
-        this.notifyWarning(
+        notifyWarning(
           <React.Fragment>
             <p>
               Could not extract the {missingValuesString} from {fileCopy} Please
@@ -794,19 +568,11 @@ class Home extends React.Component {
   handleAxiosError = error =>
     Promise.reject(error)
       .catch(err => {
-        this.notifyError(`Error: ${err.response.data.error.message}`);
+        notifyError(`Error: ${err.response.data.error.message}`);
       })
       .catch(err => {
         console.error(err);
       });
-
-  notifySuccess = notificationContent => toast.success(notificationContent);
-
-  notifyInfo = notificationContent => toast.info(notificationContent);
-
-  notifyWarning = notificationContent => toast.warn(notificationContent);
-
-  notifyError = notificationContent => toast.error(notificationContent);
 
   loadPreviousSubmissions = () => {
     axios
@@ -954,7 +720,7 @@ class Home extends React.Component {
                             })
                             .then(() => {
                               const message = `Please check ${email} to reset your password.`;
-                              this.notifyInfo(message);
+                              notifyInfo(message);
                             })
                             .catch(this.handleAxiosError);
                         }}
@@ -1078,9 +844,7 @@ class Home extends React.Component {
                   this.state.latitude === defaultLatitude &&
                   this.state.longitude === defaultLongitude
                 ) {
-                  this.notifyError(
-                    'Please provide the location of the incident',
-                  );
+                  notifyError('Please provide the location of the incident');
                   return;
                 }
 
@@ -1142,7 +906,7 @@ class Home extends React.Component {
                       reportDescription: '',
                     }));
                     this.setLicensePlate({ plate: '', licenseState: 'NY' });
-                    this.notifySuccess(
+                    notifySuccess(
                       <React.Fragment>
                         <p>Thanks for your submission!</p>
                         <p>
@@ -1422,7 +1186,7 @@ class Home extends React.Component {
                           },
                         )
                         .catch(err => {
-                          this.notifyError(err.message);
+                          notifyError(err.message);
                           console.error(err);
                         });
                     }}

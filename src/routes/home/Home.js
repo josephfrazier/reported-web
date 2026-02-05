@@ -871,6 +871,11 @@ class Home extends React.Component {
       this.state.reportIterationAnchor / this.state.reportsInIteration,
     ) + 1;
 
+  getVisibleSubmissions = () => {
+    const { startIdx, endIdx } = this.calculateIterationBoundaries();
+    return this.state.submissions.slice(startIdx, endIdx);
+  };
+
   render() {
     return (
       <Dropzone
@@ -1587,27 +1592,21 @@ class Home extends React.Component {
                   >
                     Download as CSV
                   </CSVLink>
-                  <div
-                    style={{
-                      margin: '15px 0',
-                      padding: '10px',
-                      background: '#f5f5f5',
-                      borderRadius: '5px',
-                    }}
-                  >
+                  <div className={homeStyles.paginationContainer}>
                     <button
                       type="button"
+                      className={homeStyles.paginationButton}
                       onClick={this.retreatReportIterationBackward}
                       disabled={
                         this.state.reportIterationAnchor === 0 ||
                         this.state.ignoreIterationLimits
                       }
-                      style={{ marginRight: '10px', padding: '8px 16px' }}
                     >
                       ← Earlier Reports
                     </button>
                     <button
                       type="button"
+                      className={homeStyles.paginationButton}
                       onClick={this.advanceReportIterationForward}
                       disabled={
                         this.state.reportIterationAnchor +
@@ -1615,18 +1614,13 @@ class Home extends React.Component {
                           this.state.submissions.length ||
                         this.state.ignoreIterationLimits
                       }
-                      style={{ marginRight: '10px', padding: '8px 16px' }}
                     >
                       Later Reports →
                     </button>
                     <button
                       type="button"
+                      className={homeStyles.paginationToggleButton}
                       onClick={this.toggleIterationLimits}
-                      style={{
-                        marginRight: '10px',
-                        padding: '8px 16px',
-                        fontWeight: 'bold',
-                      }}
                     >
                       {this.state.ignoreIterationLimits
                         ? 'Restore Iteration Limits'
@@ -1640,22 +1634,14 @@ class Home extends React.Component {
                     )}
                   </div>
                   <ul>
-                    {(() => {
-                      const {
-                        startIdx,
-                        endIdx,
-                      } = this.calculateIterationBoundaries();
-                      return this.state.submissions
-                        .slice(startIdx, endIdx)
-                        .map(submission => (
-                          <li key={submission.objectId}>
-                            <SubmissionDetails
-                              submission={submission}
-                              onDeleteSubmission={this.onDeleteSubmission}
-                            />
-                          </li>
-                        ));
-                    })()}
+                    {this.getVisibleSubmissions().map(submission => (
+                      <li key={submission.objectId}>
+                        <SubmissionDetails
+                          submission={submission}
+                          onDeleteSubmission={this.onDeleteSubmission}
+                        />
+                      </li>
+                    ))}
                   </ul>
                 </>
               )}

@@ -22,12 +22,10 @@ import Parse from 'parse/node';
 import FileType from 'file-type/browser';
 import multer from 'multer';
 import stringify from 'json-stringify-safe';
-import DelayedResponse from 'http-delayed-response';
 
 import { isImage, isVideo } from './isImage.js';
 import { validateLocation, processValidation } from './geoclient.js';
 import getVehicleType from './getVehicleType.js';
-import { submit_311_illegal_parking_report } from './311.js'; // eslint-disable-line camelcase
 import srlookup from './srlookup.js';
 
 import App from './components/App';
@@ -71,7 +69,7 @@ Parse.serverURL = PARSE_SERVER_URL;
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 20 * 1000 * 1000, // just under 20MB
+    fileSize: 20 * 1000 * 1000, // just under 20MB, should match attachmentFile.size in Home.js
     files: 6,
   },
 });
@@ -89,8 +87,16 @@ const upload = multer({
 // Tell any CSS tooling (such as Material UI) to use all vendor prefixes if the
 // user agent is not known.
 // -----------------------------------------------------------------------------
-global.navigator = global.navigator || {};
-global.navigator.userAgent = global.navigator.userAgent || 'all';
+if (!global.navigator) {
+  global.navigator = {};
+}
+if (!global.navigator.userAgent) {
+  Object.defineProperty(global.navigator, 'userAgent', {
+    value: 'all',
+    writable: true,
+    configurable: true,
+  });
+}
 
 const app = express();
 app.use(compression());
@@ -293,6 +299,13 @@ app.use('/requestPasswordReset', (req, res) => {
 
   // http://docs.parseplatform.org/js/guide/#resetting-passwords
   Parse.User.requestPasswordReset(email)
+    .catch(error => {
+      if (error?.message?.startsWith('No user found with email')) {
+        return;
+      }
+
+      throw error;
+    })
     .then(() => res.end())
     .catch(handlePromiseRejection(res));
 });
@@ -360,6 +373,14 @@ app.use('/submit', (req, res) => {
             throw { message: `${key} is required` }; // eslint-disable-line no-throw-literal
           }
         });
+
+        const timezone = process.env.TZ;
+        process.env.TZ = 'America/New_York';
+        if (timeofreport.valueOf() > Date.now()) {
+          const message = `Timestamp cannot be in the future (submitted time: ${timeofreport}, actual time: ${new Date()})`;
+          process.env.TZ = timezone;
+          throw { message }; // eslint-disable-line no-throw-literal
+        }
 
         const Submission = Parse.Object.extend('submission');
         const submission = new Submission();
@@ -483,17 +504,6 @@ app.use('/getVehicleType/:licensePlate/:licenseState?', (req, res) => {
   const { licensePlate = 'GNS7685', licenseState = 'NY' } = req.params;
   getVehicleType({ licensePlate, licenseState })
     .then(({ result }) => res.json({ result }))
-    .catch(handlePromiseRejection(res));
-});
-
-app.use('/api/submit_311_illegal_parking_report', (req, res) => {
-  const delayed = new DelayedResponse(req, res);
-  delayed.json();
-  const delayedCallback = delayed.start();
-  submit_311_illegal_parking_report(req.body)
-    .then(result => {
-      delayedCallback(null, { result });
-    })
     .catch(handlePromiseRejection(res));
 });
 

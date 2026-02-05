@@ -74,7 +74,7 @@ export async function validateLocation({ lat, long }) {
   }
 
   const { data: geoclientResponse } = await axios.get(
-    'https://api.nyc.gov/geo/geoclient/v1/address.json',
+    'https://api.nyc.gov/geoclient/v2/address.json',
     {
       params: {
         houseNumber: building,

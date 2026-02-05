@@ -359,7 +359,7 @@ const clientConfig = {
 
     // fix "process is not defined" error:
     new webpack.ProvidePlugin({
-      process: 'process/browser',
+      process: 'process/browser.js',
     }),
 
     new webpack.ProvidePlugin({
@@ -389,6 +389,10 @@ const clientConfig = {
       net: false,
       tls: false,
       buffer: require.resolve('buffer/'),
+    },
+    alias: {
+      'react/jsx-dev-runtime': 'react/jsx-dev-runtime.js',
+      'react/jsx-runtime': 'react/jsx-runtime.js',
     },
   },
 };

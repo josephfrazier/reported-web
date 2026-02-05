@@ -223,7 +223,7 @@ exports[`Home renders children correctly 1`] = `
             <button
               type="button"
             >
-              Add pictures/videos
+              Add pictures/videos (up to 3 each, 20MB max each)
             </button>
           </div>
           <div
@@ -629,7 +629,7 @@ exports[`Home renders children correctly 1`] = `
               onChange={[Function]}
               required={true}
               type="datetime-local"
-              value="2016-11-17T20:00"
+              value="2016-11-17T19:00"
             />
           </label>
           <label

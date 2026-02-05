@@ -83,6 +83,7 @@ const debouncedSaveStateToLocalStorage = debounce(self => {
 
 const defaultLatitude = 40.7128;
 const defaultLongitude = -74.006;
+const ITERATION_DISPLAY_SIZE = 11;
 
 // adapted from https://www.bignerdranch.com/blog/dont-over-react/
 const urls = new WeakMap();
@@ -352,7 +353,7 @@ class Home extends React.Component {
       submissions: [],
       addressProvenance: '',
       reportIterationAnchor: 0,
-      reportsInIteration: 11,
+      reportsInIteration: ITERATION_DISPLAY_SIZE,
       ignoreIterationLimits: false,
     };
 

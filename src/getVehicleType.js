@@ -34,7 +34,6 @@ async function getBrowser() {
 // ported from https://github.com/jeffrono/Reported/blob/19b588171315a3093d53986f9fb995059f5084b4/v2/enrich_functions.rb#L325-L346
 export default async function getVehicleType({ licensePlate, licenseState }) {
   const logLabel = `getVehicleType(${licensePlate}, ${licenseState})`;
-  const stateName = usStateNames[licenseState];
 
   console.time(logLabel); // eslint-disable-line no-console
 

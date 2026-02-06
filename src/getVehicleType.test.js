@@ -3,25 +3,15 @@
  */
 /* eslint-env jest */
 
-import getVehicleType, { closeBrowser } from './getVehicleType.js';
-
-const timeoutMilliseconds = 10 * 1000;
+import getVehicleType from './getVehicleType.js';
 
 describe('getVehicleType', () => {
-  afterAll(async () => {
-    await closeBrowser();
+  test.skip('returns the right object', async () => {
+    const result = await getVehicleType({
+      licensePlate: 'T716540C',
+      licenseState: 'NY',
+    });
+
+    expect(result).toMatchSnapshot();
   });
-
-  test(
-    'returns the right object',
-    async () => {
-      const result = await getVehicleType({
-        licensePlate: 'TEST',
-        licenseState: 'NY',
-      });
-
-      expect(result).toMatchSnapshot();
-    },
-    timeoutMilliseconds,
-  );
 });

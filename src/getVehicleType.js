@@ -4,6 +4,13 @@ import vehicleTypeUrl from './vehicleTypeUrl.js';
 // Singleton browser instance for reuse across requests
 let browserInstance = null;
 
+export async function closeBrowser() {
+  if (browserInstance) {
+    await browserInstance.close();
+    browserInstance = null;
+  }
+}
+
 async function getBrowser() {
   if (!browserInstance || !browserInstance.connected) {
     browserInstance = await puppeteer.launch({

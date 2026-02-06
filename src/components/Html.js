@@ -10,7 +10,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import serialize from 'serialize-javascript';
-import config from '../config';
+import config from '../config.js';
 
 /* eslint-disable react/no-danger */
 

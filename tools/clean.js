@@ -7,7 +7,7 @@
  * LICENSE.txt file in the root directory of this source tree.
  */
 
-import { cleanDir } from './lib/fs';
+import { cleanDir } from './lib/fs.js';
 
 /**
  * Cleans up the output (build) directory.

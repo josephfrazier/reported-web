@@ -8,8 +8,8 @@ async function getBrowser() {
   if (!browserInstance || !browserInstance.connected) {
     browserInstance = await puppeteer.launch({
       headless: true,
-      executablePath:
-        process.env.PUPPETEER_EXECUTABLE_PATH || '/snap/bin/chromium',
+      // executablePath:
+      //   process.env.PUPPETEER_EXECUTABLE_PATH || '/snap/bin/chromium',
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',

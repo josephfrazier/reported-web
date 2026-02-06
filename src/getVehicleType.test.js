@@ -15,5 +15,5 @@ describe('getVehicleType', () => {
     });
 
     expect(result).toMatchSnapshot();
-  });
-}, timeoutMilliseconds);
+  }, timeoutMilliseconds);
+});

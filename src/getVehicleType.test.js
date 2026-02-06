@@ -12,12 +12,16 @@ describe('getVehicleType', () => {
     await closeBrowser();
   });
 
-  test('returns the right object', async () => {
-    const result = await getVehicleType({
-      licensePlate: 'TEST',
-      licenseState: 'NY',
-    });
+  test(
+    'returns the right object',
+    async () => {
+      const result = await getVehicleType({
+        licensePlate: 'TEST',
+        licenseState: 'NY',
+      });
 
-    expect(result).toMatchSnapshot();
-  }, timeoutMilliseconds);
+      expect(result).toMatchSnapshot();
+    },
+    timeoutMilliseconds,
+  );
 });

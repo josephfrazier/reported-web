@@ -581,8 +581,14 @@ class Home extends React.Component {
         this.setState({
           vehicleInfoComponent: (
             <React.Fragment>
-              {plate} in {usStateNames[licenseState]}: {vehicleYear}{' '}
-              {vehicleMake} {vehicleModel} ({vehicleBody})
+              <a
+                href={vehicleTypeUrl({ licensePlate: plate, licenseState })}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {plate} in {usStateNames[licenseState]}: {vehicleYear}{' '}
+                {vehicleMake} {vehicleModel} ({vehicleBody})
+              </a>
               <img
                 src={this.getVehicleMakeLogoUrl({ vehicleMake })}
                 alt={`${vehicleMake} logo`}
@@ -617,7 +623,7 @@ class Home extends React.Component {
                 </a>
                 <br />
                 <a
-                  href={vehicleTypeUrl({ licensePlate: plate, licenseState })}
+                  href="https://www.lookupaplate.com/"
                   target="_blank"
                   rel="noopener noreferrer"
                 >

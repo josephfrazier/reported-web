@@ -54,7 +54,6 @@ import SubmissionDetails from '../../components/SubmissionDetails.js';
 import { isImage, isVideo } from '../../isImage.js';
 import getNycTimezoneOffset from '../../timezone.js';
 import { getBoroNameMemoized } from '../../getBoroName.js';
-import vehicleTypeUrl from '../../vehicleTypeUrl.js';
 
 usStateNames.DC = 'District of Columbia';
 
@@ -617,7 +616,7 @@ class Home extends React.Component {
                 </a>
                 <br />
                 <a
-                  href={vehicleTypeUrl({ licensePlate: plate, licenseState })}
+                  href="https://www.lookupaplate.com/"
                   target="_blank"
                   rel="noopener noreferrer"
                 >

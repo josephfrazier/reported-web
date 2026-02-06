@@ -1,7 +1,4 @@
 import puppeteer from 'puppeteer';
-import usStateNames from 'datasets-us-states-abbr-names';
-
-usStateNames.DC = 'District of Columbia';
 
 // Singleton browser instance for reuse across requests
 let browserInstance = null;

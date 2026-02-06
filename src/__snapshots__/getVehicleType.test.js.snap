@@ -1,14 +1,12 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
 exports[`getVehicleType returns the right object 1`] = `
-Object {
-  "result": Object {
-    "licensePlate": "T716540C",
+{
+  "result": {
+    "licensePlate": "TEST",
     "licenseState": "NY",
-    "vehicleBody": undefined,
-    "vehicleMake": "LINCOLN",
-    "vehicleModel": "TOWN CAR SIGNATURE LIMITED",
-    "vehicleYear": "2009",
+    "vehicleMake": "BMW",
+    "vehicleModel": "135i",
   },
 }
 `;

@@ -89,10 +89,10 @@ export default async function getVehicleType({ licensePlate, licenseState }) {
       };
 
       return {
-        vehicleYear: getValueByLabel('Year'),
+        vehicleYear: getValueByLabel('Model Year'),
         vehicleMake: getValueByLabel('Make'),
         vehicleModel: getValueByLabel('Model'),
-        vehicleBody: getValueByLabel('Body Style'),
+        vehicleBody: getValueByLabel('Body Class'),
       };
     });
 

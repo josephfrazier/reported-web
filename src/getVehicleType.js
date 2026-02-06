@@ -1,5 +1,7 @@
 import puppeteer from 'puppeteer';
-import vehicleTypeUrl from './vehicleTypeUrl.js';
+import usStateNames from 'datasets-us-states-abbr-names';
+
+usStateNames.DC = 'District of Columbia';
 
 // Singleton browser instance for reuse across requests
 let browserInstance = null;
@@ -32,7 +34,7 @@ async function getBrowser() {
 // ported from https://github.com/jeffrono/Reported/blob/19b588171315a3093d53986f9fb995059f5084b4/v2/enrich_functions.rb#L325-L346
 export default async function getVehicleType({ licensePlate, licenseState }) {
   const logLabel = `getVehicleType(${licensePlate}, ${licenseState})`;
-  const targetUrl = vehicleTypeUrl({ licensePlate, licenseState });
+  const stateName = usStateNames[licenseState];
 
   console.time(logLabel); // eslint-disable-line no-console
 
@@ -48,27 +50,28 @@ export default async function getVehicleType({ licensePlate, licenseState }) {
     // Set viewport to a standard desktop size
     await page.setViewport({ width: 1280, height: 800 });
 
-    // Navigate to the homepage first to load the SvelteKit app
+    // Navigate to the homepage
     await page.goto('https://www.lookupaplate.com/', {
       waitUntil: 'networkidle2',
       timeout: 30000,
     });
 
-    // Use client-side navigation to the plate page (avoids 404 from direct URL access)
-    const relativePath = new URL(targetUrl).pathname;
-    await page.evaluate(path => {
-      window.location.href = path;
-    }, relativePath);
+    // Select state from the dropdown
+    await page.waitForSelector('select[name="stateCode"]', { timeout: 10000 });
+    await page.select('select[name="stateCode"]', licenseState);
 
-    // Wait for navigation to complete
-    await page.waitForFunction(
-      path => window.location.pathname === path,
-      { timeout: 15000 },
-      relativePath,
-    );
+    // Type the license plate into the search input
+    const input = await page.waitForSelector('input[type="text"]', {
+      timeout: 10000,
+    });
+    await input.click({ clickCount: 3 }); // select any existing text
+    await input.type(licensePlate);
 
-    // Wait a bit for content to render
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // Click the search button and wait for navigation
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 }),
+      page.click('button'),
+    ]);
 
     // Wait for the content to be loaded - look for the collapse sections
     await page

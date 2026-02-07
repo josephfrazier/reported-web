@@ -38,19 +38,25 @@ function run(fn, options) {
 }
 
 const currentFile = fileURLToPath(import.meta.url);
-if ((currentFile === process.argv[1] || 
-     currentFile === `${process.argv[1]}.js`) && 
-    process.argv.length > 2) {
+if (
+  (currentFile === process.argv[1] ||
+    currentFile === `${process.argv[1]}.js`) &&
+  process.argv.length > 2
+) {
   // eslint-disable-next-line import/no-dynamic-require
   const taskName = process.argv[2];
-  
+
   // Validate module name to prevent path traversal
   // Check that taskName is a simple filename without path separators
-  if (!taskName || taskName !== taskName.replace(/[/\\]/g, '') || taskName.includes('..')) {
+  if (
+    !taskName ||
+    taskName !== taskName.replace(/[/\\]/g, '') ||
+    taskName.includes('..')
+  ) {
     console.error('Error: Invalid task name');
     process.exit(1);
   }
-  
+
   const modulePath = `./${taskName}.js`;
   import(modulePath)
     .then(module => {

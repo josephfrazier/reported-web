@@ -24,9 +24,12 @@ module.exports = {
   ],
   plugins: ['@babel/plugin-transform-class-properties'],
   ignore: [
-    (filename) => {
+    filename => {
       if (filename.includes('node_modules')) {
-        const packagesToParse = ['node_modules/p-event/', 'node_modules/p-timeout/'];
+        const packagesToParse = [
+          'node_modules/p-event/',
+          'node_modules/p-timeout/',
+        ];
         return !packagesToParse.some(pkg => filename.includes(pkg));
       }
       return filename.includes('build');

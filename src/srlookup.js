@@ -1,10 +1,13 @@
+import https from 'https';
 import axios from 'axios';
 import { JSDOM } from 'jsdom';
 
 export default async function srlookup({ reqnumber }) {
   const url = `https://portal.311.nyc.gov/sr-details/?srnum=${reqnumber}`;
 
-  const { data } = await axios.get(url);
+  const { data } = await axios.get(url, {
+    httpsAgent: new https.Agent({ keepAlive: false }),
+  });
   const { document } = new JSDOM(data).window;
 
   const result = {};

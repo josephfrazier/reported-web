@@ -10,7 +10,7 @@
 import React from 'react';
 import withStyles from 'isomorphic-style-loader/withStyles';
 import s from './Footer.css';
-import Link from '../Link';
+import Link from '../Link/Link.js';
 
 class Footer extends React.Component {
   render() {

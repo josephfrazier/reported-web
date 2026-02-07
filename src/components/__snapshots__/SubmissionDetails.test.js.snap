@@ -1,4 +1,4 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
 
 exports[`SubmissionDetails renders children correctly 1`] = `
 <details
@@ -15,8 +15,15 @@ exports[`SubmissionDetails renders children correctly 1`] = `
      on 
     2016-11-18T00:00:00.000Z UTC (MockDate: GMT-0500)
     <br />
-    TLC Service Request Number: 
-    reqnumber
+    TLC Service Request Number:
+     
+    <a
+      href="https://portal.311.nyc.gov/sr-details/?srnum=reqnumber"
+      rel="noopener noreferrer"
+      target="_blank"
+    >
+      reqnumber
+    </a>
   </summary>
   <p>
     reportDescription
@@ -112,8 +119,15 @@ exports[`SubmissionDetails renders children correctly when medallionNo is missin
      on 
     2016-11-18T00:00:00.000Z UTC (MockDate: GMT-0500)
     <br />
-    TLC Service Request Number: 
-    reqnumber
+    TLC Service Request Number:
+     
+    <a
+      href="https://portal.311.nyc.gov/sr-details/?srnum=reqnumber"
+      rel="noopener noreferrer"
+      target="_blank"
+    >
+      reqnumber
+    </a>
   </summary>
   <p>
     reportDescription
@@ -209,8 +223,15 @@ exports[`SubmissionDetails renders delete button correctly 1`] = `
      on 
     2016-11-18T00:00:00.000Z UTC (MockDate: GMT-0500)
     <br />
-    TLC Service Request Number: 
-    reqnumber
+    TLC Service Request Number:
+     
+    <a
+      href="https://portal.311.nyc.gov/sr-details/?srnum=reqnumber"
+      rel="noopener noreferrer"
+      target="_blank"
+    >
+      reqnumber
+    </a>
   </summary>
   <p>
     reportDescription

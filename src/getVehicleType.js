@@ -1,15 +1,13 @@
 import axios from 'axios';
-import { JSDOM } from 'jsdom';
-import vehicleTypeUrl from './vehicleTypeUrl.js';
 
 // ported from https://github.com/jeffrono/Reported/blob/19b588171315a3093d53986f9fb995059f5084b4/v2/enrich_functions.rb#L325-L346
-export default function getVehicleType({ licensePlate, licenseState }) {
-  const url = vehicleTypeUrl({ licensePlate, licenseState });
+export default async function getVehicleType({ licensePlate, licenseState }) {
+  const url = `https://api.lookupaplate.com/api/v1/wait_for_vehicle_details/${licenseState}/${licensePlate}/`;
 
   console.time(url); // eslint-disable-line no-console
 
-  return axios
-    .get(url, {
+  try {
+    const { data } = await axios.get(url, {
       headers: {
         'User-Agent':
           'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:132.0) Gecko/20100101 Firefox/132.0',
@@ -27,28 +25,21 @@ export default function getVehicleType({ licensePlate, licenseState }) {
         'Sec-Fetch-User': '?1',
         Priority: 'u=0, i',
       },
-    })
-    .then(({ data }) => {
-      console.timeEnd(url); // eslint-disable-line no-console
-      const { document } = new JSDOM(data).window;
-
-      return {
-        result: {
-          vehicleYear: document.querySelector(
-            'div.collapse-arrow:nth-child(1) > div:nth-child(3) > div:nth-child(1) > div:nth-child(1) > div:nth-child(4) > div:nth-child(2)',
-          )?.textContent,
-          vehicleMake: document.querySelector(
-            'div.collapse-arrow:nth-child(1) > div:nth-child(3) > div:nth-child(1) > div:nth-child(1) > div:nth-child(1) > div:nth-child(2)',
-          )?.textContent,
-          vehicleModel: document.querySelector(
-            'div.collapse-arrow:nth-child(1) > div:nth-child(3) > div:nth-child(1) > div:nth-child(1) > div:nth-child(3) > div:nth-child(2)',
-          )?.textContent,
-          vehicleBody: document.querySelector(
-            'div.collapse-arrow:nth-child(3) > div:nth-child(3) > div:nth-child(1) > div:nth-child(1) > div:nth-child(1) > div:nth-child(2)',
-          )?.textContent,
-          licensePlate,
-          licenseState,
-        },
-      };
     });
+
+    const vehicleJson = data.vehicle_json || {};
+
+    return {
+      result: {
+        vehicleYear: vehicleJson['29'] || undefined,
+        vehicleMake: vehicleJson['26'] || undefined,
+        vehicleModel: vehicleJson['28'] || undefined,
+        vehicleBody: vehicleJson['5'] || undefined,
+        licensePlate,
+        licenseState,
+      },
+    };
+  } finally {
+    console.timeEnd(url); // eslint-disable-line no-console
+  }
 }

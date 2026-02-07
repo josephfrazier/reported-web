@@ -1,4 +1,4 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
 
 exports[`Home renders children correctly 1`] = `
 <div
@@ -629,7 +629,7 @@ exports[`Home renders children correctly 1`] = `
               onChange={[Function]}
               required={true}
               type="datetime-local"
-              value="2016-11-17T20:00"
+              value="2016-11-17T19:00"
             />
           </label>
           <label

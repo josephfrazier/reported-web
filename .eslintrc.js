@@ -10,18 +10,20 @@
 // ESLint configuration
 // http://eslint.org/docs/user-guide/configuring
 module.exports = {
-  parser: 'babel-eslint',
+  ignorePatterns: ['.git/**', 'build/'],
 
-  extends: [
-    'airbnb',
-    'plugin:flowtype/recommended',
-    'plugin:css-modules/recommended',
-    'prettier',
-    'prettier/flowtype',
-    'prettier/react',
-  ],
+  parser: '@babel/eslint-parser',
 
-  plugins: ['flowtype', 'css-modules', 'prettier', 'parentheses-around-await'],
+  parserOptions: {
+    requireConfigFile: false,
+    babelOptions: {
+      presets: ['@babel/preset-react'],
+    },
+  },
+
+  extends: ['airbnb', 'plugin:css-modules/recommended', 'prettier'],
+
+  plugins: ['css-modules', 'prettier', 'parentheses-around-await'],
 
   globals: {
     __DEV__: true,
@@ -40,7 +42,7 @@ module.exports = {
 
     // Allow importing JSON files from packages
     // https://github.com/benmosher/eslint-plugin-import/blob/cd9d249822cbe07960beff1a3b2da48bd661636b/docs/rules/extensions.md
-    'import/extensions': 'ignorePackages',
+    'import/extensions': ['error', 'ignorePackages'],
 
     // Recommend not to leave any console.log in your code
     // Use console.error, console.warn and console.info instead

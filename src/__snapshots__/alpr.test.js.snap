@@ -1,63 +1,35 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
 
 exports[`readLicenseViaALPR falling back to the second token 1`] = `
 {
   "box": {
-    "xmax": 2634,
-    "xmin": 2578,
-    "ymax": 1282,
-    "ymin": 1248,
+    "xmax": 1842,
+    "xmin": 1642,
+    "ymax": 2115,
+    "ymin": 2011,
   },
   "candidates": [
     {
-      "plate": "8911",
-      "score": 0.999,
-    },
-    {
-      "plate": "891i",
-      "score": 0.762,
-    },
-    {
-      "plate": "89i1",
-      "score": 0.762,
-    },
-    {
-      "plate": "b911",
-      "score": 0.762,
-    },
-    {
-      "plate": "89ii",
-      "score": 0.525,
-    },
-    {
-      "plate": "b91i",
-      "score": 0.525,
-    },
-    {
-      "plate": "b9i1",
-      "score": 0.525,
-    },
-    {
-      "plate": "b9ii",
-      "score": 0.287,
+      "plate": "t736394c",
+      "score": 1,
     },
   ],
-  "dscore": 0.879,
-  "plate": "8911",
+  "dscore": 0.873,
+  "plate": "t736394c",
   "region": {
-    "code": "unknown",
-    "score": 0.01,
+    "code": "us-ny",
+    "score": 0.626,
   },
-  "score": 0.999,
+  "score": 1,
   "vehicle": {
     "box": {
-      "xmax": 2979,
-      "xmin": 2409,
-      "ymax": 1453,
-      "ymin": 834,
+      "xmax": 2450,
+      "xmin": 1223,
+      "ymax": 2252,
+      "ymin": 1225,
     },
-    "score": 0.175,
-    "type": "Van",
+    "score": 0.475,
+    "type": "SUV",
   },
 }
 `;
@@ -65,61 +37,33 @@ exports[`readLicenseViaALPR falling back to the second token 1`] = `
 exports[`readLicenseViaALPR using only the first token 1`] = `
 {
   "box": {
-    "xmax": 2634,
-    "xmin": 2578,
-    "ymax": 1282,
-    "ymin": 1248,
+    "xmax": 1842,
+    "xmin": 1642,
+    "ymax": 2115,
+    "ymin": 2011,
   },
   "candidates": [
     {
-      "plate": "8911",
-      "score": 0.999,
-    },
-    {
-      "plate": "891i",
-      "score": 0.762,
-    },
-    {
-      "plate": "89i1",
-      "score": 0.762,
-    },
-    {
-      "plate": "b911",
-      "score": 0.762,
-    },
-    {
-      "plate": "89ii",
-      "score": 0.525,
-    },
-    {
-      "plate": "b91i",
-      "score": 0.525,
-    },
-    {
-      "plate": "b9i1",
-      "score": 0.525,
-    },
-    {
-      "plate": "b9ii",
-      "score": 0.287,
+      "plate": "t736394c",
+      "score": 1,
     },
   ],
-  "dscore": 0.879,
-  "plate": "8911",
+  "dscore": 0.873,
+  "plate": "t736394c",
   "region": {
-    "code": "unknown",
-    "score": 0.01,
+    "code": "us-ny",
+    "score": 0.626,
   },
-  "score": 0.999,
+  "score": 1,
   "vehicle": {
     "box": {
-      "xmax": 2979,
-      "xmin": 2409,
-      "ymax": 1453,
-      "ymin": 834,
+      "xmax": 2450,
+      "xmin": 1223,
+      "ymax": 2252,
+      "ymin": 1225,
     },
-    "score": 0.175,
-    "type": "Van",
+    "score": 0.475,
+    "type": "SUV",
   },
 }
 `;

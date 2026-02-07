@@ -12,8 +12,8 @@
 
 import React from 'react';
 import renderer from 'react-test-renderer';
-import App from '../App';
-import Layout from './Layout';
+import App from '../App.js';
+import Layout from './Layout.js';
 
 describe('Layout', () => {
   test('renders children correctly', () => {

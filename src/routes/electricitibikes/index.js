@@ -8,8 +8,8 @@
  */
 
 import React from 'react';
-import Layout from '../../components/Layout';
-import ElectriCitibikes from './ElectriCitibikes';
+import Layout from '../../components/Layout/Layout.js';
+import ElectriCitibikes from './ElectriCitibikes.js';
 
 const title = 'ElectriCitibikes';
 

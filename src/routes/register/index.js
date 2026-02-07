@@ -8,8 +8,8 @@
  */
 
 import React from 'react';
-import Layout from '../../components/Layout';
-import Register from './Register';
+import Layout from '../../components/Layout/Layout.js';
+import Register from './Register.js';
 
 const title = 'New User Registration';
 

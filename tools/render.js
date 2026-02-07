@@ -9,8 +9,8 @@
 
 import path from 'path';
 import fetch from 'node-fetch';
-import { writeFile, makeDir } from './lib/fs';
-import runServer from './runServer';
+import { writeFile, makeDir } from './lib/fs.js';
+import runServer from './runServer.js';
 
 // Enter your paths here which you want to render as static
 // Example:

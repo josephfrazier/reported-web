@@ -13,7 +13,7 @@ import webpack from 'webpack';
 import WebpackAssetsManifest from 'webpack-assets-manifest';
 import nodeExternals from 'webpack-node-externals';
 import { BundleAnalyzerPlugin } from 'webpack-bundle-analyzer';
-import overrideRules from './lib/overrideRules';
+import overrideRules from './lib/overrideRules.js';
 import pkg from '../package.json';
 
 const ROOT_DIR = path.resolve(__dirname, '..');
@@ -359,7 +359,7 @@ const clientConfig = {
 
     // fix "process is not defined" error:
     new webpack.ProvidePlugin({
-      process: 'process/browser',
+      process: 'process/browser.js',
     }),
 
     new webpack.ProvidePlugin({

@@ -11,7 +11,7 @@ import React from 'react';
 import cx from 'classnames';
 import withStyles from 'isomorphic-style-loader/withStyles';
 import s from './Navigation.css';
-import Link from '../Link';
+import Link from '../Link/Link.js';
 
 class Navigation extends React.Component {
   render() {

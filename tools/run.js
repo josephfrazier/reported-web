@@ -37,14 +37,16 @@ function run(fn, options) {
   });
 }
 
-if ((fileURLToPath(import.meta.url) === process.argv[1] || 
-     fileURLToPath(import.meta.url) === `${process.argv[1]}.js`) && 
+const currentFile = fileURLToPath(import.meta.url);
+if ((currentFile === process.argv[1] || 
+     currentFile === `${process.argv[1]}.js`) && 
     process.argv.length > 2) {
   // eslint-disable-next-line import/no-dynamic-require
   const taskName = process.argv[2];
   
   // Validate module name to prevent path traversal
-  if (!taskName || taskName.includes('/') || taskName.includes('\\') || taskName.includes('..')) {
+  // Check that taskName is a simple filename without path separators
+  if (!taskName || taskName !== taskName.replace(/[/\\]/g, '') || taskName.includes('..')) {
     console.error('Error: Invalid task name');
     process.exit(1);
   }
@@ -52,7 +54,9 @@ if ((fileURLToPath(import.meta.url) === process.argv[1] ||
   const modulePath = `./${taskName}.js`;
   import(modulePath)
     .then(module => {
-      run(module).catch(err => {
+      // ES module dynamic imports return a module namespace object
+      // Access the default export explicitly
+      run(module.default || module).catch(err => {
         console.error(err.stack);
         process.exit(1);
       });

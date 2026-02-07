@@ -12,16 +12,16 @@ export default async function getVehicleType({ licensePlate, licenseState }) {
     httpsAgent: new https.Agent({ keepAlive: false }),
   });
 
-  const v = data.vehicle_json || {};
+  const vehicleJson = data.vehicle_json || {};
 
   console.timeEnd(logLabel); // eslint-disable-line no-console
 
   return {
     result: {
-      vehicleYear: v['29'] || undefined,
-      vehicleMake: v['26'] || undefined,
-      vehicleModel: v['28'] || undefined,
-      vehicleBody: v['5'] || undefined,
+      vehicleYear: vehicleJson['29'] || undefined,
+      vehicleMake: vehicleJson['26'] || undefined,
+      vehicleModel: vehicleJson['28'] || undefined,
+      vehicleBody: vehicleJson['5'] || undefined,
       licensePlate,
       licenseState,
     },

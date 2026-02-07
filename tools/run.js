@@ -37,15 +37,30 @@ function run(fn, options) {
   });
 }
 
-if (import.meta.url === `file://${process.argv[1]}` && process.argv.length > 2) {
+if ((fileURLToPath(import.meta.url) === process.argv[1] || 
+     fileURLToPath(import.meta.url) === `${process.argv[1]}.js`) && 
+    process.argv.length > 2) {
   // eslint-disable-next-line import/no-dynamic-require
-  const modulePath = `./${process.argv[2]}.js`;
-  import(modulePath).then(module => {
-    run(module).catch(err => {
-      console.error(err.stack);
+  const taskName = process.argv[2];
+  
+  // Validate module name to prevent path traversal
+  if (!taskName || taskName.includes('/') || taskName.includes('\\') || taskName.includes('..')) {
+    console.error('Error: Invalid task name');
+    process.exit(1);
+  }
+  
+  const modulePath = `./${taskName}.js`;
+  import(modulePath)
+    .then(module => {
+      run(module).catch(err => {
+        console.error(err.stack);
+        process.exit(1);
+      });
+    })
+    .catch(err => {
+      console.error(`Error loading module '${taskName}':`, err.message);
       process.exit(1);
     });
-  });
 }
 
 export default run;

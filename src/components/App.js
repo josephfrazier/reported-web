@@ -17,8 +17,6 @@ const ContextType = {
   query: PropTypes.object,
 };
 
-const AppContext = React.createContext(null);
-
 /**
  * The top-level React component setting context (global) variables
  * that can be accessed from all the child components.
@@ -59,14 +57,11 @@ class App extends React.PureComponent {
     // NOTE: If you need to add or modify header, footer etc. of the app,
     // please do that inside the Layout component.
     return (
-      <AppContext.Provider value={this.props.context}>
-        <React.StrictMode>
-          {React.Children.only(this.props.children)}
-        </React.StrictMode>
-      </AppContext.Provider>
+      <React.StrictMode>
+        {React.Children.only(this.props.children)}
+      </React.StrictMode>
     );
   }
 }
 
-export { AppContext };
 export default App;

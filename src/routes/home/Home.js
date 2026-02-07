@@ -83,6 +83,7 @@ const debouncedSaveStateToLocalStorage = debounce(self => {
 
 const defaultLatitude = 40.7128;
 const defaultLongitude = -74.006;
+const ITERATION_DISPLAY_SIZE = 11;
 
 // adapted from https://www.bignerdranch.com/blog/dont-over-react/
 const urls = new WeakMap();
@@ -387,6 +388,9 @@ class Home extends React.Component {
       vehicleInfoComponent: <br />,
       submissions: [],
       addressProvenance: '',
+      reportIterationAnchor: 0,
+      reportsInIteration: ITERATION_DISPLAY_SIZE,
+      ignoreIterationLimits: false,
     };
 
     const initialState = {
@@ -831,6 +835,60 @@ class Home extends React.Component {
         this.setState({ submissions });
       })
       .catch(Home.handleAxiosError);
+  };
+
+  advanceReportIterationForward = () => {
+    const nextAnchor =
+      this.state.reportIterationAnchor + this.state.reportsInIteration;
+    if (nextAnchor < this.state.submissions.length) {
+      this.setState({ reportIterationAnchor: nextAnchor });
+    }
+  };
+
+  retreatReportIterationBackward = () => {
+    const prevAnchor =
+      this.state.reportIterationAnchor - this.state.reportsInIteration;
+    if (prevAnchor >= 0) {
+      this.setState({ reportIterationAnchor: prevAnchor });
+    }
+  };
+
+  toggleIterationLimits = () => {
+    this.setState(prevState => ({
+      ignoreIterationLimits: !prevState.ignoreIterationLimits,
+      reportIterationAnchor: 0,
+    }));
+  };
+
+  calculateIterationBoundaries = () => {
+    const {
+      submissions,
+      reportIterationAnchor,
+      reportsInIteration,
+      ignoreIterationLimits,
+    } = this.state;
+    if (ignoreIterationLimits) {
+      return { startIdx: 0, endIdx: submissions.length };
+    }
+    const startIdx = reportIterationAnchor;
+    const endIdx = Math.min(
+      reportIterationAnchor + reportsInIteration,
+      submissions.length,
+    );
+    return { startIdx, endIdx };
+  };
+
+  computeTotalIterations = () =>
+    Math.ceil(this.state.submissions.length / this.state.reportsInIteration);
+
+  getCurrentIterationNumber = () =>
+    Math.floor(
+      this.state.reportIterationAnchor / this.state.reportsInIteration,
+    ) + 1;
+
+  getVisibleSubmissions = () => {
+    const { startIdx, endIdx } = this.calculateIterationBoundaries();
+    return this.state.submissions.slice(startIdx, endIdx);
   };
 
   render() {
@@ -1549,8 +1607,49 @@ class Home extends React.Component {
                   >
                     Download as CSV
                   </CSVLink>
+                  <div className={homeStyles.paginationContainer}>
+                    <button
+                      type="button"
+                      className={homeStyles.paginationButton}
+                      onClick={this.retreatReportIterationBackward}
+                      disabled={
+                        this.state.reportIterationAnchor === 0 ||
+                        this.state.ignoreIterationLimits
+                      }
+                    >
+                      ← Earlier Reports
+                    </button>
+                    <button
+                      type="button"
+                      className={homeStyles.paginationButton}
+                      onClick={this.advanceReportIterationForward}
+                      disabled={
+                        this.state.reportIterationAnchor +
+                          this.state.reportsInIteration >=
+                          this.state.submissions.length ||
+                        this.state.ignoreIterationLimits
+                      }
+                    >
+                      Later Reports →
+                    </button>
+                    <button
+                      type="button"
+                      className={homeStyles.paginationToggleButton}
+                      onClick={this.toggleIterationLimits}
+                    >
+                      {this.state.ignoreIterationLimits
+                        ? 'Restore Iteration Limits'
+                        : 'Remove All Limits'}
+                    </button>
+                    {!this.state.ignoreIterationLimits && (
+                      <span style={{ marginLeft: '10px', fontWeight: 'bold' }}>
+                        Iteration {this.getCurrentIterationNumber()} of{' '}
+                        {this.computeTotalIterations()}
+                      </span>
+                    )}
+                  </div>
                   <ul>
-                    {this.state.submissions.map(submission => (
+                    {this.getVisibleSubmissions().map(submission => (
                       <li key={submission.objectId}>
                         <SubmissionDetails
                           submission={submission}

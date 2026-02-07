@@ -17,12 +17,17 @@ module.exports = {
         targets: {
           node: 'current',
         },
+        // Enable support for import attributes
+        shippedProposals: true,
       },
     ],
     '@babel/preset-flow',
     '@babel/preset-react',
   ],
-  plugins: ['@babel/plugin-transform-class-properties'],
+  plugins: [
+    '@babel/plugin-transform-class-properties',
+    '@babel/plugin-syntax-import-attributes',
+  ],
   ignore: [
     filename => {
       if (filename.includes('node_modules')) {

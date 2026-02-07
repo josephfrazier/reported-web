@@ -16,8 +16,16 @@ module.exports = {
 
   parserOptions: {
     requireConfigFile: false,
+    ecmaVersion: 2025,
+    sourceType: 'module',
     babelOptions: {
       presets: ['@babel/preset-react'],
+      plugins: [
+        [
+          '@babel/plugin-syntax-import-attributes',
+          { deprecatedAssertSyntax: true },
+        ],
+      ],
     },
   },
 
@@ -35,6 +43,14 @@ module.exports = {
 
   rules: {
     'parentheses-around-await/parentheses-around-await': 2,
+
+    // Allow __filename and __dirname in ES modules (they're polyfilled)
+    'no-underscore-dangle': [
+      'error',
+      {
+        allow: ['__filename', '__dirname'],
+      },
+    ],
 
     // Forbid the use of extraneous packages
     // https://github.com/benmosher/eslint-plugin-import/blob/master/docs/rules/no-extraneous-dependencies.md

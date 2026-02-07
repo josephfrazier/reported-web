@@ -13,6 +13,7 @@ import clean from './clean.js';
 import copy from './copy.js';
 import bundle from './bundle.js';
 import render from './render.js';
+// eslint-disable-next-line
 import pkg from '../package.json' with { type: 'json' };
 
 /**

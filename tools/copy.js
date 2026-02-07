@@ -10,6 +10,7 @@
 import path from 'path';
 import chokidar from 'chokidar';
 import { writeFile, copyFile, makeDir, copyDir, cleanDir } from './lib/fs.js';
+// eslint-disable-next-line
 import pkg from '../package.json' with { type: 'json' };
 import { format } from './run.js';
 

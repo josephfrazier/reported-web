@@ -3,18 +3,13 @@ import axios from 'axios';
 
 // ported from https://github.com/jeffrono/Reported/blob/19b588171315a3093d53986f9fb995059f5084b4/v2/enrich_functions.rb#L325-L346
 export default async function getVehicleType({ licensePlate, licenseState }) {
-  const logLabel = `getVehicleType(${licensePlate}, ${licenseState})`;
-
-  console.time(logLabel); // eslint-disable-line no-console
-
   const url = `https://api.lookupaplate.com/api/v1/wait_for_vehicle_details/${licenseState}/${licensePlate}/`;
-  const { data } = await axios.get(url, {
-    httpsAgent: new https.Agent({ keepAlive: false }),
-  });
+
+  console.time(url); // eslint-disable-line no-console
+  const { data } = await axios.get(url);
+  console.timeEnd(url); // eslint-disable-line no-console
 
   const vehicleJson = data.vehicle_json || {};
-
-  console.timeEnd(logLabel); // eslint-disable-line no-console
 
   return {
     result: {

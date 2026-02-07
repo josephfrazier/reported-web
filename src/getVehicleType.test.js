@@ -3,15 +3,9 @@
  */
 /* eslint-env jest */
 
-import getVehicleType, { closeBrowser } from './getVehicleType.js';
-
-const timeoutMilliseconds = 10 * 1000;
+import getVehicleType from './getVehicleType.js';
 
 describe('getVehicleType', () => {
-  afterAll(async () => {
-    await closeBrowser();
-  });
-
   test(
     'returns the right object',
     async () => {
@@ -22,6 +16,6 @@ describe('getVehicleType', () => {
 
       expect(result).toMatchSnapshot();
     },
-    timeoutMilliseconds,
+    10000,
   );
 });

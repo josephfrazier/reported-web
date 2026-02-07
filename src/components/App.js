@@ -11,14 +11,13 @@ import React from 'react';
 import PropTypes from 'prop-types';
 
 const ContextType = {
-  // Enables critical path CSS rendering
-  // https://github.com/kriasoft/isomorphic-style-loader
-  insertCss: PropTypes.func.isRequired,
   // Universal HTTP client
   fetch: PropTypes.func.isRequired,
   pathname: PropTypes.string.isRequired,
   query: PropTypes.object,
 };
+
+const AppContext = React.createContext(null);
 
 /**
  * The top-level React component setting context (global) variables
@@ -51,18 +50,23 @@ class App extends React.PureComponent {
   static childContextTypes = ContextType;
 
   getChildContext() {
-    return this.props.context;
+    // Only return non-insertCss context for legacy components
+    const { insertCss, ...legacyContext } = this.props.context;
+    return legacyContext;
   }
 
   render() {
     // NOTE: If you need to add or modify header, footer etc. of the app,
     // please do that inside the Layout component.
     return (
-      <React.StrictMode>
-        {React.Children.only(this.props.children)}
-      </React.StrictMode>
+      <AppContext.Provider value={this.props.context}>
+        <React.StrictMode>
+          {React.Children.only(this.props.children)}
+        </React.StrictMode>
+      </AppContext.Provider>
     );
   }
 }
 
+export { AppContext };
 export default App;

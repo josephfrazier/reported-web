@@ -22,6 +22,7 @@ import Parse from 'parse/node';
 import FileType from 'file-type/browser';
 import multer from 'multer';
 import stringify from 'json-stringify-safe';
+import StyleContext from 'isomorphic-style-loader/StyleContext';
 
 import { isImage, isVideo } from './isImage.js';
 import { validateLocation, processValidation } from './geoclient.js';
@@ -546,7 +547,9 @@ app.get('*', async (req, res, next) => {
 
     const data = { ...route };
     data.children = ReactDOM.renderToString(
-      <App context={context}>{route.component}</App>,
+      <StyleContext.Provider value={{ insertCss }}>
+        <App context={context}>{route.component}</App>
+      </StyleContext.Provider>,
     );
     data.styles = [{ id: 'css', cssText: [...css].join('') }];
 

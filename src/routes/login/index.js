@@ -8,8 +8,8 @@
  */
 
 import React from 'react';
-import Layout from '../../components/Layout';
-import Login from './Login';
+import Layout from '../../components/Layout/Layout.js';
+import Login from './Login.js';
 
 const title = 'Log In';
 

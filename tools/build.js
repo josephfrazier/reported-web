@@ -8,11 +8,11 @@
  */
 
 import cp from 'child_process';
-import run from './run';
-import clean from './clean';
-import copy from './copy';
-import bundle from './bundle';
-import render from './render';
+import run from './run.js';
+import clean from './clean.js';
+import copy from './copy.js';
+import bundle from './bundle.js';
+import render from './render.js';
 import pkg from '../package.json';
 
 /**

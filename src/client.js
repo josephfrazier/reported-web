@@ -13,11 +13,11 @@ import ReactDOM from 'react-dom';
 import deepForceUpdate from 'react-deep-force-update';
 import queryString from 'query-string';
 import { createPath } from 'history';
-import App from './components/App';
-import createFetch from './createFetch';
-import history from './history';
-import { updateMeta } from './DOMUtils';
-import router from './router';
+import App from './components/App.js';
+import createFetch from './createFetch.js';
+import history from './history.js';
+import { updateMeta } from './DOMUtils.js';
+import router from './router.js';
 
 // Global (context) variables that can be easily accessed from any React component
 // https://facebook.github.io/react/docs/context.html

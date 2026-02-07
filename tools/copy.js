@@ -9,9 +9,9 @@
 
 import path from 'path';
 import chokidar from 'chokidar';
-import { writeFile, copyFile, makeDir, copyDir, cleanDir } from './lib/fs';
+import { writeFile, copyFile, makeDir, copyDir, cleanDir } from './lib/fs.js';
 import pkg from '../package.json';
-import { format } from './run';
+import { format } from './run.js';
 
 /**
  * Copies static files such as robots.txt, favicon.ico to the

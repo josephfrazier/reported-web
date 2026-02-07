@@ -22,10 +22,7 @@ module.exports = {
     '@babel/preset-flow',
     '@babel/preset-react',
   ],
-  plugins: [
-    '@babel/plugin-proposal-class-properties',
-    '@babel/plugin-syntax-dynamic-import',
-  ],
+  plugins: ['@babel/plugin-transform-class-properties'],
   ignore: [
     (filename) => {
       if (filename.includes('node_modules')) {

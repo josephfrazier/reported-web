@@ -17,38 +17,43 @@ const routes = {
   children: [
     {
       path: '',
-      load: () => import(/* webpackChunkName: 'home' */ './home'),
+      load: () => import(/* webpackChunkName: 'home' */ './home/index.js'),
     },
     {
       path: '/electricitibikes',
       load: () =>
-        import(/* webpackChunkName: 'electricitibikes' */ './electricitibikes'),
+        import(
+          /* webpackChunkName: 'electricitibikes' */ './electricitibikes/index.js'
+        ),
     },
     {
       path: '/login',
-      load: () => import(/* webpackChunkName: 'login' */ './login'),
+      load: () => import(/* webpackChunkName: 'login' */ './login/index.js'),
     },
     {
       path: '/register',
-      load: () => import(/* webpackChunkName: 'register' */ './register'),
+      load: () =>
+        import(/* webpackChunkName: 'register' */ './register/index.js'),
     },
     {
       path: '/about',
-      load: () => import(/* webpackChunkName: 'about' */ './about'),
+      load: () => import(/* webpackChunkName: 'about' */ './about/index.js'),
     },
     {
       path: '/privacy',
-      load: () => import(/* webpackChunkName: 'privacy' */ './privacy'),
+      load: () =>
+        import(/* webpackChunkName: 'privacy' */ './privacy/index.js'),
     },
     {
       path: '/admin',
-      load: () => import(/* webpackChunkName: 'admin' */ './admin'),
+      load: () => import(/* webpackChunkName: 'admin' */ './admin/index.js'),
     },
 
     // Wildcard routes, e.g. { path: '(.*)', ... } (must go last)
     {
       path: '(.*)',
-      load: () => import(/* webpackChunkName: 'not-found' */ './not-found'),
+      load: () =>
+        import(/* webpackChunkName: 'not-found' */ './not-found/index.js'),
     },
   ],
 
@@ -68,7 +73,7 @@ const routes = {
 if (__DEV__) {
   routes.children.unshift({
     path: '/error',
-    action: require('./error').default,
+    action: require('./error/index.js').default,
   });
 }
 

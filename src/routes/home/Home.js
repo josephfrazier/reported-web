@@ -221,7 +221,7 @@ async function extractPlate({
 
     try {
       result.licenseState = result.region.code.split('-')[1].toUpperCase();
-    } catch (err) {
+    } catch {
       result.licenseState = null;
     }
     result.plate = result.plate.toUpperCase();
@@ -307,6 +307,42 @@ async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
 }
 
 class Home extends React.Component {
+  static getVehicleMakeLogoUrl({ vehicleMake }) {
+    if (vehicleMake.toLowerCase() === 'nissan') {
+      return 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Nissan_2020_logo.svg/287px-Nissan_2020_logo.svg.png';
+    }
+    if (vehicleMake.toLowerCase() === 'honda') {
+      return 'https://upload.wikimedia.org/wikipedia/commons/3/38/Honda.svg';
+    }
+    return `https://img.logo.dev/${vehicleMake}.com?token=pk_dUmX4e3CQxqMliLAmNRIqA`;
+  }
+
+  static handleAxiosError(error) {
+    return Promise.reject(error)
+      .catch(err => {
+        Home.notifyError(`Error: ${err.response.data.error.message}`);
+      })
+      .catch(err => {
+        console.error(err);
+      });
+  }
+
+  static notifySuccess(notificationContent) {
+    return toast.success(notificationContent);
+  }
+
+  static notifyInfo(notificationContent) {
+    return toast.info(notificationContent);
+  }
+
+  static notifyWarning(notificationContent) {
+    return toast.warn(notificationContent);
+  }
+
+  static notifyError(notificationContent) {
+    return toast.error(notificationContent);
+  }
+
   constructor(props) {
     super(props);
 
@@ -493,7 +529,7 @@ class Home extends React.Component {
         formatted_address: errorMessage,
         coordsAreInNyc: false,
       });
-      this.notifyError(errorMessage);
+      Home.notifyError(errorMessage);
 
       return;
     }
@@ -556,7 +592,7 @@ class Home extends React.Component {
         );
       })
     ) {
-      this.notifyWarning(
+      Home.notifyWarning(
         <p>
           You have already submitted a report for {plate} in {licenseState}, are
           you sure you want to submit another?
@@ -581,10 +617,16 @@ class Home extends React.Component {
         this.setState({
           vehicleInfoComponent: (
             <React.Fragment>
-              {plate} in {usStateNames[licenseState]}: {vehicleYear}{' '}
-              {vehicleMake} {vehicleModel} ({vehicleBody})
+              <a
+                href={vehicleTypeUrl({ licensePlate: plate, licenseState })}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {plate} in {usStateNames[licenseState]}: {vehicleYear}{' '}
+                {vehicleMake} {vehicleModel} ({vehicleBody})
+              </a>
               <img
-                src={this.getVehicleMakeLogoUrl({ vehicleMake })}
+                src={Home.getVehicleMakeLogoUrl({ vehicleMake })}
                 alt={`${vehicleMake} logo`}
                 style={{
                   display: 'block',
@@ -617,7 +659,7 @@ class Home extends React.Component {
                 </a>
                 <br />
                 <a
-                  href={vehicleTypeUrl({ licensePlate: plate, licenseState })}
+                  href="https://www.lookupaplate.com/"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -651,16 +693,6 @@ class Home extends React.Component {
       });
   };
 
-  getVehicleMakeLogoUrl = function getVehicleMakeLogoUrl({ vehicleMake }) {
-    if (vehicleMake.toLowerCase() === 'nissan') {
-      return 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Nissan_2020_logo.svg/287px-Nissan_2020_logo.svg.png';
-    }
-    if (vehicleMake.toLowerCase() === 'honda') {
-      return 'https://upload.wikimedia.org/wikipedia/commons/3/38/Honda.svg';
-    }
-    return `https://img.logo.dev/${vehicleMake}.com?token=pk_dUmX4e3CQxqMliLAmNRIqA`;
-  };
-
   // adapted from https://github.com/ngokevin/react-file-reader-input/tree/f970257f271b8c3bba9d529ffdbfa4f4731e0799#usage
   handleAttachmentInput = async (_, results) => {
     const attachmentData = results.map(([, attachmentFile]) => attachmentFile);
@@ -678,7 +710,7 @@ class Home extends React.Component {
           this.state.attachmentData.map(async (attachmentFile, index) => {
             if (attachmentFile.size > 20 * 1000 * 1000) {
               // just under 20MB, should match fileSize in server.js
-              this.notifyWarning(
+              Home.notifyWarning(
                 <React.Fragment>
                   <p>
                     File #{index + 1} is too big, over 20MB, please remove it
@@ -761,7 +793,7 @@ class Home extends React.Component {
         const hasMultipleAttachments = this.state.attachmentData.length > 1;
         const fileCopy = hasMultipleAttachments ? 'the files.' : 'the file.';
 
-        this.notifyWarning(
+        Home.notifyWarning(
           <React.Fragment>
             <p>
               Could not extract the {missingValuesString} from {fileCopy} Please
@@ -791,23 +823,6 @@ class Home extends React.Component {
     );
   };
 
-  handleAxiosError = error =>
-    Promise.reject(error)
-      .catch(err => {
-        this.notifyError(`Error: ${err.response.data.error.message}`);
-      })
-      .catch(err => {
-        console.error(err);
-      });
-
-  notifySuccess = notificationContent => toast.success(notificationContent);
-
-  notifyInfo = notificationContent => toast.info(notificationContent);
-
-  notifyWarning = notificationContent => toast.warn(notificationContent);
-
-  notifyError = notificationContent => toast.error(notificationContent);
-
   loadPreviousSubmissions = () => {
     axios
       .post('/submissions', this.state)
@@ -815,7 +830,7 @@ class Home extends React.Component {
         const { submissions } = data;
         this.setState({ submissions });
       })
-      .catch(this.handleAxiosError);
+      .catch(Home.handleAxiosError);
   };
 
   render() {
@@ -886,7 +901,7 @@ class Home extends React.Component {
                         behavior: 'smooth',
                       });
                     })
-                    .catch(this.handleAxiosError)
+                    .catch(Home.handleAxiosError)
                     .then(() => {
                       this.setState({ isUserInfoSaving: false });
                     });
@@ -954,9 +969,9 @@ class Home extends React.Component {
                             })
                             .then(() => {
                               const message = `Please check ${email} to reset your password.`;
-                              this.notifyInfo(message);
+                              Home.notifyInfo(message);
                             })
-                            .catch(this.handleAxiosError);
+                            .catch(Home.handleAxiosError);
                         }}
                       >
                         Reset
@@ -972,7 +987,7 @@ class Home extends React.Component {
                       const { data } = await axios
                         .post('/api/logIn', this.state)
                         .catch(err => {
-                          this.handleAxiosError(err);
+                          Home.handleAxiosError(err);
                           return { data: false };
                         });
 
@@ -1078,7 +1093,7 @@ class Home extends React.Component {
                   this.state.latitude === defaultLatitude &&
                   this.state.longitude === defaultLongitude
                 ) {
-                  this.notifyError(
+                  Home.notifyError(
                     'Please provide the location of the incident',
                   );
                   return;
@@ -1142,7 +1157,7 @@ class Home extends React.Component {
                       reportDescription: '',
                     }));
                     this.setLicensePlate({ plate: '', licenseState: 'NY' });
-                    this.notifySuccess(
+                    Home.notifySuccess(
                       <React.Fragment>
                         <p>Thanks for your submission!</p>
                         <p>
@@ -1156,7 +1171,7 @@ class Home extends React.Component {
                       </React.Fragment>,
                     );
                   })
-                  .catch(this.handleAxiosError)
+                  .catch(Home.handleAxiosError)
                   .then(() => {
                     this.setState({
                       isSubmitting: false,
@@ -1422,7 +1437,7 @@ class Home extends React.Component {
                           },
                         )
                         .catch(err => {
-                          this.notifyError(err.message);
+                          Home.notifyError(err.message);
                           console.error(err);
                         });
                     }}

@@ -9,9 +9,9 @@
 
 import path from 'path';
 import fetch from 'node-fetch';
-import { spawn } from './lib/cp';
-import { makeDir, moveDir, cleanDir } from './lib/fs';
-import run from './run';
+import { spawn } from './lib/cp.js';
+import { makeDir, moveDir, cleanDir } from './lib/fs.js';
+import run from './run.js';
 
 // GitHub Pages
 const remote = {
@@ -60,7 +60,7 @@ async function deploy() {
       options,
     );
     isRemoteExists = true;
-  } catch (error) {
+  } catch {
     /* skip */
   }
   await spawn(
@@ -78,7 +78,7 @@ async function deploy() {
       options,
     );
     isRefExists = true;
-  } catch (error) {
+  } catch {
     await spawn('git', ['update-ref', '-d', 'HEAD'], options);
   }
   if (isRefExists) {
@@ -95,7 +95,7 @@ async function deploy() {
   // generates optimized and minimized bundles
   process.argv.push('--release');
   if (remote.static) process.argv.push('--static');
-  await run(require('./build').default); // eslint-disable-line global-require
+  await run(require('./build.js').default); // eslint-disable-line global-require
   if (process.argv.includes('--static')) {
     await cleanDir('build/*', {
       nosort: true,
@@ -109,7 +109,7 @@ async function deploy() {
   await spawn('git', ['add', '.', '--all'], options);
   try {
     await spawn('git', ['diff', '--cached', '--exit-code', '--quiet'], options);
-  } catch (error) {
+  } catch {
     await spawn(
       'git',
       ['commit', '--message', `Update ${new Date().toISOString()}`],

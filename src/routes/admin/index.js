@@ -8,8 +8,8 @@
  */
 
 import React from 'react';
-import Layout from '../../components/Layout';
-import Admin from './Admin';
+import Layout from '../../components/Layout/Layout.js';
+import Admin from './Admin.js';
 
 const title = 'Admin Page';
 const isAdmin = false;

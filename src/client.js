@@ -13,6 +13,7 @@ import ReactDOM from 'react-dom';
 import deepForceUpdate from 'react-deep-force-update';
 import queryString from 'query-string';
 import { createPath } from 'history';
+import StyleContext from 'isomorphic-style-loader/StyleContext';
 import App from './components/App.js';
 import createFetch from './createFetch.js';
 import history from './history.js';
@@ -22,19 +23,19 @@ import router from './router.js';
 // Global (context) variables that can be easily accessed from any React component
 // https://facebook.github.io/react/docs/context.html
 const context = {
-  // Enables critical path CSS rendering
-  // https://github.com/kriasoft/isomorphic-style-loader
-  insertCss: (...styles) => {
-    // eslint-disable-next-line no-underscore-dangle
-    const removeCss = styles.map(x => x._insertCss());
-    return () => {
-      removeCss.forEach(f => f());
-    };
-  },
   // Universal HTTP client
   fetch: createFetch(fetch, {
     baseUrl: window.App.apiUrl,
   }),
+};
+
+// insertCss function for client-side rendering
+const insertCss = (...styles) => {
+  // eslint-disable-next-line no-underscore-dangle
+  const removeCss = styles.map(x => x._insertCss());
+  return () => {
+    removeCss.forEach(f => f());
+  };
 };
 
 const container = document.getElementById('app');
@@ -78,7 +79,9 @@ async function onLocationChange(location, action) {
 
     const renderReactApp = isInitialRender ? ReactDOM.hydrate : ReactDOM.render;
     appInstance = renderReactApp(
-      <App context={context}>{route.component}</App>,
+      <StyleContext.Provider value={{ insertCss }}>
+        <App context={context}>{route.component}</App>
+      </StyleContext.Provider>,
       container,
       () => {
         if (isInitialRender) {

@@ -13,6 +13,7 @@
 import '@babel/polyfill';
 import React from 'react';
 import renderer from 'react-test-renderer';
+import StyleContext from 'isomorphic-style-loader/StyleContext';
 import App from '../../components/App.js';
 import Home from './Home.js';
 import boroughBoundariesFeatureCollection from '../../../public/borough-boundaries-clipped-to-shoreline.geo.json';
@@ -34,16 +35,19 @@ describe('Home', () => {
       'Went above and beyond to help',
     ];
 
+    const insertCss = () => {};
     const wrapper = renderer
       .create(
-        <App context={{ insertCss: () => {}, fetch: () => {}, pathname: '' }}>
-          <Home
-            typeofcomplaintValues={typeofcomplaintValues}
-            boroughBoundariesFeatureCollection={
-              boroughBoundariesFeatureCollection
-            }
-          />
-        </App>,
+        <StyleContext.Provider value={{ insertCss }}>
+          <App context={{ fetch: () => {}, pathname: '' }}>
+            <Home
+              typeofcomplaintValues={typeofcomplaintValues}
+              boroughBoundariesFeatureCollection={
+                boroughBoundariesFeatureCollection
+              }
+            />
+          </App>
+        </StyleContext.Provider>,
       )
       .toJSON();
 

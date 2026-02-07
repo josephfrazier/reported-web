@@ -7,6 +7,12 @@
  * LICENSE.txt file in the root directory of this source tree.
  */
 
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 export function format(time) {
   return time.toTimeString().replace(/.*(\d{2}:\d{2}:\d{2}).*/, '$1');
 }
@@ -31,16 +37,14 @@ function run(fn, options) {
   });
 }
 
-if (require.main === module && process.argv.length > 2) {
-  // eslint-disable-next-line no-underscore-dangle
-  delete require.cache[__filename];
-
-  // eslint-disable-next-line global-require, import/no-dynamic-require
-  const module = require(`./${process.argv[2]}.js`).default;
-
-  run(module).catch(err => {
-    console.error(err.stack);
-    process.exit(1);
+if (import.meta.url === `file://${process.argv[1]}` && process.argv.length > 2) {
+  // eslint-disable-next-line import/no-dynamic-require
+  const modulePath = `./${process.argv[2]}.js`;
+  import(modulePath).then(module => {
+    run(module).catch(err => {
+      console.error(err.stack);
+      process.exit(1);
+    });
   });
 }
 

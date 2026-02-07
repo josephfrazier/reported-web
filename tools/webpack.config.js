@@ -9,12 +9,18 @@
 
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
 import webpack from 'webpack';
 import WebpackAssetsManifest from 'webpack-assets-manifest';
 import nodeExternals from 'webpack-node-externals';
 import { BundleAnalyzerPlugin } from 'webpack-bundle-analyzer';
 import overrideRules from './lib/overrideRules.js';
-import pkg from '../package.json';
+import pkg from '../package.json' with { type: 'json' };
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const require = createRequire(import.meta.url);
 
 const ROOT_DIR = path.resolve(__dirname, '..');
 const resolvePath = (...args) => path.resolve(ROOT_DIR, ...args);

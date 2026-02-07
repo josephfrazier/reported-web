@@ -13,7 +13,7 @@ import clean from './clean.js';
 import copy from './copy.js';
 import bundle from './bundle.js';
 import render from './render.js';
-import pkg from '../package.json';
+import pkg from '../package.json' with { type: 'json' };
 
 /**
  * Compiles the project from source files into a distributable

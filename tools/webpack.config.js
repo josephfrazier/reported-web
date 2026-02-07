@@ -16,7 +16,7 @@ import WebpackAssetsManifest from 'webpack-assets-manifest';
 import nodeExternals from 'webpack-node-externals';
 import { BundleAnalyzerPlugin } from 'webpack-bundle-analyzer';
 import overrideRules from './lib/overrideRules.js';
-// eslint-disable-next-line
+// eslint-disable-next-line prettier/prettier -- Prettier v1.x doesn't support import attributes
 import pkg from '../package.json' with { type: 'json' };
 
 const __filename = fileURLToPath(import.meta.url);

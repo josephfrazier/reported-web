@@ -38,6 +38,7 @@ import fileExtension from 'file-extension';
 import diceware from 'diceware-generator';
 import wordlist from 'diceware-wordlist-en-eff';
 import Modal from 'react-modal';
+import queryString from 'query-string';
 import Dropzone from '@josephfrazier/react-dropzone';
 import { ToastContainer, toast } from 'react-toastify';
 import toastifyStyles from 'react-toastify/dist/ReactToastify.css';
@@ -302,6 +303,146 @@ async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
   }
 }
 
+// Helper function to parse URL parameters and create state overrides
+function getUrlParamOverrides() {
+  if (typeof window === 'undefined') {
+    return {}; // Server-side rendering
+  }
+
+  const params = queryString.parse(window.location.search);
+  console.log('URL parameters found:', params);
+  const overrides = {};
+
+  // License plate
+  if (params.plate) {
+    overrides.plate = params.plate;
+  }
+
+  // License state  
+  if (params.state) {
+    overrides.licenseState = params.state.toUpperCase();
+  }
+
+  // Date/time
+  if (params.when) {
+    console.log('Processing when parameter:', params.when);
+    try {
+      const date = new Date(params.when);
+      console.log('Parsed date:', date);
+      if (!isNaN(date.getTime())) {
+        // For URL parameters, preserve the local time without timezone conversion
+        // Format as YYYY-MM-DDTHH:MM for datetime-local input
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        overrides.CreateDate = `${year}-${month}-${day}T${hours}:${minutes}`;
+        console.log('Set CreateDate override to:', overrides.CreateDate);
+      } else {
+        console.warn('Invalid date created from parameter:', params.when);
+      }
+    } catch (err) {
+      console.warn('Invalid date parameter:', params.when, err);
+    }
+  }
+
+  // Description
+  if (params.description) {
+    overrides.reportDescription = decodeURIComponent(params.description);
+  }
+
+  // Coordinates (lat,lng)
+  if (params.lat && params.lng) {
+    const latitude = parseFloat(params.lat);
+    const longitude = parseFloat(params.lng);
+    
+    // Validate coordinate ranges
+    if (!isNaN(latitude) && !isNaN(longitude) && 
+        latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180) {
+      overrides.latitude = latitude;
+      overrides.longitude = longitude;
+      console.log('GPS coordinates found:', { latitude, longitude });
+    } else {
+      console.warn('Invalid coordinate ranges:', { latitude, longitude });
+    }
+  }
+
+  // Complaint type
+  if (params.type) {
+    overrides.typeofcomplaint = decodeURIComponent(params.type);
+  }
+
+  // Image URL - store it separately to handle async loading
+  if (params.image) {
+    overrides.imageUrl = decodeURIComponent(params.image);
+    console.log('Image URL parameter found:', overrides.imageUrl);
+  }
+
+  console.log('URL parameter overrides:', overrides);
+  return overrides;
+}
+
+// Helper function to load an image from URL and convert to File object
+async function loadImageFromUrl(imageUrl) {
+  try {
+    console.log('Loading image from URL:', imageUrl);
+    
+    // Try to fetch the image with no-cors mode as fallback
+    let response;
+    try {
+      // First try with normal fetch
+      response = await fetch(imageUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+      }
+    } catch (corsError) {
+      console.warn('CORS fetch failed, trying no-cors mode:', corsError);
+      // Try with no-cors mode (won't get response body, but might work for display)
+      response = await fetch(imageUrl, { mode: 'no-cors' });
+    }
+    
+    // Get the blob data
+    const blob = await response.blob();
+    console.log('Image blob received:', { size: blob.size, type: blob.type });
+    
+    // If blob is empty or invalid, throw error
+    if (blob.size === 0) {
+      throw new Error('Empty image blob received - possible CORS issue');
+    }
+    
+    // Extract filename from URL or use default
+    const urlParts = imageUrl.split('/');
+    let filename = urlParts[urlParts.length - 1] || 'url-image.jpg';
+    
+    // Ensure filename has an extension
+    if (!filename.includes('.')) {
+      const contentType = blob.type || 'image/jpeg';
+      const extension = contentType.split('/')[1] || 'jpg';
+      filename = `${filename}.${extension}`;
+    }
+    
+    // Create a File object from the blob with proper type
+    const fileType = blob.type || 'image/jpeg';
+    const file = new File([blob], filename, { 
+      type: fileType,
+      lastModified: Date.now()
+    });
+    
+    console.log('Successfully created file object:', { 
+      name: file.name, 
+      size: file.size, 
+      type: file.type,
+      lastModified: file.lastModified
+    });
+    
+    return file;
+  } catch (error) {
+    console.error('Failed to load image from URL:', error);
+    throw error;
+  }
+}
+
 class Home extends React.Component {
   static getVehicleMakeLogoUrl({ vehicleMake }) {
     if (vehicleMake.toLowerCase() === 'nissan') {
@@ -398,12 +539,41 @@ class Home extends React.Component {
   }
 
   componentDidMount() {
-    // if there's no attachments or a time couldn't be extracted, just use now
-    if (this.state.attachmentData.length === 0 || !this.state.CreateDate) {
-      this.setCreateDate({ millisecondsSinceEpoch: Date.now() });
+    // Process URL parameters on client-side after component mounts
+    const urlOverrides = getUrlParamOverrides();
+    if (Object.keys(urlOverrides).length > 0) {
+      console.log('Applying URL parameter overrides:', urlOverrides);
+      this.setState(urlOverrides);
     }
+
+    // Handle image URL parameter if present
+    if (urlOverrides.imageUrl) {
+      this.loadImageFromUrlParameter(urlOverrides.imageUrl);
+    }
+
+    // if there's no attachments or a time couldn't be extracted, just use now
+    // BUT don't override if we have a URL parameter for the date
+    console.log('Current state CreateDate:', this.state.CreateDate);
+    console.log('URL override CreateDate:', urlOverrides.CreateDate);
+    console.log('Should set current time?', (!this.state.CreateDate && !urlOverrides.CreateDate));
+    
+    if (!this.state.CreateDate && !urlOverrides.CreateDate) {
+      console.log('Setting current time as CreateDate');
+      this.setCreateDate({ millisecondsSinceEpoch: Date.now() });
+    } else {
+      console.log('Keeping existing/URL CreateDate');
+    }
+    
+    // Always geolocate, but use URL coordinates if provided
     geolocate().then(
       ({ coords: { latitude, longitude }, ipProvenance = 'device' }) => {
+        // Use URL coordinates if provided, otherwise use geolocated coordinates
+        const finalLatitude = (urlOverrides.latitude && urlOverrides.longitude) ? urlOverrides.latitude : latitude;
+        const finalLongitude = (urlOverrides.latitude && urlOverrides.longitude) ? urlOverrides.longitude : longitude;
+        const finalProvenance = (urlOverrides.latitude && urlOverrides.longitude)
+          ? `(from URL parameters: ${finalLatitude}, ${finalLongitude})`
+          : `(from ${ipProvenance}: ${finalLatitude}, ${finalLongitude})`;
+        
         // if there's no attachments or a location couldn't be extracted, just use here
         if (
           this.state.attachmentData.length === 0 ||
@@ -411,9 +581,9 @@ class Home extends React.Component {
             this.state.longitude === defaultLongitude)
         ) {
           this.setCoords({
-            latitude,
-            longitude,
-            addressProvenance: `(from ${ipProvenance}: ${latitude}, ${longitude})`,
+            latitude: finalLatitude,
+            longitude: finalLongitude,
+            addressProvenance: finalProvenance,
           });
         }
       },
@@ -764,6 +934,17 @@ class Home extends React.Component {
                 ext,
                 isReverseGeocodingEnabled: this.state.isReverseGeocodingEnabled,
               }).then(({ latitude, longitude }) => {
+                // Check if URL parameters have already set coordinates
+                const urlOverrides = getUrlParamOverrides();
+                
+                if (urlOverrides.latitude && urlOverrides.longitude) {
+                  console.log('Skipping EXIF location extraction - URL coordinates provided:', {
+                    url: { lat: urlOverrides.latitude, lng: urlOverrides.longitude },
+                    exif: { latitude, longitude }
+                  });
+                  return; // Don't override URL coordinates with EXIF data
+                }
+                
                 this.setCoords({
                   latitude,
                   longitude,
@@ -801,6 +982,75 @@ class Home extends React.Component {
         );
       },
     );
+  };
+
+  // Method to load image from URL parameter
+  loadImageFromUrlParameter = async (imageUrl) => {
+    try {
+      console.log('Loading image from URL parameter:', imageUrl);
+      
+      // First, try to create an image element to test if the image is accessible
+      const testImg = new Image();
+      testImg.crossOrigin = 'anonymous'; // Try to enable CORS
+      
+      const imageLoadPromise = new Promise((resolve, reject) => {
+        testImg.onload = () => {
+          console.log('Image loaded successfully in test img element');
+          resolve();
+        };
+        testImg.onerror = (error) => {
+          console.warn('Image failed to load in test img element:', error);
+          reject(new Error('Image not accessible or CORS blocked'));
+        };
+      });
+      
+      testImg.src = imageUrl;
+      
+      // Wait for image test (with timeout)
+      const timeout = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Image load timeout')), 10000)
+      );
+      
+      try {
+        await Promise.race([imageLoadPromise, timeout]);
+        // If we get here, the image loaded successfully
+        console.log('Image is accessible, proceeding with fetch...');
+      } catch (testError) {
+        console.warn('Image test failed, but proceeding anyway:', testError);
+      }
+      
+      const imageFile = await loadImageFromUrl(imageUrl);
+      
+      // Use the existing handleAttachmentData method to add the image
+      await this.handleAttachmentData({ attachmentData: [imageFile] });
+      
+      console.log('Successfully loaded and attached image from URL');
+    } catch (error) {
+      console.error('Failed to load image from URL parameter:', error);
+      
+      // More specific error messages
+      let errorMessage = 'Could not load image from URL';
+      let errorDetails = 'Please check that the URL is valid and accessible.';
+      
+      if (error.message.includes('CORS')) {
+        errorMessage = 'Image blocked by CORS policy';
+        errorDetails = 'The image server does not allow cross-origin requests. Try using a different image URL or contact the server administrator.';
+      } else if (error.message.includes('timeout')) {
+        errorMessage = 'Image load timeout';
+        errorDetails = 'The image took too long to load. Please try again or use a different image.';
+      } else if (error.message.includes('Failed to fetch')) {
+        errorMessage = 'Network error loading image';
+        errorDetails = 'Check your internet connection and the image URL.';
+      }
+      
+      this.notifyWarning(
+        <React.Fragment>
+          <p><strong>{errorMessage}</strong></p>
+          <p>URL: {imageUrl}</p>
+          <p>{errorDetails}</p>
+        </React.Fragment>
+      );
+    }
   };
 
   handleInputChange = event => {

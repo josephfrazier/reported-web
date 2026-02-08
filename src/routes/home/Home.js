@@ -43,14 +43,13 @@ import { ToastContainer, toast } from 'react-toastify';
 import toastifyStyles from 'react-toastify/dist/ReactToastify.css';
 import { zip } from 'zip-array';
 import PolygonLookup from 'polygon-lookup';
-import { CSVLink } from 'react-csv';
 import capitalize from 'capitalize';
 import CircularProgress from '@mui/material/CircularProgress';
 
 import marx from 'marx-css/css/marx.css';
 import homeStyles from './Home.css';
 
-import SubmissionDetails from '../../components/SubmissionDetails.js';
+import PreviousSubmissionsList from '../../components/PreviousSubmissionsList';
 import { isImage, isVideo } from '../../isImage.js';
 import getNycTimezoneOffset from '../../timezone.js';
 import { getBoroNameMemoized } from '../../getBoroName.js';
@@ -59,9 +58,6 @@ import vehicleTypeUrl from '../../vehicleTypeUrl.js';
 usStateNames.DC = 'District of Columbia';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyDlwm2ykA0ohTXeVepQYvkcmdjz2M2CKEI';
-
-const objectMap = (obj, fn) =>
-  Object.fromEntries(Object.entries(obj).map(([k, v], i) => [k, fn(v, k, i)]));
 
 const debouncedProcessValidation = debounce(async ({ latitude, longitude }) => {
   const { data } = await axios.post('/api/process_validation', {
@@ -303,48 +299,6 @@ async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
     console.error(err.stack);
 
     throw 'creation date'; // eslint-disable-line no-throw-literal
-  }
-}
-
-class PreviousSubmissionsList extends React.Component {
-  shouldComponentUpdate(nextProps) {
-    return (
-      this.props.submissions !== nextProps.submissions ||
-      this.props.onDeleteSubmission !== nextProps.onDeleteSubmission
-    );
-  }
-
-  render() {
-    const { submissions, onDeleteSubmission } = this.props;
-
-    if (submissions.length === 0) {
-      return 'Loading submissions...';
-    }
-
-    return (
-      <>
-        <CSVLink
-          separator="	"
-          data={submissions.map(submission =>
-            objectMap(submission, value =>
-              typeof value === 'object' ? JSON.stringify(value) : value,
-            ),
-          )}
-        >
-          Download as CSV
-        </CSVLink>
-        <ul>
-          {submissions.map(submission => (
-            <li key={submission.objectId}>
-              <SubmissionDetails
-                submission={submission}
-                onDeleteSubmission={onDeleteSubmission}
-              />
-            </li>
-          ))}
-        </ul>
-      </>
-    );
   }
 }
 

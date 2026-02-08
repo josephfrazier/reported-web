@@ -464,6 +464,8 @@ class Home extends React.Component {
     });
 
     this.forceUpdate(); // force "Create/Edit User" fields to render persisted value after load
+
+    this.loadPreviousSubmissions();
   }
 
   onDeleteSubmission = ({ objectId }) => {
@@ -1513,19 +1515,12 @@ class Home extends React.Component {
 
             <br />
 
-            <details
-              onToggle={evt => {
-                if (!evt.target.open) {
-                  return;
-                }
-                this.loadPreviousSubmissions();
-              }}
-            >
+            <details>
               <summary>
                 Previous Submissions (
                 {this.state.submissions.length > 0
                   ? this.state.submissions.length
-                  : 'click to load'}
+                  : 'loading...'}
                 )
               </summary>
 

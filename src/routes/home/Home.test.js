@@ -36,21 +36,21 @@ describe('Home', () => {
     ];
 
     const insertCss = () => {};
-    const wrapper = renderer
-      .create(
-        <StyleContext.Provider value={{ insertCss }}>
-          <App context={{ fetch: () => {}, pathname: '' }}>
-            <Home
-              typeofcomplaintValues={typeofcomplaintValues}
-              boroughBoundariesFeatureCollection={
-                boroughBoundariesFeatureCollection
-              }
-            />
-          </App>
-        </StyleContext.Provider>,
-      )
-      .toJSON();
+    const tree = renderer.create(
+      <StyleContext.Provider value={{ insertCss }}>
+        <App context={{ fetch: () => {}, pathname: '' }}>
+          <Home
+            typeofcomplaintValues={typeofcomplaintValues}
+            boroughBoundariesFeatureCollection={
+              boroughBoundariesFeatureCollection
+            }
+          />
+        </App>
+      </StyleContext.Provider>,
+    );
 
-    expect(wrapper).toMatchSnapshot();
+    expect(tree.toJSON()).toMatchSnapshot();
+
+    tree.unmount();
   });
 });

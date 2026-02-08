@@ -14,6 +14,14 @@ class SubmissionDetails extends React.Component {
     };
   }
 
+  shouldComponentUpdate(nextProps, nextState) {
+    return (
+      this.props.submission !== nextProps.submission ||
+      this.props.onDeleteSubmission !== nextProps.onDeleteSubmission ||
+      this.state.isDetailsOpen !== nextState.isDetailsOpen
+    );
+  }
+
   render() {
     const {
       reqnumber,

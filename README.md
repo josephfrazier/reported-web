@@ -40,6 +40,11 @@ yarn mongo-stop # Stops MongoDB
 Over the years, reports of slow typing have come from multiple users, and it periodically gets (re)discussed in our Slack.
 Since our Slack currently doesn't preserve old messages, I often find myself re-investigating the issue and re-typing previous responses.
 This section is meant to provide more central and permanent documentation of these investigations.
+I think it's solved as of 8 February 2026, with commits 834b055234b6b62e58e890684c923d500780198e and 8c6d124a57eb42e486693239f315a1f50231ddf8
+(https://github.com/josephfrazier/reported-web/pull/676 and https://github.com/josephfrazier/reported-web/pull/677)
+but I'll leave it here for a bit just in case it comes up again.
+
+<details>
 
 For example: here's one of my posts from a conversation from July 2023 where this came up: https://reportedcab.slack.com/archives/C9VNM3DL4/p1690221553212389?thread_ts=1690137347.880569&cid=C9VNM3DL4
 
@@ -169,6 +174,12 @@ We've managed to work around the problem by not loading Previous Submissions unt
 > don't load until you expand the section, which works around the problem
 > for me in that I can type quickly as long as I don't expand that
 > section, but it's still available to me if I want it
+
+On 8 February 2026, Claude Code helped me fix the performance issue with commits 834b055234b6b62e58e890684c923d500780198e and 8c6d124a57eb42e486693239f315a1f50231ddf8
+(https://github.com/josephfrazier/reported-web/pull/676 and https://github.com/josephfrazier/reported-web/pull/677)
+so hopefully that will be the end of this saga.
+
+</details>
 
 ---
 

@@ -1,6 +1,7 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 import { CSVLink } from 'react-csv';
-import SubmissionDetails from './SubmissionDetails';
+import SubmissionDetails from './SubmissionDetails.js';
 
 const objectMap = (obj, fn) =>
   Object.fromEntries(Object.entries(obj).map(([k, v], i) => [k, fn(v, k, i)]));
@@ -46,5 +47,14 @@ class PreviousSubmissionsList extends React.Component {
     );
   }
 }
+
+PreviousSubmissionsList.propTypes = {
+  submissions: PropTypes.arrayOf(
+    PropTypes.shape({
+      objectId: PropTypes.string,
+    }),
+  ).isRequired,
+  onDeleteSubmission: PropTypes.func.isRequired,
+};
 
 export default PreviousSubmissionsList;

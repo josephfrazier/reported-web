@@ -49,7 +49,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import marx from 'marx-css/css/marx.css';
 import homeStyles from './Home.css';
 
-import PreviousSubmissionsList from '../../components/PreviousSubmissionsList';
+import PreviousSubmissionsList from '../../components/PreviousSubmissionsList.js';
 import { isImage, isVideo } from '../../isImage.js';
 import getNycTimezoneOffset from '../../timezone.js';
 import { getBoroNameMemoized } from '../../getBoroName.js';

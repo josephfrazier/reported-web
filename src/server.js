@@ -278,9 +278,21 @@ app.use('/api/deleteSubmission', (req, res) => {
     .then(submissions => {
       const submission = submissions.find(sub => sub.id === objectId);
       assert(submission); // TODO make it obvious that this is necessary
-      return submission.destroy().then(() => {
-        res.json({ objectId });
-      });
+      return submission
+        .destroy()
+        .catch(error => {
+          if (error.message === 'Object not found for delete.') {
+            console.info(
+              `/api/deleteSubmission: swallowing false Parse error "Object not found for delete."`,
+            );
+            return;
+          }
+
+          throw error;
+        })
+        .then(() => {
+          res.json({ objectId });
+        });
     })
     .catch(handlePromiseRejection(res));
 });

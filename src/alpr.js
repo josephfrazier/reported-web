@@ -76,8 +76,12 @@ export default function readLicenseViaALPR({
   return orientImageBuffer({ attachmentBuffer })
     .then(buffer => downscaleForPlateRecognizer({ buffer, targetWidth: 4096 }))
     .then(buffer => downscaleForPlateRecognizer({ buffer, targetWidth: 2048 }))
-    .then(buffer => buffer.toString('base64'))
-    .then(attachmentBytesRotated => {
+    .then(async buffer => {
+      const metadata = await sharp(buffer).metadata();
+      return { buffer, imgWidth: metadata.width, imgHeight: metadata.height };
+    })
+    .then(({ buffer, imgWidth, imgHeight }) => {
+      const attachmentBytesRotated = buffer.toString('base64');
       console.log('STARTING platerecognizer'); // eslint-disable-line no-console
       console.time(`/platerecognizer plate-reader`); // eslint-disable-line no-console
 
@@ -103,6 +107,7 @@ export default function readLicenseViaALPR({
           return platerecognizerRes;
         })
         .then(platerecognizerRes => platerecognizerRes.json())
+        .then(data => ({ ...data, imgWidth, imgHeight }))
         .finally(() => console.timeEnd(`/platerecognizer plate-reader`)); // eslint-disable-line no-console
     });
 }

@@ -164,6 +164,7 @@ async function getVideoScreenshot({ attachmentFile }) {
 
 // adapted from https://www.bignerdranch.com/blog/dont-over-react/
 const attachmentPlates = new WeakMap();
+const attachmentPlateFullResults = new WeakMap();
 
 async function extractPlate({
   attachmentFile,
@@ -206,6 +207,12 @@ async function extractPlate({
       password,
     });
     const { data } = await axios.post('/platerecognizer', formData);
+
+    attachmentPlateFullResults.set(attachmentFile, {
+      results: data.results,
+      imgWidth: data.imgWidth,
+      imgHeight: data.imgHeight,
+    });
 
     // Choose first result with T######C plate if it exists, see https://github.com/josephfrazier/reported-web/issues/584
     let result = data.results.filter(r =>
@@ -383,6 +390,12 @@ class Home extends React.Component {
       vehicleInfoComponent: <br />,
       submissions: [],
       addressProvenance: '',
+
+      platePickerModalOpen: false,
+      platePickerResults: [],
+      platePickerImageSrc: null,
+      platePickerImageDimensions: null,
+      platePickerLoading: false,
     };
 
     const initialState = {
@@ -801,6 +814,48 @@ class Home extends React.Component {
         );
       },
     );
+  };
+
+  handlePlatePickerClick = async attachmentFile => {
+    this.setState({ platePickerLoading: true });
+
+    try {
+      let cached = attachmentPlateFullResults.get(attachmentFile);
+
+      if (!cached) {
+        const { attachmentBuffer } = await blobToBuffer({ attachmentFile });
+        const attachmentBlob = await blobUtil.arrayBufferToBlob(
+          bufferToArrayBuffer(attachmentBuffer),
+        );
+        const formData = objectToFormData({
+          attachmentFile: attachmentBlob,
+          email: this.state.email,
+          password: this.state.password,
+        });
+        const { data } = await axios.post('/platerecognizer', formData);
+        cached = {
+          results: data.results,
+          imgWidth: data.imgWidth,
+          imgHeight: data.imgHeight,
+        };
+        attachmentPlateFullResults.set(attachmentFile, cached);
+      }
+
+      this.setState({
+        platePickerResults: cached.results,
+        platePickerImageSrc: getBlobUrl(attachmentFile),
+        platePickerImageDimensions: {
+          imgWidth: cached.imgWidth,
+          imgHeight: cached.imgHeight,
+        },
+        platePickerModalOpen: true,
+        platePickerLoading: false,
+      });
+    } catch (err) {
+      console.error(err);
+      Home.notifyError('Could not read license plates from this photo.');
+      this.setState({ platePickerLoading: false });
+    }
   };
 
   handleInputChange = event => {
@@ -1252,6 +1307,35 @@ class Home extends React.Component {
                             ❌
                           </span>
                         </button>
+
+                        {isImg && (
+                          <button
+                            type="button"
+                            style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              padding: 0,
+                              margin: '1px',
+                              background: 'white',
+                            }}
+                            onClick={() =>
+                              this.handlePlatePickerClick(attachmentFile)
+                            }
+                            disabled={this.state.platePickerLoading}
+                          >
+                            {this.state.platePickerLoading ? (
+                              <CircularProgress size="1em" />
+                            ) : (
+                              <span
+                                role="img"
+                                aria-label="Pick license plate from photo"
+                              >
+                                🔍
+                              </span>
+                            )}
+                          </button>
+                        )}
                       </div>
                     );
                   })}
@@ -1449,6 +1533,126 @@ class Home extends React.Component {
                     style={{
                       float: 'right',
                     }}
+                  >
+                    Close
+                  </button>
+                </Modal>
+
+                <Modal
+                  parentSelector={() =>
+                    document.querySelector(`.${homeStyles.root}`) ||
+                    document.body
+                  }
+                  isOpen={this.state.platePickerModalOpen}
+                  onRequestClose={() =>
+                    this.setState({ platePickerModalOpen: false })
+                  }
+                >
+                  <h3>Select a license plate</h3>
+                  {this.state.platePickerResults.length === 0 && (
+                    <p>No license plates detected in this photo.</p>
+                  )}
+                  {this.state.platePickerResults.map((result, i) => {
+                    const hasBox = result.vehicle && result.vehicle.box;
+                    const displayWidth = 150;
+                    let containerHeight = 100;
+                    let imgStyle = {};
+
+                    if (hasBox && this.state.platePickerImageDimensions) {
+                      const {
+                        imgWidth,
+                        imgHeight,
+                      } = this.state.platePickerImageDimensions;
+                      const { box } = result.vehicle;
+                      const boxWidth = box.xmax - box.xmin;
+                      const boxHeight = box.ymax - box.ymin;
+                      const scaleFactor = displayWidth / boxWidth;
+                      containerHeight = boxHeight * scaleFactor;
+
+                      imgStyle = {
+                        position: 'absolute',
+                        width: imgWidth * scaleFactor,
+                        height: imgHeight * scaleFactor,
+                        left: -box.xmin * scaleFactor,
+                        top: -box.ymin * scaleFactor,
+                      };
+                    }
+
+                    let licenseState = null;
+                    try {
+                      licenseState = result.region.code
+                        .split('-')[1]
+                        .toUpperCase();
+                    } catch {
+                      // ignore
+                    }
+
+                    return (
+                      <div
+                        key={i} // eslint-disable-line react/no-array-index-key
+                        style={{
+                          display: 'flex',
+                          marginBottom: '10px',
+                          alignItems: 'center',
+                        }}
+                      >
+                        <div
+                          style={{
+                            overflow: 'hidden',
+                            position: 'relative',
+                            width: displayWidth,
+                            height: containerHeight,
+                            flexShrink: 0,
+                          }}
+                        >
+                          {hasBox && this.state.platePickerImageDimensions ? (
+                            <img
+                              src={this.state.platePickerImageSrc}
+                              alt={`Vehicle ${i + 1}`}
+                              style={imgStyle}
+                            />
+                          ) : (
+                            <img
+                              src={this.state.platePickerImageSrc}
+                              alt={`Vehicle ${i + 1}`}
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover',
+                              }}
+                            />
+                          )}
+                        </div>
+
+                        <div style={{ marginLeft: '10px' }}>
+                          <strong>{result.plate.toUpperCase()}</strong>
+                          {result.vehicle && result.vehicle.type && (
+                            <span> ({result.vehicle.type})</span>
+                          )}
+                          <br />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              this.setLicensePlate({
+                                plate: result.plate.toUpperCase(),
+                                licenseState,
+                              });
+                              this.setState({
+                                platePickerModalOpen: false,
+                              });
+                            }}
+                          >
+                            Use this plate
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      this.setState({ platePickerModalOpen: false })
+                    }
                   >
                     Close
                   </button>

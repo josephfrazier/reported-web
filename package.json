@@ -29,7 +29,6 @@
     "capture-frame": "^4.0.0",
     "classnames": "^2.2.6",
     "compression": "^1.7.2",
-    "cookie-parser": "^1.4.3",
     "datasets-us-states-abbr-names": "^1.0.0",
     "debounce-promise": "^3.1.0",
     "degrees-to-direction": "^1.1.1",

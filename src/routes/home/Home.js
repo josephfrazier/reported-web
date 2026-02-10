@@ -744,14 +744,19 @@ class Home extends React.Component {
             total_outstanding: outstanding,
           } = vehicle.fines;
 
+          const lastTweetPart =
+            vehicle.tweet_parts &&
+            vehicle.tweet_parts[vehicle.tweet_parts.length - 1];
+          const urlMatch =
+            lastTweetPart && lastTweetPart.match(/https?:\/\/\S+/);
+          const detailsUrl = urlMatch
+            ? urlMatch[0].replace(/\.$/, '')
+            : `https://howsmydrivingny.nyc/?plate=${plate}&state=${licenseState}`;
+
           this.setState({
             violationSummaryComponent: (
               <React.Fragment>
-                <a
-                  href={`https://howsmydrivingny.nyc/?plate=${plate}&state=${licenseState}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
+                <a href={detailsUrl} target="_blank" rel="noopener noreferrer">
                   {totalViolations} violation
                   {totalViolations !== 1 ? 's' : ''} found — ${fined} fined, $
                   {outstanding} outstanding
@@ -1455,8 +1460,9 @@ class Home extends React.Component {
                         </option>
                       ))}
                   </select>
-                  {this.state.vehicleInfoComponent}
                   {this.state.violationSummaryComponent}
+                  <br />
+                  {this.state.vehicleInfoComponent}
                 </label>
 
                 <label htmlFor="typeofcomplaint">

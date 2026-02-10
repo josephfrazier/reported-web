@@ -104,50 +104,30 @@ export default function readLicenseViaALPR({
         })
         .then(platerecognizerRes => platerecognizerRes.json())
         .then(async data => {
+          async function cropBox(box) {
+            if (!box) return null;
+            const { xmin, ymin, xmax, ymax } = box;
+            const width = xmax - xmin;
+            const height = ymax - ymin;
+            if (width <= 0 || height <= 0) return null;
+            const cropBuffer = await sharp(processedBuffer)
+              .extract({ left: xmin, top: ymin, width, height })
+              .jpeg()
+              .toBuffer();
+            return `data:image/jpeg;base64,${cropBuffer.toString('base64')}`;
+          }
+
           const resultsWithCrops = await Promise.all(
             data.results.map(async result => {
               const crops = {};
-
-              // Crop vehicle image from result.vehicle.box
-              if (result.vehicle && result.vehicle.box) {
-                const { xmin, ymin, xmax, ymax } = result.vehicle.box;
-                const width = xmax - xmin;
-                const height = ymax - ymin;
-                if (width > 0 && height > 0) {
-                  try {
-                    const cropBuffer = await sharp(processedBuffer)
-                      .extract({ left: xmin, top: ymin, width, height })
-                      .jpeg()
-                      .toBuffer();
-                    crops.vehicleCropDataUrl = `data:image/jpeg;base64,${cropBuffer.toString(
-                      'base64',
-                    )}`;
-                  } catch (err) {
-                    console.error('Failed to crop vehicle image:', err); // eslint-disable-line no-console
-                  }
-                }
+              try {
+                crops.vehicleCropDataUrl = await cropBox(
+                  result.vehicle && result.vehicle.box,
+                );
+                crops.plateCropDataUrl = await cropBox(result.box);
+              } catch (err) {
+                console.error('Failed to crop image:', err); // eslint-disable-line no-console
               }
-
-              // Crop plate image from result.box
-              if (result.box) {
-                const { xmin, ymin, xmax, ymax } = result.box;
-                const width = xmax - xmin;
-                const height = ymax - ymin;
-                if (width > 0 && height > 0) {
-                  try {
-                    const cropBuffer = await sharp(processedBuffer)
-                      .extract({ left: xmin, top: ymin, width, height })
-                      .jpeg()
-                      .toBuffer();
-                    crops.plateCropDataUrl = `data:image/jpeg;base64,${cropBuffer.toString(
-                      'base64',
-                    )}`;
-                  } catch (err) {
-                    console.error('Failed to crop plate image:', err); // eslint-disable-line no-console
-                  }
-                }
-              }
-
               return { ...result, ...crops };
             }),
           );

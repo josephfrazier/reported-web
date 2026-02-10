@@ -4,6 +4,7 @@
 /* eslint-env jest */
 
 import { readFileSync } from 'fs';
+import { hash } from 'crypto';
 
 import readLicenseViaALPR from './alpr.js';
 
@@ -19,7 +20,17 @@ describe('readLicenseViaALPR', () => {
       PLATERECOGNIZER_TOKEN,
     });
 
-    expect(result.results[0]).toMatchSnapshot();
+    const firstResult = result.results[0];
+    firstResult.plateCropDataUrl = `THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: ${hash(
+      'sha256',
+      firstResult.plateCropDataUrl,
+    )}`;
+    firstResult.vehicleCropDataUrl = `THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: ${hash(
+      'sha256',
+      firstResult.vehicleCropDataUrl,
+    )}`;
+
+    expect(firstResult).toMatchSnapshot();
   });
 
   test('falling back to the second token', async () => {
@@ -34,6 +45,16 @@ describe('readLicenseViaALPR', () => {
       PLATERECOGNIZER_TOKEN_TWO,
     });
 
-    expect(result.results[0]).toMatchSnapshot();
+    const firstResult = result.results[0];
+    firstResult.plateCropDataUrl = `THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: ${hash(
+      'sha256',
+      firstResult.plateCropDataUrl,
+    )}`;
+    firstResult.vehicleCropDataUrl = `THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: ${hash(
+      'sha256',
+      firstResult.vehicleCropDataUrl,
+    )}`;
+
+    expect(firstResult).toMatchSnapshot();
   }, 10000);
 });

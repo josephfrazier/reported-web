@@ -1254,6 +1254,7 @@ class Home extends React.Component {
                       attachmentData: [],
                       submissions: [submission].concat(state.submissions),
                       plateSuggestions: [],
+                      violationSummaryComponent: null,
                       reportDescription: '',
                     }));
                     this.setLicensePlate({ plate: '', licenseState: 'NY' });

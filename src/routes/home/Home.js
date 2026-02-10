@@ -74,6 +74,14 @@ const debouncedGetVehicleType = debounce(
   1000,
 );
 
+const debouncedGetViolations = debounce(
+  ({ plate, licenseState }) =>
+    axios.get(
+      `https://api.howsmydrivingny.nyc/api/v1/?plate=${plate}:${licenseState}`,
+    ),
+  1000,
+);
+
 const debouncedSaveStateToLocalStorage = debounce(self => {
   self.saveStateToLocalStorage();
 }, 500);
@@ -399,6 +407,7 @@ class Home extends React.Component {
       isSubmitting: false,
       plateSuggestions: [],
       vehicleInfoComponent: <br />,
+      violationSummaryComponent: null,
       submissions: [],
       addressProvenance: '',
 
@@ -592,6 +601,7 @@ class Home extends React.Component {
       ) : (
         <br />
       ),
+      violationSummaryComponent: null,
     });
 
     const now = Date.now();
@@ -711,6 +721,49 @@ class Home extends React.Component {
           // }
         }
       });
+
+    if (plate) {
+      debouncedGetViolations({ plate, licenseState })
+        .then(({ data: responseData }) => {
+          if (plate !== this.state.plate) {
+            return;
+          }
+
+          const vehicle =
+            responseData.data &&
+            responseData.data[0] &&
+            responseData.data[0].vehicle;
+
+          if (!vehicle || !vehicle.violations || !vehicle.fines) {
+            return;
+          }
+
+          const totalViolations = vehicle.violations.length;
+          const {
+            total_fined: fined,
+            total_outstanding: outstanding,
+          } = vehicle.fines;
+
+          this.setState({
+            violationSummaryComponent: (
+              <React.Fragment>
+                <a
+                  href={`https://howsmydrivingny.nyc/?plate=${plate}&state=${licenseState}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {totalViolations} violation
+                  {totalViolations !== 1 ? 's' : ''} found — ${fined} fined, $
+                  {outstanding} outstanding
+                </a>
+              </React.Fragment>
+            ),
+          });
+        })
+        .catch(err => {
+          console.error(err);
+        });
+    }
   };
 
   // adapted from https://github.com/ngokevin/react-file-reader-input/tree/f970257f271b8c3bba9d529ffdbfa4f4731e0799#usage
@@ -1402,6 +1455,7 @@ class Home extends React.Component {
                       ))}
                   </select>
                   {this.state.vehicleInfoComponent}
+                  {this.state.violationSummaryComponent}
                 </label>
 
                 <label htmlFor="typeofcomplaint">

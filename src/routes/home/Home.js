@@ -1532,8 +1532,16 @@ class Home extends React.Component {
                   onRequestClose={() =>
                     this.setState({ platePickerModalOpen: false })
                   }
+                  style={{
+                    content: {
+                      display: 'flex',
+                      flexDirection: 'column',
+                    },
+                  }}
                 >
-                  <h3>Select a license plate</h3>
+                  <h3 style={{ margin: '0 0 5px', flexShrink: 0 }}>
+                    Select a license plate
+                  </h3>
                   {this.state.platePickerResults.length === 0 && (
                     <p>No license plates detected in this photo.</p>
                   )}
@@ -1552,25 +1560,44 @@ class Home extends React.Component {
                         key={i} // eslint-disable-line react/no-array-index-key
                         style={{
                           display: 'flex',
-                          marginBottom: '10px',
+                          flexWrap: 'nowrap',
+                          flex: '1 1 0',
+                          minHeight: 0,
+                          marginBottom: '5px',
                           alignItems: 'center',
+                          gap: '5px',
                         }}
                       >
                         {result.vehicleCropDataUrl && (
                           <img
                             src={result.vehicleCropDataUrl}
                             alt={`Vehicle ${i + 1}`}
-                            style={{ width: 150, flexShrink: 0 }}
+                            style={{
+                              minWidth: 0,
+                              minHeight: 0,
+                              maxHeight: '100%',
+                              objectFit: 'contain',
+                            }}
                           />
                         )}
                         {result.plateCropDataUrl && (
                           <img
                             src={result.plateCropDataUrl}
                             alt={`Plate ${result.plate.toUpperCase()}`}
-                            style={{ height: 40, marginLeft: 5, flexShrink: 0 }}
+                            style={{
+                              minWidth: 0,
+                              minHeight: 0,
+                              maxHeight: '100%',
+                              objectFit: 'contain',
+                            }}
                           />
                         )}
-                        <div style={{ marginLeft: '10px' }}>
+                        <div
+                          style={{
+                            flexShrink: 0,
+                            textAlign: 'center',
+                          }}
+                        >
                           <strong>{result.plate.toUpperCase()}</strong>
                           {result.vehicle && result.vehicle.type && (
                             <span> ({result.vehicle.type})</span>
@@ -1596,6 +1623,7 @@ class Home extends React.Component {
                   })}
                   <button
                     type="button"
+                    style={{ flexShrink: 0 }}
                     onClick={() =>
                       this.setState({ platePickerModalOpen: false })
                     }

@@ -25,11 +25,16 @@ describe('readLicenseViaALPR', () => {
       PLATERECOGNIZER_TOKEN,
     });
 
-    const firstResult = result.results[0];
-    firstResult.plateCropDataUrl = makeHash(firstResult.plateCropDataUrl);
-    firstResult.vehicleCropDataUrl = makeHash(firstResult.vehicleCropDataUrl);
+    result.filename = 'filename REMOVED BECAUSE IT CHANGES';
+    result.processing_time = 'processing_time REMOVED BECAUSE IT CHANGES';
+    result.timestamp = 'timestamp REMOVED BECAUSE IT CHANGES';
 
-    expect(firstResult).toMatchSnapshot();
+    result.results.forEach(res => {
+      res.plateCropDataUrl = makeHash(res.plateCropDataUrl);
+      res.vehicleCropDataUrl = makeHash(res.vehicleCropDataUrl);
+    });
+
+    expect(result).toMatchSnapshot();
   });
 
   test('falling back to the second token', async () => {
@@ -44,10 +49,15 @@ describe('readLicenseViaALPR', () => {
       PLATERECOGNIZER_TOKEN_TWO,
     });
 
-    const firstResult = result.results[0];
-    firstResult.plateCropDataUrl = makeHash(firstResult.plateCropDataUrl);
-    firstResult.vehicleCropDataUrl = makeHash(firstResult.vehicleCropDataUrl);
+    result.filename = 'filename REMOVED BECAUSE IT CHANGES';
+    result.processing_time = 'processing_time REMOVED BECAUSE IT CHANGES';
+    result.timestamp = 'timestamp REMOVED BECAUSE IT CHANGES';
 
-    expect(firstResult).toMatchSnapshot();
+    result.results.forEach(res => {
+      res.plateCropDataUrl = makeHash(res.plateCropDataUrl);
+      res.vehicleCropDataUrl = makeHash(res.vehicleCropDataUrl);
+    });
+
+    expect(result).toMatchSnapshot();
   }, 10000);
 });

@@ -2,72 +2,94 @@
 
 exports[`readLicenseViaALPR falling back to the second token 1`] = `
 {
-  "box": {
-    "xmax": 1842,
-    "xmin": 1642,
-    "ymax": 2115,
-    "ymin": 2011,
-  },
-  "candidates": [
+  "camera_id": null,
+  "filename": "filename REMOVED BECAUSE IT CHANGES",
+  "image_height": 2560,
+  "image_width": 1920,
+  "processing_time": "processing_time REMOVED BECAUSE IT CHANGES",
+  "results": [
     {
+      "box": {
+        "xmax": 1842,
+        "xmin": 1642,
+        "ymax": 2115,
+        "ymin": 2011,
+      },
+      "candidates": [
+        {
+          "plate": "t736394c",
+          "score": 0.999,
+        },
+      ],
+      "dscore": 0.873,
       "plate": "t736394c",
+      "plateCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: fea21628a69aaeb9a56561ce143a06a394587a9c9d252903fccb41194d04a906",
+      "region": {
+        "code": "us-ny",
+        "score": 0.799,
+      },
       "score": 0.999,
+      "vehicle": {
+        "box": {
+          "xmax": 2450,
+          "xmin": 1223,
+          "ymax": 2252,
+          "ymin": 1225,
+        },
+        "score": 0.475,
+        "type": "SUV",
+      },
+      "vehicleCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: c5e868f4321c4763b591c8ac25048d0696651cebd30147125110570c2671f29a",
     },
   ],
-  "dscore": 0.873,
-  "plate": "t736394c",
-  "plateCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: fea21628a69aaeb9a56561ce143a06a394587a9c9d252903fccb41194d04a906",
-  "region": {
-    "code": "us-ny",
-    "score": 0.799,
-  },
-  "score": 0.999,
-  "vehicle": {
-    "box": {
-      "xmax": 2450,
-      "xmin": 1223,
-      "ymax": 2252,
-      "ymin": 1225,
-    },
-    "score": 0.475,
-    "type": "SUV",
-  },
-  "vehicleCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: c5e868f4321c4763b591c8ac25048d0696651cebd30147125110570c2671f29a",
+  "timestamp": "timestamp REMOVED BECAUSE IT CHANGES",
+  "version": 1,
 }
 `;
 
 exports[`readLicenseViaALPR using only the first token 1`] = `
 {
-  "box": {
-    "xmax": 1842,
-    "xmin": 1642,
-    "ymax": 2115,
-    "ymin": 2011,
-  },
-  "candidates": [
+  "camera_id": null,
+  "filename": "filename REMOVED BECAUSE IT CHANGES",
+  "image_height": 2560,
+  "image_width": 1920,
+  "processing_time": "processing_time REMOVED BECAUSE IT CHANGES",
+  "results": [
     {
+      "box": {
+        "xmax": 1842,
+        "xmin": 1642,
+        "ymax": 2115,
+        "ymin": 2011,
+      },
+      "candidates": [
+        {
+          "plate": "t736394c",
+          "score": 0.999,
+        },
+      ],
+      "dscore": 0.873,
       "plate": "t736394c",
+      "plateCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: fea21628a69aaeb9a56561ce143a06a394587a9c9d252903fccb41194d04a906",
+      "region": {
+        "code": "us-ny",
+        "score": 0.799,
+      },
       "score": 0.999,
+      "vehicle": {
+        "box": {
+          "xmax": 2450,
+          "xmin": 1223,
+          "ymax": 2252,
+          "ymin": 1225,
+        },
+        "score": 0.475,
+        "type": "SUV",
+      },
+      "vehicleCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: c5e868f4321c4763b591c8ac25048d0696651cebd30147125110570c2671f29a",
     },
   ],
-  "dscore": 0.873,
-  "plate": "t736394c",
-  "plateCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: fea21628a69aaeb9a56561ce143a06a394587a9c9d252903fccb41194d04a906",
-  "region": {
-    "code": "us-ny",
-    "score": 0.799,
-  },
-  "score": 0.999,
-  "vehicle": {
-    "box": {
-      "xmax": 2450,
-      "xmin": 1223,
-      "ymax": 2252,
-      "ymin": 1225,
-    },
-    "score": 0.475,
-    "type": "SUV",
-  },
-  "vehicleCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: c5e868f4321c4763b591c8ac25048d0696651cebd30147125110570c2671f29a",
+  "timestamp": "timestamp REMOVED BECAUSE IT CHANGES",
+  "version": 1,
 }
 `;

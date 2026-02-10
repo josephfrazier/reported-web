@@ -2,68 +2,250 @@
 
 exports[`readLicenseViaALPR falling back to the second token 1`] = `
 {
-  "box": {
-    "xmax": 1842,
-    "xmin": 1642,
-    "ymax": 2115,
-    "ymin": 2011,
-  },
-  "candidates": [
+  "camera_id": null,
+  "filename": "filename REMOVED BECAUSE IT CHANGES",
+  "image_height": 2560,
+  "image_width": 1919,
+  "processing_time": "processing_time REMOVED BECAUSE IT CHANGES",
+  "results": [
     {
-      "plate": "t736394c",
+      "box": {
+        "xmax": 1505,
+        "xmin": 1363,
+        "ymax": 1606,
+        "ymin": 1532,
+      },
+      "candidates": [
+        {
+          "plate": "k73jau",
+          "score": 1,
+        },
+      ],
+      "dscore": 0.853,
+      "plate": "k73jau",
+      "plateCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: 3ea1f17896751841dd8bd9e4320bc92884012cd1d1f16f24ef5867edd737ec05",
+      "region": {
+        "code": "us-nj",
+        "score": 0.689,
+      },
       "score": 1,
+      "vehicle": {
+        "box": {
+          "xmax": 1869,
+          "xmin": 1093,
+          "ymax": 1854,
+          "ymin": 1178,
+        },
+        "score": 0.908,
+        "type": "Sedan",
+      },
+      "vehicleCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: 458163f881b1c38ab400d30ec2c2f4cd832f64e786a680ede681b2914eaf4806",
+    },
+    {
+      "box": {
+        "xmax": 802,
+        "xmin": 705,
+        "ymax": 1366,
+        "ymin": 1319,
+      },
+      "candidates": [
+        {
+          "plate": "t696817c",
+          "score": 1,
+        },
+        {
+          "plate": "t6968i7c",
+          "score": 0.881,
+        },
+        {
+          "plate": "t696b17c",
+          "score": 0.881,
+        },
+        {
+          "plate": "t696bi7c",
+          "score": 0.762,
+        },
+      ],
+      "dscore": 0.843,
+      "plate": "t696817c",
+      "plateCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: 4701977d7c1729b997c1b77289c4f8c4b97b5d3aaa8e257a8debe629dcc06a44",
+      "region": {
+        "code": "us-ny",
+        "score": 0.933,
+      },
+      "score": 1,
+      "vehicle": {
+        "box": {
+          "xmax": 1283,
+          "xmin": 518,
+          "ymax": 1556,
+          "ymin": 1060,
+        },
+        "score": 0.815,
+        "type": "SUV",
+      },
+      "vehicleCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: b62dc383b5a194a2bb76d4d3a7c94f6d19e8e86569c325e19df06011e2c74cb4",
+    },
+    {
+      "box": {
+        "xmax": 229,
+        "xmin": 155,
+        "ymax": 1327,
+        "ymin": 1276,
+      },
+      "candidates": [
+        {
+          "plate": "lda8765",
+          "score": 1,
+        },
+      ],
+      "dscore": 0.75,
+      "plate": "lda8765",
+      "plateCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: 9a7eed062844c015cabf1a523ebc6257e87ec7b6fedac4a33b0061ea44aecb12",
+      "region": {
+        "code": "us-ny",
+        "score": 0.876,
+      },
+      "score": 1,
+      "vehicle": {
+        "box": {
+          "xmax": 580,
+          "xmin": 28,
+          "ymax": 1516,
+          "ymin": 1105,
+        },
+        "score": 0.435,
+        "type": "Sedan",
+      },
+      "vehicleCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: fa34c88913b0215f0b1599a522d4ba79282450b1b24248128c757cace34a5dca",
     },
   ],
-  "dscore": 0.873,
-  "plate": "t736394c",
-  "region": {
-    "code": "us-ny",
-    "score": 0.626,
-  },
-  "score": 1,
-  "vehicle": {
-    "box": {
-      "xmax": 2450,
-      "xmin": 1223,
-      "ymax": 2252,
-      "ymin": 1225,
-    },
-    "score": 0.475,
-    "type": "SUV",
-  },
+  "timestamp": "timestamp REMOVED BECAUSE IT CHANGES",
+  "version": 1,
 }
 `;
 
 exports[`readLicenseViaALPR using only the first token 1`] = `
 {
-  "box": {
-    "xmax": 1842,
-    "xmin": 1642,
-    "ymax": 2115,
-    "ymin": 2011,
-  },
-  "candidates": [
+  "camera_id": null,
+  "filename": "filename REMOVED BECAUSE IT CHANGES",
+  "image_height": 2560,
+  "image_width": 1919,
+  "processing_time": "processing_time REMOVED BECAUSE IT CHANGES",
+  "results": [
     {
-      "plate": "t736394c",
+      "box": {
+        "xmax": 1505,
+        "xmin": 1363,
+        "ymax": 1606,
+        "ymin": 1532,
+      },
+      "candidates": [
+        {
+          "plate": "k73jau",
+          "score": 1,
+        },
+      ],
+      "dscore": 0.853,
+      "plate": "k73jau",
+      "plateCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: 3ea1f17896751841dd8bd9e4320bc92884012cd1d1f16f24ef5867edd737ec05",
+      "region": {
+        "code": "us-nj",
+        "score": 0.689,
+      },
       "score": 1,
+      "vehicle": {
+        "box": {
+          "xmax": 1869,
+          "xmin": 1093,
+          "ymax": 1854,
+          "ymin": 1178,
+        },
+        "score": 0.908,
+        "type": "Sedan",
+      },
+      "vehicleCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: 458163f881b1c38ab400d30ec2c2f4cd832f64e786a680ede681b2914eaf4806",
+    },
+    {
+      "box": {
+        "xmax": 802,
+        "xmin": 705,
+        "ymax": 1366,
+        "ymin": 1319,
+      },
+      "candidates": [
+        {
+          "plate": "t696817c",
+          "score": 1,
+        },
+        {
+          "plate": "t6968i7c",
+          "score": 0.881,
+        },
+        {
+          "plate": "t696b17c",
+          "score": 0.881,
+        },
+        {
+          "plate": "t696bi7c",
+          "score": 0.762,
+        },
+      ],
+      "dscore": 0.843,
+      "plate": "t696817c",
+      "plateCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: 4701977d7c1729b997c1b77289c4f8c4b97b5d3aaa8e257a8debe629dcc06a44",
+      "region": {
+        "code": "us-ny",
+        "score": 0.933,
+      },
+      "score": 1,
+      "vehicle": {
+        "box": {
+          "xmax": 1283,
+          "xmin": 518,
+          "ymax": 1556,
+          "ymin": 1060,
+        },
+        "score": 0.815,
+        "type": "SUV",
+      },
+      "vehicleCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: b62dc383b5a194a2bb76d4d3a7c94f6d19e8e86569c325e19df06011e2c74cb4",
+    },
+    {
+      "box": {
+        "xmax": 229,
+        "xmin": 155,
+        "ymax": 1327,
+        "ymin": 1276,
+      },
+      "candidates": [
+        {
+          "plate": "lda8765",
+          "score": 1,
+        },
+      ],
+      "dscore": 0.75,
+      "plate": "lda8765",
+      "plateCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: 9a7eed062844c015cabf1a523ebc6257e87ec7b6fedac4a33b0061ea44aecb12",
+      "region": {
+        "code": "us-ny",
+        "score": 0.876,
+      },
+      "score": 1,
+      "vehicle": {
+        "box": {
+          "xmax": 580,
+          "xmin": 28,
+          "ymax": 1516,
+          "ymin": 1105,
+        },
+        "score": 0.435,
+        "type": "Sedan",
+      },
+      "vehicleCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: fa34c88913b0215f0b1599a522d4ba79282450b1b24248128c757cace34a5dca",
     },
   ],
-  "dscore": 0.873,
-  "plate": "t736394c",
-  "region": {
-    "code": "us-ny",
-    "score": 0.626,
-  },
-  "score": 1,
-  "vehicle": {
-    "box": {
-      "xmax": 2450,
-      "xmin": 1223,
-      "ymax": 2252,
-      "ymin": 1225,
-    },
-    "score": 0.475,
-    "type": "SUV",
-  },
+  "timestamp": "timestamp REMOVED BECAUSE IT CHANGES",
+  "version": 1,
 }
 `;

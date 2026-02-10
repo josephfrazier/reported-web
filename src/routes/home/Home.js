@@ -50,6 +50,7 @@ import marx from 'marx-css/css/marx.css';
 import homeStyles from './Home.css';
 
 import PreviousSubmissionsList from '../../components/PreviousSubmissionsList.js';
+import PlatePickerModal from './PlatePickerModal.js';
 import { isImage, isVideo } from '../../isImage.js';
 import getNycTimezoneOffset from '../../timezone.js';
 import { getBoroNameMemoized } from '../../getBoroName.js';
@@ -163,7 +164,43 @@ async function getVideoScreenshot({ attachmentFile }) {
 }
 
 // adapted from https://www.bignerdranch.com/blog/dont-over-react/
-const attachmentPlates = new WeakMap();
+const attachmentPlateCache = new WeakMap();
+
+async function fetchPlateResults({
+  attachmentFile,
+  attachmentBuffer,
+  ext,
+  email,
+  password,
+}) {
+  if (attachmentPlateCache.has(attachmentFile)) {
+    console.info(`found cached plate results for ${attachmentFile.name}!`);
+    return attachmentPlateCache.get(attachmentFile);
+  }
+
+  if (isVideo({ ext })) {
+    // eslint-disable-next-line no-param-reassign
+    attachmentBuffer = await getVideoScreenshot({ attachmentFile });
+  } else if (!isImage({ ext })) {
+    throw new Error(`${attachmentFile.name} is not an image/video`);
+  }
+
+  console.time(`bufferToBlob(${attachmentFile.name})`); // eslint-disable-line no-console
+  const attachmentBlob = await blobUtil.arrayBufferToBlob(
+    bufferToArrayBuffer(attachmentBuffer),
+  );
+  console.timeEnd(`bufferToBlob(${attachmentFile.name})`); // eslint-disable-line no-console
+
+  const formData = objectToFormData({
+    attachmentFile: attachmentBlob,
+    email,
+    password,
+  });
+  const { data } = await axios.post('/platerecognizer', formData);
+
+  attachmentPlateCache.set(attachmentFile, data.results);
+  return data.results;
+}
 
 async function extractPlate({
   attachmentFile,
@@ -181,38 +218,20 @@ async function extractPlate({
       return { plate: '', licenseState: '', plateSuggestions: [] };
     }
 
-    if (attachmentPlates.has(attachmentFile)) {
-      console.info(`found cached plate for ${attachmentFile.name}!`);
-      const result = attachmentPlates.get(attachmentFile);
-      return result;
-    }
-
-    if (isVideo({ ext })) {
-      // eslint-disable-next-line no-param-reassign
-      attachmentBuffer = await getVideoScreenshot({ attachmentFile });
-    } else if (!isImage({ ext })) {
-      throw new Error(`${attachmentFile.name} is not an image/video`);
-    }
-
-    console.time(`bufferToBlob(${attachmentFile.name})`); // eslint-disable-line no-console
-    const attachmentBlob = await blobUtil.arrayBufferToBlob(
-      bufferToArrayBuffer(attachmentBuffer),
-    );
-    console.timeEnd(`bufferToBlob(${attachmentFile.name})`); // eslint-disable-line no-console
-
-    const formData = objectToFormData({
-      attachmentFile: attachmentBlob,
+    const results = await fetchPlateResults({
+      attachmentFile,
+      attachmentBuffer,
+      ext,
       email,
       password,
     });
-    const { data } = await axios.post('/platerecognizer', formData);
 
     // Choose first result with T######C plate if it exists, see https://github.com/josephfrazier/reported-web/issues/584
-    let result = data.results.filter(r =>
+    let result = results.filter(r =>
       r.plate.toUpperCase().match(/^T\d\d\d\d\d\dC$/),
     )[0];
     if (!result) {
-      result = data.results[0];
+      result = results[0];
     }
 
     try {
@@ -221,9 +240,8 @@ async function extractPlate({
       result.licenseState = null;
     }
     result.plate = result.plate.toUpperCase();
-    result.plateSuggestions = data.results.map(r => r.plate.toUpperCase());
+    result.plateSuggestions = results.map(r => r.plate.toUpperCase());
 
-    attachmentPlates.set(attachmentFile, result);
     return result;
   } catch (err) {
     console.error(err.stack);
@@ -383,6 +401,10 @@ class Home extends React.Component {
       vehicleInfoComponent: <br />,
       submissions: [],
       addressProvenance: '',
+
+      platePickerModalOpen: false,
+      platePickerResults: [],
+      platePickerLoading: false,
     };
 
     const initialState = {
@@ -801,6 +823,33 @@ class Home extends React.Component {
         );
       },
     );
+  };
+
+  handlePlatePickerClick = async attachmentFile => {
+    this.setState({ platePickerLoading: true });
+
+    try {
+      const { email, password } = this.state;
+      const { attachmentBuffer } = await blobToBuffer({ attachmentFile });
+      const ext = fileExtension(attachmentFile.name);
+      const results = await fetchPlateResults({
+        attachmentFile,
+        attachmentBuffer,
+        ext,
+        email,
+        password,
+      });
+
+      this.setState({
+        platePickerResults: results,
+        platePickerModalOpen: true,
+        platePickerLoading: false,
+      });
+    } catch (err) {
+      console.error(err);
+      Home.notifyError('Could not read license plates from this photo.');
+      this.setState({ platePickerLoading: false });
+    }
   };
 
   handleInputChange = event => {
@@ -1252,6 +1301,35 @@ class Home extends React.Component {
                             ❌
                           </span>
                         </button>
+
+                        {isImg && (
+                          <button
+                            type="button"
+                            style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              padding: 0,
+                              margin: '1px',
+                              background: 'white',
+                            }}
+                            onClick={() =>
+                              this.handlePlatePickerClick(attachmentFile)
+                            }
+                            disabled={this.state.platePickerLoading}
+                          >
+                            {this.state.platePickerLoading ? (
+                              <CircularProgress size="1em" />
+                            ) : (
+                              <span
+                                role="img"
+                                aria-label="Pick license plate from photo"
+                              >
+                                🔍
+                              </span>
+                            )}
+                          </button>
+                        )}
                       </div>
                     );
                   })}
@@ -1453,6 +1531,16 @@ class Home extends React.Component {
                     Close
                   </button>
                 </Modal>
+
+                <PlatePickerModal
+                  isOpen={this.state.platePickerModalOpen}
+                  results={this.state.platePickerResults}
+                  onSelectPlate={({ plate, licenseState }) => {
+                    this.setLicensePlate({ plate, licenseState });
+                    this.setState({ platePickerModalOpen: false });
+                  }}
+                  onClose={() => this.setState({ platePickerModalOpen: false })}
+                />
 
                 <label htmlFor="CreateDate">
                   When:{' '}

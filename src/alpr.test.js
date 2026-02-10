@@ -8,6 +8,11 @@ import { hash } from 'crypto';
 
 import readLicenseViaALPR from './alpr.js';
 
+function makeHash(dataUrl) {
+  const shasum = hash('sha256', dataUrl);
+  return `THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: ${shasum}`;
+}
+
 describe('readLicenseViaALPR', () => {
   test('using only the first token', async () => {
     const attachmentBuffer = readFileSync(
@@ -21,14 +26,8 @@ describe('readLicenseViaALPR', () => {
     });
 
     const firstResult = result.results[0];
-    firstResult.plateCropDataUrl = `THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: ${hash(
-      'sha256',
-      firstResult.plateCropDataUrl,
-    )}`;
-    firstResult.vehicleCropDataUrl = `THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: ${hash(
-      'sha256',
-      firstResult.vehicleCropDataUrl,
-    )}`;
+    firstResult.plateCropDataUrl = makeHash(firstResult.plateCropDataUrl);
+    firstResult.vehicleCropDataUrl = makeHash(firstResult.vehicleCropDataUrl);
 
     expect(firstResult).toMatchSnapshot();
   });
@@ -46,14 +45,8 @@ describe('readLicenseViaALPR', () => {
     });
 
     const firstResult = result.results[0];
-    firstResult.plateCropDataUrl = `THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: ${hash(
-      'sha256',
-      firstResult.plateCropDataUrl,
-    )}`;
-    firstResult.vehicleCropDataUrl = `THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: ${hash(
-      'sha256',
-      firstResult.vehicleCropDataUrl,
-    )}`;
+    firstResult.plateCropDataUrl = makeHash(firstResult.plateCropDataUrl);
+    firstResult.vehicleCropDataUrl = makeHash(firstResult.vehicleCropDataUrl);
 
     expect(firstResult).toMatchSnapshot();
   }, 10000);

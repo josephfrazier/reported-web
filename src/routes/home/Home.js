@@ -208,11 +208,7 @@ async function extractPlate({
     });
     const { data } = await axios.post('/platerecognizer', formData);
 
-    attachmentPlateFullResults.set(attachmentFile, {
-      results: data.results,
-      imgWidth: data.imgWidth,
-      imgHeight: data.imgHeight,
-    });
+    attachmentPlateFullResults.set(attachmentFile, data.results);
 
     // Choose first result with T######C plate if it exists, see https://github.com/josephfrazier/reported-web/issues/584
     let result = data.results.filter(r =>
@@ -393,8 +389,6 @@ class Home extends React.Component {
 
       platePickerModalOpen: false,
       platePickerResults: [],
-      platePickerImageSrc: null,
-      platePickerImageDimensions: null,
       platePickerLoading: false,
     };
 
@@ -833,21 +827,12 @@ class Home extends React.Component {
           password: this.state.password,
         });
         const { data } = await axios.post('/platerecognizer', formData);
-        cached = {
-          results: data.results,
-          imgWidth: data.imgWidth,
-          imgHeight: data.imgHeight,
-        };
+        cached = data.results;
         attachmentPlateFullResults.set(attachmentFile, cached);
       }
 
       this.setState({
-        platePickerResults: cached.results,
-        platePickerImageSrc: getBlobUrl(attachmentFile),
-        platePickerImageDimensions: {
-          imgWidth: cached.imgWidth,
-          imgHeight: cached.imgHeight,
-        },
+        platePickerResults: cached,
         platePickerModalOpen: true,
         platePickerLoading: false,
       });
@@ -1553,31 +1538,6 @@ class Home extends React.Component {
                     <p>No license plates detected in this photo.</p>
                   )}
                   {this.state.platePickerResults.map((result, i) => {
-                    const hasBox = result.vehicle && result.vehicle.box;
-                    const displayWidth = 150;
-                    let containerHeight = 100;
-                    let imgStyle = {};
-
-                    if (hasBox && this.state.platePickerImageDimensions) {
-                      const {
-                        imgWidth,
-                        imgHeight,
-                      } = this.state.platePickerImageDimensions;
-                      const { box } = result.vehicle;
-                      const boxWidth = box.xmax - box.xmin;
-                      const boxHeight = box.ymax - box.ymin;
-                      const scaleFactor = displayWidth / boxWidth;
-                      containerHeight = boxHeight * scaleFactor;
-
-                      imgStyle = {
-                        position: 'absolute',
-                        width: imgWidth * scaleFactor,
-                        height: imgHeight * scaleFactor,
-                        left: -box.xmin * scaleFactor,
-                        top: -box.ymin * scaleFactor,
-                      };
-                    }
-
                     let licenseState = null;
                     try {
                       licenseState = result.region.code
@@ -1596,34 +1556,13 @@ class Home extends React.Component {
                           alignItems: 'center',
                         }}
                       >
-                        <div
-                          style={{
-                            overflow: 'hidden',
-                            position: 'relative',
-                            width: displayWidth,
-                            height: containerHeight,
-                            flexShrink: 0,
-                          }}
-                        >
-                          {hasBox && this.state.platePickerImageDimensions ? (
-                            <img
-                              src={this.state.platePickerImageSrc}
-                              alt={`Vehicle ${i + 1}`}
-                              style={imgStyle}
-                            />
-                          ) : (
-                            <img
-                              src={this.state.platePickerImageSrc}
-                              alt={`Vehicle ${i + 1}`}
-                              style={{
-                                width: '100%',
-                                height: '100%',
-                                objectFit: 'cover',
-                              }}
-                            />
-                          )}
-                        </div>
-
+                        {result.vehicleCropDataUrl && (
+                          <img
+                            src={result.vehicleCropDataUrl}
+                            alt={`Vehicle ${i + 1}`}
+                            style={{ width: 150, flexShrink: 0 }}
+                          />
+                        )}
                         <div style={{ marginLeft: '10px' }}>
                           <strong>{result.plate.toUpperCase()}</strong>
                           {result.vehicle && result.vehicle.type && (

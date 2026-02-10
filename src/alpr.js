@@ -76,12 +76,8 @@ export default function readLicenseViaALPR({
   return orientImageBuffer({ attachmentBuffer })
     .then(buffer => downscaleForPlateRecognizer({ buffer, targetWidth: 4096 }))
     .then(buffer => downscaleForPlateRecognizer({ buffer, targetWidth: 2048 }))
-    .then(async buffer => {
-      const metadata = await sharp(buffer).metadata();
-      return { buffer, imgWidth: metadata.width, imgHeight: metadata.height };
-    })
-    .then(({ buffer, imgWidth, imgHeight }) => {
-      const attachmentBytesRotated = buffer.toString('base64');
+    .then(processedBuffer => {
+      const attachmentBytesRotated = processedBuffer.toString('base64');
       console.log('STARTING platerecognizer'); // eslint-disable-line no-console
       console.time(`/platerecognizer plate-reader`); // eslint-disable-line no-console
 
@@ -107,7 +103,35 @@ export default function readLicenseViaALPR({
           return platerecognizerRes;
         })
         .then(platerecognizerRes => platerecognizerRes.json())
-        .then(data => ({ ...data, imgWidth, imgHeight }))
+        .then(async data => {
+          const resultsWithCrops = await Promise.all(
+            data.results.map(async result => {
+              if (result.vehicle && result.vehicle.box) {
+                const { xmin, ymin, xmax, ymax } = result.vehicle.box;
+                const width = xmax - xmin;
+                const height = ymax - ymin;
+                if (width > 0 && height > 0) {
+                  try {
+                    const cropBuffer = await sharp(processedBuffer)
+                      .extract({ left: xmin, top: ymin, width, height })
+                      .jpeg()
+                      .toBuffer();
+                    return {
+                      ...result,
+                      vehicleCropDataUrl: `data:image/jpeg;base64,${cropBuffer.toString(
+                        'base64',
+                      )}`,
+                    };
+                  } catch (err) {
+                    console.error('Failed to crop vehicle image:', err); // eslint-disable-line no-console
+                  }
+                }
+              }
+              return result;
+            }),
+          );
+          return { ...data, results: resultsWithCrops };
+        })
         .finally(() => console.timeEnd(`/platerecognizer plate-reader`)); // eslint-disable-line no-console
     });
 }

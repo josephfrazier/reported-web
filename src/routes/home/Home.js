@@ -1563,6 +1563,13 @@ class Home extends React.Component {
                             style={{ width: 150, flexShrink: 0 }}
                           />
                         )}
+                        {result.plateCropDataUrl && (
+                          <img
+                            src={result.plateCropDataUrl}
+                            alt={`Plate ${result.plate.toUpperCase()}`}
+                            style={{ height: 40, marginLeft: 5, flexShrink: 0 }}
+                          />
+                        )}
                         <div style={{ marginLeft: '10px' }}>
                           <strong>{result.plate.toUpperCase()}</strong>
                           {result.vehicle && result.vehicle.type && (

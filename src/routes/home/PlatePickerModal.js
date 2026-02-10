@@ -33,7 +33,7 @@ function PlatePickerModal({ isOpen, results, onSelectPlate, onClose }) {
 
         return (
           <div
-            key={i} // eslint-disable-line react/no-array-index-key
+            key={result.plate}
             style={{
               display: 'flex',
               flexWrap: 'nowrap',

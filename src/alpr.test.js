@@ -16,7 +16,7 @@ function makeHash(dataUrl) {
 describe('readLicenseViaALPR', () => {
   test('using only the first token', async () => {
     const attachmentBuffer = readFileSync(
-      './src/4d81b7e083843d949a73cc1178227fe8_photoData0.jpg',
+      './src/447139692-0ee99c9b-73a4-49fb-a610-389db5cbddd3_exif_stripped.jpg',
     );
     const { PLATERECOGNIZER_TOKEN } = process.env;
 
@@ -39,7 +39,7 @@ describe('readLicenseViaALPR', () => {
 
   test('falling back to the second token', async () => {
     const attachmentBuffer = readFileSync(
-      './src/4d81b7e083843d949a73cc1178227fe8_photoData0.jpg',
+      './src/447139692-0ee99c9b-73a4-49fb-a610-389db5cbddd3_exif_stripped.jpg',
     );
     const { PLATERECOGNIZER_TOKEN_TWO } = process.env;
 

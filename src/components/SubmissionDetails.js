@@ -47,36 +47,58 @@ class SubmissionDetails extends React.Component {
 
     const humanTimeString = new Date(timeofreport).toLocaleString();
 
-    const ImagesAndVideos = () => {
-      const images = [photoData, photoData0, photoData1, photoData2]
-        .filter(item => !!item)
-        .map((photoDataItem, i) => {
-          const { url } = photoDataItem;
-          return (
-            <a key={url} href={url} target="_blank" rel="noopener noreferrer">
-              <img src={url} alt={`#${i}`} />
-            </a>
-          );
-        });
+    class ImagesAndVideos extends React.Component {
+      constructor(props) {
+        super(props);
 
-      const videos = [videoData0, videoData1, videoData2]
-        .filter(item => !!item)
-        .map((videoData, i) => {
-          const url = videoData;
-          return (
-            <a key={url} href={url} target="_blank" rel="noopener noreferrer">
-              {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-              <video src={url} alt={`#${i}`} />
-            </a>
-          );
-        });
+        this.state = {
+          isDetailsOpen: false,
+        };
+      }
 
-      return (
-        <React.Fragment>
-          {images}
-          {videos}
-        </React.Fragment>
-      );
+      render() {
+        const images = [photoData, photoData0, photoData1, photoData2]
+          .filter(item => !!item)
+          .map((photoDataItem, i) => {
+            const { url } = photoDataItem;
+            return (
+              <a key={url} href={url} target="_blank" rel="noopener noreferrer">
+                <img src={url} alt={`#${i}`} />
+              </a>
+            );
+          });
+
+        const videos = [videoData0, videoData1, videoData2]
+          .filter(item => !!item)
+          .map((videoData, i) => {
+            const url = videoData;
+            return (
+              <a key={url} href={url} target="_blank" rel="noopener noreferrer">
+                {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                <video src={url} alt={`#${i}`} />
+              </a>
+            );
+          });
+
+        return (
+          <details
+            open={this.state.isDetailsOpen}
+            onToggle={evt => {
+              this.setState({
+                isDetailsOpen: evt.target.open,
+              });
+            }}
+          >
+            <summary>Images and Videos</summary>
+            {this.state.isDetailsOpen && (
+              <React.Fragment>
+                {images}
+                {videos}
+              </React.Fragment>
+            )}
+          </details>
+        );
+      }
     };
 
     const LoadableServiceRequestStatus = Loadable({

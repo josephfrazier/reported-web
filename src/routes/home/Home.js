@@ -163,8 +163,43 @@ async function getVideoScreenshot({ attachmentFile }) {
 }
 
 // adapted from https://www.bignerdranch.com/blog/dont-over-react/
-const attachmentPlates = new WeakMap();
-const attachmentPlateFullResults = new WeakMap();
+const attachmentPlateCache = new WeakMap();
+
+async function fetchPlateResults({
+  attachmentFile,
+  attachmentBuffer,
+  ext,
+  email,
+  password,
+}) {
+  if (attachmentPlateCache.has(attachmentFile)) {
+    console.info(`found cached plate results for ${attachmentFile.name}!`);
+    return attachmentPlateCache.get(attachmentFile);
+  }
+
+  if (isVideo({ ext })) {
+    // eslint-disable-next-line no-param-reassign
+    attachmentBuffer = await getVideoScreenshot({ attachmentFile });
+  } else if (!isImage({ ext })) {
+    throw new Error(`${attachmentFile.name} is not an image/video`);
+  }
+
+  console.time(`bufferToBlob(${attachmentFile.name})`); // eslint-disable-line no-console
+  const attachmentBlob = await blobUtil.arrayBufferToBlob(
+    bufferToArrayBuffer(attachmentBuffer),
+  );
+  console.timeEnd(`bufferToBlob(${attachmentFile.name})`); // eslint-disable-line no-console
+
+  const formData = objectToFormData({
+    attachmentFile: attachmentBlob,
+    email,
+    password,
+  });
+  const { data } = await axios.post('/platerecognizer', formData);
+
+  attachmentPlateCache.set(attachmentFile, data.results);
+  return data.results;
+}
 
 async function extractPlate({
   attachmentFile,
@@ -182,40 +217,20 @@ async function extractPlate({
       return { plate: '', licenseState: '', plateSuggestions: [] };
     }
 
-    if (attachmentPlates.has(attachmentFile)) {
-      console.info(`found cached plate for ${attachmentFile.name}!`);
-      const result = attachmentPlates.get(attachmentFile);
-      return result;
-    }
-
-    if (isVideo({ ext })) {
-      // eslint-disable-next-line no-param-reassign
-      attachmentBuffer = await getVideoScreenshot({ attachmentFile });
-    } else if (!isImage({ ext })) {
-      throw new Error(`${attachmentFile.name} is not an image/video`);
-    }
-
-    console.time(`bufferToBlob(${attachmentFile.name})`); // eslint-disable-line no-console
-    const attachmentBlob = await blobUtil.arrayBufferToBlob(
-      bufferToArrayBuffer(attachmentBuffer),
-    );
-    console.timeEnd(`bufferToBlob(${attachmentFile.name})`); // eslint-disable-line no-console
-
-    const formData = objectToFormData({
-      attachmentFile: attachmentBlob,
+    const results = await fetchPlateResults({
+      attachmentFile,
+      attachmentBuffer,
+      ext,
       email,
       password,
     });
-    const { data } = await axios.post('/platerecognizer', formData);
-
-    attachmentPlateFullResults.set(attachmentFile, data.results);
 
     // Choose first result with T######C plate if it exists, see https://github.com/josephfrazier/reported-web/issues/584
-    let result = data.results.filter(r =>
+    let result = results.filter(r =>
       r.plate.toUpperCase().match(/^T\d\d\d\d\d\dC$/),
     )[0];
     if (!result) {
-      result = data.results[0];
+      result = results[0];
     }
 
     try {
@@ -224,9 +239,8 @@ async function extractPlate({
       result.licenseState = null;
     }
     result.plate = result.plate.toUpperCase();
-    result.plateSuggestions = data.results.map(r => r.plate.toUpperCase());
+    result.plateSuggestions = results.map(r => r.plate.toUpperCase());
 
-    attachmentPlates.set(attachmentFile, result);
     return result;
   } catch (err) {
     console.error(err.stack);
@@ -814,25 +828,19 @@ class Home extends React.Component {
     this.setState({ platePickerLoading: true });
 
     try {
-      let cached = attachmentPlateFullResults.get(attachmentFile);
-
-      if (!cached) {
-        const { attachmentBuffer } = await blobToBuffer({ attachmentFile });
-        const attachmentBlob = await blobUtil.arrayBufferToBlob(
-          bufferToArrayBuffer(attachmentBuffer),
-        );
-        const formData = objectToFormData({
-          attachmentFile: attachmentBlob,
-          email: this.state.email,
-          password: this.state.password,
-        });
-        const { data } = await axios.post('/platerecognizer', formData);
-        cached = data.results;
-        attachmentPlateFullResults.set(attachmentFile, cached);
-      }
+      const { email, password } = this.state;
+      const { attachmentBuffer } = await blobToBuffer({ attachmentFile });
+      const ext = fileExtension(attachmentFile.name);
+      const results = await fetchPlateResults({
+        attachmentFile,
+        attachmentBuffer,
+        ext,
+        email,
+        password,
+      });
 
       this.setState({
-        platePickerResults: cached,
+        platePickerResults: results,
         platePickerModalOpen: true,
         platePickerLoading: false,
       });

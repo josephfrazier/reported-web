@@ -541,7 +541,8 @@ exports[`Home renders children correctly 1`] = `
                 Wyoming
               </option>
             </select>
-            <br />
+            <div />
+            <div />
           </label>
           <label
             htmlFor="typeofcomplaint"

@@ -74,13 +74,12 @@ const debouncedGetVehicleType = debounce(
   1000,
 );
 
-const debouncedGetViolations = debounce(
-  ({ plate, licenseState }) =>
-    axios.get(
-      `https://api.howsmydrivingny.nyc/api/v1/?plate=${plate}:${licenseState}`,
-    ),
-  1000,
-);
+const debouncedGetViolations = debounce(async ({ plate, licenseState }) => {
+  const apiUrl = `https://api.howsmydrivingny.nyc/api/v1/?plate=${plate}:${licenseState}`;
+  const response = await axios.get(apiUrl);
+
+  return { apiUrl, response };
+}, 1000);
 
 const debouncedSaveStateToLocalStorage = debounce(self => {
   self.saveStateToLocalStorage();
@@ -724,7 +723,7 @@ class Home extends React.Component {
 
     if (plate) {
       debouncedGetViolations({ plate, licenseState })
-        .then(({ data: responseData }) => {
+        .then(({ apiUrl, response: { data: responseData } }) => {
           if (plate !== this.state.plate) {
             return;
           }
@@ -751,16 +750,23 @@ class Home extends React.Component {
             lastTweetPart && lastTweetPart.match(/https?:\/\/\S+/);
           const detailsUrl = urlMatch
             ? urlMatch[0].replace(/\.$/, '')
-            : `https://howsmydrivingny.nyc/?plate=${plate}&state=${licenseState}`;
+            : 'https://howsmydrivingny.nyc/';
 
           this.setState({
             violationSummaryComponent: (
               <React.Fragment>
+                {totalViolations} violation
+                {totalViolations !== 1 ? 's' : ''} found — ${fined} fined, $
+                {outstanding} outstanding
+                {' ('}
                 <a href={detailsUrl} target="_blank" rel="noopener noreferrer">
-                  {totalViolations} violation
-                  {totalViolations !== 1 ? 's' : ''} found — ${fined} fined, $
-                  {outstanding} outstanding
+                  more details
                 </a>
+                {', or '}
+                <a href={apiUrl} target="_blank" rel="noopener noreferrer">
+                  full API response
+                </a>
+                )
               </React.Fragment>
             ),
           });

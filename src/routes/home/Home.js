@@ -405,7 +405,7 @@ class Home extends React.Component {
       isUserInfoSaving: false,
       isSubmitting: false,
       plateSuggestions: [],
-      vehicleInfoComponent: <br />,
+      vehicleInfoComponent: null,
       violationSummaryComponent: null,
       submissions: [],
       addressProvenance: '',
@@ -598,9 +598,13 @@ class Home extends React.Component {
       vehicleInfoComponent: plate ? (
         `Looking up make/model for ${plate} in ${usStateNames[licenseState]}`
       ) : (
-        <br />
+        null
       ),
-      violationSummaryComponent: null,
+      violationSummaryComponent: plate ? (
+        `Looking up violations for ${plate} in ${usStateNames[licenseState]}`
+      ) : (
+        null
+      ),
     });
 
     const now = Date.now();
@@ -1265,6 +1269,7 @@ class Home extends React.Component {
                       attachmentData: [],
                       submissions: [submission].concat(state.submissions),
                       plateSuggestions: [],
+                      vehicleInfoComponent: null,
                       violationSummaryComponent: null,
                       reportDescription: '',
                     }));
@@ -1466,9 +1471,8 @@ class Home extends React.Component {
                         </option>
                       ))}
                   </select>
-                  {this.state.violationSummaryComponent}
-                  <br />
-                  {this.state.vehicleInfoComponent}
+                  <div>{this.state.violationSummaryComponent}</div>
+                  <div>{this.state.vehicleInfoComponent}</div>
                 </label>
 
                 <label htmlFor="typeofcomplaint">

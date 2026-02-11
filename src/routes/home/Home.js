@@ -74,6 +74,13 @@ const debouncedGetVehicleType = debounce(
   1000,
 );
 
+const debouncedGetViolations = debounce(async ({ plate, licenseState }) => {
+  const apiUrl = `https://api.howsmydrivingny.nyc/api/v1/?plate=${plate}:${licenseState}`;
+  const response = await axios.get(apiUrl);
+
+  return { apiUrl, response };
+}, 1000);
+
 const debouncedSaveStateToLocalStorage = debounce(self => {
   self.saveStateToLocalStorage();
 }, 500);
@@ -398,7 +405,8 @@ class Home extends React.Component {
       isUserInfoSaving: false,
       isSubmitting: false,
       plateSuggestions: [],
-      vehicleInfoComponent: <br />,
+      vehicleInfoComponent: null,
+      violationSummaryComponent: null,
       submissions: [],
       addressProvenance: '',
 
@@ -587,11 +595,12 @@ class Home extends React.Component {
     this.setState({
       plate,
       licenseState,
-      vehicleInfoComponent: plate ? (
-        `Looking up make/model for ${plate} in ${usStateNames[licenseState]}`
-      ) : (
-        <br />
-      ),
+      vehicleInfoComponent: plate
+        ? `Looking up make/model for ${plate} in ${usStateNames[licenseState]}`
+        : null,
+      violationSummaryComponent: plate
+        ? `Looking up violations for ${plate} in ${usStateNames[licenseState]}`
+        : null,
     });
 
     const now = Date.now();
@@ -711,6 +720,61 @@ class Home extends React.Component {
           // }
         }
       });
+
+    if (plate) {
+      debouncedGetViolations({ plate, licenseState })
+        .then(({ apiUrl, response: { data: responseData } }) => {
+          if (plate !== this.state.plate) {
+            return;
+          }
+
+          const vehicle =
+            responseData.data &&
+            responseData.data[0] &&
+            responseData.data[0].vehicle;
+
+          if (!vehicle || !vehicle.violations || !vehicle.fines) {
+            return;
+          }
+
+          const totalViolations = vehicle.violations.length;
+          const {
+            total_fined: fined,
+            total_outstanding: outstanding,
+          } = vehicle.fines;
+
+          const lastTweetPart =
+            vehicle.tweet_parts &&
+            vehicle.tweet_parts[vehicle.tweet_parts.length - 1];
+          const urlMatch =
+            lastTweetPart && lastTweetPart.match(/https?:\/\/\S+/);
+          const detailsUrl = urlMatch
+            ? urlMatch[0].replace(/\.$/, '')
+            : 'https://howsmydrivingny.nyc/';
+
+          this.setState({
+            violationSummaryComponent: (
+              <React.Fragment>
+                {totalViolations} violation
+                {totalViolations !== 1 ? 's' : ''} found — ${fined} fined, $
+                {outstanding} outstanding
+                {' ('}
+                <a href={detailsUrl} target="_blank" rel="noopener noreferrer">
+                  more details
+                </a>
+                {', or '}
+                <a href={apiUrl} target="_blank" rel="noopener noreferrer">
+                  full API response
+                </a>
+                )
+              </React.Fragment>
+            ),
+          });
+        })
+        .catch(err => {
+          console.error(err);
+        });
+    }
   };
 
   // adapted from https://github.com/ngokevin/react-file-reader-input/tree/f970257f271b8c3bba9d529ffdbfa4f4731e0799#usage
@@ -1201,6 +1265,8 @@ class Home extends React.Component {
                       attachmentData: [],
                       submissions: [submission].concat(state.submissions),
                       plateSuggestions: [],
+                      vehicleInfoComponent: null,
+                      violationSummaryComponent: null,
                       reportDescription: '',
                     }));
                     this.setLicensePlate({ plate: '', licenseState: 'NY' });
@@ -1401,7 +1467,8 @@ class Home extends React.Component {
                         </option>
                       ))}
                   </select>
-                  {this.state.vehicleInfoComponent}
+                  <div>{this.state.violationSummaryComponent}</div>
+                  <div>{this.state.vehicleInfoComponent}</div>
                 </label>
 
                 <label htmlFor="typeofcomplaint">

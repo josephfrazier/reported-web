@@ -595,16 +595,12 @@ class Home extends React.Component {
     this.setState({
       plate,
       licenseState,
-      vehicleInfoComponent: plate ? (
-        `Looking up make/model for ${plate} in ${usStateNames[licenseState]}`
-      ) : (
-        null
-      ),
-      violationSummaryComponent: plate ? (
-        `Looking up violations for ${plate} in ${usStateNames[licenseState]}`
-      ) : (
-        null
-      ),
+      vehicleInfoComponent: plate
+        ? `Looking up make/model for ${plate} in ${usStateNames[licenseState]}`
+        : null,
+      violationSummaryComponent: plate
+        ? `Looking up violations for ${plate} in ${usStateNames[licenseState]}`
+        : null,
     });
 
     const now = Date.now();

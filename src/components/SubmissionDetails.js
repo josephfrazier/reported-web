@@ -43,9 +43,15 @@ class SubmissionDetails extends React.Component {
       videoData2,
 
       objectId,
+      tasks,
     } = this.props.submission;
 
     const humanTimeString = new Date(timeofreport).toLocaleString();
+
+    const nypdTask = (tasks || []).find(
+      task => task.action === 'submit 311 illegal parking complaint',
+    );
+    const nypdCaseId = nypdTask && nypdTask.case_id;
 
     const ImagesAndVideos = () => {
       const images = [photoData, photoData0, photoData1, photoData2]
@@ -145,6 +151,19 @@ class SubmissionDetails extends React.Component {
               {reqnumber}
             </a>
           )}
+          {nypdCaseId && (
+            <React.Fragment>
+              <br />
+              NYPD SR #:{' '}
+              <a
+                href={`https://portal.311.nyc.gov/sr-details/?srnum=${nypdCaseId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {nypdCaseId}
+              </a>
+            </React.Fragment>
+          )}
         </summary>
 
         {this.state.isDetailsOpen && (
@@ -183,6 +202,7 @@ SubmissionDetails.propTypes = {
     videoData2: PropTypes.string,
 
     objectId: PropTypes.string,
+    tasks: PropTypes.arrayOf(PropTypes.object),
   }).isRequired,
 };
 

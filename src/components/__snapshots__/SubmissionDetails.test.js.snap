@@ -1,5 +1,119 @@
 // Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
 
+exports[`SubmissionDetails renders NYPD SR number when submission has a matching task 1`] = `
+<details
+  onToggle={[Function]}
+  open={true}
+>
+  <summary>
+    medallionNo
+     
+    typeofcomplaint
+     near
+     
+    82 Reade St
+     on 
+    2016-11-18T00:00:00.000Z UTC (MockDate: GMT-0500)
+    <br />
+    TLC Service Request Number:
+     
+    <a
+      href="https://portal.311.nyc.gov/sr-details/?srnum=reqnumber"
+      rel="noopener noreferrer"
+      target="_blank"
+    >
+      reqnumber
+    </a>
+    <br />
+    NYPD SR #:
+     
+    <a
+      href="https://portal.311.nyc.gov/sr-details/?srnum=NYPD-12345"
+      rel="noopener noreferrer"
+      target="_blank"
+    >
+      NYPD-12345
+    </a>
+  </summary>
+  <p>
+    reportDescription
+  </p>
+  <a
+    href="photoData.url"
+    rel="noopener noreferrer"
+    target="_blank"
+  >
+    <img
+      alt="#0"
+      src="photoData.url"
+    />
+  </a>
+  <a
+    href="photoData0.url"
+    rel="noopener noreferrer"
+    target="_blank"
+  >
+    <img
+      alt="#1"
+      src="photoData0.url"
+    />
+  </a>
+  <a
+    href="photoData1.url"
+    rel="noopener noreferrer"
+    target="_blank"
+  >
+    <img
+      alt="#2"
+      src="photoData1.url"
+    />
+  </a>
+  <a
+    href="photoData2.url"
+    rel="noopener noreferrer"
+    target="_blank"
+  >
+    <img
+      alt="#3"
+      src="photoData2.url"
+    />
+  </a>
+  <a
+    href="videoData0"
+    rel="noopener noreferrer"
+    target="_blank"
+  >
+    <video
+      alt="#0"
+      src="videoData0"
+    />
+  </a>
+  <a
+    href="videoData1"
+    rel="noopener noreferrer"
+    target="_blank"
+  >
+    <video
+      alt="#1"
+      src="videoData1"
+    />
+  </a>
+  <a
+    href="videoData2"
+    rel="noopener noreferrer"
+    target="_blank"
+  >
+    <video
+      alt="#2"
+      src="videoData2"
+    />
+  </a>
+  <div>
+    Loading Service Request Status...
+  </div>
+</details>
+`;
+
 exports[`SubmissionDetails renders children correctly 1`] = `
 <details
   onToggle={[Function]}

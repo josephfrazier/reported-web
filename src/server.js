@@ -257,12 +257,35 @@ async function getSubmissions(req) {
 
 app.use('/submissions', (req, res) => {
   getSubmissions(req)
-    .then(results => {
-      const submissions = results.map(({ id, attributes }) => ({
+    .then(async results => {
+      const Task = Parse.Object.extend('tasks');
+      const Submission = Parse.Object.extend('submission');
+      const submissionPointers = results.map(({ id }) =>
+        Submission.createWithoutData(id),
+      );
+
+      const taskQuery = new Parse.Query(Task);
+      taskQuery.containedIn('submission', submissionPointers);
+      taskQuery.limit(Number.MAX_SAFE_INTEGER);
+      const allTasks = await taskQuery.find();
+
+      const tasksBySubmissionId = {};
+      allTasks.forEach(task => {
+        const subId = task.get('submission').id;
+        if (!tasksBySubmissionId[subId]) {
+          tasksBySubmissionId[subId] = [];
+        }
+        tasksBySubmissionId[subId].push({
+          objectId: task.id,
+          ...task.attributes,
+        });
+      });
+
+      return results.map(({ id, attributes }) => ({
         objectId: id,
         ...attributes,
+        tasks: tasksBySubmissionId[id] || [],
       }));
-      return submissions;
     })
     .then(submissions => {
       res.json({ submissions });

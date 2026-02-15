@@ -24,7 +24,6 @@ class SubmissionDetails extends React.Component {
 
   render() {
     const {
-      reqnumber,
       medallionNo,
       license,
       typeofcomplaint,
@@ -47,6 +46,11 @@ class SubmissionDetails extends React.Component {
     } = this.props.submission;
 
     const humanTimeString = new Date(timeofreport).toLocaleString();
+
+    const tlcTask = (tasks || []).find(
+      task => task.action === 'submit 311 complaint',
+    );
+    const tlcCaseId = tlcTask && tlcTask.case_id;
 
     const nypdTask = (tasks || []).find(
       task => task.action === 'submit 311 illegal parking complaint',
@@ -87,7 +91,7 @@ class SubmissionDetails extends React.Component {
 
     const LoadableServiceRequestStatus = Loadable({
       loader: () =>
-        axios.get(`/srlookup/${reqnumber}`).then(({ data }) => () => {
+        axios.get(`/srlookup/${tlcCaseId}`).then(({ data }) => () => {
           const items = Object.entries(data).map(([key, value]) => (
             <React.Fragment key={key}>
               <dt>{key}:</dt>
@@ -100,7 +104,7 @@ class SubmissionDetails extends React.Component {
     });
 
     const srStatusOrDeleteButton = () =>
-      (status !== 0 && (
+      (status !== 0 && tlcCaseId && (
         <div>
           <LoadableServiceRequestStatus />
         </div>
@@ -123,8 +127,6 @@ class SubmissionDetails extends React.Component {
         </button>
       );
 
-    const reqnumberNotApplicable = reqnumber === 'N/A until submitted to 311';
-
     return (
       <details
         open={this.state.isDetailsOpen}
@@ -138,18 +140,18 @@ class SubmissionDetails extends React.Component {
           {medallionNo || license} {typeofcomplaint} near{' '}
           {/* eslint-disable-next-line camelcase */}
           {(loc1_address || '').split(',')[0]} on {humanTimeString}
-          <br />
-          TLC Service Request Number:{' '}
-          {reqnumberNotApplicable ? (
-            'N/A: Either not yet submitted to 311, or is a non-TLC vehicle and therefore does not have a TLC SR'
-          ) : (
-            <a
-              href={`https://portal.311.nyc.gov/sr-details/?srnum=${reqnumber}`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {reqnumber}
-            </a>
+          {tlcCaseId && (
+            <React.Fragment>
+              <br />
+              TLC Service Request Number:{' '}
+              <a
+                href={`https://portal.311.nyc.gov/sr-details/?srnum=${tlcCaseId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {tlcCaseId}
+              </a>
+            </React.Fragment>
           )}
           {nypdCaseId && (
             <React.Fragment>
@@ -183,7 +185,6 @@ SubmissionDetails.propTypes = {
   isDetailsOpen: PropTypes.bool,
   onDeleteSubmission: PropTypes.func.isRequired,
   submission: PropTypes.shape({
-    reqnumber: PropTypes.string,
     medallionNo: PropTypes.string,
     license: PropTypes.string,
     typeofcomplaint: PropTypes.string,

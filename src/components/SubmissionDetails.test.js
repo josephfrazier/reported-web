@@ -116,9 +116,8 @@ describe('SubmissionDetails', () => {
     expect(wrapper).toMatchSnapshot();
   });
 
-  test('renders NYPD SR number when submission has a matching task', () => {
+  test('renders TLC and NYPD SR numbers when submission has matching tasks', () => {
     const submission = {
-      reqnumber: 'reqnumber',
       medallionNo: 'medallionNo',
       typeofcomplaint: 'typeofcomplaint',
       loc1_address: '82 Reade St, New York, NY 10007, USA',
@@ -138,6 +137,11 @@ describe('SubmissionDetails', () => {
       tasks: [
         {
           objectId: 'taskId1',
+          action: 'submit 311 complaint',
+          case_id: 'TLC-12345',
+        },
+        {
+          objectId: 'taskId2',
           action: 'submit 311 illegal parking complaint',
           case_id: 'NYPD-12345',
         },

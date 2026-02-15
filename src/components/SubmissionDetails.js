@@ -89,26 +89,42 @@ class SubmissionDetails extends React.Component {
       );
     };
 
-    const LoadableServiceRequestStatus = Loadable({
-      loader: () =>
-        axios.get(`/srlookup/${tlcCaseId}`).then(({ data }) => () => {
-          const items = Object.entries(data).map(([key, value]) => (
-            <React.Fragment key={key}>
-              <dt>{key}:</dt>
-              <dd>{value}</dd>
-            </React.Fragment>
-          ));
-          return <dl>{items}</dl>;
-        }),
-      loading: () => 'Loading Service Request Status...',
-    });
+    const makeLoadableSrStatus = caseId =>
+      Loadable({
+        loader: () =>
+          axios.get(`/srlookup/${caseId}`).then(({ data }) => () => {
+            const items = Object.entries(data).map(([key, value]) => (
+              <React.Fragment key={key}>
+                <dt>{key}:</dt>
+                <dd>{value}</dd>
+              </React.Fragment>
+            ));
+            return <dl>{items}</dl>;
+          }),
+        loading: () => 'Loading Service Request Status...',
+      });
 
-    const srStatusOrDeleteButton = () =>
-      (status !== 0 && tlcCaseId && (
-        <div>
-          <LoadableServiceRequestStatus />
-        </div>
-      )) || (
+    const srStatusOrDeleteButton = () => {
+      const hasSrStatus = status !== 0 && (tlcCaseId || nypdCaseId);
+      if (hasSrStatus) {
+        const TlcStatus = tlcCaseId && makeLoadableSrStatus(tlcCaseId);
+        const NypdStatus = nypdCaseId && makeLoadableSrStatus(nypdCaseId);
+        return (
+          <React.Fragment>
+            {TlcStatus && (
+              <div>
+                <TlcStatus />
+              </div>
+            )}
+            {NypdStatus && (
+              <div>
+                <NypdStatus />
+              </div>
+            )}
+          </React.Fragment>
+        );
+      }
+      return (
         <button
           type="button"
           style={{
@@ -126,6 +142,7 @@ class SubmissionDetails extends React.Component {
           Delete Submission
         </button>
       );
+    };
 
     return (
       <details

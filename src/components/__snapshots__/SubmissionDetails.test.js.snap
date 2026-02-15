@@ -109,9 +109,15 @@ exports[`SubmissionDetails renders TLC and NYPD SR numbers when submission has m
     />
   </a>
   <div>
+    <strong>
+      TLC Service Request:
+    </strong>
     Loading Service Request Status...
   </div>
   <div>
+    <strong>
+      NYPD Service Request:
+    </strong>
     Loading Service Request Status...
   </div>
 </details>

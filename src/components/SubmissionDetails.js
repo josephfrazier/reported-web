@@ -113,11 +113,13 @@ class SubmissionDetails extends React.Component {
           <React.Fragment>
             {TlcStatus && (
               <div>
+                <strong>TLC Service Request:</strong>
                 <TlcStatus />
               </div>
             )}
             {NypdStatus && (
               <div>
+                <strong>NYPD Service Request:</strong>
                 <NypdStatus />
               </div>
             )}

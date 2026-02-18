@@ -390,6 +390,98 @@ New York, NY 10007",
           "street_address",
         ],
       },
+      {
+        "address_components": [
+          {
+            "long_name": "1",
+            "short_name": "1",
+            "types": [
+              "street_number",
+            ],
+          },
+          {
+            "long_name": "City Hall",
+            "short_name": "City Hall",
+            "types": [
+              "route",
+            ],
+          },
+          {
+            "long_name": "Manhattan",
+            "short_name": "Manhattan",
+            "types": [
+              "political",
+              "sublocality",
+              "sublocality_level_1",
+            ],
+          },
+          {
+            "long_name": "New York",
+            "short_name": "New York",
+            "types": [
+              "locality",
+              "political",
+            ],
+          },
+          {
+            "long_name": "New York County",
+            "short_name": "New York County",
+            "types": [
+              "administrative_area_level_2",
+              "political",
+            ],
+          },
+          {
+            "long_name": "New York",
+            "short_name": "NY",
+            "types": [
+              "administrative_area_level_1",
+              "political",
+            ],
+          },
+          {
+            "long_name": "United States",
+            "short_name": "US",
+            "types": [
+              "country",
+              "political",
+            ],
+          },
+          {
+            "long_name": "10007",
+            "short_name": "10007",
+            "types": [
+              "postal_code",
+            ],
+          },
+        ],
+        "formatted_address": "1 City Hall, New York, NY 10007, USA",
+        "geometry": {
+          "location": {
+            "lat": 40.7128869,
+            "lng": -74.0063261,
+          },
+          "location_type": "ROOFTOP",
+          "viewport": {
+            "northeast": {
+              "lat": 40.7142358802915,
+              "lng": -74.0049771197085,
+            },
+            "southwest": {
+              "lat": 40.7115379197085,
+              "lng": -74.0076750802915,
+            },
+          },
+        },
+        "place_id": "ChIJgVRNCiJawokRitOOCr6vCwc",
+        "plus_code": {
+          "compound_code": "PX7V+5F New York, NY, USA",
+          "global_code": "87G7PX7V+5F",
+        },
+        "types": [
+          "street_address",
+        ],
+      },
     ],
     "status": "OK",
   },
@@ -1196,6 +1288,98 @@ New York, NY 10007",
         "place_id": "ChIJMfxeDCJawokRaUdk7prx_pY",
         "types": [
           "premise",
+          "street_address",
+        ],
+      },
+      {
+        "address_components": [
+          {
+            "long_name": "1",
+            "short_name": "1",
+            "types": [
+              "street_number",
+            ],
+          },
+          {
+            "long_name": "City Hall",
+            "short_name": "City Hall",
+            "types": [
+              "route",
+            ],
+          },
+          {
+            "long_name": "Manhattan",
+            "short_name": "Manhattan",
+            "types": [
+              "political",
+              "sublocality",
+              "sublocality_level_1",
+            ],
+          },
+          {
+            "long_name": "New York",
+            "short_name": "New York",
+            "types": [
+              "locality",
+              "political",
+            ],
+          },
+          {
+            "long_name": "New York County",
+            "short_name": "New York County",
+            "types": [
+              "administrative_area_level_2",
+              "political",
+            ],
+          },
+          {
+            "long_name": "New York",
+            "short_name": "NY",
+            "types": [
+              "administrative_area_level_1",
+              "political",
+            ],
+          },
+          {
+            "long_name": "United States",
+            "short_name": "US",
+            "types": [
+              "country",
+              "political",
+            ],
+          },
+          {
+            "long_name": "10007",
+            "short_name": "10007",
+            "types": [
+              "postal_code",
+            ],
+          },
+        ],
+        "formatted_address": "1 City Hall, New York, NY 10007, USA",
+        "geometry": {
+          "location": {
+            "lat": 40.7128869,
+            "lng": -74.0063261,
+          },
+          "location_type": "ROOFTOP",
+          "viewport": {
+            "northeast": {
+              "lat": 40.7142358802915,
+              "lng": -74.0049771197085,
+            },
+            "southwest": {
+              "lat": 40.7115379197085,
+              "lng": -74.0076750802915,
+            },
+          },
+        },
+        "place_id": "ChIJgVRNCiJawokRitOOCr6vCwc",
+        "plus_code": {
+          "compound_code": "PX7V+5F New York, NY, USA",
+          "global_code": "87G7PX7V+5F",
+        },
+        "types": [
           "street_address",
         ],
       },

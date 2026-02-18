@@ -20,5 +20,6 @@ jobs:
     - run: curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.22.19
     - run: export PATH=$HOME/.yarn/bin:$PATH
     - run: yarn
-    - run: timeout 10 yarn start > timeout.10.yarn.start.txt
+    - run: timeout 10 yarn start > timeout.10.yarn.start.txt || true
+    - run: cat timeout.10.yarn.start.txt
     - run: cat timeout.10.yarn.start.txt | grep "Finished 'start' after"

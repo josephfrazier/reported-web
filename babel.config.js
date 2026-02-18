@@ -23,5 +23,9 @@ module.exports = {
     '@babel/preset-react',
   ],
   plugins: ['@babel/plugin-transform-class-properties'],
-  ignore: ['node_modules', 'build'],
+  ignore: [
+    // Ignore node_modules except for node-fetch and its ESM dependencies
+    /node_modules\/(?!node-fetch|data-uri-to-buffer|fetch-blob|formdata-polyfill)/,
+    'build',
+  ],
 };

@@ -97,7 +97,7 @@ module.exports = {
 
   // Allow transforming node-fetch and its ESM dependencies
   transformIgnorePatterns: [
-    'node_modules/(?!(node-fetch|data-uri-to-buffer|fetch-blob|formdata-polyfill)/)',
+    'node_modules/(?!(node-fetch|data-uri-to-buffer|fetch-blob|formdata-polyfill))',
   ],
   // unmockedModulePathPatterns: // [array<string>]
 

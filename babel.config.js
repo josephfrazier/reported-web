@@ -25,7 +25,7 @@ module.exports = {
   plugins: ['@babel/plugin-transform-class-properties'],
   ignore: [
     // Ignore node_modules except for node-fetch and its ESM dependencies
-    /node_modules\/(?!node-fetch|data-uri-to-buffer|fetch-blob|formdata-polyfill)/,
+    /node_modules\/(?!node-fetch|data-uri-to-buffer|fetch-blob|formdata-polyfill)\//,
     'build',
   ],
 };

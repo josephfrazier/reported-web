@@ -756,8 +756,8 @@ class Home extends React.Component {
             violationSummaryComponent: (
               <React.Fragment>
                 {totalViolations} violation
-                {totalViolations !== 1 ? 's' : ''} found — ${fined.toFixed(2)} fined, $
-                {outstanding.toFixed(2)} outstanding
+                {totalViolations !== 1 ? 's' : ''} found — ${fined.toFixed(2)}{' '}
+                fined, ${outstanding.toFixed(2)} outstanding
                 {' ('}
                 <a href={detailsUrl} target="_blank" rel="noopener noreferrer">
                   more details

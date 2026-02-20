@@ -1702,7 +1702,10 @@ class Home extends React.Component {
                     aria-label="Live camera preview"
                     style={{ width: '100%', maxHeight: '70vh' }}
                   />
-                  <canvas ref={this.cameraCanvasRef} style={{ display: 'none' }} />
+                  <canvas
+                    ref={this.cameraCanvasRef}
+                    style={{ display: 'none' }}
+                  />
                   <div style={{ display: 'flex', gap: '8px', padding: '8px' }}>
                     <button type="button" onClick={this.capturePhoto}>
                       📸 Capture

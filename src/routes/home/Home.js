@@ -1503,19 +1503,15 @@ class Home extends React.Component {
                   Automatically read addresses from pictures/videos
                 </label>
 
-                {typeof navigator !== 'undefined' &&
-                  navigator.mediaDevices &&
-                  navigator.mediaDevices.getUserMedia && (
-                    <label htmlFor="isOpenCameraOnLoad">
-                      <input
-                        type="checkbox"
-                        checked={this.state.isOpenCameraOnLoad}
-                        name="isOpenCameraOnLoad"
-                        onChange={this.handleInputChange}
-                      />{' '}
-                      Automatically open camera when app loads
-                    </label>
-                  )}
+                <label htmlFor="isOpenCameraOnLoad">
+                  <input
+                    type="checkbox"
+                    checked={this.state.isOpenCameraOnLoad}
+                    name="isOpenCameraOnLoad"
+                    onChange={this.handleInputChange}
+                  />{' '}
+                  Automatically open camera when app loads
+                </label>
 
                 <label htmlFor="plate">
                   License/Medallion:

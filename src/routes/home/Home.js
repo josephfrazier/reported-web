@@ -413,6 +413,8 @@ class Home extends React.Component {
       platePickerModalOpen: false,
       platePickerResults: [],
       platePickerLoading: false,
+
+      isCameraModalOpen: false,
     };
 
     const initialState = {
@@ -425,6 +427,9 @@ class Home extends React.Component {
     this.initialStatePersistent = initialStatePersistent;
     this.userFormSubmitRef = React.createRef();
     this.plateRef = React.createRef();
+    this.cameraVideoRef = React.createRef();
+    this.cameraCanvasRef = React.createRef();
+    this.cameraStream = null;
   }
 
   componentDidMount() {
@@ -889,6 +894,55 @@ class Home extends React.Component {
     );
   };
 
+  openCamera = async () => {
+    this.setState({ isCameraModalOpen: true });
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' },
+        audio: false,
+      });
+      this.cameraStream = stream;
+      if (this.cameraVideoRef.current) {
+        this.cameraVideoRef.current.srcObject = stream;
+      }
+    } catch (err) {
+      this.setState({ isCameraModalOpen: false });
+      Home.notifyError(`Could not access camera: ${err.message}`);
+      console.error(err);
+    }
+  };
+
+  closeCamera = () => {
+    if (this.cameraStream) {
+      this.cameraStream.getTracks().forEach(track => track.stop());
+      this.cameraStream = null;
+    }
+    this.setState({ isCameraModalOpen: false });
+  };
+
+  capturePhoto = () => {
+    const video = this.cameraVideoRef.current;
+    const canvas = this.cameraCanvasRef.current;
+    if (!video || !canvas) return;
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+
+    canvas.toBlob(blob => {
+      if (!blob) {
+        Home.notifyError('Could not capture photo from camera.');
+        return;
+      }
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const file = new File([blob], `photo-${timestamp}.jpg`, {
+        type: 'image/jpeg',
+      });
+      this.handleAttachmentData({ attachmentData: [file] });
+      this.closeCamera();
+    }, 'image/jpeg');
+  };
+
   handlePlatePickerClick = async attachmentFile => {
     this.setState({ platePickerLoading: true });
 
@@ -1312,6 +1366,21 @@ class Home extends React.Component {
                   </button>
                 </FileReaderInput>
 
+                {typeof navigator !== 'undefined' &&
+                  navigator.mediaDevices &&
+                  navigator.mediaDevices.getUserMedia && (
+                    <button
+                      type="button"
+                      style={{
+                        float: 'left',
+                        margin: '1px',
+                      }}
+                      onClick={this.openCamera}
+                    >
+                      📷 Take Photo
+                    </button>
+                  )}
+
                 <div
                   style={{
                     clear: 'both',
@@ -1608,6 +1677,41 @@ class Home extends React.Component {
                   }}
                   onClose={() => this.setState({ platePickerModalOpen: false })}
                 />
+
+                <Modal
+                  parentSelector={() =>
+                    document.querySelector(`.${homeStyles.root}`) ||
+                    document.body
+                  }
+                  isOpen={this.state.isCameraModalOpen}
+                  onRequestClose={this.closeCamera}
+                  style={{
+                    content: {
+                      padding: 0,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                    },
+                  }}
+                >
+                  {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                  <video
+                    ref={this.cameraVideoRef}
+                    autoPlay
+                    playsInline
+                    aria-label="Live camera preview"
+                    style={{ width: '100%', maxHeight: '70vh' }}
+                  />
+                  <canvas ref={this.cameraCanvasRef} style={{ display: 'none' }} />
+                  <div style={{ display: 'flex', gap: '8px', padding: '8px' }}>
+                    <button type="button" onClick={this.capturePhoto}>
+                      📸 Capture
+                    </button>
+                    <button type="button" onClick={this.closeCamera}>
+                      Cancel
+                    </button>
+                  </div>
+                </Modal>
 
                 <label htmlFor="CreateDate">
                   When:{' '}

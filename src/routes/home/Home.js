@@ -393,6 +393,7 @@ class Home extends React.Component {
       ...initialStatePerSubmission,
       isAlprEnabled: true,
       isReverseGeocodingEnabled: true,
+      isOpenCameraOnLoad: false,
       isUserInfoOpen: true,
       isMapOpen: false,
     };
@@ -499,6 +500,15 @@ class Home extends React.Component {
     });
 
     this.forceUpdate(); // force "Create/Edit User" fields to render persisted value after load
+
+    if (
+      this.state.isOpenCameraOnLoad &&
+      typeof navigator !== 'undefined' &&
+      navigator.mediaDevices &&
+      navigator.mediaDevices.getUserMedia
+    ) {
+      this.openCamera();
+    }
 
     this.loadPreviousSubmissions();
   }
@@ -1492,6 +1502,20 @@ class Home extends React.Component {
                   />{' '}
                   Automatically read addresses from pictures/videos
                 </label>
+
+                {typeof navigator !== 'undefined' &&
+                  navigator.mediaDevices &&
+                  navigator.mediaDevices.getUserMedia && (
+                    <label htmlFor="isOpenCameraOnLoad">
+                      <input
+                        type="checkbox"
+                        checked={this.state.isOpenCameraOnLoad}
+                        name="isOpenCameraOnLoad"
+                        onChange={this.handleInputChange}
+                      />{' '}
+                      Automatically open camera when app loads
+                    </label>
+                  )}
 
                 <label htmlFor="plate">
                   License/Medallion:

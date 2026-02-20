@@ -1377,7 +1377,10 @@ class Home extends React.Component {
                       }}
                       onClick={this.openCamera}
                     >
-                      📷 Take Photo
+                      <span role="img" aria-label="camera">
+                        📷
+                      </span>{' '}
+                      Take Photo
                     </button>
                   )}
 
@@ -1708,7 +1711,10 @@ class Home extends React.Component {
                   />
                   <div style={{ display: 'flex', gap: '8px', padding: '8px' }}>
                     <button type="button" onClick={this.capturePhoto}>
-                      📸 Capture
+                      <span role="img" aria-label="camera with flash">
+                        📸
+                      </span>{' '}
+                      Capture
                     </button>
                     <button type="button" onClick={this.closeCamera}>
                       Cancel

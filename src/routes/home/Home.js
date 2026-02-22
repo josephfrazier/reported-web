@@ -85,8 +85,7 @@ const debouncedSaveStateToLocalStorage = debounce(self => {
   self.saveStateToLocalStorage();
 }, 500);
 
-const defaultLatitude = 40.7128;
-const defaultLongitude = -74.006;
+
 
 // adapted from https://www.bignerdranch.com/blog/dont-over-react/
 const urls = new WeakMap();
@@ -376,14 +375,16 @@ class Home extends React.Component {
       LastName: '',
       Phone: '',
       testify: false,
+      can_be_shared_publicly: false,
+    };
 
+    const initialStatePerSubmissionNonpersistent = {
       plate: '',
       licenseState: 'NY',
       typeofcomplaint: typeofcomplaintValues[0],
       reportDescription: '',
-      can_be_shared_publicly: false,
-      latitude: defaultLatitude,
-      longitude: defaultLongitude,
+      latitude: null,
+      longitude: null,
       coordsAreInNyc: true,
       formatted_address: '',
       CreateDate: jsDateToCreateDate(new Date()),
@@ -417,11 +418,13 @@ class Home extends React.Component {
 
     const initialState = {
       ...initialStatePersistent,
+      ...initialStatePerSubmissionNonpersistent,
       ...initialStatePerSession,
     };
 
     this.state = initialState;
     this.initialStatePerSubmission = initialStatePerSubmission;
+    this.initialStatePerSubmissionNonpersistent = initialStatePerSubmissionNonpersistent;
     this.initialStatePersistent = initialStatePersistent;
     this.userFormSubmitRef = React.createRef();
     this.plateRef = React.createRef();
@@ -437,8 +440,8 @@ class Home extends React.Component {
         // if there's no attachments or a location couldn't be extracted, just use here
         if (
           this.state.attachmentData.length === 0 ||
-          (this.state.latitude === defaultLatitude &&
-            this.state.longitude === defaultLongitude)
+          !this.state.latitude ||
+          !this.state.longitude
         ) {
           this.setCoords({
             latitude,
@@ -519,8 +522,10 @@ class Home extends React.Component {
   };
 
   getPerSubmissionState() {
+    // note: object.omit with a function acts as a picker - returns keys where the function returns true
     return omit(this.state, (val, key) =>
-      Object.keys(this.initialStatePerSubmission).includes(key),
+      Object.keys(this.initialStatePerSubmission).includes(key) ||
+      Object.keys(this.initialStatePerSubmissionNonpersistent).includes(key),
     );
   }
 
@@ -1200,10 +1205,7 @@ class Home extends React.Component {
               onSubmit={async e => {
                 e.preventDefault();
 
-                if (
-                  this.state.latitude === defaultLatitude &&
-                  this.state.longitude === defaultLongitude
-                ) {
+                if (!this.state.latitude || !this.state.longitude) {
                   Home.notifyError(
                     'Please provide the location of the incident',
                   );
@@ -1267,7 +1269,8 @@ class Home extends React.Component {
                       plateSuggestions: [],
                       vehicleInfoComponent: null,
                       violationSummaryComponent: null,
-                      reportDescription: '',
+                      ...this.initialStatePerSubmissionNonpersistent,
+                      CreateDate: jsDateToCreateDate(new Date()), // use current time, not the time the app loaded
                     }));
                     this.setLicensePlate({ plate: '', licenseState: 'NY' });
                     Home.notifySuccess(

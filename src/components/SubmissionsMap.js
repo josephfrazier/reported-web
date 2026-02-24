@@ -25,7 +25,9 @@ class SubmissionsMapPure extends React.Component {
     const { submissions } = this.props;
     const { openMarkerId } = this.state;
 
-    const validSubmissions = submissions.filter(s => s.latitude1 && s.longitude1);
+    const validSubmissions = submissions.filter(
+      s => s.latitude1 && s.longitude1,
+    );
 
     const center =
       validSubmissions.length > 0

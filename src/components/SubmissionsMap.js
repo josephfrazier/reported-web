@@ -25,13 +25,13 @@ class SubmissionsMapPure extends React.Component {
     const { submissions } = this.props;
     const { openMarkerId } = this.state;
 
-    const validSubmissions = submissions.filter(s => s.latitude && s.longitude);
+    const validSubmissions = submissions.filter(s => s.latitude1 && s.longitude1);
 
     const center =
       validSubmissions.length > 0
         ? {
-            lat: validSubmissions[0].latitude,
-            lng: validSubmissions[0].longitude,
+            lat: validSubmissions[0].latitude1,
+            lng: validSubmissions[0].longitude1,
           }
         : defaultCenter;
 
@@ -43,8 +43,8 @@ class SubmissionsMapPure extends React.Component {
       >
         {validSubmissions.map(submission => {
           const position = {
-            lat: submission.latitude,
-            lng: submission.longitude,
+            lat: submission.latitude1,
+            lng: submission.longitude1,
           };
           const label = submission.medallionNo || submission.license || '';
           const streetAddress = (submission.loc1_address || '').split(',')[0];
@@ -83,8 +83,8 @@ SubmissionsMapPure.propTypes = {
   submissions: PropTypes.arrayOf(
     PropTypes.shape({
       objectId: PropTypes.string,
-      latitude: PropTypes.number,
-      longitude: PropTypes.number,
+      latitude1: PropTypes.number,
+      longitude1: PropTypes.number,
       medallionNo: PropTypes.string,
       license: PropTypes.string,
       typeofcomplaint: PropTypes.string,

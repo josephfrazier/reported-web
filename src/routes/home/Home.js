@@ -752,11 +752,16 @@ class Home extends React.Component {
             ? urlMatch[0].replace(/\.$/, '')
             : 'https://howsmydrivingny.nyc/';
 
+          const firstViolation = vehicle.violations[0];
+          console.log({firstViolation, vehicle})
+
           this.setState({
             violationSummaryComponent: (
               <React.Fragment>
                 {totalViolations} violation
-                {totalViolations !== 1 ? 's' : ''} found — ${fined.toFixed(2)}{' '}
+                {totalViolations !== 1 ? 's' : ''} found{' '}
+                {firstViolation?.vehicle_make && `(${firstViolation.vehicle_color ?? ''} ${firstViolation.vehicle_make ?? ''} ${firstViolation.sanitized.vehicle_body_type ?? ''}) `}
+                — ${fined.toFixed(2)}{' '}
                 fined, ${outstanding.toFixed(2)} outstanding
                 {' ('}
                 <a href={detailsUrl} target="_blank" rel="noopener noreferrer">

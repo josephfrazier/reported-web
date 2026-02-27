@@ -753,7 +753,6 @@ class Home extends React.Component {
             : 'https://howsmydrivingny.nyc/';
 
           const firstViolation = vehicle.violations[0];
-          console.log({firstViolation, vehicle})
 
           this.setState({
             violationSummaryComponent: (

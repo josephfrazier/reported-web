@@ -753,13 +753,16 @@ class Home extends React.Component {
             : 'https://howsmydrivingny.nyc/';
 
           const firstViolation = vehicle.violations[0];
+          const make = firstViolation?.vehicle_make ?? ''
+          const color = firstViolation?.vehicle_color ?? '';
+          const body = firstViolation?.sanitized?.vehicle_body_type ?? ''
 
           this.setState({
             violationSummaryComponent: (
               <React.Fragment>
                 {totalViolations} violation
                 {totalViolations !== 1 ? 's' : ''} found{' '}
-                {firstViolation?.vehicle_make && `(${firstViolation.vehicle_color ?? ''} ${firstViolation.vehicle_make ?? ''} ${firstViolation.sanitized.vehicle_body_type ?? ''}) `}
+                {make && `(${color} ${make} ${body}) `}
                 — ${fined.toFixed(2)}{' '}
                 fined, ${outstanding.toFixed(2)} outstanding
                 {' ('}

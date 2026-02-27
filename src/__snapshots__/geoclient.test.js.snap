@@ -473,6 +473,26 @@ New York, NY 10007",
             },
           },
         },
+        "navigation_points": [
+          {
+            "location": {
+              "latitude": 40.7128817,
+              "longitude": -74.0063151,
+            },
+            "restricted_travel_modes": [
+              "DRIVE",
+            ],
+          },
+          {
+            "location": {
+              "latitude": 40.7128222,
+              "longitude": -74.0064653,
+            },
+            "restricted_travel_modes": [
+              "WALK",
+            ],
+          },
+        ],
         "place_id": "ChIJgVRNCiJawokRitOOCr6vCwc",
         "plus_code": {
           "compound_code": "PX7V+5F New York, NY, USA",
@@ -1374,6 +1394,26 @@ New York, NY 10007",
             },
           },
         },
+        "navigation_points": [
+          {
+            "location": {
+              "latitude": 40.7128817,
+              "longitude": -74.0063151,
+            },
+            "restricted_travel_modes": [
+              "DRIVE",
+            ],
+          },
+          {
+            "location": {
+              "latitude": 40.7128222,
+              "longitude": -74.0064653,
+            },
+            "restricted_travel_modes": [
+              "WALK",
+            ],
+          },
+        ],
         "place_id": "ChIJgVRNCiJawokRitOOCr6vCwc",
         "plus_code": {
           "compound_code": "PX7V+5F New York, NY, USA",

@@ -9,6 +9,7 @@
 
 import path from 'path';
 import assert from 'assert';
+import crypto from 'crypto';
 import express from 'express';
 import forceSsl from 'force-ssl-heroku';
 import compression from 'compression';
@@ -82,6 +83,9 @@ const upload = multer({
 //   * videoData0
 //   * videoData1
 //   * videoData2
+
+// In-memory store for pre-uploaded attachment files, keyed by SHA-256 hash
+const uploadedAttachments = new Map();
 
 //
 // Tell any CSS tooling (such as Material UI) to use all vendor prefixes if the
@@ -344,6 +348,28 @@ app.use('/requestPasswordReset', (req, res) => {
     .catch(handlePromiseRejection(res));
 });
 
+app.use(
+  '/api/uploadAttachment',
+  upload.single('attachmentData'),
+  async (req, res) => {
+    const { email, password } = req.body;
+
+    try {
+      await logIn({ email, password });
+    } catch (error) {
+      handlePromiseRejection(res)(error);
+      return;
+    }
+
+    const { buffer } = req.file;
+    const id = crypto.createHash('sha256').update(buffer).digest('hex');
+    uploadedAttachments.set(id, buffer);
+    // Automatically evict the buffer after 1 hour to prevent unbounded memory growth
+    setTimeout(() => uploadedAttachments.delete(id), 60 * 60 * 1000).unref();
+    res.json({ id });
+  },
+);
+
 app.use('/submit', (req, res) => {
   // Call upload.array directly to intercept errors and respond with JSON, see the following:
   // https://github.com/expressjs/multer/tree/80ee2f52432cc0c81c93b03c6b0b448af1f626e5#error-handling
@@ -380,7 +406,22 @@ app.use('/submit', (req, res) => {
     const latitude = Number(latitudeString);
     const longitude = Number(longitudeString);
 
-    const attachmentData = req.files;
+    const { attachmentIds: attachmentIdsJson } = req.body;
+    let attachmentData;
+    try {
+      attachmentData = attachmentIdsJson
+        ? JSON.parse(attachmentIdsJson).map(id => {
+            const buffer = uploadedAttachments.get(id);
+            if (!buffer) {
+              throw { message: `Attachment not found; please re-add your files and try again` }; // eslint-disable-line no-throw-literal
+            }
+            return { buffer };
+          })
+        : req.files;
+    } catch (attachmentError) {
+      handlePromiseRejection(res)(attachmentError);
+      return;
+    }
 
     const timeofreport = new Date(CreateDate);
     const timeofreported = timeofreport;

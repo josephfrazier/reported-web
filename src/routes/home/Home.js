@@ -99,6 +99,9 @@ const getBlobUrl = blob => {
   return blobUrl;
 };
 
+// Tracks in-progress background upload promises keyed by File object
+const fileUploadPromises = new WeakMap();
+
 const geolocate = () =>
   promisedLocation().catch(async () => {
     const { data } = await axios.get('https://ipapi.co/json');
@@ -796,6 +799,24 @@ class Home extends React.Component {
         attachmentData: state.attachmentData.concat(attachmentData),
       }),
       async () => {
+        // Start background upload for each newly added file
+        attachmentData.forEach(attachmentFile => {
+          if (!fileUploadPromises.has(attachmentFile)) {
+            const uploadPromise = (async () => {
+              const formData = new FormData();
+              formData.append('email', this.state.email);
+              formData.append('password', this.state.password);
+              formData.append('attachmentData', attachmentFile);
+              const { data } = await axios.post(
+                '/api/uploadAttachment',
+                formData,
+              );
+              return data.id;
+            })();
+            fileUploadPromises.set(attachmentFile, uploadPromise);
+          }
+        });
+
         const listsOfExtractions = await Promise.all(
           this.state.attachmentData.map(async (attachmentFile, index) => {
             if (attachmentFile.size > 20 * 1000 * 1000) {
@@ -1219,14 +1240,44 @@ class Home extends React.Component {
                 this.setState({
                   isSubmitting: true,
                 });
+
+                // Collect pre-uploaded IDs for all attachment files
+                const attachmentIds = await Promise.all(
+                  this.state.attachmentData.map(async file => {
+                    const uploadPromise = fileUploadPromises.get(file);
+                    if (!uploadPromise) return null;
+                    try {
+                      return await uploadPromise;
+                    } catch (_err) {
+                      console.error('Background attachment upload failed:', _err); // eslint-disable-line no-console
+                      return null;
+                    }
+                  }),
+                );
+                const hasAllIds =
+                  attachmentIds.length > 0 &&
+                  attachmentIds.every(id => id !== null);
+
                 axios
                   .post(
                     '/submit',
-                    objectToFormData({
-                      ...this.getPerSubmissionState(),
-                      attachmentData: this.state.attachmentData,
-                      CreateDate: new Date(this.state.CreateDate).toISOString(),
-                    }),
+                    objectToFormData(
+                      hasAllIds
+                        ? {
+                            ...this.getPerSubmissionState(),
+                            attachmentIds: JSON.stringify(attachmentIds),
+                            CreateDate: new Date(
+                              this.state.CreateDate,
+                            ).toISOString(),
+                          }
+                        : {
+                            ...this.getPerSubmissionState(),
+                            attachmentData: this.state.attachmentData,
+                            CreateDate: new Date(
+                              this.state.CreateDate,
+                            ).toISOString(),
+                          },
+                    ),
                     {
                       onUploadProgress: progressEvent => {
                         const {

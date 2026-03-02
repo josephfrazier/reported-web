@@ -431,9 +431,8 @@ app.use('/submit', (req, res) => {
         attachmentData = parsedIds.map(id => {
           const buffer = uploadedAttachments.get(id);
           if (!buffer) {
-            throw {
-              message: `Attachment not found; please re-add your files and try again`,
-            }; // eslint-disable-line no-throw-literal
+            const message = `Attachment not found; please re-add your files and try again`;
+            throw { message }; // eslint-disable-line no-throw-literal
           }
           return { buffer };
         });

@@ -11,6 +11,7 @@ import path from 'path';
 import assert from 'assert';
 import crypto from 'crypto';
 import express from 'express';
+import { rateLimit } from 'express-rate-limit';
 import forceSsl from 'force-ssl-heroku';
 import compression from 'compression';
 import bodyParser from 'body-parser';
@@ -86,6 +87,7 @@ const upload = multer({
 
 // In-memory store for pre-uploaded attachment files, keyed by SHA-256 hash
 const uploadedAttachments = new Map();
+const ATTACHMENT_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 //
 // Tell any CSS tooling (such as Material UI) to use all vendor prefixes if the
@@ -350,6 +352,12 @@ app.use('/requestPasswordReset', (req, res) => {
 
 app.use(
   '/api/uploadAttachment',
+  rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    limit: 30, // max 30 uploads per window per IP (5 submissions × 6 files each)
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+  }),
   upload.single('attachmentData'),
   async (req, res) => {
     const { email, password } = req.body;
@@ -365,7 +373,7 @@ app.use(
     const id = crypto.createHash('sha256').update(buffer).digest('hex');
     uploadedAttachments.set(id, buffer);
     // Automatically evict the buffer after 1 hour to prevent unbounded memory growth
-    setTimeout(() => uploadedAttachments.delete(id), 60 * 60 * 1000).unref();
+    setTimeout(() => uploadedAttachments.delete(id), ATTACHMENT_TTL_MS).unref();
     res.json({ id });
   },
 );
@@ -409,15 +417,24 @@ app.use('/submit', (req, res) => {
     const { attachmentIds: attachmentIdsJson } = req.body;
     let attachmentData;
     try {
-      attachmentData = attachmentIdsJson
-        ? JSON.parse(attachmentIdsJson).map(id => {
-            const buffer = uploadedAttachments.get(id);
-            if (!buffer) {
-              throw { message: `Attachment not found; please re-add your files and try again` }; // eslint-disable-line no-throw-literal
-            }
-            return { buffer };
-          })
-        : req.files;
+      if (attachmentIdsJson) {
+        const parsedIds = JSON.parse(attachmentIdsJson);
+        if (
+          !Array.isArray(parsedIds) ||
+          !parsedIds.every(id => typeof id === 'string')
+        ) {
+          throw { message: 'Invalid attachmentIds format' }; // eslint-disable-line no-throw-literal
+        }
+        attachmentData = parsedIds.map(id => {
+          const buffer = uploadedAttachments.get(id);
+          if (!buffer) {
+            throw { message: `Attachment not found; please re-add your files and try again` }; // eslint-disable-line no-throw-literal
+          }
+          return { buffer };
+        });
+      } else {
+        attachmentData = req.files;
+      }
     } catch (attachmentError) {
       handlePromiseRejection(res)(attachmentError);
       return;

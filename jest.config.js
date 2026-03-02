@@ -90,12 +90,15 @@ module.exports = {
   // timers: // [string]
 
   transform: {
-    '\\.(js|jsx|mjs)$': '<rootDir>/node_modules/babel-jest',
-    '^(?!.*\\.(js|jsx|json|css|less|styl|scss|sass|sss)$)':
+    '\\.(js|jsx|mjs|cjs)$': '<rootDir>/node_modules/babel-jest',
+    '^(?!.*\\.(js|jsx|json|css|less|styl|scss|sass|sss|mjs|cjs)$)':
       '<rootDir>/tools/lib/fileTransformer.js',
   },
 
-  // transformIgnorePatterns: // [array<string>]
+  // Allow transforming node-fetch and its ESM dependencies
+  transformIgnorePatterns: [
+    'node_modules/(?!(node-fetch|data-uri-to-buffer|fetch-blob|formdata-polyfill)/)',
+  ],
   // unmockedModulePathPatterns: // [array<string>]
 
   verbose: true, // [boolean]

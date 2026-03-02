@@ -370,7 +370,10 @@ app.use(
     }
 
     const { buffer } = req.file;
-    const id = crypto.createHash('sha256').update(buffer).digest('hex');
+    const id = crypto
+      .createHash('sha256')
+      .update(buffer)
+      .digest('hex');
     uploadedAttachments.set(id, buffer);
     // Automatically evict the buffer after 1 hour to prevent unbounded memory growth
     setTimeout(() => uploadedAttachments.delete(id), ATTACHMENT_TTL_MS).unref();
@@ -428,7 +431,9 @@ app.use('/submit', (req, res) => {
         attachmentData = parsedIds.map(id => {
           const buffer = uploadedAttachments.get(id);
           if (!buffer) {
-            throw { message: `Attachment not found; please re-add your files and try again` }; // eslint-disable-line no-throw-literal
+            throw {
+              message: `Attachment not found; please re-add your files and try again`,
+            }; // eslint-disable-line no-throw-literal
           }
           return { buffer };
         });

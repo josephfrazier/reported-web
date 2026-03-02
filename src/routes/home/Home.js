@@ -1249,7 +1249,10 @@ class Home extends React.Component {
                     try {
                       return await uploadPromise;
                     } catch (_err) {
-                      console.error('Background attachment upload failed:', _err); // eslint-disable-line no-console
+                      console.error(
+                        'Background attachment upload failed:',
+                        _err,
+                      ); // eslint-disable-line no-console
                       return null;
                     }
                   }),

@@ -1127,6 +1127,7 @@ class Home extends React.Component {
                         }),
                         () => {
                           this.saveStateToLocalStorage();
+                          this.loadPreviousSubmissions();
                           this.userFormSubmitRef.current.click();
                         },
                       );

@@ -81,7 +81,7 @@ const debouncedGetViolations = debounce(async ({ plate, licenseState }) => {
   return { apiUrl, response };
 }, 1000);
 
-const debouncedSaveStateToLocalStorage = debounce(self => {
+const debouncedSaveStateToLocalStorage = debounce((self) => {
   self.saveStateToLocalStorage();
 }, 500);
 
@@ -90,7 +90,7 @@ const defaultLongitude = -74.006;
 
 // adapted from https://www.bignerdranch.com/blog/dont-over-react/
 const urls = new WeakMap();
-const getBlobUrl = blob => {
+const getBlobUrl = (blob) => {
   if (urls.has(blob)) {
     return urls.get(blob);
   }
@@ -109,14 +109,13 @@ const geolocate = () =>
     };
   });
 
-const jsDateToCreateDate = jsDate =>
+const jsDateToCreateDate = (jsDate) =>
   jsDate.toISOString().replace(/:\d\d\..*/g, '');
 
 async function blobToBuffer({ attachmentFile }) {
   console.time(`blobUtil.blobToArrayBuffer(attachmentFile)`); // eslint-disable-line no-console
-  const attachmentArrayBuffer = await blobUtil.blobToArrayBuffer(
-    attachmentFile,
-  );
+  const attachmentArrayBuffer =
+    await blobUtil.blobToArrayBuffer(attachmentFile);
   console.timeEnd(`blobUtil.blobToArrayBuffer(attachmentFile)`); // eslint-disable-line no-console
 
   console.time(`Buffer.from(attachmentArrayBuffer)`); // eslint-disable-line no-console
@@ -139,7 +138,7 @@ function extractLocationDateFromVideo({ attachmentArrayBuffer }) {
   // https://stackoverflow.com/questions/8936984/uint8array-to-string-in-javascript/36949791#36949791
   const string = new TextDecoder('utf-8').decode(uint8array);
   const [latitude, longitude] = execall(/[+-][\d.]+/g, string)
-    .map(m => m.match)
+    .map((m) => m.match)
     .map(Number);
 
   // TODO make sure time is correct (ugh timezones...)
@@ -234,7 +233,7 @@ async function extractPlate({
     });
 
     // Choose first result with T######C plate if it exists, see https://github.com/josephfrazier/reported-web/issues/584
-    let result = results.filter(r =>
+    let result = results.filter((r) =>
       r.plate.toUpperCase().match(/^T\d\d\d\d\d\dC$/),
     )[0];
     if (!result) {
@@ -247,7 +246,7 @@ async function extractPlate({
       result.licenseState = null;
     }
     result.plate = result.plate.toUpperCase();
-    result.plateSuggestions = results.map(r => r.plate.toUpperCase());
+    result.plateSuggestions = results.map((r) => r.plate.toUpperCase());
 
     return result;
   } catch (err) {
@@ -302,13 +301,10 @@ async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
       throw new Error(`${attachmentFile.name} is not an image/video`);
     }
 
-    const {
-      CreateDate,
-      OffsetTimeDigitized,
-    } = await exifr.parse(attachmentArrayBuffer, [
-      'CreateDate',
-      'OffsetTimeDigitized',
-    ]);
+    const { CreateDate, OffsetTimeDigitized } = await exifr.parse(
+      attachmentArrayBuffer,
+      ['CreateDate', 'OffsetTimeDigitized'],
+    );
 
     console.log({ CreateDate, OffsetTimeDigitized }); // eslint-disable-line no-console
 
@@ -317,8 +313,8 @@ async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
       offset: OffsetTimeDigitized
         ? parseInt(OffsetTimeDigitized, 10) * -60
         : CreateDate
-        ? getNycTimezoneOffset(CreateDate)
-        : new Date().getTimezoneOffset(),
+          ? getNycTimezoneOffset(CreateDate)
+          : new Date().getTimezoneOffset(),
     };
   } catch (err) {
     console.error(err.stack);
@@ -340,10 +336,10 @@ class Home extends React.Component {
 
   static handleAxiosError(error) {
     return Promise.reject(error)
-      .catch(err => {
+      .catch((err) => {
         Home.notifyError(`Error: ${err.response.data.error.message}`);
       })
-      .catch(err => {
+      .catch((err) => {
         console.error(err);
       });
   }
@@ -467,12 +463,12 @@ class Home extends React.Component {
 
     // Allow users to paste image data
     // adapted from https://github.com/charliewilco/react-gluejar/blob/b69d7cfa9d08bfb34d8eb6815e4b548528218883/src/index.js#L85
-    window.addEventListener('paste', clipboardEvent => {
+    window.addEventListener('paste', (clipboardEvent) => {
       const { items } = clipboardEvent.clipboardData;
       // [].map.call because `items` isn't an array
       const attachmentData = [].map
-        .call(items, item => item.getAsFile())
-        .filter(file => !!file);
+        .call(items, (item) => item.getAsFile())
+        .filter((file) => !!file);
 
       if (attachmentData.length === 0) {
         return;
@@ -481,7 +477,7 @@ class Home extends React.Component {
       this.handleAttachmentData({ attachmentData });
     });
 
-    window.addEventListener('beforeunload', beforeUnloadEvent => {
+    window.addEventListener('beforeunload', (beforeUnloadEvent) => {
       if (this.state.attachmentData.length === 0) {
         return '';
       }
@@ -510,9 +506,9 @@ class Home extends React.Component {
         objectId,
       })
       .then(() => {
-        this.setState(state => ({
+        this.setState((state) => ({
           submissions: state.submissions.filter(
-            sub => sub.objectId !== objectId,
+            (sub) => sub.objectId !== objectId,
           ),
         }));
       });
@@ -565,7 +561,7 @@ class Home extends React.Component {
       coordsAreInNyc: true,
     });
 
-    debouncedProcessValidation({ latitude, longitude }).then(data => {
+    debouncedProcessValidation({ latitude, longitude }).then((data) => {
       this.setState({
         formatted_address: capitalize.words(
           `${data.geoclient_response.address.houseNumber} ${data.geoclient_response.address.streetName1In}, ${data.geoclient_response.address.firstBoroughName}`,
@@ -605,7 +601,7 @@ class Home extends React.Component {
 
     const now = Date.now();
     if (
-      this.state.submissions.some(submission => {
+      this.state.submissions.some((submission) => {
         const timeDifference =
           now - new Date(submission.timeofreport).valueOf();
         const thirtyDaysInMilliseconds = 30 * 24 * 60 * 60 * 1000;
@@ -631,12 +627,8 @@ class Home extends React.Component {
 
     debouncedGetVehicleType({ plate, licenseState })
       .then(({ data }) => {
-        const {
-          vehicleYear,
-          vehicleMake,
-          vehicleModel,
-          vehicleBody,
-        } = data.result;
+        const { vehicleYear, vehicleMake, vehicleModel, vehicleBody } =
+          data.result;
 
         if (plate !== this.state.plate) {
           console.info('ignoring stale plate:', plate);
@@ -665,7 +657,7 @@ class Home extends React.Component {
           ),
         });
       })
-      .catch(err => {
+      .catch((err) => {
         console.error(err);
 
         if (plate !== this.state.plate) {
@@ -738,10 +730,8 @@ class Home extends React.Component {
           }
 
           const totalViolations = vehicle.violations.length;
-          const {
-            total_fined: fined,
-            total_outstanding: outstanding,
-          } = vehicle.fines;
+          const { total_fined: fined, total_outstanding: outstanding } =
+            vehicle.fines;
 
           const lastTweetPart =
             vehicle.tweet_parts &&
@@ -777,7 +767,7 @@ class Home extends React.Component {
             ),
           });
         })
-        .catch(err => {
+        .catch((err) => {
           console.error(err);
         });
     }
@@ -792,7 +782,7 @@ class Home extends React.Component {
 
   handleAttachmentData = async ({ attachmentData }) => {
     this.setState(
-      state => ({
+      (state) => ({
         attachmentData: state.attachmentData.concat(attachmentData),
       }),
       async () => {
@@ -811,12 +801,10 @@ class Home extends React.Component {
             }
 
             // eslint-disable-next-line no-await-in-loop
-            const {
-              attachmentBuffer,
-              attachmentArrayBuffer,
-            } = await blobToBuffer({
-              attachmentFile,
-            });
+            const { attachmentBuffer, attachmentArrayBuffer } =
+              await blobToBuffer({
+                attachmentFile,
+              });
 
             // eslint-disable-next-line no-await-in-loop
             const { ext } = await FileType.fromBuffer(attachmentBuffer);
@@ -831,7 +819,7 @@ class Home extends React.Component {
                 email: this.state.email,
                 password: this.state.password,
               })
-                .then(result => {
+                .then((result) => {
                   if (
                     this.state.plate === '' &&
                     document.activeElement !== this.plateRef.current
@@ -872,14 +860,14 @@ class Home extends React.Component {
 
         const groupedByExtractionType = zip(...listsOfExtractions);
         const rejected = groupedByExtractionType
-          .filter(results => results.every(r => r.status === 'rejected'))
-          .map(extractions => extractions[0]);
+          .filter((results) => results.every((r) => r.status === 'rejected'))
+          .map((extractions) => extractions[0]);
 
         if (rejected.length === 0) {
           return;
         }
 
-        const missingValuesString = rejected.map(v => v.reason).join(', ');
+        const missingValuesString = rejected.map((v) => v.reason).join(', ');
         const hasMultipleAttachments = this.state.attachmentData.length > 1;
         const fileCopy = hasMultipleAttachments ? 'the files.' : 'the file.';
 
@@ -895,7 +883,7 @@ class Home extends React.Component {
     );
   };
 
-  handlePlatePickerClick = async attachmentFile => {
+  handlePlatePickerClick = async (attachmentFile) => {
     this.setState({ platePickerLoading: true });
 
     try {
@@ -922,14 +910,14 @@ class Home extends React.Component {
     }
   };
 
-  handleInputChange = event => {
+  handleInputChange = (event) => {
     const { target } = event;
     const value =
       target.type === 'checkbox'
         ? target.checked
         : target.type === 'datetime-local'
-        ? target.value.slice(0, 'YYYY-MM-DDThh:mm'.length)
-        : target.value;
+          ? target.value.slice(0, 'YYYY-MM-DDThh:mm'.length)
+          : target.value;
     const { name } = target;
 
     this.setState(
@@ -954,7 +942,7 @@ class Home extends React.Component {
     return (
       <Dropzone
         className={homeStyles.root}
-        onDrop={attachmentData => {
+        onDrop={(attachmentData) => {
           this.handleAttachmentData({ attachmentData });
         }}
         style={{
@@ -996,7 +984,7 @@ class Home extends React.Component {
             {/* TODO use tabbed interface instead of toggling <details> ? */}
             <details
               open={this.state.isUserInfoOpen}
-              onToggle={evt => {
+              onToggle={(evt) => {
                 this.setState({
                   isUserInfoOpen: evt.target.open,
                 });
@@ -1005,7 +993,7 @@ class Home extends React.Component {
               <summary>Create/Edit User (click to expand)</summary>
 
               <form
-                onSubmit={e => {
+                onSubmit={(e) => {
                   e.preventDefault();
                   this.setState({ isUserInfoSaving: true });
                   axios
@@ -1034,12 +1022,13 @@ class Home extends React.Component {
                       autoComplete="email"
                       value={this.state.email}
                       name="email"
-                      onChange={event => {
+                      onChange={(event) => {
                         this.handleInputChange({
                           target: {
                             name: event.target.name,
-                            value: event.target.value.replace(/@.*/, atDomain =>
-                              atDomain.toLowerCase(),
+                            value: event.target.value.replace(
+                              /@.*/,
+                              (atDomain) => atDomain.toLowerCase(),
                             ),
                           },
                         });
@@ -1068,7 +1057,7 @@ class Home extends React.Component {
                       <button
                         type="button"
                         onClick={() => {
-                          this.setState(state => ({
+                          this.setState((state) => ({
                             isPasswordRevealed: !state.isPasswordRevealed,
                           }));
                         }}
@@ -1103,7 +1092,7 @@ class Home extends React.Component {
 
                       const { data } = await axios
                         .post('/api/logIn', this.state)
-                        .catch(err => {
+                        .catch((err) => {
                           Home.handleAxiosError(err);
                           return { data: false };
                         });
@@ -1119,7 +1108,7 @@ class Home extends React.Component {
                       this.setState(
                         // If a new user clicks the button after filling all the fields,
                         // don't override them with empty data from the server.
-                        state => ({
+                        (state) => ({
                           FirstName: FirstName || state.FirstName,
                           LastName: LastName || state.LastName,
                           Phone: Phone || state.Phone,
@@ -1204,7 +1193,7 @@ class Home extends React.Component {
               style={{
                 display: this.state.isUserInfoOpen ? 'none' : 'block',
               }}
-              onSubmit={async e => {
+              onSubmit={async (e) => {
                 e.preventDefault();
 
                 if (
@@ -1229,7 +1218,7 @@ class Home extends React.Component {
                       CreateDate: new Date(this.state.CreateDate).toISOString(),
                     }),
                     {
-                      onUploadProgress: progressEvent => {
+                      onUploadProgress: (progressEvent) => {
                         const {
                           loaded: submitProgressValue,
                           total: submitProgressMax,
@@ -1241,7 +1230,7 @@ class Home extends React.Component {
                         });
                       },
 
-                      onDownloadProgress: progressEvent => {
+                      onDownloadProgress: (progressEvent) => {
                         const {
                           loaded: submitProgressValue,
                           total: submitProgressMax,
@@ -1268,7 +1257,7 @@ class Home extends React.Component {
                         2,
                       )}`,
                     );
-                    this.setState(state => ({
+                    this.setState((state) => ({
                       attachmentData: [],
                       submissions: [submission].concat(state.submissions),
                       plateSuggestions: [],
@@ -1326,7 +1315,7 @@ class Home extends React.Component {
                     flexWrap: 'wrap',
                   }}
                 >
-                  {this.state.attachmentData.map(attachmentFile => {
+                  {this.state.attachmentData.map((attachmentFile) => {
                     const { name } = attachmentFile;
                     const ext = fileExtension(name);
                     const isImg = isImage({ ext });
@@ -1363,9 +1352,9 @@ class Home extends React.Component {
                             background: 'white',
                           }}
                           onClick={() => {
-                            this.setState(state => ({
+                            this.setState((state) => ({
                               attachmentData: state.attachmentData.filter(
-                                file => file.name !== name,
+                                (file) => file.name !== name,
                               ),
                             }));
                           }}
@@ -1440,14 +1429,14 @@ class Home extends React.Component {
                     autoComplete="off"
                     ref={this.plateRef}
                     placeholder={this.state.plateSuggestions[0]}
-                    onChange={event => {
+                    onChange={(event) => {
                       this.setLicensePlate({
                         plate: event.target.value.toUpperCase(),
                       });
                     }}
                   />
                   <datalist id="plateSuggestions">
-                    {this.state.plateSuggestions.map(plateSuggestion => (
+                    {this.state.plateSuggestions.map((plateSuggestion) => (
                       <option value={plateSuggestion} />
                     ))}
                   </datalist>
@@ -1457,7 +1446,7 @@ class Home extends React.Component {
                     }}
                     value={this.state.licenseState}
                     name="licenseState"
-                    onChange={event => {
+                    onChange={(event) => {
                       this.setLicensePlate({
                         plate: this.state.plate,
                         licenseState: event.target.value,
@@ -1485,7 +1474,7 @@ class Home extends React.Component {
                     name="typeofcomplaint"
                     onChange={this.handleInputChange}
                   >
-                    {this.props.typeofcomplaintValues.map(typeofcomplaint => (
+                    {this.props.typeofcomplaintValues.map((typeofcomplaint) => (
                       <option key={typeofcomplaint} value={typeofcomplaint}>
                         {typeofcomplaint}
                       </option>
@@ -1530,7 +1519,7 @@ class Home extends React.Component {
                       lat: this.state.latitude,
                       lng: this.state.longitude,
                     }}
-                    onRef={mapRef => {
+                    onRef={(mapRef) => {
                       this.mapRef = mapRef;
                     }}
                     onCenterChanged={() => {
@@ -1542,13 +1531,13 @@ class Home extends React.Component {
                         addressProvenance: '(manually set)',
                       });
                     }}
-                    onSearchBoxMounted={ref => {
+                    onSearchBoxMounted={(ref) => {
                       this.searchBox = ref;
                     }}
                     onPlacesChanged={() => {
                       const places = this.searchBox.getPlaces();
 
-                      const nextMarkers = places.map(place => ({
+                      const nextMarkers = places.map((place) => ({
                         position: place.geometry.location,
                       }));
                       const { latitude, longitude } =
@@ -1586,7 +1575,7 @@ class Home extends React.Component {
                             });
                           },
                         )
-                        .catch(err => {
+                        .catch((err) => {
                           Home.notifyError(err.message);
                           console.error(err);
                         });
@@ -1719,7 +1708,7 @@ Home.propTypes = {
   boroughBoundariesFeatureCollection: PropTypes.object.isRequired,
 };
 
-const MyMapComponentPure = props => {
+const MyMapComponentPure = (props) => {
   const {
     position,
     onRef,

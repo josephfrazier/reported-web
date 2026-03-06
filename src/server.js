@@ -9,7 +9,11 @@
 
 import path from 'path';
 import assert from 'assert';
+import crypto from 'crypto';
+import os from 'os';
+import fs from 'fs';
 import express from 'express';
+import { rateLimit } from 'express-rate-limit';
 import forceSsl from 'force-ssl-heroku';
 import compression from 'compression';
 import bodyParser from 'body-parser';
@@ -82,6 +86,38 @@ const upload = multer({
 //   * videoData0
 //   * videoData1
 //   * videoData2
+
+// Disk-based store for pre-uploaded attachment files.
+// Files are written to the OS temp directory and named by their SHA-256 hash.
+// Using the temp directory keeps them off of any persistent storage, matching
+// Heroku's ephemeral filesystem behaviour (the server can restart at any time,
+// wiping temp files – the existing "not found" error handling covers that case).
+const ATTACHMENT_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+const ATTACHMENT_ID_RE = /^[0-9a-f]{64}$/; // SHA-256 hex string
+
+function attachmentFilePath(id) {
+  if (!ATTACHMENT_ID_RE.test(id)) {
+    throw new Error(`Invalid attachment id: ${id}`);
+  }
+  return path.join(os.tmpdir(), `reported-web-attachment-${id}`);
+}
+
+async function writeAttachment(id, buffer) {
+  await fs.promises.writeFile(attachmentFilePath(id), buffer);
+  // Schedule cleanup so temp files don't accumulate indefinitely
+  setTimeout(() => {
+    fs.promises.unlink(attachmentFilePath(id)).catch(() => {}); // ignore errors (may already be gone)
+  }, ATTACHMENT_TTL_MS).unref();
+}
+
+async function readAttachment(id) {
+  try {
+    return await fs.promises.readFile(attachmentFilePath(id));
+  } catch {
+    return null; // file not found (server restarted, TTL elapsed, etc.)
+  }
+}
 
 //
 // Tell any CSS tooling (such as Material UI) to use all vendor prefixes if the
@@ -344,10 +380,36 @@ app.use('/requestPasswordReset', (req, res) => {
     .catch(handlePromiseRejection(res));
 });
 
+app.use(
+  '/api/uploadAttachment',
+  rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    limit: 30, // max 30 uploads per window per IP (5 submissions × 6 files each)
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+  }),
+  upload.single('attachmentData'),
+  async (req, res) => {
+    const { email, password } = req.body;
+
+    try {
+      await logIn({ email, password });
+    } catch (error) {
+      handlePromiseRejection(res)(error);
+      return;
+    }
+
+    const { buffer } = req.file;
+    const id = crypto.createHash('sha256').update(buffer).digest('hex');
+    await writeAttachment(id, buffer);
+    res.json({ id });
+  },
+);
+
 app.use('/submit', (req, res) => {
   // Call upload.array directly to intercept errors and respond with JSON, see the following:
   // https://github.com/expressjs/multer/tree/80ee2f52432cc0c81c93b03c6b0b448af1f626e5#error-handling
-  upload.array('attachmentData[]')(req, res, error => {
+  upload.array('attachmentData[]')(req, res, async error => {
     if (error) {
       // Make error.message enumerable so it gets sent to the client
       const { message } = error;
@@ -380,7 +442,34 @@ app.use('/submit', (req, res) => {
     const latitude = Number(latitudeString);
     const longitude = Number(longitudeString);
 
-    const attachmentData = req.files;
+    const { attachmentIds: attachmentIdsJson } = req.body;
+    let attachmentData;
+    try {
+      if (attachmentIdsJson) {
+        const parsedIds = JSON.parse(attachmentIdsJson);
+        if (
+          !Array.isArray(parsedIds) ||
+          !parsedIds.every(id => typeof id === 'string')
+        ) {
+          throw { message: 'Invalid attachmentIds format' }; // eslint-disable-line no-throw-literal
+        }
+        attachmentData = await Promise.all(
+          parsedIds.map(async id => {
+            const buffer = await readAttachment(id);
+            if (!buffer) {
+              const message = `Attachment not found; please re-add your files and try again`;
+              throw { message }; // eslint-disable-line no-throw-literal
+            }
+            return { buffer };
+          }),
+        );
+      } else {
+        attachmentData = req.files;
+      }
+    } catch (attachmentError) {
+      handlePromiseRejection(res)(attachmentError);
+      return;
+    }
 
     const timeofreport = new Date(CreateDate);
     const timeofreported = timeofreport;

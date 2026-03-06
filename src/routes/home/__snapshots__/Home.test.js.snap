@@ -260,6 +260,18 @@ exports[`Home renders children correctly 1`] = `
             Automatically read addresses from pictures/videos
           </label>
           <label
+            htmlFor="isOpenCameraOnLoad"
+          >
+            <input
+              checked={false}
+              name="isOpenCameraOnLoad"
+              onChange={[Function]}
+              type="checkbox"
+            />
+             
+            Automatically open camera when app loads
+          </label>
+          <label
             htmlFor="plate"
           >
             License/Medallion:

@@ -23,27 +23,25 @@ export default async function srlookup({ reqnumber }) {
     result[key] = value;
   }
 
-  const srdatereported = /\$\("#srdatereported"\).text\(getESTDate\("([^"]+)"\)\)/.exec(
-    data,
-  );
+  const srdatereported =
+    /\$\("#srdatereported"\).text\(getESTDate\("([^"]+)"\)\)/.exec(data);
   if (srdatereported) {
-    result['Date Reported'] = new Date(
-      srdatereported[1],
-    ).toLocaleString('en-US', { timeZone: 'America/New_York' });
+    result['Date Reported'] = new Date(srdatereported[1]).toLocaleString(
+      'en-US',
+      { timeZone: 'America/New_York' },
+    );
   }
 
-  const srupdatedon = /\$\("#srupdatedon"\).text\(getESTDate\("([^"]+)"\)\)/.exec(
-    data,
-  );
+  const srupdatedon =
+    /\$\("#srupdatedon"\).text\(getESTDate\("([^"]+)"\)\)/.exec(data);
   if (srupdatedon) {
     result['Updated On'] = new Date(srupdatedon[1]).toLocaleString('en-US', {
       timeZone: 'America/New_York',
     });
   }
 
-  const srdateclosed = /\$\("#srdateclosed"\).text\(getESTDate\("([^"]+)"\)\)/.exec(
-    data,
-  );
+  const srdateclosed =
+    /\$\("#srdateclosed"\).text\(getESTDate\("([^"]+)"\)\)/.exec(data);
   if (srdateclosed) {
     result['Date Closed'] = new Date(srdateclosed[1]).toLocaleString('en-US', {
       timeZone: 'America/New_York',

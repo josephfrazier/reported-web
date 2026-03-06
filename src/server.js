@@ -400,10 +400,7 @@ app.use(
     }
 
     const { buffer } = req.file;
-    const id = crypto
-      .createHash('sha256')
-      .update(buffer)
-      .digest('hex');
+    const id = crypto.createHash('sha256').update(buffer).digest('hex');
     await writeAttachment(id, buffer);
     res.json({ id });
   },

@@ -18,7 +18,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/server';
 import PrettyError from 'pretty-error';
 import Parse from 'parse/node';
-import FileType from 'file-type/browser';
+import { fileTypeFromBuffer } from 'file-type';
 import multer from 'multer';
 import stringify from 'json-stringify-safe';
 import StyleContext from 'isomorphic-style-loader/StyleContext';
@@ -460,7 +460,7 @@ app.use('/submit', (req, res) => {
         const attachmentsWithFormats = await Promise.all(
           attachmentData.map(async ({ buffer: attachmentBuffer }) => ({
             attachmentBuffer,
-            ext: (await FileType.fromBuffer(attachmentBuffer)).ext,
+            ext: (await fileTypeFromBuffer(attachmentBuffer)).ext,
           })),
         );
 

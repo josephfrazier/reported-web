@@ -191,6 +191,8 @@
     "flow": "flow",
     "flow:check": "flow check",
     "test": "node -r dotenv/config node_modules/.bin/jest",
+    "test:alpr": "node -r dotenv/config node_modules/.bin/jest src/alpr.test.js",
+    "test:no-alpr": "node -r dotenv/config node_modules/.bin/jest --testPathIgnorePatterns='src/alpr.test.js'",
     "test-watch": "yarn run test --watch --notify",
     "test-cover": "yarn run test --coverage",
     "coverage": "yarn run test-cover && opn coverage/lcov-report/index.html",

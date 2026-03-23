@@ -1,4 +1,4 @@
-name: Node.js CI - test
+name: Node.js CI - test (except ALPR, which is flaky)
 
 on: [push]
 

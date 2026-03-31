@@ -2,10 +2,6 @@ import sharp from 'sharp';
 import nodeFetch from 'node-fetch';
 import FormData from 'form-data';
 
-// Disable sharp's internal LRU cache so processed image data is released
-// immediately instead of being held in memory across requests.
-sharp.cache(false);
-
 async function orientImageBuffer({ attachmentBuffer }) {
   console.time(`orientImageBuffer`); // eslint-disable-line no-console
   // eslint-disable-next-line no-console

@@ -17,6 +17,7 @@ import errorOverlayMiddleware from 'react-dev-utils/errorOverlayMiddleware';
 import webpackConfig from './webpack.config.js';
 import run, { format } from './run.js';
 import clean from './clean.js';
+import copy from './copy.js';
 
 const isDebug = !process.argv.includes('--release');
 
@@ -100,6 +101,7 @@ async function start() {
 
   // Configure compilation
   await run(clean);
+  await run(copy);
   const multiCompiler = webpack(webpackConfig);
   const clientCompiler = multiCompiler.compilers.find(
     compiler => compiler.name === 'client',

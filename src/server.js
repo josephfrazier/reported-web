@@ -541,6 +541,10 @@ app.use('/getVehicleType/:licensePlate/:licenseState?', (req, res) => {
     .catch(handlePromiseRejection(res));
 });
 
+app.get('/submissions-map', (req, res) => {
+  res.sendFile(path.resolve(__dirname, 'public', 'submissions-map.html'));
+});
+
 //
 // Register server-side rendering middleware
 // -----------------------------------------------------------------------------

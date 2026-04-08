@@ -183,7 +183,7 @@ so hopefully that will be the end of this saga.
 
 ---
 
-This project is based on [React Starter Kit](https://github.com/kriasoft/react-starter-kit). See its README below:
+This project is based on [React Starter Kit](https://github.com/kriasoft/react-starter-kit/tree/b821a03895ff6901722ed6f4be100699cc72a674). See its README below:
 
 <details><summary>React Starter Kit README</summary>
 

@@ -472,9 +472,9 @@ app.use('/submit', (req, res) => {
             .slice(0, 3)
             .map(async ({ attachmentBuffer, ext }, index) => {
               const key = `photoData${index}`;
-              const file = new Parse.File(`${key}.${ext}`, [
-                ...attachmentBuffer,
-              ]);
+              const file = new Parse.File(`${key}.${ext}`, {
+                base64: attachmentBuffer.toString('base64'),
+              });
               await file.save();
               submission.set(key, file);
             }),
@@ -482,9 +482,9 @@ app.use('/submit', (req, res) => {
             .slice(0, 3)
             .map(async ({ attachmentBuffer, ext }, index) => {
               const key = `videoData${index}`;
-              const file = new Parse.File(`${key}.${ext}`, [
-                ...attachmentBuffer,
-              ]);
+              const file = new Parse.File(`${key}.${ext}`, {
+                base64: attachmentBuffer.toString('base64'),
+              });
               await file.save();
               submission.set(key, file.url());
             }),
@@ -539,6 +539,10 @@ app.use('/getVehicleType/:licensePlate/:licenseState?', (req, res) => {
   getVehicleType({ licensePlate, licenseState })
     .then(({ result }) => res.json({ result }))
     .catch(handlePromiseRejection(res));
+});
+
+app.get('/submissions-map', (req, res) => {
+  res.sendFile(path.resolve(__dirname, 'public', 'submissions-map.html'));
 });
 
 //

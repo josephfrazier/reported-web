@@ -1302,7 +1302,7 @@ class Home extends React.Component {
                     margin: '1px',
                   }}
                 >
-                  <button type="button">
+                  <button type="button" style={{ whiteSpace: 'wrap' }}>
                     Add pictures/videos (up to 3 each, 20MB max each)
                   </button>
                 </FileReaderInput>

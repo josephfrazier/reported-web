@@ -752,8 +752,8 @@ class Home extends React.Component {
               <React.Fragment>
                 {totalViolations} violation
                 {totalViolations !== 1 ? 's' : ''} found{' '}
-                {make && `(Maybe: ${color} ${make} ${body})`} — ${fined.toFixed(2)}{' '}
-                fined, ${outstanding.toFixed(2)} outstanding
+                {make && `(Maybe: ${color} ${make} ${body})`} — $
+                {fined.toFixed(2)} fined, ${outstanding.toFixed(2)} outstanding
                 {' ('}
                 <a href={detailsUrl} target="_blank" rel="noopener noreferrer">
                   more details

@@ -846,7 +846,7 @@ class Home extends React.Component {
                 isReverseGeocodingEnabled: this.state.isReverseGeocodingEnabled,
               }).then(({ latitude, longitude }) => {
                 if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
-                  throw 'location (may have been stripped by Android, see https://github.com/josephfrazier/reported-web/issues/751)'; // eslint-disable-line no-throw-literal
+                  throw 'location (may have been stripped by Android, see <a href="https://github.com/josephfrazier/reported-web/issues/751">details</a>)'; // eslint-disable-line no-throw-literal
                 }
 
                 this.setCoords({
@@ -872,14 +872,14 @@ class Home extends React.Component {
           return;
         }
 
-        const missingValuesString = rejected.map(v => v.reason).join(', ');
+        const missingValuesHtml = rejected.map(v => v.reason).join(', ');
         const hasMultipleAttachments = this.state.attachmentData.length > 1;
         const fileCopy = hasMultipleAttachments ? 'the files.' : 'the file.';
 
         Home.notifyWarning(
           <React.Fragment>
             <p>
-              Could not extract the {missingValuesString} from {fileCopy} Please
+              Could not extract the <span dangerouslySetInnerHTML={{ __html: missingValuesHtml }} /> from {fileCopy} Please
               enter/confirm any missing values manually.
             </p>
           </React.Fragment>,

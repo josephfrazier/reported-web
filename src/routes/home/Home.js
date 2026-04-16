@@ -879,8 +879,9 @@ class Home extends React.Component {
         Home.notifyWarning(
           <React.Fragment>
             <p>
-              Could not extract the <span dangerouslySetInnerHTML={{ __html: missingValuesHtml }} /> from {fileCopy} Please
-              enter/confirm any missing values manually.
+              Could not extract the{' '}
+              <span dangerouslySetInnerHTML={{ __html: missingValuesHtml }} />{' '}
+              from {fileCopy} Please enter/confirm any missing values manually.
             </p>
           </React.Fragment>,
         );

@@ -391,6 +391,7 @@ class Home extends React.Component {
       isReverseGeocodingEnabled: true,
       isUserInfoOpen: true,
       isMapOpen: false,
+      isPreviousSubmissionsOpen: false,
     };
 
     const initialStatePerSession = {
@@ -1671,7 +1672,11 @@ class Home extends React.Component {
 
             <br />
 
-            <details>
+            <details
+              onToggle={e =>
+                this.setState({ isPreviousSubmissionsOpen: e.target.open })
+              }
+            >
               <summary>
                 Previous Submissions (
                 {this.state.submissions.length > 0
@@ -1680,10 +1685,12 @@ class Home extends React.Component {
                 )
               </summary>
 
-              <PreviousSubmissionsList
-                submissions={this.state.submissions}
-                onDeleteSubmission={this.onDeleteSubmission}
-              />
+              {this.state.isPreviousSubmissionsOpen && (
+                <PreviousSubmissionsList
+                  submissions={this.state.submissions}
+                  onDeleteSubmission={this.onDeleteSubmission}
+                />
+              )}
             </details>
 
             <div style={{ float: 'right' }}>

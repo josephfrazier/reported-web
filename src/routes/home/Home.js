@@ -326,7 +326,7 @@ async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
 class Home extends React.Component {
   static getVehicleMakeLogoUrl({ vehicleMake }) {
     if (vehicleMake.toLowerCase() === 'nissan') {
-      return 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Nissan_2020_logo.svg/287px-Nissan_2020_logo.svg.png';
+      return 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Nissan_2020_logo.svg/250px-Nissan_2020_logo.svg.png';
     }
     if (vehicleMake.toLowerCase() === 'honda') {
       return 'https://upload.wikimedia.org/wikipedia/commons/3/38/Honda.svg';

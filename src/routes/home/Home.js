@@ -279,6 +279,14 @@ async function extractLocation({
     }
 
     const { latitude, longitude } = await exifr.gps(attachmentArrayBuffer);
+    if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
+      throw new Error(
+        // TODO: This error message gets swallowed by the below `catch` block
+        // TODO: Tell user that Android might be stripping the EXIF GPS, link to https://github.com/josephfrazier/reported-web/issues/751
+        `latitude/longitude is NaN - latitude: ${latitude}, longitude: ${longitude}`,
+      );
+    }
+
     console.info(
       'Extracted GPS latitude/longitude location from EXIF metadata',
       { latitude, longitude },

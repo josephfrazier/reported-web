@@ -651,6 +651,7 @@ class Home extends React.Component {
                 alt={`${vehicleMake} logo`}
                 style={{
                   display: 'block',
+                  maxWidth: '250px',
                 }}
               />
             </React.Fragment>

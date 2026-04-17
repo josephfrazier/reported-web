@@ -172,6 +172,38 @@ async function getVideoScreenshot({ attachmentFile }) {
 // adapted from https://www.bignerdranch.com/blog/dont-over-react/
 const attachmentPlateCache = new WeakMap();
 
+function getLicenseStateFromPlateResult(result) {
+  try {
+    return result.region.code.split('-')[1].toUpperCase();
+  } catch {
+    // ALPR results may not always include a parseable region code.
+    return '';
+  }
+}
+
+function getPlateThumbnailKey({ plate, licenseState }) {
+  return `${(plate || '').toUpperCase()}|${(licenseState || '').toUpperCase()}`;
+}
+
+function getPlateThumbnailsByKey(results = []) {
+  return results.reduce((acc, result) => {
+    const plate = (result.plate || '').toUpperCase();
+    const licenseState = getLicenseStateFromPlateResult(result);
+
+    if (!result.plateCropDataUrl || !plate || !licenseState) {
+      return acc;
+    }
+
+    const key = getPlateThumbnailKey({
+      plate,
+      licenseState,
+    });
+
+    acc[key] = result.plateCropDataUrl; // eslint-disable-line no-param-reassign
+    return acc;
+  }, {});
+}
+
 async function fetchPlateResults({
   attachmentFile,
   attachmentBuffer,
@@ -247,6 +279,7 @@ async function extractPlate({
     }
     result.plate = result.plate.toUpperCase();
     result.plateSuggestions = results.map(r => r.plate.toUpperCase());
+    result.allPlateResults = results;
 
     return result;
   } catch (err) {
@@ -410,6 +443,7 @@ class Home extends React.Component {
       platePickerModalOpen: false,
       platePickerResults: [],
       platePickerLoading: false,
+      plateThumbnailsByKey: {},
     };
 
     const initialState = {
@@ -828,9 +862,13 @@ class Home extends React.Component {
                   ) {
                     this.setLicensePlate(result);
                   }
-                  this.setState({
+                  this.setState(state => ({
                     plateSuggestions: result.plateSuggestions,
-                  });
+                    plateThumbnailsByKey: {
+                      ...state.plateThumbnailsByKey,
+                      ...getPlateThumbnailsByKey(result.allPlateResults),
+                    },
+                  }));
                 })
                 .finally(() => {
                   this.setState({ isAlprLoading: false });
@@ -905,11 +943,15 @@ class Home extends React.Component {
         password,
       });
 
-      this.setState({
+      this.setState(state => ({
         platePickerResults: results,
         platePickerModalOpen: true,
         platePickerLoading: false,
-      });
+        plateThumbnailsByKey: {
+          ...state.plateThumbnailsByKey,
+          ...getPlateThumbnailsByKey(results),
+        },
+      }));
     } catch (err) {
       console.error(err);
       Home.notifyError('Could not read license plates from this photo.');
@@ -946,6 +988,14 @@ class Home extends React.Component {
   };
 
   render() {
+    const matchingPlateThumbnail =
+      this.state.plateThumbnailsByKey[
+        getPlateThumbnailKey({
+          plate: this.state.plate,
+          licenseState: this.state.licenseState,
+        })
+      ];
+
     return (
       <Dropzone
         className={homeStyles.root}
@@ -1267,6 +1317,7 @@ class Home extends React.Component {
                       attachmentData: [],
                       submissions: [submission].concat(state.submissions),
                       plateSuggestions: [],
+                      plateThumbnailsByKey: {},
                       vehicleInfoComponent: null,
                       violationSummaryComponent: null,
                       reportDescription: '',
@@ -1426,49 +1477,73 @@ class Home extends React.Component {
                 <label htmlFor="plate">
                   License/Medallion:
                   {this.state.isAlprLoading && <CircularProgress size="1em" />}
-                  <input
-                    required
-                    type="search"
-                    value={this.state.plate}
-                    name="plate"
-                    list="plateSuggestions"
-                    autoComplete="off"
-                    ref={this.plateRef}
-                    placeholder={this.state.plateSuggestions[0]}
-                    onChange={event => {
-                      this.setLicensePlate({
-                        plate: event.target.value.toUpperCase(),
-                      });
-                    }}
-                  />
-                  <datalist id="plateSuggestions">
-                    {this.state.plateSuggestions.map(plateSuggestion => (
-                      <option value={plateSuggestion} />
-                    ))}
-                  </datalist>
-                  <select
+                  <div
                     style={{
-                      marginTop: '0.5rem',
-                    }}
-                    value={this.state.licenseState}
-                    name="licenseState"
-                    onChange={event => {
-                      this.setLicensePlate({
-                        plate: this.state.plate,
-                        licenseState: event.target.value,
-                      });
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      alignItems: 'flex-start',
+                      gap: '0.5rem',
                     }}
                   >
-                    {Object.entries(usStateNames)
-                      .sort(([, name1], [, name2]) =>
-                        name1.toUpperCase().localeCompare(name2.toUpperCase()),
-                      )
-                      .map(([abbr, name]) => (
-                        <option key={abbr} value={abbr}>
-                          {name}
-                        </option>
-                      ))}
-                  </select>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <input
+                        required
+                        type="search"
+                        value={this.state.plate}
+                        name="plate"
+                        list="plateSuggestions"
+                        autoComplete="off"
+                        ref={this.plateRef}
+                        placeholder={this.state.plateSuggestions[0]}
+                        onChange={event => {
+                          this.setLicensePlate({
+                            plate: event.target.value.toUpperCase(),
+                          });
+                        }}
+                      />
+                      <datalist id="plateSuggestions">
+                        {this.state.plateSuggestions.map(plateSuggestion => (
+                          <option value={plateSuggestion} />
+                        ))}
+                      </datalist>
+                      <select
+                        style={{
+                          marginTop: '0.5rem',
+                        }}
+                        value={this.state.licenseState}
+                        name="licenseState"
+                        onChange={event => {
+                          this.setLicensePlate({
+                            plate: this.state.plate,
+                            licenseState: event.target.value,
+                          });
+                        }}
+                      >
+                        {Object.entries(usStateNames)
+                          .sort(([, name1], [, name2]) =>
+                            name1
+                              .toUpperCase()
+                              .localeCompare(name2.toUpperCase()),
+                          )
+                          .map(([abbr, name]) => (
+                            <option key={abbr} value={abbr}>
+                              {name}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                    {matchingPlateThumbnail && (
+                      <img
+                        src={matchingPlateThumbnail}
+                        alt="Detected license plate"
+                        style={{
+                          maxHeight: '5rem',
+                          maxWidth: '12rem',
+                          objectFit: 'contain',
+                        }}
+                      />
+                    )}
+                  </div>
                   <div>{this.state.violationSummaryComponent}</div>
                   <div>{this.state.vehicleInfoComponent}</div>
                 </label>

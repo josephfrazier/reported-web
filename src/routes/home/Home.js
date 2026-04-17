@@ -1748,8 +1748,10 @@ class Home extends React.Component {
             <br />
 
             <details
-              onToggle={e =>
-                this.setState({ isPreviousSubmissionsOpen: e.target.open })
+              onToggle={evt =>
+                this.setState({
+                  isPreviousSubmissionsOpen: evt.currentTarget.open,
+                })
               }
             >
               <summary>

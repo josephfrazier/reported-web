@@ -176,6 +176,7 @@ function getLicenseStateFromPlateResult(result) {
   try {
     return result.region.code.split('-')[1].toUpperCase();
   } catch {
+    // ALPR results may not always include a parseable region code.
     return '';
   }
 }
@@ -186,14 +187,17 @@ function getPlateThumbnailKey({ plate, licenseState }) {
 
 function getPlateThumbnailsByKey(results = []) {
   return results.reduce((acc, result) => {
-    const key = getPlateThumbnailKey({
-      plate: result.plate,
-      licenseState: getLicenseStateFromPlateResult(result),
-    });
+    const plate = (result.plate || '').toUpperCase();
+    const licenseState = getLicenseStateFromPlateResult(result);
 
-    if (!result.plateCropDataUrl || !key || key === '|') {
+    if (!result.plateCropDataUrl || !plate || !licenseState) {
       return acc;
     }
+
+    const key = getPlateThumbnailKey({
+      plate,
+      licenseState,
+    });
 
     acc[key] = result.plateCropDataUrl; // eslint-disable-line no-param-reassign
     return acc;
@@ -1531,7 +1535,7 @@ class Home extends React.Component {
                     {matchingPlateThumbnail && (
                       <img
                         src={matchingPlateThumbnail}
-                        alt={`Detected plate thumbnail for ${this.state.plate} in ${this.state.licenseState}`}
+                        alt="Detected license plate"
                         style={{
                           maxHeight: '5rem',
                           maxWidth: '12rem',

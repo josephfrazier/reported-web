@@ -670,9 +670,14 @@ class Home extends React.Component {
                     this.setState(
                       { isPreviousSubmissionsOpen: true },
                       () => {
-                        document
-                          .getElementById(submission.objectId)
-                          ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        const li = document.getElementById(submission.objectId);
+                        if (li) {
+                          const details = li.querySelector('details');
+                          if (details && !details.open) {
+                            details.querySelector('summary')?.click();
+                          }
+                          li.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
                       },
                     );
                   }}

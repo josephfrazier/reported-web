@@ -667,19 +667,19 @@ class Home extends React.Component {
                 <a
                   href={`#${submission.objectId}`}
                   onClick={() => {
-                    this.setState(
-                      { isPreviousSubmissionsOpen: true },
-                      () => {
-                        const li = document.getElementById(submission.objectId);
-                        if (li) {
-                          const details = li.querySelector('details');
-                          if (details && !details.open) {
-                            details.querySelector('summary')?.click();
-                          }
-                          li.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    this.setState({ isPreviousSubmissionsOpen: true }, () => {
+                      const li = document.getElementById(submission.objectId);
+                      if (li) {
+                        const details = li.querySelector('details');
+                        if (details && !details.open) {
+                          details.querySelector('summary')?.click();
                         }
-                      },
-                    );
+                        li.scrollIntoView({
+                          behavior: 'smooth',
+                          block: 'center',
+                        });
+                      }
+                    });
                   }}
                 >
                   {new Date(submission.timeofreport).toLocaleString()}

@@ -672,7 +672,7 @@ class Home extends React.Component {
                       () => {
                         document
                           .getElementById(submission.objectId)
-                          ?.scrollIntoView();
+                          ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                       },
                     );
                   }}

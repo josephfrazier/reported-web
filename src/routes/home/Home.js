@@ -456,6 +456,7 @@ class Home extends React.Component {
     this.initialStatePersistent = initialStatePersistent;
     this.userFormSubmitRef = React.createRef();
     this.plateRef = React.createRef();
+    this.previousSubmissionsDetailsRef = React.createRef();
   }
 
   componentDidMount() {
@@ -656,10 +657,36 @@ class Home extends React.Component {
       const pluralReport = priorCount === 1 ? 'report' : 'reports';
 
       Home.notifyWarning(
-        <p>
-          You have already submitted {priorCount} {pluralReport} for {plate} in{' '}
-          {licenseState}, are you sure you want to submit another?
-        </p>,
+        <>
+          <p>
+            You have already submitted {priorCount} {pluralReport} for {plate}{' '}
+            in {licenseState}, are you sure you want to submit another?
+          </p>
+          <ul>
+            {priorSubmissions.map(submission => (
+              <li key={submission.objectId}>
+                <a
+                  href={`#${submission.objectId}`}
+                  onClick={() => {
+                    if (this.previousSubmissionsDetailsRef.current) {
+                      this.previousSubmissionsDetailsRef.current.open = true;
+                    }
+                    this.setState(
+                      { isPreviousSubmissionsOpen: true },
+                      () => {
+                        document
+                          .getElementById(submission.objectId)
+                          ?.scrollIntoView();
+                      },
+                    );
+                  }}
+                >
+                  {new Date(submission.timeofreport).toLocaleString()}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </>,
       );
     }
 
@@ -1751,6 +1778,7 @@ class Home extends React.Component {
             <br />
 
             <details
+              ref={this.previousSubmissionsDetailsRef}
               onToggle={evt =>
                 this.setState({
                   isPreviousSubmissionsOpen: evt.currentTarget.open,

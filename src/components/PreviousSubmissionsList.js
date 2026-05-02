@@ -35,7 +35,7 @@ class PreviousSubmissionsList extends React.Component {
         </CSVLink>
         <ul>
           {submissions.map(submission => (
-            <li key={submission.objectId}>
+            <li key={submission.objectId} id={submission.objectId}>
               <SubmissionDetails
                 submission={submission}
                 onDeleteSubmission={onDeleteSubmission}

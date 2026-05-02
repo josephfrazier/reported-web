@@ -635,27 +635,30 @@ class Home extends React.Component {
     });
 
     const now = Date.now();
-    if (
-      this.state.submissions.some(submission => {
-        const timeDifference =
-          now - new Date(submission.timeofreport).valueOf();
-        const thirtyDaysInMilliseconds = 30 * 24 * 60 * 60 * 1000;
-        const olderThanThirtyDays =
-          timeDifference / thirtyDaysInMilliseconds > 1;
-        if (olderThanThirtyDays) {
-          return false;
-        }
 
-        return (
-          (submission.license === plate || submission.medallionNo === plate) &&
-          submission.state === licenseState
-        );
-      })
-    ) {
+    const priorSubmissions = this.state.submissions.filter(submission => {
+      const timeDifference = now - new Date(submission.timeofreport).valueOf();
+      const thirtyDaysInMilliseconds = 30 * 24 * 60 * 60 * 1000;
+      const olderThanThirtyDays = timeDifference / thirtyDaysInMilliseconds > 1;
+      if (olderThanThirtyDays) {
+        return false;
+      }
+
+      return (
+        (submission.license === plate || submission.medallionNo === plate) &&
+        submission.state === licenseState
+      );
+    });
+
+    const priorCount = priorSubmissions.length;
+
+    if (priorCount > 0) {
+      const pluralReport = priorCount === 1 ? 'report' : 'reports';
+
       Home.notifyWarning(
         <p>
-          You have already submitted a report for {plate} in {licenseState}, are
-          you sure you want to submit another?
+          You have already submitted {priorCount} {pluralReport} for {plate} in{' '}
+          {licenseState}, are you sure you want to submit another?
         </p>,
       );
     }

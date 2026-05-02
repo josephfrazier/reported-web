@@ -456,7 +456,6 @@ class Home extends React.Component {
     this.initialStatePersistent = initialStatePersistent;
     this.userFormSubmitRef = React.createRef();
     this.plateRef = React.createRef();
-    this.previousSubmissionsDetailsRef = React.createRef();
   }
 
   componentDidMount() {
@@ -668,9 +667,6 @@ class Home extends React.Component {
                 <a
                   href={`#${submission.objectId}`}
                   onClick={() => {
-                    if (this.previousSubmissionsDetailsRef.current) {
-                      this.previousSubmissionsDetailsRef.current.open = true;
-                    }
                     this.setState(
                       { isPreviousSubmissionsOpen: true },
                       () => {
@@ -1778,7 +1774,7 @@ class Home extends React.Component {
             <br />
 
             <details
-              ref={this.previousSubmissionsDetailsRef}
+              open={this.state.isPreviousSubmissionsOpen || undefined}
               onToggle={evt =>
                 this.setState({
                   isPreviousSubmissionsOpen: evt.currentTarget.open,

@@ -435,6 +435,7 @@ class Home extends React.Component {
       isUserInfoSaving: false,
       isSubmitting: false,
       plateSuggestions: [],
+      allPlateResults: [],
       vehicleInfoComponent: null,
       violationSummaryComponent: null,
       submissions: [],
@@ -864,6 +865,7 @@ class Home extends React.Component {
                   }
                   this.setState(state => ({
                     plateSuggestions: result.plateSuggestions,
+                    allPlateResults: result.allPlateResults,
                     plateThumbnailsByKey: {
                       ...state.plateThumbnailsByKey,
                       ...getPlateThumbnailsByKey(result.allPlateResults),
@@ -1317,6 +1319,7 @@ class Home extends React.Component {
                       attachmentData: [],
                       submissions: [submission].concat(state.submissions),
                       plateSuggestions: [],
+                      allPlateResults: [],
                       plateThumbnailsByKey: {},
                       vehicleInfoComponent: null,
                       violationSummaryComponent: null,
@@ -1496,9 +1499,14 @@ class Home extends React.Component {
                         ref={this.plateRef}
                         placeholder={this.state.plateSuggestions[0]}
                         onChange={event => {
-                          this.setLicensePlate({
-                            plate: event.target.value.toUpperCase(),
-                          });
+                          const plate = event.target.value.toUpperCase();
+                          const matchedResult = this.state.allPlateResults.find(
+                            r => r.plate.toUpperCase() === plate,
+                          );
+                          const licenseState = matchedResult
+                            ? getLicenseStateFromPlateResult(matchedResult)
+                            : null;
+                          this.setLicensePlate({ plate, licenseState });
                         }}
                       />
                       <datalist id="plateSuggestions">

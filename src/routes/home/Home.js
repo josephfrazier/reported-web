@@ -644,10 +644,7 @@ class Home extends React.Component {
         return false;
       }
 
-      return (
-        (submission.license === plate || submission.medallionNo === plate) &&
-        submission.state === licenseState
-      );
+      return submission.license === plate || submission.medallionNo === plate;
     });
 
     const priorCount = priorSubmissions.length;
@@ -657,8 +654,8 @@ class Home extends React.Component {
 
       Home.notifyWarning(
         <p>
-          You have already submitted {priorCount} {pluralReport} for {plate} in{' '}
-          {licenseState}, are you sure you want to submit another?
+          You have already submitted {priorCount} {pluralReport} for {plate} on{' '}
+          {selectedDateDay}, are you sure you want to submit another?
         </p>,
       );
     }

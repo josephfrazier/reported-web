@@ -634,13 +634,13 @@ class Home extends React.Component {
         : null,
     });
 
-    const now = Date.now();
+    const selectedDate = new Date(this.state.CreateDate);
+    const selectedDateDay = selectedDate.toDateString();
 
     const priorSubmissions = this.state.submissions.filter(submission => {
-      const timeDifference = now - new Date(submission.timeofreport).valueOf();
-      const thirtyDaysInMilliseconds = 30 * 24 * 60 * 60 * 1000;
-      const olderThanThirtyDays = timeDifference / thirtyDaysInMilliseconds > 1;
-      if (olderThanThirtyDays) {
+      const submissionDate = new Date(submission.timeofreport);
+      const isSameDay = submissionDate.toDateString() === selectedDateDay;
+      if (!isSameDay) {
         return false;
       }
 

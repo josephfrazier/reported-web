@@ -363,15 +363,6 @@
     letter-spacing: 0.04em;
     text-align: center;
   }
-
-  #draw-error {
-    font-size: 0.67rem;
-    color: var(--reckless);
-    letter-spacing: 0.03em;
-    display: none;
-    max-width: 640px;
-    text-align: center;
-  }
 </style>
 </head>
 <body>
@@ -411,7 +402,6 @@
     <p>Draw a bounding box on the map to fetch public submissions in that area. Click the rectangle tool <strong style="color:var(--text)">▭</strong> in the top-left of the map, then drag to select an area.</p>
     <div id="draw-map"></div>
     <div id="draw-status">Select the rectangle tool and drag to define an area.</div>
-    <div id="draw-error"></div>
   </div>
 </div>
 
@@ -635,7 +625,6 @@ document.getElementById('reset-btn').addEventListener('click', () => {
   popup.classList.remove('visible', 'pinned');
   if (drawnItems) drawnItems.clearLayers();
   document.getElementById('draw-status').textContent = 'Select the rectangle tool and drag to define an area.';
-  document.getElementById('draw-error').style.display = 'none';
   clearUrlBbox();
 });
 
@@ -698,8 +687,6 @@ function initDrawMap() {
 
 async function fetchAndLoadBbox(bounds) {
   const statusEl = document.getElementById('draw-status');
-  const errorEl  = document.getElementById('draw-error');
-  errorEl.style.display = 'none';
   statusEl.textContent = 'Loading submissions\u2026';
 
   const minLat = bounds.getSouth();
@@ -722,17 +709,15 @@ async function fetchAndLoadBbox(bounds) {
     }
     statusEl.textContent = 'Select the rectangle tool and drag to define an area.';
     if (data.capped) {
-      errorEl.textContent = `Results are capped at ${data.results.length.toLocaleString()} submissions. Draw a smaller box to see all reports in an area.`;
-      errorEl.style.display = 'block';
+      window.alert(`Results are capped at ${data.results.length.toLocaleString()} submissions. Draw a smaller box to see all reports in an area.`);
     }
     loadMap(data.results);
   } catch (e) {
     statusEl.textContent = 'Select the rectangle tool and drag to define an area.';
     const isNetworkError = e instanceof TypeError;
-    errorEl.textContent = isNetworkError
+    window.alert(isNetworkError
       ? 'Network error: could not reach the server. Please check your connection and try again.'
-      : `Error: ${e.message}`;
-    errorEl.style.display = 'block';
+      : `Error: ${e.message}`);
   }
 }
 

@@ -576,9 +576,10 @@ app.get('/api/submissions-bbox', (req, res) => {
     parsedMinLat >= parsedMaxLat ||
     parsedMinLng >= parsedMaxLng
   ) {
-    res
-      .status(400)
-      .json({ error: 'Invalid bounding box: provide minLat, maxLat, minLng, maxLng as numbers with minLat < maxLat and minLng < maxLng.' });
+    res.status(400).json({
+      error:
+        'Invalid bounding box: provide minLat, maxLat, minLng, maxLng as numbers with minLat < maxLat and minLng < maxLng.',
+    });
     return;
   }
 

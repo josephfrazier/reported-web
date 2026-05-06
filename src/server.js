@@ -570,7 +570,9 @@ app.get('/api/submissions-bbox', (req, res) => {
   const parsedMaxLng = parseFloat(maxLng);
 
   if (
-    [parsedMinLat, parsedMaxLat, parsedMinLng, parsedMaxLng].some(isNaN) ||
+    [parsedMinLat, parsedMaxLat, parsedMinLng, parsedMaxLng].some(
+      Number.isNaN,
+    ) ||
     parsedMinLat >= parsedMaxLat ||
     parsedMinLng >= parsedMaxLng
   ) {

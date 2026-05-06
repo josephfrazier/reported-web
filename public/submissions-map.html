@@ -744,38 +744,55 @@ async function fetchAndLoadBbox(bounds) {
 // ── URL PARAMS ──
 function updateUrlWithBbox(minLat, maxLat, minLng, maxLng) {
   const params = new URLSearchParams({ minLat, maxLat, minLng, maxLng });
-  history.replaceState(null, '', `?${params}`);
+  history.pushState(null, '', `?${params}`);
 }
 
 function clearUrlBbox() {
   history.replaceState(null, '', window.location.pathname);
 }
 
-// On load: if bbox params are in the URL, activate Draw Area tab and fetch immediately
-(function loadFromUrl() {
+// Apply whatever state the current URL describes.
+// Called on initial load and whenever the user navigates back/forward.
+function applyUrlState() {
   const params = new URLSearchParams(window.location.search);
   const minLat = params.get('minLat');
   const maxLat = params.get('maxLat');
   const minLng = params.get('minLng');
   const maxLng = params.get('maxLng');
-  if (!minLat || !maxLat || !minLng || !maxLng) return;
 
-  // Activate Draw Area tab (also calls initDrawMap, which sets drawnItems)
-  document.getElementById('tab-draw').click();
+  if (minLat && maxLat && minLng && maxLng) {
+    // Ensure paste screen is visible (we may be coming back from the map screen)
+    document.getElementById('map-screen').style.display = 'none';
+    document.getElementById('paste-screen').style.display = 'flex';
 
-  // Wait for the draw map to be initialised, then fetch
-  const bounds = L.latLngBounds(
-    L.latLng(parseFloat(minLat), parseFloat(minLng)),
-    L.latLng(parseFloat(maxLat), parseFloat(maxLng)),
-  );
+    // Activate Draw Area tab (also calls initDrawMap, which sets drawnItems)
+    document.getElementById('tab-draw').click();
 
-  // Show the rectangle on the draw map to indicate the queried area
-  const rect = L.rectangle(bounds, { color: '#d4ff4e', weight: 2, fillOpacity: 0.08 });
-  drawnItems.addLayer(rect);
-  drawMap.fitBounds(bounds, { padding: [20, 20] });
+    const bounds = L.latLngBounds(
+      L.latLng(parseFloat(minLat), parseFloat(minLng)),
+      L.latLng(parseFloat(maxLat), parseFloat(maxLng)),
+    );
 
-  fetchAndLoadBbox(bounds);
-})();
+    // Show the rectangle on the draw map to indicate the queried area
+    drawnItems.clearLayers();
+    const rect = L.rectangle(bounds, { color: '#d4ff4e', weight: 2, fillOpacity: 0.08 });
+    drawnItems.addLayer(rect);
+    drawMap.fitBounds(bounds, { padding: [20, 20] });
+
+    fetchAndLoadBbox(bounds);
+  } else {
+    // No bbox params — return to the paste/draw screen
+    document.getElementById('map-screen').style.display = 'none';
+    document.getElementById('paste-screen').style.display = 'flex';
+    pinned = false;
+    popup.classList.remove('visible', 'pinned');
+  }
+}
+
+window.addEventListener('popstate', applyUrlState);
+
+// On load: apply the URL state (handles direct links with bbox params)
+applyUrlState();
 </script>
 </body>
 </html>

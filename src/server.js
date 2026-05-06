@@ -597,7 +597,7 @@ app.get('/api/submissions-bbox', (req, res) => {
         const json = obj.toJSON();
         return Object.fromEntries(BBOX_FIELDS.map(k => [k, json[k] ?? null]));
       });
-      res.json({ results });
+      res.json({ results, capped: results.length >= BBOX_RESULT_LIMIT });
     })
     .catch(handlePromiseRejection(res));
 });

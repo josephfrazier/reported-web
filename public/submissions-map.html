@@ -721,6 +721,10 @@ async function fetchAndLoadBbox(bounds) {
       return;
     }
     statusEl.textContent = 'Select the rectangle tool and drag to define an area.';
+    if (data.capped) {
+      errorEl.textContent = `Results are capped at ${data.results.length.toLocaleString()} submissions. Draw a smaller box to see all reports in an area.`;
+      errorEl.style.display = 'block';
+    }
     loadMap(data.results);
   } catch (e) {
     statusEl.textContent = 'Select the rectangle tool and drag to define an area.';

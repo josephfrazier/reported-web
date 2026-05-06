@@ -751,7 +751,7 @@ function clearUrlBbox() {
   const maxLng = params.get('maxLng');
   if (!minLat || !maxLat || !minLng || !maxLng) return;
 
-  // Activate Draw Area tab
+  // Activate Draw Area tab (also calls initDrawMap, which sets drawnItems)
   document.getElementById('tab-draw').click();
 
   // Wait for the draw map to be initialised, then fetch
@@ -759,6 +759,12 @@ function clearUrlBbox() {
     L.latLng(parseFloat(minLat), parseFloat(minLng)),
     L.latLng(parseFloat(maxLat), parseFloat(maxLng)),
   );
+
+  // Show the rectangle on the draw map to indicate the queried area
+  const rect = L.rectangle(bounds, { color: '#d4ff4e', weight: 2, fillOpacity: 0.08 });
+  drawnItems.addLayer(rect);
+  drawMap.fitBounds(bounds, { padding: [20, 20] });
+
   fetchAndLoadBbox(bounds);
 })();
 </script>

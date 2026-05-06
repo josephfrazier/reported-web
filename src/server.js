@@ -545,6 +545,56 @@ app.get('/submissions-map', (req, res) => {
   res.sendFile(path.resolve(__dirname, 'public', 'submissions-map.html'));
 });
 
+app.get('/api/submissions-bbox', (req, res) => {
+  const { minLat, maxLat, minLng, maxLng } = req.query;
+
+  const Submission = Parse.Object.extend('submission');
+  const query = new Parse.Query(Submission);
+  query.greaterThanOrEqualTo('latitude1', parseFloat(minLat));
+  query.lessThanOrEqualTo('latitude1', parseFloat(maxLat));
+  query.greaterThanOrEqualTo('longitude1', parseFloat(minLng));
+  query.lessThanOrEqualTo('longitude1', parseFloat(maxLng));
+  query.equalTo('can_be_shared_publicly', true);
+  query.limit(Number.MAX_SAFE_INTEGER);
+  query.select([
+    'location',
+    'timeofreport',
+    'license',
+    'state',
+    'typeofcomplaint',
+    'loc1_address',
+    'reqnumber',
+    'photoData0',
+    'photoData1',
+    'photoData2',
+    'can_be_shared_publicly',
+  ]);
+
+  query
+    .find()
+    .then(parseResults => {
+      const fields = [
+        'location',
+        'timeofreport',
+        'license',
+        'state',
+        'typeofcomplaint',
+        'loc1_address',
+        'reqnumber',
+        'photoData0',
+        'photoData1',
+        'photoData2',
+        'can_be_shared_publicly',
+      ];
+      const results = parseResults.map(obj => {
+        const json = obj.toJSON();
+        return Object.fromEntries(fields.map(k => [k, json[k] ?? null]));
+      });
+      res.json({ results });
+    })
+    .catch(handlePromiseRejection(res));
+});
+
 //
 // Register server-side rendering middleware
 // -----------------------------------------------------------------------------

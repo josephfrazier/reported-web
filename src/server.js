@@ -545,50 +545,57 @@ app.get('/submissions-map', (req, res) => {
   res.sendFile(path.resolve(__dirname, 'public', 'submissions-map.html'));
 });
 
+const BBOX_FIELDS = [
+  'location',
+  'timeofreport',
+  'license',
+  'state',
+  'typeofcomplaint',
+  'loc1_address',
+  'reqnumber',
+  'photoData0',
+  'photoData1',
+  'photoData2',
+  'can_be_shared_publicly',
+];
+
+const BBOX_RESULT_LIMIT = 10000;
+
 app.get('/api/submissions-bbox', (req, res) => {
   const { minLat, maxLat, minLng, maxLng } = req.query;
 
+  const parsedMinLat = parseFloat(minLat);
+  const parsedMaxLat = parseFloat(maxLat);
+  const parsedMinLng = parseFloat(minLng);
+  const parsedMaxLng = parseFloat(maxLng);
+
+  if (
+    [parsedMinLat, parsedMaxLat, parsedMinLng, parsedMaxLng].some(isNaN) ||
+    parsedMinLat >= parsedMaxLat ||
+    parsedMinLng >= parsedMaxLng
+  ) {
+    res
+      .status(400)
+      .json({ error: 'Invalid bounding box: provide minLat, maxLat, minLng, maxLng as numbers with minLat < maxLat and minLng < maxLng.' });
+    return;
+  }
+
   const Submission = Parse.Object.extend('submission');
   const query = new Parse.Query(Submission);
-  query.greaterThanOrEqualTo('latitude1', parseFloat(minLat));
-  query.lessThanOrEqualTo('latitude1', parseFloat(maxLat));
-  query.greaterThanOrEqualTo('longitude1', parseFloat(minLng));
-  query.lessThanOrEqualTo('longitude1', parseFloat(maxLng));
+  query.greaterThanOrEqualTo('latitude1', parsedMinLat);
+  query.lessThanOrEqualTo('latitude1', parsedMaxLat);
+  query.greaterThanOrEqualTo('longitude1', parsedMinLng);
+  query.lessThanOrEqualTo('longitude1', parsedMaxLng);
   query.equalTo('can_be_shared_publicly', true);
-  query.limit(Number.MAX_SAFE_INTEGER);
-  query.select([
-    'location',
-    'timeofreport',
-    'license',
-    'state',
-    'typeofcomplaint',
-    'loc1_address',
-    'reqnumber',
-    'photoData0',
-    'photoData1',
-    'photoData2',
-    'can_be_shared_publicly',
-  ]);
+  query.limit(BBOX_RESULT_LIMIT);
+  query.select(BBOX_FIELDS);
 
   query
     .find()
     .then(parseResults => {
-      const fields = [
-        'location',
-        'timeofreport',
-        'license',
-        'state',
-        'typeofcomplaint',
-        'loc1_address',
-        'reqnumber',
-        'photoData0',
-        'photoData1',
-        'photoData2',
-        'can_be_shared_publicly',
-      ];
       const results = parseResults.map(obj => {
         const json = obj.toJSON();
-        return Object.fromEntries(fields.map(k => [k, json[k] ?? null]));
+        return Object.fromEntries(BBOX_FIELDS.map(k => [k, json[k] ?? null]));
       });
       res.json({ results });
     })

@@ -454,6 +454,9 @@ const COMPLAINT_COLORS = {
   'illegal': '#b87fff',
 };
 
+const DEFAULT_MAP_CENTER = [40.72, -73.98];
+const DEFAULT_MAP_ZOOM = 12;
+
 function colorFor(complaint) {
   if (!complaint) return '#aaaaaa';
   const lower = complaint.toLowerCase();
@@ -660,7 +663,7 @@ function initDrawMap() {
     setTimeout(() => drawMap.invalidateSize(), 60);
     return;
   }
-  drawMap = L.map('draw-map').setView([40.72, -73.98], 12);
+  drawMap = L.map('draw-map').setView(DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors',
     maxZoom: 19,
@@ -706,7 +709,10 @@ async function fetchAndLoadBbox(bounds) {
     const resp = await fetch(
       `/api/submissions-bbox?minLat=${encodeURIComponent(minLat)}&maxLat=${encodeURIComponent(maxLat)}&minLng=${encodeURIComponent(minLng)}&maxLng=${encodeURIComponent(maxLng)}`
     );
-    if (!resp.ok) throw new Error(`Server error: ${resp.status}`);
+    if (!resp.ok) {
+      const body = await resp.json().catch(() => ({}));
+      throw new Error(body.error || `Unexpected server error (HTTP ${resp.status}). Please try again.`);
+    }
     const data = await resp.json();
     if (!data.results || data.results.length === 0) {
       statusEl.textContent = 'No public submissions found in this area. Try a larger area.';
@@ -716,7 +722,10 @@ async function fetchAndLoadBbox(bounds) {
     loadMap(data.results);
   } catch (e) {
     statusEl.textContent = 'Select the rectangle tool and drag to define an area.';
-    errorEl.textContent = `Error: ${e.message}`;
+    const isNetworkError = e instanceof TypeError;
+    errorEl.textContent = isNetworkError
+      ? 'Network error: could not reach the server. Please check your connection and try again.'
+      : `Error: ${e.message}`;
     errorEl.style.display = 'block';
   }
 }

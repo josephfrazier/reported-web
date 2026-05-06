@@ -636,6 +636,7 @@ document.getElementById('reset-btn').addEventListener('click', () => {
   if (drawnItems) drawnItems.clearLayers();
   document.getElementById('draw-status').textContent = 'Select the rectangle tool and drag to define an area.';
   document.getElementById('draw-error').style.display = 'none';
+  clearUrlBbox();
 });
 
 // ── TAB SWITCHING ──
@@ -688,6 +689,7 @@ function initDrawMap() {
     drawnItems.clearLayers();
     drawnItems.addLayer(e.layer);
     const bounds = e.layer.getBounds();
+    updateUrlWithBbox(bounds.getSouth(), bounds.getNorth(), bounds.getWest(), bounds.getEast());
     await fetchAndLoadBbox(bounds);
   });
 
@@ -729,6 +731,36 @@ async function fetchAndLoadBbox(bounds) {
     errorEl.style.display = 'block';
   }
 }
+
+// ── URL PARAMS ──
+function updateUrlWithBbox(minLat, maxLat, minLng, maxLng) {
+  const params = new URLSearchParams({ minLat, maxLat, minLng, maxLng });
+  history.replaceState(null, '', `?${params}`);
+}
+
+function clearUrlBbox() {
+  history.replaceState(null, '', window.location.pathname);
+}
+
+// On load: if bbox params are in the URL, activate Draw Area tab and fetch immediately
+(function loadFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const minLat = params.get('minLat');
+  const maxLat = params.get('maxLat');
+  const minLng = params.get('minLng');
+  const maxLng = params.get('maxLng');
+  if (!minLat || !maxLat || !minLng || !maxLng) return;
+
+  // Activate Draw Area tab
+  document.getElementById('tab-draw').click();
+
+  // Wait for the draw map to be initialised, then fetch
+  const bounds = L.latLngBounds(
+    L.latLng(parseFloat(minLat), parseFloat(minLng)),
+    L.latLng(parseFloat(maxLat), parseFloat(maxLng)),
+  );
+  fetchAndLoadBbox(bounds);
+})();
 </script>
 </body>
 </html>

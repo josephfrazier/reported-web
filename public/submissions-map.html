@@ -748,7 +748,7 @@ function updateUrlWithBbox(minLat, maxLat, minLng, maxLng) {
 }
 
 function clearUrlBbox() {
-  history.replaceState(null, '', window.location.pathname);
+  history.pushState(null, '', window.location.pathname);
 }
 
 // Apply whatever state the current URL describes.

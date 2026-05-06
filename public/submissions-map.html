@@ -357,6 +357,24 @@
     overflow: hidden;
   }
 
+  /* When "Draw Area" tab is active, expand to fill the viewport */
+  #paste-screen.draw-active {
+    justify-content: flex-start;
+  }
+
+  #paste-screen.draw-active #panel-draw {
+    flex: 1;
+    align-self: stretch;
+    max-width: none;
+    min-height: 0;
+  }
+
+  #paste-screen.draw-active #draw-map {
+    flex: 1;
+    height: auto;
+    min-height: 0;
+  }
+
   #draw-status {
     font-size: 0.65rem;
     color: var(--muted);
@@ -634,6 +652,7 @@ document.getElementById('tab-paste').addEventListener('click', () => {
   document.getElementById('tab-draw').classList.remove('active');
   document.getElementById('panel-paste').style.display = 'flex';
   document.getElementById('panel-draw').style.display = 'none';
+  document.getElementById('paste-screen').classList.remove('draw-active');
 });
 
 document.getElementById('tab-draw').addEventListener('click', () => {
@@ -641,6 +660,7 @@ document.getElementById('tab-draw').addEventListener('click', () => {
   document.getElementById('tab-paste').classList.remove('active');
   document.getElementById('panel-paste').style.display = 'none';
   document.getElementById('panel-draw').style.display = 'flex';
+  document.getElementById('paste-screen').classList.add('draw-active');
   initDrawMap();
 });
 

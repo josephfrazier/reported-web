@@ -253,7 +253,7 @@ async function extractPlate({
 
     if (isAlprEnabled === false) {
       console.info('ALPR is disabled, skipping');
-      return { plate: '', licenseState: '', plateSuggestions: [] };
+      return { plate: '', licenseState: '' };
     }
 
     const results = await fetchPlateResults({
@@ -278,7 +278,6 @@ async function extractPlate({
       result.licenseState = null;
     }
     result.plate = result.plate.toUpperCase();
-    result.plateSuggestions = results.map(r => r.plate.toUpperCase());
     result.allPlateResults = results;
 
     return result;
@@ -434,7 +433,6 @@ class Home extends React.Component {
       isPasswordRevealed: false,
       isUserInfoSaving: false,
       isSubmitting: false,
-      plateSuggestions: [],
       allPlateResults: [],
       vehicleInfoComponent: null,
       violationSummaryComponent: null,
@@ -864,7 +862,6 @@ class Home extends React.Component {
                     this.setLicensePlate(result);
                   }
                   this.setState(state => ({
-                    plateSuggestions: result.plateSuggestions,
                     allPlateResults: result.allPlateResults,
                     plateThumbnailsByKey: {
                       ...state.plateThumbnailsByKey,
@@ -1318,7 +1315,6 @@ class Home extends React.Component {
                     this.setState(state => ({
                       attachmentData: [],
                       submissions: [submission].concat(state.submissions),
-                      plateSuggestions: [],
                       allPlateResults: [],
                       plateThumbnailsByKey: {},
                       vehicleInfoComponent: null,
@@ -1497,7 +1493,9 @@ class Home extends React.Component {
                         list="plateSuggestions"
                         autoComplete="off"
                         ref={this.plateRef}
-                        placeholder={this.state.plateSuggestions[0]}
+                        placeholder={
+                          this.state.allPlateResults[0]?.plate.toUpperCase()
+                        }
                         onChange={event => {
                           const plate = event.target.value.toUpperCase();
                           const matchedResult = this.state.allPlateResults.find(
@@ -1510,8 +1508,8 @@ class Home extends React.Component {
                         }}
                       />
                       <datalist id="plateSuggestions">
-                        {this.state.plateSuggestions.map(plateSuggestion => (
-                          <option value={plateSuggestion} />
+                        {this.state.allPlateResults.map(result => (
+                          <option value={result.plate.toUpperCase()} />
                         ))}
                       </datalist>
                       <select

@@ -417,9 +417,9 @@
   </div>
 
   <div id="panel-draw">
-    <p>Draw a bounding box on the map to fetch public submissions in that area. Click the rectangle tool <strong style="color:var(--text)">▭</strong> in the top-left of the map, then drag to select an area.</p>
+    <p>Draw a polygon on the map to fetch public submissions in that area. Click the polygon tool <strong style="color:var(--text)">⬠</strong> in the top-left of the map, then click to add vertices. Double-click to finish.</p>
     <div id="draw-map"></div>
-    <div id="draw-status">Select the rectangle tool and drag to define an area.</div>
+    <div id="draw-status">Select the polygon tool and draw a shape on the map.</div>
   </div>
 </div>
 
@@ -642,8 +642,8 @@ document.getElementById('reset-btn').addEventListener('click', () => {
   pinned = false;
   popup.classList.remove('visible', 'pinned');
   if (drawnItems) drawnItems.clearLayers();
-  document.getElementById('draw-status').textContent = 'Select the rectangle tool and drag to define an area.';
-  clearUrlBbox();
+  document.getElementById('draw-status').textContent = 'Select the polygon tool and draw a shape on the map.';
+  clearUrlParams();
 });
 
 // ── TAB SWITCHING ──
@@ -683,8 +683,11 @@ function initDrawMap() {
 
   const drawControl = new L.Control.Draw({
     draw: {
-      rectangle: { shapeOptions: { color: '#d4ff4e', weight: 2, fillOpacity: 0.08 } },
-      polygon: false,
+      rectangle: false,
+      polygon: {
+        shapeOptions: { color: '#d4ff4e', weight: 2, fillOpacity: 0.08 },
+        allowIntersection: false,
+      },
       circle: false,
       polyline: false,
       marker: false,
@@ -697,26 +700,33 @@ function initDrawMap() {
   drawMap.on(L.Draw.Event.CREATED, async (e) => {
     drawnItems.clearLayers();
     drawnItems.addLayer(e.layer);
-    const bounds = e.layer.getBounds();
-    updateUrlWithBbox(bounds.getSouth(), bounds.getNorth(), bounds.getWest(), bounds.getEast());
-    await fetchAndLoadBbox(bounds);
+    const polygonLatLngs = e.layer.getLatLngs()[0];
+    // Strip the closing duplicate vertex that Leaflet adds
+    const last = polygonLatLngs[polygonLatLngs.length - 1];
+    const vertices =
+      polygonLatLngs.length > 1 &&
+      polygonLatLngs[0].lat === last.lat &&
+      polygonLatLngs[0].lng === last.lng
+        ? polygonLatLngs.slice(0, -1)
+        : polygonLatLngs;
+    updateUrlWithPolygon(vertices);
+    await fetchAndLoadPolygon(vertices);
   });
 
   setTimeout(() => drawMap.invalidateSize(), 60);
 }
 
-async function fetchAndLoadBbox(bounds) {
+async function fetchAndLoadPolygon(vertices) {
   const statusEl = document.getElementById('draw-status');
   statusEl.textContent = 'Loading submissions\u2026';
 
-  const minLat = bounds.getSouth();
-  const maxLat = bounds.getNorth();
-  const minLng = bounds.getWest();
-  const maxLng = bounds.getEast();
+  const polygonStr = vertices
+    .map(ll => `${ll.lat.toFixed(6)},${ll.lng.toFixed(6)}`)
+    .join(';');
 
   try {
     const resp = await fetch(
-      `/api/submissions-bbox?minLat=${encodeURIComponent(minLat)}&maxLat=${encodeURIComponent(maxLat)}&minLng=${encodeURIComponent(minLng)}&maxLng=${encodeURIComponent(maxLng)}`
+      `/api/submissions-in-polygon?polygon=${encodeURIComponent(polygonStr)}`
     );
     if (!resp.ok) {
       const body = await resp.json().catch(() => ({}));
@@ -724,16 +734,16 @@ async function fetchAndLoadBbox(bounds) {
     }
     const data = await resp.json();
     if (!data.results || data.results.length === 0) {
-      statusEl.textContent = 'No public submissions found in this area. Try a larger area.';
+      statusEl.textContent = 'No public submissions found inside this polygon. Try a larger area.';
       return;
     }
-    statusEl.textContent = 'Select the rectangle tool and drag to define an area.';
+    statusEl.textContent = 'Select the polygon tool and draw a shape on the map.';
     if (data.capped) {
-      window.alert(`Results are capped at ${data.results.length.toLocaleString()} submissions. Draw a smaller box to see all reports in an area.`);
+      window.alert(`Results are capped at ${data.results.length.toLocaleString()} submissions. Draw a smaller polygon to see all reports in an area.`);
     }
     loadMap(data.results);
   } catch (e) {
-    statusEl.textContent = 'Select the rectangle tool and drag to define an area.';
+    statusEl.textContent = 'Select the polygon tool and draw a shape on the map.';
     const isNetworkError = e instanceof TypeError;
     window.alert(isNetworkError
       ? 'Network error: could not reach the server. Please check your connection and try again.'
@@ -742,12 +752,15 @@ async function fetchAndLoadBbox(bounds) {
 }
 
 // ── URL PARAMS ──
-function updateUrlWithBbox(minLat, maxLat, minLng, maxLng) {
-  const params = new URLSearchParams({ minLat, maxLat, minLng, maxLng });
+function updateUrlWithPolygon(vertices) {
+  const polygonStr = vertices
+    .map(ll => `${ll.lat.toFixed(6)},${ll.lng.toFixed(6)}`)
+    .join(';');
+  const params = new URLSearchParams({ polygon: polygonStr });
   history.pushState(null, '', `?${params}`);
 }
 
-function clearUrlBbox() {
+function clearUrlParams() {
   history.pushState(null, '', window.location.pathname);
 }
 
@@ -755,33 +768,28 @@ function clearUrlBbox() {
 // Called on initial load and whenever the user navigates back/forward.
 function applyUrlState() {
   const params = new URLSearchParams(window.location.search);
-  const minLat = params.get('minLat');
-  const maxLat = params.get('maxLat');
-  const minLng = params.get('minLng');
-  const maxLng = params.get('maxLng');
+  const polygonStr = params.get('polygon');
 
-  if (minLat && maxLat && minLng && maxLng) {
-    // Ensure paste screen is visible (we may be coming back from the map screen)
+  if (polygonStr) {
     document.getElementById('map-screen').style.display = 'none';
     document.getElementById('paste-screen').style.display = 'flex';
 
-    // Activate Draw Area tab (also calls initDrawMap, which sets drawnItems)
     document.getElementById('tab-draw').click();
 
-    const bounds = L.latLngBounds(
-      L.latLng(parseFloat(minLat), parseFloat(minLng)),
-      L.latLng(parseFloat(maxLat), parseFloat(maxLng)),
-    );
+    const vertices = polygonStr.split(';').map(pair => {
+      const [lat, lng] = pair.split(',');
+      return [parseFloat(lat), parseFloat(lng)];
+    });
 
-    // Show the rectangle on the draw map to indicate the queried area
     drawnItems.clearLayers();
-    const rect = L.rectangle(bounds, { color: '#d4ff4e', weight: 2, fillOpacity: 0.08 });
-    drawnItems.addLayer(rect);
-    drawMap.fitBounds(bounds, { padding: [20, 20] });
+    const polygon = L.polygon(vertices, { color: '#d4ff4e', weight: 2, fillOpacity: 0.08 });
+    drawnItems.addLayer(polygon);
+    drawMap.fitBounds(polygon.getBounds(), { padding: [20, 20] });
 
-    fetchAndLoadBbox(bounds);
+    const latLngs = vertices.map(v => L.latLng(v[0], v[1]));
+    fetchAndLoadPolygon(latLngs);
   } else {
-    // No bbox params — return to the paste/draw screen
+    // No params — return to the paste/draw screen
     document.getElementById('map-screen').style.display = 'none';
     document.getElementById('paste-screen').style.display = 'flex';
     pinned = false;
@@ -791,7 +799,7 @@ function applyUrlState() {
 
 window.addEventListener('popstate', applyUrlState);
 
-// On load: apply the URL state (handles direct links with bbox params)
+// On load: apply the URL state (handles direct links with polygon params)
 applyUrlState();
 </script>
 </body>

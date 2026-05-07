@@ -238,6 +238,22 @@
 
   #reset-btn:hover { color: var(--text); border-color: var(--text); }
 
+  .photo-filter {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.6rem;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+    user-select: none;
+  }
+
+  .photo-filter input {
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+
   #map { flex: 1; }
 
   /* ── POPUP ── */
@@ -436,6 +452,10 @@
       <div class="legend-item"><div class="legend-dot" style="background:var(--illegal)"></div>Illegal parking</div>
       <div class="legend-item"><div class="legend-dot" style="background:#aaa"></div>Other</div>
     </div>
+    <label class="photo-filter">
+      <input type="checkbox" id="photos-only-checkbox">
+      Photos only
+    </label>
     <button id="reset-btn">← New Data</button>
   </header>
   <div id="map"></div>
@@ -504,12 +524,17 @@ function parseInput(raw) {
 
 let map = null;
 let markerLayer = null;
+let allSubmissions = [];
+let currentPolygonStr = null;
+let loadedPolygonStr = null;
+let photosOnly = false;
 
 const popup     = document.getElementById('popup');
 const popupComp = document.getElementById('popup-complaint');
 const popupMeta = document.getElementById('popup-meta');
 const popupPics = document.getElementById('popup-photos');
 const closeBtn  = document.getElementById('popup-close');
+const photosOnlyCheckbox = document.getElementById('photos-only-checkbox');
 
 let hideTimer = null;
 let pinned    = false;
@@ -582,7 +607,31 @@ function pinPopup(e, s) {
   L.DomEvent.stopPropagation(e); // prevent map click from immediately closing it
 }
 
-function loadMap(submissions) {
+function hasAnyPhoto(submission) {
+  return [submission.photoData0, submission.photoData1, submission.photoData2].some(p => p && p.url);
+}
+
+function filteredSubmissions() {
+  if (!photosOnly) return allSubmissions;
+  return allSubmissions.filter(hasAnyPhoto);
+}
+
+function polygonToString(vertices) {
+  return vertices
+    .map(ll => `${ll.lat.toFixed(6)},${ll.lng.toFixed(6)}`)
+    .join(';');
+}
+
+function updateUrlFromState(push = true) {
+  const params = new URLSearchParams();
+  if (currentPolygonStr) params.set('polygon', currentPolygonStr);
+  if (photosOnly) params.set('photosOnly', '1');
+  const nextUrl = params.toString() ? `?${params}` : window.location.pathname;
+  if (push) history.pushState(null, '', nextUrl);
+  else history.replaceState(null, '', nextUrl);
+}
+
+function renderMap(submissions) {
   document.getElementById('paste-screen').style.display = 'none';
   const mapScreen = document.getElementById('map-screen');
   mapScreen.style.display = 'flex';
@@ -619,6 +668,21 @@ function loadMap(submissions) {
   setTimeout(() => map.invalidateSize(), 60);
 }
 
+function loadMap(submissions) {
+  allSubmissions = submissions;
+  renderMap(filteredSubmissions());
+}
+
+function applyPhotoFilter(pushHistory = true) {
+  renderMap(filteredSubmissions());
+  if (pushHistory) updateUrlFromState(true);
+}
+
+photosOnlyCheckbox.addEventListener('change', () => {
+  photosOnly = photosOnlyCheckbox.checked;
+  applyPhotoFilter(true);
+});
+
 document.getElementById('load-btn').addEventListener('click', () => {
   const raw = document.getElementById('json-input').value.trim();
   const errEl = document.getElementById('error-msg');
@@ -629,6 +693,9 @@ document.getElementById('load-btn').addEventListener('click', () => {
   try {
     const data = parseInput(raw);
     if (!Array.isArray(data) || data.length === 0) throw new Error('Expected a non-empty array of submission objects.');
+    currentPolygonStr = null;
+    loadedPolygonStr = null;
+    updateUrlFromState(true);
     loadMap(data);
   } catch(e) {
     errEl.textContent = `Parse error: ${e.message}`;
@@ -643,6 +710,11 @@ document.getElementById('reset-btn').addEventListener('click', () => {
   popup.classList.remove('visible', 'pinned');
   if (drawnItems) drawnItems.clearLayers();
   document.getElementById('draw-status').textContent = 'Select the polygon tool and draw a shape on the map.';
+  allSubmissions = [];
+  currentPolygonStr = null;
+  loadedPolygonStr = null;
+  photosOnly = false;
+  photosOnlyCheckbox.checked = false;
   clearUrlParams();
 });
 
@@ -709,7 +781,8 @@ function initDrawMap() {
       polygonLatLngs[0].lng === last.lng
         ? polygonLatLngs.slice(0, -1)
         : polygonLatLngs;
-    updateUrlWithPolygon(vertices);
+    currentPolygonStr = polygonToString(vertices);
+    updateUrlFromState(true);
     await fetchAndLoadPolygon(vertices);
   });
 
@@ -720,9 +793,7 @@ async function fetchAndLoadPolygon(vertices) {
   const statusEl = document.getElementById('draw-status');
   statusEl.textContent = 'Loading submissions\u2026';
 
-  const polygonStr = vertices
-    .map(ll => `${ll.lat.toFixed(6)},${ll.lng.toFixed(6)}`)
-    .join(';');
+  const polygonStr = polygonToString(vertices);
 
   try {
     const resp = await fetch(
@@ -734,6 +805,8 @@ async function fetchAndLoadPolygon(vertices) {
     }
     const data = await resp.json();
     if (!data.results || data.results.length === 0) {
+      allSubmissions = [];
+      loadedPolygonStr = currentPolygonStr;
       statusEl.textContent = 'No public submissions found inside this polygon. Try a larger area.';
       return;
     }
@@ -741,6 +814,7 @@ async function fetchAndLoadPolygon(vertices) {
     if (data.capped) {
       window.alert(`Results are capped at ${data.results.length.toLocaleString()} submissions. Draw a smaller polygon to see all reports in an area.`);
     }
+    loadedPolygonStr = currentPolygonStr;
     loadMap(data.results);
   } catch (e) {
     statusEl.textContent = 'Select the polygon tool and draw a shape on the map.';
@@ -752,14 +826,6 @@ async function fetchAndLoadPolygon(vertices) {
 }
 
 // ── URL PARAMS ──
-function updateUrlWithPolygon(vertices) {
-  const polygonStr = vertices
-    .map(ll => `${ll.lat.toFixed(6)},${ll.lng.toFixed(6)}`)
-    .join(';');
-  const params = new URLSearchParams({ polygon: polygonStr });
-  history.pushState(null, '', `?${params}`);
-}
-
 function clearUrlParams() {
   history.pushState(null, '', window.location.pathname);
 }
@@ -769,8 +835,12 @@ function clearUrlParams() {
 function applyUrlState() {
   const params = new URLSearchParams(window.location.search);
   const polygonStr = params.get('polygon');
+  photosOnly = params.get('photosOnly') === '1';
+  photosOnlyCheckbox.checked = photosOnly;
 
   if (polygonStr) {
+    const shouldRefetch = polygonStr !== loadedPolygonStr;
+    currentPolygonStr = polygonStr;
     document.getElementById('map-screen').style.display = 'none';
     document.getElementById('paste-screen').style.display = 'flex';
 
@@ -786,9 +856,23 @@ function applyUrlState() {
     drawnItems.addLayer(polygon);
     drawMap.fitBounds(polygon.getBounds(), { padding: [20, 20] });
 
-    const latLngs = vertices.map(v => L.latLng(v[0], v[1]));
-    fetchAndLoadPolygon(latLngs);
+    if (shouldRefetch) {
+      const latLngs = vertices.map(v => L.latLng(v[0], v[1]));
+      fetchAndLoadPolygon(latLngs);
+    } else {
+      applyPhotoFilter(false);
+    }
   } else {
+    currentPolygonStr = null;
+    if (
+      loadedPolygonStr == null &&
+      allSubmissions.length > 0 &&
+      document.getElementById('map-screen').style.display === 'flex'
+    ) {
+      applyPhotoFilter(false);
+      return;
+    }
+    loadedPolygonStr = null;
     // No params — return to the paste/draw screen
     document.getElementById('map-screen').style.display = 'none';
     document.getElementById('paste-screen').style.display = 'flex';

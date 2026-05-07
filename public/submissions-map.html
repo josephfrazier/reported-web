@@ -608,7 +608,7 @@ function pinPopup(e, s) {
 }
 
 function hasAnyPhoto(submission) {
-  return [submission.photoData0, submission.photoData1, submission.photoData2].some(p => p && p.url);
+  return Object.keys(submission).some(key => key.startsWith('photoData') && submission[key]?.url);
 }
 
 function filteredSubmissions() {
@@ -673,9 +673,9 @@ function loadMap(submissions) {
   renderMap(filteredSubmissions());
 }
 
-function applyPhotoFilter(pushHistory = true) {
+function applyPhotoFilter(shouldPushHistory = true) {
   renderMap(filteredSubmissions());
-  if (pushHistory) updateUrlFromState(true);
+  if (shouldPushHistory) updateUrlFromState(true);
 }
 
 photosOnlyCheckbox.addEventListener('change', () => {
@@ -864,10 +864,11 @@ function applyUrlState() {
     }
   } else {
     currentPolygonStr = null;
+    const mapScreenVisible = window.getComputedStyle(document.getElementById('map-screen')).display !== 'none';
     if (
       loadedPolygonStr === null &&
       allSubmissions.length > 0 &&
-      document.getElementById('map-screen').style.display === 'flex'
+      mapScreenVisible
     ) {
       applyPhotoFilter(false);
       return;

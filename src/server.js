@@ -586,7 +586,7 @@ app.get('/api/submissions-in-polygon', (req, res) => {
       if (lng < -180 || lng > 180) {
         throw new Error(`Vertex ${idx} longitude out of range (-180 to 180)`);
       }
-      return [lat, lng];
+      return [lng, lat];
     });
   } catch (e) {
     res.status(400).json({ error: e.message });

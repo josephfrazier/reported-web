@@ -567,7 +567,8 @@ app.get('/api/submissions-in-polygon', (req, res) => {
   const polygonParam = req.query.polygon;
   if (typeof polygonParam !== 'string' || !polygonParam.trim()) {
     res.status(400).json({
-      error: 'Query parameter "polygon" is required and must be a non-empty string.',
+      error:
+        'Query parameter "polygon" is required and must be a non-empty string.',
     });
     return;
   }

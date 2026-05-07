@@ -564,7 +564,15 @@ const POLYGON_RESULT_LIMIT = 10000;
 app.get('/api/submissions-in-polygon', (req, res) => {
   let polygonCoords = null;
 
-  const rawVertices = req.query.polygon.split(';');
+  const polygonParam = req.query.polygon;
+  if (typeof polygonParam !== 'string' || !polygonParam.trim()) {
+    res.status(400).json({
+      error: 'Query parameter "polygon" is required and must be a non-empty string.',
+    });
+    return;
+  }
+
+  const rawVertices = polygonParam.trim().split(';');
   if (rawVertices.length < 3) {
     res.status(400).json({ error: 'Polygon must have at least 3 vertices.' });
     return;

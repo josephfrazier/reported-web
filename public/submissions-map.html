@@ -865,7 +865,7 @@ function applyUrlState() {
   } else {
     currentPolygonStr = null;
     if (
-      loadedPolygonStr == null &&
+      loadedPolygonStr === null &&
       allSubmissions.length > 0 &&
       document.getElementById('map-screen').style.display === 'flex'
     ) {

@@ -452,7 +452,7 @@
       <div class="legend-item"><div class="legend-dot" style="background:var(--illegal)"></div>Illegal parking</div>
       <div class="legend-item"><div class="legend-dot" style="background:#aaa"></div>Other</div>
     </div>
-    <label class="photo-filter">
+    <label class="photo-filter" for="photos-only-checkbox">
       <input type="checkbox" id="photos-only-checkbox">
       Photos only
     </label>
@@ -675,14 +675,14 @@ function loadMap(submissions) {
   renderMap(filteredSubmissions());
 }
 
-function applyPhotoFilter(shouldPushHistory = true) {
+function applyPhotoFilter() {
   renderMap(filteredSubmissions());
-  if (shouldPushHistory) updateUrlFromState(true);
 }
 
 photosOnlyCheckbox.addEventListener('change', () => {
   photosOnly = photosOnlyCheckbox.checked;
-  applyPhotoFilter(true);
+  applyPhotoFilter();
+  updateUrlFromState(true);
 });
 
 document.getElementById('load-btn').addEventListener('click', () => {
@@ -842,7 +842,7 @@ function applyUrlState() {
   photosOnlyCheckbox.checked = photosOnly;
 
   if (polygonStr) {
-    const shouldRefetch = polygonStr !== loadedPolygonStr;
+    const polygonChanged = polygonStr !== loadedPolygonStr;
     currentPolygonStr = polygonStr;
     document.getElementById('map-screen').style.display = 'none';
     document.getElementById('paste-screen').style.display = 'flex';
@@ -860,11 +860,11 @@ function applyUrlState() {
     drawnItems.addLayer(polygon);
     drawMap.fitBounds(polygon.getBounds(), { padding: [20, 20] });
 
-    if (shouldRefetch) {
+    if (polygonChanged) {
       const latLngs = vertices.map(v => L.latLng(v[0], v[1]));
       fetchAndLoadPolygon(latLngs);
     } else {
-      applyPhotoFilter(false);
+      applyPhotoFilter();
     }
   } else {
     currentPolygonStr = null;
@@ -873,7 +873,7 @@ function applyUrlState() {
       allSubmissions.length > 0 &&
       mapScreenVisible
     ) {
-      applyPhotoFilter(false);
+      applyPhotoFilter();
       return;
     }
     loadedPolygonStr = null;

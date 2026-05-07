@@ -528,6 +528,7 @@ let allSubmissions = [];
 let currentPolygonStr = null;
 let loadedPolygonStr = null;
 let photosOnly = false;
+let mapScreenVisible = false;
 
 const popup     = document.getElementById('popup');
 const popupComp = document.getElementById('popup-complaint');
@@ -607,13 +608,13 @@ function pinPopup(e, s) {
   L.DomEvent.stopPropagation(e); // prevent map click from immediately closing it
 }
 
-function hasAnyPhoto(submission) {
+function hasPhotoWithUrl(submission) {
   return Object.keys(submission).some(key => key.startsWith('photoData') && submission[key]?.url);
 }
 
 function filteredSubmissions() {
   if (!photosOnly) return allSubmissions;
-  return allSubmissions.filter(hasAnyPhoto);
+  return allSubmissions.filter(hasPhotoWithUrl);
 }
 
 function polygonToString(vertices) {
@@ -622,12 +623,12 @@ function polygonToString(vertices) {
     .join(';');
 }
 
-function updateUrlFromState(push = true) {
+function updateUrlFromState(shouldPushToHistory = true) {
   const params = new URLSearchParams();
   if (currentPolygonStr) params.set('polygon', currentPolygonStr);
   if (photosOnly) params.set('photosOnly', '1');
   const nextUrl = params.toString() ? `?${params}` : window.location.pathname;
-  if (push) history.pushState(null, '', nextUrl);
+  if (shouldPushToHistory) history.pushState(null, '', nextUrl);
   else history.replaceState(null, '', nextUrl);
 }
 
@@ -635,6 +636,7 @@ function renderMap(submissions) {
   document.getElementById('paste-screen').style.display = 'none';
   const mapScreen = document.getElementById('map-screen');
   mapScreen.style.display = 'flex';
+  mapScreenVisible = true;
   document.getElementById('count-badge').textContent = `${submissions.length} report${submissions.length !== 1 ? 's' : ''}`;
 
   if (!map) {
@@ -706,6 +708,7 @@ document.getElementById('load-btn').addEventListener('click', () => {
 document.getElementById('reset-btn').addEventListener('click', () => {
   document.getElementById('map-screen').style.display = 'none';
   document.getElementById('paste-screen').style.display = 'flex';
+  mapScreenVisible = false;
   pinned = false;
   popup.classList.remove('visible', 'pinned');
   if (drawnItems) drawnItems.clearLayers();
@@ -843,6 +846,7 @@ function applyUrlState() {
     currentPolygonStr = polygonStr;
     document.getElementById('map-screen').style.display = 'none';
     document.getElementById('paste-screen').style.display = 'flex';
+    mapScreenVisible = false;
 
     document.getElementById('tab-draw').click();
 
@@ -864,7 +868,6 @@ function applyUrlState() {
     }
   } else {
     currentPolygonStr = null;
-    const mapScreenVisible = window.getComputedStyle(document.getElementById('map-screen')).display !== 'none';
     if (
       loadedPolygonStr === null &&
       allSubmissions.length > 0 &&
@@ -877,6 +880,7 @@ function applyUrlState() {
     // No params — return to the paste/draw screen
     document.getElementById('map-screen').style.display = 'none';
     document.getElementById('paste-screen').style.display = 'flex';
+    mapScreenVisible = false;
     pinned = false;
     popup.classList.remove('visible', 'pinned');
   }

@@ -528,7 +528,7 @@ let allSubmissions = [];
 let currentPolygonStr = null;
 let loadedPolygonStr = null;
 let photosOnly = false;
-let mapScreenVisible = false;
+let isMapScreenVisible = false;
 
 const popup     = document.getElementById('popup');
 const popupComp = document.getElementById('popup-complaint');
@@ -636,7 +636,7 @@ function renderMap(submissions) {
   document.getElementById('paste-screen').style.display = 'none';
   const mapScreen = document.getElementById('map-screen');
   mapScreen.style.display = 'flex';
-  mapScreenVisible = true;
+  isMapScreenVisible = true;
   document.getElementById('count-badge').textContent = `${submissions.length} report${submissions.length !== 1 ? 's' : ''}`;
 
   if (!map) {
@@ -708,7 +708,7 @@ document.getElementById('load-btn').addEventListener('click', () => {
 document.getElementById('reset-btn').addEventListener('click', () => {
   document.getElementById('map-screen').style.display = 'none';
   document.getElementById('paste-screen').style.display = 'flex';
-  mapScreenVisible = false;
+  isMapScreenVisible = false;
   pinned = false;
   popup.classList.remove('visible', 'pinned');
   if (drawnItems) drawnItems.clearLayers();
@@ -842,11 +842,11 @@ function applyUrlState() {
   photosOnlyCheckbox.checked = photosOnly;
 
   if (polygonStr) {
-    const polygonChanged = polygonStr !== loadedPolygonStr;
+    const shouldFetchNewPolygonData = polygonStr !== loadedPolygonStr;
     currentPolygonStr = polygonStr;
     document.getElementById('map-screen').style.display = 'none';
     document.getElementById('paste-screen').style.display = 'flex';
-    mapScreenVisible = false;
+    isMapScreenVisible = false;
 
     document.getElementById('tab-draw').click();
 
@@ -860,7 +860,7 @@ function applyUrlState() {
     drawnItems.addLayer(polygon);
     drawMap.fitBounds(polygon.getBounds(), { padding: [20, 20] });
 
-    if (polygonChanged) {
+    if (shouldFetchNewPolygonData) {
       const latLngs = vertices.map(v => L.latLng(v[0], v[1]));
       fetchAndLoadPolygon(latLngs);
     } else {
@@ -868,10 +868,11 @@ function applyUrlState() {
     }
   } else {
     currentPolygonStr = null;
+    // Keep the current map visible when only the photosOnly URL param changes for manually loaded data.
     if (
       loadedPolygonStr === null &&
       allSubmissions.length > 0 &&
-      mapScreenVisible
+      isMapScreenVisible
     ) {
       applyPhotoFilter();
       return;
@@ -880,7 +881,7 @@ function applyUrlState() {
     // No params — return to the paste/draw screen
     document.getElementById('map-screen').style.display = 'none';
     document.getElementById('paste-screen').style.display = 'flex';
-    mapScreenVisible = false;
+    isMapScreenVisible = false;
     pinned = false;
     popup.classList.remove('visible', 'pinned');
   }

@@ -243,26 +243,26 @@ New York, NY 10007",
         "formatted_address": "230 Broadway, New York, NY 10007, USA",
         "geometry": {
           "location": {
-            "lat": 40.7127517,
-            "lng": -74.00596809999999,
+            "lat": 40.712694,
+            "lng": -74.0058706,
           },
           "location_type": "ROOFTOP",
           "viewport": {
             "northeast": {
-              "lat": 40.71410068029149,
-              "lng": -74.00461911970848,
+              "lat": 40.7140429802915,
+              "lng": -74.00452161970848,
             },
             "southwest": {
-              "lat": 40.7114027197085,
-              "lng": -74.00731708029149,
+              "lat": 40.7113450197085,
+              "lng": -74.0072195802915,
             },
           },
         },
         "navigation_points": [
           {
             "location": {
-              "latitude": 40.7128404,
-              "longitude": -74.0058915,
+              "latitude": 40.7127879,
+              "longitude": -74.005786,
             },
             "restricted_travel_modes": [
               "DRIVE",
@@ -270,8 +270,8 @@ New York, NY 10007",
           },
           {
             "location": {
-              "latitude": 40.7127539,
-              "longitude": -74.0064295,
+              "latitude": 40.7127838,
+              "longitude": -74.0064357,
             },
             "restricted_travel_modes": [
               "WALK",
@@ -1052,26 +1052,26 @@ New York, NY 10007",
         "formatted_address": "230 Broadway, New York, NY 10007, USA",
         "geometry": {
           "location": {
-            "lat": 40.7127517,
-            "lng": -74.00596809999999,
+            "lat": 40.712694,
+            "lng": -74.0058706,
           },
           "location_type": "ROOFTOP",
           "viewport": {
             "northeast": {
-              "lat": 40.71410068029149,
-              "lng": -74.00461911970848,
+              "lat": 40.7140429802915,
+              "lng": -74.00452161970848,
             },
             "southwest": {
-              "lat": 40.7114027197085,
-              "lng": -74.00731708029149,
+              "lat": 40.7113450197085,
+              "lng": -74.0072195802915,
             },
           },
         },
         "navigation_points": [
           {
             "location": {
-              "latitude": 40.7128404,
-              "longitude": -74.0058915,
+              "latitude": 40.7127879,
+              "longitude": -74.005786,
             },
             "restricted_travel_modes": [
               "DRIVE",
@@ -1079,8 +1079,8 @@ New York, NY 10007",
           },
           {
             "location": {
-              "latitude": 40.7127539,
-              "longitude": -74.0064295,
+              "latitude": 40.7127838,
+              "longitude": -74.0064357,
             },
             "restricted_travel_modes": [
               "WALK",

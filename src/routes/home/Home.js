@@ -172,6 +172,38 @@ async function getVideoScreenshot({ attachmentFile }) {
 // adapted from https://www.bignerdranch.com/blog/dont-over-react/
 const attachmentPlateCache = new WeakMap();
 
+function getLicenseStateFromPlateResult(result) {
+  try {
+    return result.region.code.split('-')[1].toUpperCase();
+  } catch {
+    // ALPR results may not always include a parseable region code.
+    return '';
+  }
+}
+
+function getPlateThumbnailKey({ plate, licenseState }) {
+  return `${(plate || '').toUpperCase()}|${(licenseState || '').toUpperCase()}`;
+}
+
+function getPlateThumbnailsByKey(results = []) {
+  return results.reduce((acc, result) => {
+    const plate = (result.plate || '').toUpperCase();
+    const licenseState = getLicenseStateFromPlateResult(result);
+
+    if (!result.plateCropDataUrl || !plate || !licenseState) {
+      return acc;
+    }
+
+    const key = getPlateThumbnailKey({
+      plate,
+      licenseState,
+    });
+
+    acc[key] = result.plateCropDataUrl; // eslint-disable-line no-param-reassign
+    return acc;
+  }, {});
+}
+
 async function fetchPlateResults({
   attachmentFile,
   attachmentBuffer,
@@ -247,6 +279,7 @@ async function extractPlate({
     }
     result.plate = result.plate.toUpperCase();
     result.plateSuggestions = results.map(r => r.plate.toUpperCase());
+    result.allPlateResults = results;
 
     return result;
   } catch (err) {
@@ -326,7 +359,7 @@ async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
 class Home extends React.Component {
   static getVehicleMakeLogoUrl({ vehicleMake }) {
     if (vehicleMake.toLowerCase() === 'nissan') {
-      return 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Nissan_2020_logo.svg/287px-Nissan_2020_logo.svg.png';
+      return 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Nissan_2020_logo.svg/250px-Nissan_2020_logo.svg.png';
     }
     if (vehicleMake.toLowerCase() === 'honda') {
       return 'https://upload.wikimedia.org/wikipedia/commons/3/38/Honda.svg';
@@ -391,6 +424,7 @@ class Home extends React.Component {
       isReverseGeocodingEnabled: true,
       isUserInfoOpen: true,
       isMapOpen: false,
+      isPreviousSubmissionsOpen: false,
     };
 
     const initialStatePerSession = {
@@ -409,6 +443,7 @@ class Home extends React.Component {
       platePickerModalOpen: false,
       platePickerResults: [],
       platePickerLoading: false,
+      plateThumbnailsByKey: {},
     };
 
     const initialState = {
@@ -599,28 +634,28 @@ class Home extends React.Component {
         : null,
     });
 
-    const now = Date.now();
-    if (
-      this.state.submissions.some(submission => {
-        const timeDifference =
-          now - new Date(submission.timeofreport).valueOf();
-        const thirtyDaysInMilliseconds = 30 * 24 * 60 * 60 * 1000;
-        const olderThanThirtyDays =
-          timeDifference / thirtyDaysInMilliseconds > 1;
-        if (olderThanThirtyDays) {
-          return false;
-        }
+    const selectedDate = new Date(this.state.CreateDate);
+    const selectedDateDay = selectedDate.toDateString();
 
-        return (
-          (submission.license === plate || submission.medallionNo === plate) &&
-          submission.state === licenseState
-        );
-      })
-    ) {
+    const priorSubmissions = this.state.submissions.filter(submission => {
+      const submissionDate = new Date(submission.timeofreport);
+      const isSameDay = submissionDate.toDateString() === selectedDateDay;
+      if (!isSameDay) {
+        return false;
+      }
+
+      return submission.license === plate || submission.medallionNo === plate;
+    });
+
+    const priorCount = priorSubmissions.length;
+
+    if (priorCount > 0) {
+      const pluralReport = priorCount === 1 ? 'report' : 'reports';
+
       Home.notifyWarning(
         <p>
-          You have already submitted a report for {plate} in {licenseState}, are
-          you sure you want to submit another?
+          You have already submitted {priorCount} {pluralReport} for {plate} on{' '}
+          {selectedDateDay}, are you sure you want to submit another?
         </p>,
       );
     }
@@ -651,6 +686,7 @@ class Home extends React.Component {
                 alt={`${vehicleMake} logo`}
                 style={{
                   display: 'block',
+                  maxWidth: '250px',
                 }}
               />
             </React.Fragment>
@@ -826,9 +862,13 @@ class Home extends React.Component {
                   ) {
                     this.setLicensePlate(result);
                   }
-                  this.setState({
+                  this.setState(state => ({
                     plateSuggestions: result.plateSuggestions,
-                  });
+                    plateThumbnailsByKey: {
+                      ...state.plateThumbnailsByKey,
+                      ...getPlateThumbnailsByKey(result.allPlateResults),
+                    },
+                  }));
                 })
                 .finally(() => {
                   this.setState({ isAlprLoading: false });
@@ -844,6 +884,10 @@ class Home extends React.Component {
                 ext,
                 isReverseGeocodingEnabled: this.state.isReverseGeocodingEnabled,
               }).then(({ latitude, longitude }) => {
+                if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
+                  throw 'location (may have been stripped by Android, see <a href="https://github.com/josephfrazier/reported-web/issues/751">details</a>)'; // eslint-disable-line no-throw-literal
+                }
+
                 this.setCoords({
                   latitude,
                   longitude,
@@ -867,15 +911,16 @@ class Home extends React.Component {
           return;
         }
 
-        const missingValuesString = rejected.map(v => v.reason).join(', ');
+        const missingValuesHtml = rejected.map(v => v.reason).join(', ');
         const hasMultipleAttachments = this.state.attachmentData.length > 1;
         const fileCopy = hasMultipleAttachments ? 'the files.' : 'the file.';
 
         Home.notifyWarning(
           <React.Fragment>
             <p>
-              Could not extract the {missingValuesString} from {fileCopy} Please
-              enter/confirm any missing values manually.
+              Could not extract the{' '}
+              <span dangerouslySetInnerHTML={{ __html: missingValuesHtml }} />{' '}
+              from {fileCopy} Please enter/confirm any missing values manually.
             </p>
           </React.Fragment>,
         );
@@ -898,11 +943,15 @@ class Home extends React.Component {
         password,
       });
 
-      this.setState({
+      this.setState(state => ({
         platePickerResults: results,
         platePickerModalOpen: true,
         platePickerLoading: false,
-      });
+        plateThumbnailsByKey: {
+          ...state.plateThumbnailsByKey,
+          ...getPlateThumbnailsByKey(results),
+        },
+      }));
     } catch (err) {
       console.error(err);
       Home.notifyError('Could not read license plates from this photo.');
@@ -939,6 +988,14 @@ class Home extends React.Component {
   };
 
   render() {
+    const matchingPlateThumbnail =
+      this.state.plateThumbnailsByKey[
+        getPlateThumbnailKey({
+          plate: this.state.plate,
+          licenseState: this.state.licenseState,
+        })
+      ];
+
     return (
       <Dropzone
         className={homeStyles.root}
@@ -1260,6 +1317,7 @@ class Home extends React.Component {
                       attachmentData: [],
                       submissions: [submission].concat(state.submissions),
                       plateSuggestions: [],
+                      plateThumbnailsByKey: {},
                       vehicleInfoComponent: null,
                       violationSummaryComponent: null,
                       reportDescription: '',
@@ -1419,49 +1477,73 @@ class Home extends React.Component {
                 <label htmlFor="plate">
                   License/Medallion:
                   {this.state.isAlprLoading && <CircularProgress size="1em" />}
-                  <input
-                    required
-                    type="search"
-                    value={this.state.plate}
-                    name="plate"
-                    list="plateSuggestions"
-                    autoComplete="off"
-                    ref={this.plateRef}
-                    placeholder={this.state.plateSuggestions[0]}
-                    onChange={event => {
-                      this.setLicensePlate({
-                        plate: event.target.value.toUpperCase(),
-                      });
-                    }}
-                  />
-                  <datalist id="plateSuggestions">
-                    {this.state.plateSuggestions.map(plateSuggestion => (
-                      <option value={plateSuggestion} />
-                    ))}
-                  </datalist>
-                  <select
+                  <div
                     style={{
-                      marginTop: '0.5rem',
-                    }}
-                    value={this.state.licenseState}
-                    name="licenseState"
-                    onChange={event => {
-                      this.setLicensePlate({
-                        plate: this.state.plate,
-                        licenseState: event.target.value,
-                      });
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      alignItems: 'flex-start',
+                      gap: '0.5rem',
                     }}
                   >
-                    {Object.entries(usStateNames)
-                      .sort(([, name1], [, name2]) =>
-                        name1.toUpperCase().localeCompare(name2.toUpperCase()),
-                      )
-                      .map(([abbr, name]) => (
-                        <option key={abbr} value={abbr}>
-                          {name}
-                        </option>
-                      ))}
-                  </select>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <input
+                        required
+                        type="search"
+                        value={this.state.plate}
+                        name="plate"
+                        list="plateSuggestions"
+                        autoComplete="off"
+                        ref={this.plateRef}
+                        placeholder={this.state.plateSuggestions[0]}
+                        onChange={event => {
+                          this.setLicensePlate({
+                            plate: event.target.value.toUpperCase(),
+                          });
+                        }}
+                      />
+                      <datalist id="plateSuggestions">
+                        {this.state.plateSuggestions.map(plateSuggestion => (
+                          <option value={plateSuggestion} />
+                        ))}
+                      </datalist>
+                      <select
+                        style={{
+                          marginTop: '0.5rem',
+                        }}
+                        value={this.state.licenseState}
+                        name="licenseState"
+                        onChange={event => {
+                          this.setLicensePlate({
+                            plate: this.state.plate,
+                            licenseState: event.target.value,
+                          });
+                        }}
+                      >
+                        {Object.entries(usStateNames)
+                          .sort(([, name1], [, name2]) =>
+                            name1
+                              .toUpperCase()
+                              .localeCompare(name2.toUpperCase()),
+                          )
+                          .map(([abbr, name]) => (
+                            <option key={abbr} value={abbr}>
+                              {name}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                    {matchingPlateThumbnail && (
+                      <img
+                        src={matchingPlateThumbnail}
+                        alt="Detected license plate"
+                        style={{
+                          maxHeight: '5rem',
+                          maxWidth: '12rem',
+                          objectFit: 'contain',
+                        }}
+                      />
+                    )}
+                  </div>
                   <div>{this.state.violationSummaryComponent}</div>
                   <div>{this.state.vehicleInfoComponent}</div>
                 </label>
@@ -1665,7 +1747,13 @@ class Home extends React.Component {
 
             <br />
 
-            <details>
+            <details
+              onToggle={evt =>
+                this.setState({
+                  isPreviousSubmissionsOpen: evt.currentTarget.open,
+                })
+              }
+            >
               <summary>
                 Previous Submissions (
                 {this.state.submissions.length > 0
@@ -1674,10 +1762,12 @@ class Home extends React.Component {
                 )
               </summary>
 
-              <PreviousSubmissionsList
-                submissions={this.state.submissions}
-                onDeleteSubmission={this.onDeleteSubmission}
-              />
+              {this.state.isPreviousSubmissionsOpen && (
+                <PreviousSubmissionsList
+                  submissions={this.state.submissions}
+                  onDeleteSubmission={this.onDeleteSubmission}
+                />
+              )}
             </details>
 
             <div style={{ float: 'right' }}>

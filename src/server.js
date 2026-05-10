@@ -545,6 +545,88 @@ app.get('/submissions-map', (req, res) => {
   res.sendFile(path.resolve(__dirname, 'public', 'submissions-map.html'));
 });
 
+const POLYGON_FIELDS = [
+  'location',
+  'timeofreport',
+  'license',
+  'state',
+  'typeofcomplaint',
+  'loc1_address',
+  'reqnumber',
+  'photoData0',
+  'photoData1',
+  'photoData2',
+  'can_be_shared_publicly',
+];
+
+const POLYGON_RESULT_LIMIT = 10000;
+
+app.get('/api/submissions-in-polygon', (req, res) => {
+  let polygonCoords = null;
+
+  const polygonParam = req.query.polygon;
+  if (typeof polygonParam !== 'string' || !polygonParam.trim()) {
+    res.status(400).json({
+      error:
+        'Query parameter "polygon" is required and must be a non-empty string.',
+    });
+    return;
+  }
+
+  const rawVertices = polygonParam.trim().split(';');
+  if (rawVertices.length < 3) {
+    res.status(400).json({ error: 'Polygon must have at least 3 vertices.' });
+    return;
+  }
+  try {
+    polygonCoords = rawVertices.map((pair, idx) => {
+      const parts = pair.split(',');
+      if (parts.length !== 2) {
+        throw new Error(`Vertex ${idx} is invalid: expected "lat,lng"`);
+      }
+      const lat = parseFloat(parts[0]);
+      const lng = parseFloat(parts[1]);
+      if (Number.isNaN(lat) || Number.isNaN(lng)) {
+        throw new Error(`Vertex ${idx} has non-numeric coordinates`);
+      }
+      if (lat < -90 || lat > 90) {
+        throw new Error(`Vertex ${idx} latitude out of range (-90 to 90)`);
+      }
+      if (lng < -180 || lng > 180) {
+        throw new Error(`Vertex ${idx} longitude out of range (-180 to 180)`);
+      }
+      return [lng, lat];
+    });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+    return;
+  }
+
+  const Submission = Parse.Object.extend('submission');
+  const query = new Parse.Query(Submission);
+  query.withinPolygon('location', polygonCoords);
+  query.equalTo('can_be_shared_publicly', true);
+  query.limit(POLYGON_RESULT_LIMIT);
+  query.select(POLYGON_FIELDS);
+
+  query
+    .find()
+    .then(parseResults => {
+      const results = parseResults.map(obj => {
+        const json = obj.toJSON();
+        return Object.fromEntries(
+          POLYGON_FIELDS.map(k => [k, json[k] ?? null]),
+        );
+      });
+
+      res.json({
+        results,
+        capped: parseResults.length >= POLYGON_RESULT_LIMIT,
+      });
+    })
+    .catch(handlePromiseRejection(res));
+});
+
 //
 // Register server-side rendering middleware
 // -----------------------------------------------------------------------------

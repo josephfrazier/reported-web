@@ -890,6 +890,7 @@ function applyUrlState() {
 window.addEventListener('popstate', applyUrlState);
 
 // On load: apply the URL state (handles direct links with polygon params)
+document.getElementById('tab-draw').click();
 applyUrlState();
 </script>
 </body>

@@ -15,6 +15,7 @@ describe('SubmissionDetails', () => {
     const submission = {
       reqnumber: 'reqnumber',
       medallionNo: 'medallionNo',
+      state: 'licenseState',
       typeofcomplaint: 'typeofcomplaint',
       loc1_address: '82 Reade St, New York, NY 10007, USA',
       timeofreport: new Date(Date.now()).toISOString(),
@@ -50,6 +51,7 @@ describe('SubmissionDetails', () => {
     const submission = {
       reqnumber: 'reqnumber',
       license: 'license',
+      state: 'licenseState',
       typeofcomplaint: 'typeofcomplaint',
       loc1_address: '82 Reade St, New York, NY 10007, USA',
       timeofreport: new Date(Date.now()).toISOString(),
@@ -85,6 +87,7 @@ describe('SubmissionDetails', () => {
     const submission = {
       reqnumber: 'reqnumber',
       medallionNo: 'medallionNo',
+      state: 'licenseState',
       typeofcomplaint: 'typeofcomplaint',
       loc1_address: '82 Reade St, New York, NY 10007, USA',
       timeofreport: new Date(Date.now()).toISOString(),
@@ -119,6 +122,7 @@ describe('SubmissionDetails', () => {
   test('renders TLC and NYPD SR numbers when submission has matching tasks', () => {
     const submission = {
       medallionNo: 'medallionNo',
+      state: 'licenseState',
       typeofcomplaint: 'typeofcomplaint',
       loc1_address: '82 Reade St, New York, NY 10007, USA',
       timeofreport: new Date(Date.now()).toISOString(),

@@ -14,14 +14,14 @@
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --bg: #0c0d10;
-    --surface: #13151a;
-    --surface2: #1c1f27;
-    --border: #252830;
-    --border2: #333748;
-    --accent: #d4ff4e;
-    --text: #dde0e8;
-    --muted: #5c6070;
+    --bg: #f5f7fb;
+    --surface: #ffffff;
+    --surface2: #eef2f7;
+    --border: #d7deea;
+    --border2: #bcc7d8;
+    --accent: #5a8c00;
+    --text: #17202f;
+    --muted: #5e6b81;
     --crosswalk: #d4ff4e;
     --bikelane: #4ecbff;
     --redlight: #ff6b35;
@@ -85,7 +85,7 @@
   }
 
   .tab:hover { background: var(--surface2); color: var(--text); }
-  .tab.active { background: var(--accent); color: #0c0d10; }
+  .tab.active { background: var(--accent); color: #ffffff; }
   .tab + .tab { border-left: 1px solid var(--border2); }
 
   /* ── PANEL SHARED ── */
@@ -147,7 +147,7 @@
 
   #load-btn {
     background: var(--accent);
-    color: #0c0d10;
+    color: #ffffff;
     border: none;
     border-radius: 3px;
     padding: 10px 30px;
@@ -266,7 +266,7 @@
     border: 1px solid var(--border2);
     border-radius: 4px;
     overflow: hidden;
-    box-shadow: 0 18px 52px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.03);
+    box-shadow: 0 18px 52px rgba(23,32,47,0.18), 0 0 0 1px rgba(23,32,47,0.04);
     opacity: 0;
     transform: translateY(8px) scale(0.96);
     transition: opacity 0.13s, transform 0.13s;
@@ -280,7 +280,7 @@
   #popup.pinned {
     pointer-events: auto;
     border-color: var(--accent);
-    box-shadow: 0 18px 52px rgba(0,0,0,0.8), 0 0 0 1px rgba(212,255,78,0.2);
+    box-shadow: 0 18px 52px rgba(23,32,47,0.22), 0 0 0 1px rgba(90,140,0,0.2);
   }
 
   .popup-header {
@@ -338,7 +338,7 @@
     min-width: 0;
     height: 136px;
     object-fit: contain;
-    background: #08090c;
+    background: #f0f3f8;
     display: block;
     border-right: 1px solid var(--border);
   }
@@ -358,9 +358,9 @@
   }
 
   /* Leaflet overrides */
-  .leaflet-container { background: #08090c !important; }
-  .leaflet-tile { filter: saturate(0.2) brightness(0.7) hue-rotate(190deg); }
-  .leaflet-control-attribution { background: rgba(19,21,26,0.9) !important; color: var(--muted) !important; font-family: 'DM Mono', monospace !important; font-size: 9px !important; }
+  .leaflet-container { background: #dfe6ef !important; }
+  .leaflet-tile { filter: none; }
+  .leaflet-control-attribution { background: rgba(255,255,255,0.92) !important; color: var(--muted) !important; font-family: 'DM Mono', monospace !important; font-size: 9px !important; }
   .leaflet-control-attribution a { color: var(--muted) !important; }
   .leaflet-control-zoom a { background: var(--surface) !important; color: var(--text) !important; border-color: var(--border2) !important; font-family: monospace !important; }
 
@@ -450,7 +450,7 @@
       <div class="legend-item"><div class="legend-dot" style="background:var(--redlight)"></div>Ran red light</div>
       <div class="legend-item"><div class="legend-dot" style="background:var(--reckless)"></div>Drove recklessly</div>
       <div class="legend-item"><div class="legend-dot" style="background:var(--illegal)"></div>Illegal parking</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#aaa"></div>Other</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#7b8698"></div>Other</div>
     </div>
     <label class="photo-filter" for="photos-only-checkbox">
       <input type="checkbox" id="photos-only-checkbox">
@@ -486,16 +486,16 @@ const DEFAULT_MAP_CENTER = [40.72, -73.98];
 const DEFAULT_MAP_ZOOM = 12;
 
 function colorFor(complaint) {
-  if (!complaint) return '#aaaaaa';
+  if (!complaint) return '#7b8698';
   const lower = complaint.toLowerCase();
   for (const [key, color] of Object.entries(COMPLAINT_COLORS)) {
     if (lower.includes(key)) return color;
   }
-  return '#aaaaaa';
+  return '#7b8698';
 }
 
 function makeIcon(color) {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"><circle cx="7" cy="7" r="5" fill="${color}" stroke="#0c0d10" stroke-width="2.5"/></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"><circle cx="7" cy="7" r="5" fill="${color}" stroke="#ffffff" stroke-width="2.5"/></svg>`;
   return L.divIcon({ html: svg, className: '', iconSize: [14,14], iconAnchor: [7,7] });
 }
 

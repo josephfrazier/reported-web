@@ -64,4 +64,3 @@
   - `src/srlookup.test.js` calls `portal.311.nyc.gov`
   - `src/geoclient.test.js` depends on Google Geocoding and NYC Geoclient
 - In a restricted sandbox with no outbound access, those tests fail with DNS/network errors or timeouts. Work around this by running the narrowest relevant tests, or at least `yarn test:no-alpr` when you want parity with the main CI workflow.
-- CI test workflows run `yarn add sharp --ignore-engines` before tests. With the correct Node version selected via `nvm`, you can usually repeat that step locally as `yarn add sharp` if ALPR-related tests fail because `sharp` is missing or misbuilt.

@@ -20,22 +20,23 @@
 ## Toolchain and setup
 
 - Expected toolchain is Node `24.12.0` and Yarn `1.22.22` (`package.json` pins both).
-- Install dependencies with:
-  - `yarn install` if you are on Node `24.12.0`
-  - `YARN_IGNORE_ENGINES=1 yarn install --ignore-engines` if the sandbox has a nearby Node version but not exactly `24.12.0`
+- Use `nvm` with the checked-in `.nvmrc` to get the exact Node version:
+  - `nvm install`
+  - `nvm use`
+- Install dependencies with `yarn install` after switching to Node `24.12.0`.
 - Copy `.env.example` to `.env` before running app flows that need external services.
 
 ## Common commands
 
-- Lint: `YARN_IGNORE_ENGINES=1 yarn lint`
-- Build: `YARN_IGNORE_ENGINES=1 yarn build`
-- Full test suite: `YARN_IGNORE_ENGINES=1 yarn test`
-- Non-ALPR tests (matches the main CI test workflow): `YARN_IGNORE_ENGINES=1 yarn test:no-alpr`
-- Single test file: `YARN_IGNORE_ENGINES=1 yarn test src/path/to/file.test.js`
+- Lint: `yarn lint`
+- Build: `yarn build`
+- Full test suite: `yarn test`
+- Non-ALPR tests (matches the main CI test workflow): `yarn test:no-alpr`
+- Single test file: `yarn test src/path/to/file.test.js`
 - Dev app:
-  1. `YARN_IGNORE_ENGINES=1 yarn mongo-start`
-  2. `YARN_IGNORE_ENGINES=1 yarn parse`
-  3. in another shell: `YARN_IGNORE_ENGINES=1 yarn start`
+  1. `yarn mongo-start`
+  2. `yarn parse`
+  3. in another shell: `yarn start`
 
 ## Environment and external dependencies
 
@@ -54,7 +55,7 @@
 
 ## Validation and CI gotchas
 
-- CI runs Node `24.12.0`; local sandboxes may not. In this sandbox, Yarn refused to run because the repo expects exactly `24.12.0` and the installed version was `24.14.1`. Workaround: prefix Yarn commands with `YARN_IGNORE_ENGINES=1` and use `--ignore-engines` for install steps.
+- CI runs Node `24.12.0`; local sandboxes may not. In this sandbox, Yarn initially refused to run because the repo expects exactly `24.12.0` and the installed version was `24.14.1`. Workaround: use `nvm install` and `nvm use` (the checked-in `.nvmrc` points to `24.12.0`) before running Yarn commands.
 - `yarn lint` currently passes with an existing warning in `src/routes/home/Home.js` for `react/no-danger`.
 - `yarn build` succeeds locally, but emits existing webpack deprecation warnings and one existing `exifr` “Critical dependency” warning.
 - `yarn test` is not a hermetic unit suite. Several tests call live external services:
@@ -63,4 +64,4 @@
   - `src/srlookup.test.js` calls `portal.311.nyc.gov`
   - `src/geoclient.test.js` depends on Google Geocoding and NYC Geoclient
 - In a restricted sandbox with no outbound access, those tests fail with DNS/network errors or timeouts. Work around this by running the narrowest relevant tests, or at least `yarn test:no-alpr` when you want parity with the main CI workflow.
-- CI test workflows also run `yarn add sharp --ignore-engines` before tests. If ALPR-related tests fail because `sharp` is missing or misbuilt, repeat that step locally.
+- CI test workflows run `yarn add sharp --ignore-engines` before tests. With the correct Node version selected via `nvm`, you can usually repeat that step locally as `yarn add sharp` if ALPR-related tests fail because `sharp` is missing or misbuilt.

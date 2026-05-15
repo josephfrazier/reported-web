@@ -7,15 +7,15 @@
 
 ## Repository map
 
-- `/home/runner/work/reported-web/reported-web/src/server.js` — Express server, SSR entrypoint, and most API endpoints.
-- `/home/runner/work/reported-web/reported-web/src/client.js` — client hydration, router updates, and scroll/hash restoration after navigation.
-- `/home/runner/work/reported-web/reported-web/src/routes/index.js` — top-level route table.
-- `/home/runner/work/reported-web/reported-web/src/routes/home/Home.js` — main reporting UI; this is one of the largest and most central files.
-- `/home/runner/work/reported-web/reported-web/src/routes/{about,privacy}/*.md` — markdown-backed content pages.
-- `/home/runner/work/reported-web/reported-web/src/components/` — reusable UI pieces.
-- `/home/runner/work/reported-web/reported-web/src/{geoclient,srlookup,getVehicleType,alpr}.js` — integrations with external services.
-- `/home/runner/work/reported-web/reported-web/tools/` — build/start pipeline used by `yarn build` and `yarn start`.
-- `/home/runner/work/reported-web/reported-web/.github/workflows/` — CI definitions; useful for seeing the canonical commands and workarounds.
+- `src/server.js` — Express server, SSR entrypoint, and most API endpoints.
+- `src/client.js` — client hydration, router updates, and scroll/hash restoration after navigation.
+- `src/routes/index.js` — top-level route table.
+- `src/routes/home/Home.js` — main reporting UI; this is one of the largest and most central files.
+- `src/routes/{about,privacy}/*.md` — markdown-backed content pages.
+- `src/components/` — reusable UI pieces.
+- `src/{geoclient,srlookup,getVehicleType,alpr}.js` — integrations with external services.
+- `tools/` — build/start pipeline used by `yarn build` and `yarn start`.
+- `.github/workflows/` — CI definitions; useful for seeing the canonical commands and workarounds.
 
 ## Toolchain and setup
 
@@ -23,7 +23,7 @@
 - Install dependencies with:
   - `yarn install` if you are on Node `24.12.0`
   - `YARN_IGNORE_ENGINES=1 yarn install --ignore-engines` if the sandbox has a nearby Node version but not exactly `24.12.0`
-- Copy `/home/runner/work/reported-web/reported-web/.env.example` to `.env` before running app flows that need external services.
+- Copy `.env.example` to `.env` before running app flows that need external services.
 
 ## Common commands
 
@@ -47,7 +47,7 @@
 ## Change guidance
 
 - Prefer small, surgical edits; this repo has several large legacy files and old dependencies.
-- Add or change page routes in `/home/runner/work/reported-web/reported-web/src/routes/` and register them in `src/routes/index.js`.
+- Add or change page routes in `src/routes/` and register them in `src/routes/index.js`.
 - If you change API or submission behavior, inspect both `src/server.js` and `src/routes/home/Home.js`; client and server responsibilities are split between them.
 - Keep tests near the affected module when possible; this repo uses a mix of colocated tests and snapshots under `src/**/__snapshots__/`.
 - Do not “clean up” existing warnings unless your task is specifically about them.

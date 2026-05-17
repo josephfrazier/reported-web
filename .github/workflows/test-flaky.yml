@@ -1,9 +1,9 @@
-name: Node.js CI - test (ALPR, allowed to fail)
+name: Node.js CI - test (flaky, allowed to fail)
 
 on: [push]
 
 jobs:
-  test-alpr:
+  test-flaky:
 
     runs-on: ubuntu-latest
 
@@ -27,4 +27,4 @@ jobs:
       env:
         PLATERECOGNIZER_TOKEN: ${{ secrets.PLATERECOGNIZER_TOKEN }}
         PLATERECOGNIZER_TOKEN_TWO: ${{ secrets.PLATERECOGNIZER_TOKEN_TWO }}
-      run: yarn test:alpr
+      run: yarn test:flaky

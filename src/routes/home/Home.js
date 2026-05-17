@@ -1322,6 +1322,10 @@ class Home extends React.Component {
                       reportDescription: '',
                     }));
                     this.setLicensePlate({ plate: '', licenseState: 'NY' });
+                    this.setCoords({
+                      latitude: defaultLatitude,
+                      longitude: defaultLongitude,
+                    });
                     Home.notifySuccess(
                       <React.Fragment>
                         <p>Thanks for your submission!</p>

@@ -111,7 +111,7 @@
     "eslint": "^9.26.0",
     "eslint-config-airbnb": "^17.1.0",
     "eslint-config-prettier": "^10.1.8",
-    "eslint-import-resolver-node": "^0.3.7",
+    "eslint-import-resolver-node": "^0.4.0",
     "eslint-loader": "^2.1.1",
     "eslint-plugin-css-modules": "^2.9.1",
     "eslint-plugin-flowtype": "^8.0.3",

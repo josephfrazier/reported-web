@@ -1,4 +1,4 @@
-name: Node.js CI - test (except ALPR, which is flaky)
+name: Node.js CI - test (except flaky ones)
 
 on: [push]
 
@@ -28,4 +28,4 @@ jobs:
         GEO_APP_ID: ${{ secrets.GEO_APP_ID }}
         GEO_APP_KEY: ${{ secrets.GEO_APP_KEY }}
         GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-      run: yarn test:no-alpr
+      run: yarn test:no-flaky

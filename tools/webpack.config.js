@@ -153,6 +153,7 @@ const config = {
               sourceMap: isDebug,
               // CSS Modules https://github.com/css-modules/css-modules
               modules: true,
+              camelCase: true,
               localIdentName: isDebug
                 ? '[name]-[local]-[hash:base64:5]'
                 : '[hash:base64:5]',

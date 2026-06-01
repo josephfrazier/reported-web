@@ -541,9 +541,7 @@ app.use('/getVehicleType/:licensePlate/:licenseState?', (req, res) => {
     .catch(handlePromiseRejection(res));
 });
 
-app.get('/submissions-map', (req, res) => {
-  res.sendFile(path.resolve(__dirname, 'public', 'submissions-map.html'));
-});
+// /submissions-map is handled by the React router below
 
 const POLYGON_FIELDS = [
   'location',

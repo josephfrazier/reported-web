@@ -235,9 +235,8 @@ function getStateExamplePlateDataUrl(licenseState) {
     normalizedLicenseState,
   )} PLATE</text>
 </svg>`;
-    stateExamplePlateDataUrls[normalizedLicenseState] = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
-      svg,
-    )}`;
+    stateExamplePlateDataUrls[normalizedLicenseState] =
+      `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
   }
 
   return stateExamplePlateDataUrls[normalizedLicenseState];

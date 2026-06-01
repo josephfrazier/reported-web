@@ -236,7 +236,7 @@ const generatedStatePlateStockImagesByState = Object.fromEntries(
   ]),
 );
 
-function getStateOfficialPlateStockImage(licenseState) {
+function getStatePlateStockImage(licenseState) {
   return (
     officialStatePlateStockImagesByState[(licenseState || '').toUpperCase()] ||
     generatedStatePlateStockImagesByState[(licenseState || '').toUpperCase()] ||
@@ -1043,7 +1043,7 @@ class Home extends React.Component {
       ? getLicenseStateFromPlateResult(matchingAlprPlateResult)
       : '';
     const matchingStateOfficialPlateStockImage = matchingAlprLicenseState
-      ? getStateOfficialPlateStockImage(matchingAlprLicenseState)
+      ? getStatePlateStockImage(matchingAlprLicenseState)
       : null;
     const matchingStatePlateImageDescriptor =
       matchingStateOfficialPlateStockImage &&
@@ -1624,6 +1624,7 @@ class Home extends React.Component {
                             }
                             target="_blank"
                             rel="noopener noreferrer"
+                            aria-label={`${matchingStatePlateImageDescriptor} ${matchingAlprStateName} stock plate image from ${matchingStateOfficialPlateStockImage.sourceName} (opens in a new tab)`}
                             title={`${matchingStatePlateImageDescriptor} ${matchingAlprStateName} stock plate image from ${matchingStateOfficialPlateStockImage.sourceName}`}
                           >
                             <img

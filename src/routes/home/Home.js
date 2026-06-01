@@ -204,6 +204,45 @@ function getPlateThumbnailsByKey(results = []) {
   }, {});
 }
 
+const stateExamplePlateDataUrls = {};
+
+function escapeSvgText(text) {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+function getStateExamplePlateDataUrl(licenseState) {
+  const normalizedLicenseState = (licenseState || '').toUpperCase();
+  const stateName = usStateNames[normalizedLicenseState];
+
+  if (!stateName) {
+    return '';
+  }
+
+  if (!stateExamplePlateDataUrls[normalizedLicenseState]) {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 140">
+  <rect x="6" y="6" width="268" height="128" rx="12" fill="#f8fafc" stroke="#1d4ed8" stroke-width="7"/>
+  <rect x="22" y="22" width="236" height="18" rx="5" fill="#1d4ed8"/>
+  <text x="140" y="35" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="12" font-weight="700">${escapeSvgText(
+    stateName,
+  )}</text>
+  <text x="140" y="84" text-anchor="middle" fill="#0f172a" font-family="Arial, sans-serif" font-size="42" font-weight="700">ABC 1234</text>
+  <text x="140" y="108" text-anchor="middle" fill="#334155" font-family="Arial, sans-serif" font-size="12">EXAMPLE ${escapeSvgText(
+    normalizedLicenseState,
+  )} PLATE</text>
+</svg>`;
+    stateExamplePlateDataUrls[normalizedLicenseState] = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
+      svg,
+    )}`;
+  }
+
+  return stateExamplePlateDataUrls[normalizedLicenseState];
+}
+
 async function fetchPlateResults({
   attachmentFile,
   attachmentBuffer,
@@ -987,13 +1026,24 @@ class Home extends React.Component {
   };
 
   render() {
+    const plateInputUpper = this.state.plate.toUpperCase();
+    const matchingAlprPlateResult = this.state.allPlateResults.find(
+      result => (result.plate || '').toUpperCase() === plateInputUpper,
+    );
     const matchingPlateThumbnail =
+      matchingAlprPlateResult?.plateCropDataUrl ||
       this.state.plateThumbnailsByKey[
         getPlateThumbnailKey({
           plate: this.state.plate,
           licenseState: this.state.licenseState,
         })
       ];
+    const matchingAlprLicenseState = matchingAlprPlateResult
+      ? getLicenseStateFromPlateResult(matchingAlprPlateResult)
+      : '';
+    const matchingStateExamplePlate = matchingAlprLicenseState
+      ? getStateExamplePlateDataUrl(matchingAlprLicenseState)
+      : '';
 
     return (
       <Dropzone
@@ -1541,15 +1591,34 @@ class Home extends React.Component {
                       </select>
                     </div>
                     {matchingPlateThumbnail && (
-                      <img
-                        src={matchingPlateThumbnail}
-                        alt="Detected license plate"
+                      <div
                         style={{
-                          maxHeight: '5rem',
-                          maxWidth: '12rem',
-                          objectFit: 'contain',
+                          display: 'flex',
+                          gap: '0.5rem',
+                          alignItems: 'flex-start',
                         }}
-                      />
+                      >
+                        <img
+                          src={matchingPlateThumbnail}
+                          alt="Detected license plate"
+                          style={{
+                            maxHeight: '5rem',
+                            maxWidth: '12rem',
+                            objectFit: 'contain',
+                          }}
+                        />
+                        {matchingStateExamplePlate && (
+                          <img
+                            src={matchingStateExamplePlate}
+                            alt={`Example ${usStateNames[matchingAlprLicenseState]} license plate`}
+                            style={{
+                              maxHeight: '5rem',
+                              maxWidth: '12rem',
+                              objectFit: 'contain',
+                            }}
+                          />
+                        )}
+                      </div>
                     )}
                   </div>
                   <div>{this.state.violationSummaryComponent}</div>

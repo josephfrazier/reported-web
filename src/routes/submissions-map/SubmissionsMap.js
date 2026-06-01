@@ -189,7 +189,17 @@ function PopupContent({ submission, pinned, onClose }) {
 }
 
 PopupContent.propTypes = {
-  submission: PropTypes.object.isRequired,
+  submission: PropTypes.shape({
+    typeofcomplaint: PropTypes.string,
+    license: PropTypes.string,
+    state: PropTypes.string,
+    loc1_address: PropTypes.string,
+    timeofreport: PropTypes.shape({ iso: PropTypes.string }),
+    reqnumber: PropTypes.string,
+    photoData0: PropTypes.shape({ url: PropTypes.string }),
+    photoData1: PropTypes.shape({ url: PropTypes.string }),
+    photoData2: PropTypes.shape({ url: PropTypes.string }),
+  }).isRequired,
   pinned: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
 };
@@ -513,7 +523,11 @@ function SubmissionsMap() {
   // Ref for polygon data to apply after draw map initializes
   const pendingPolygonRef = useRef(null);
 
-  const applyUrlState = useCallback(() => {
+  // Store applyUrlState in a ref so effects can call the latest version
+  // without needing it in their dependency arrays (it only reads/writes refs
+  // and calls stable state-setters, so it never becomes stale).
+  const applyUrlStateRef = useRef(null);
+  applyUrlStateRef.current = () => {
     const params = new URLSearchParams(window.location.search);
     const polygonStr = params.get('polygon');
     const newPhotosOnly = params.get('photosOnly') === '1';
@@ -526,7 +540,6 @@ function SubmissionsMap() {
       setScreen('paste');
       setActiveTab('draw');
       // applyPolygonFromUrl is called in the draw-tab effect once the map is ready
-      // Store what we need to apply
       pendingPolygonRef.current = { polygonStr, shouldFetch };
     } else {
       currentPolygonStrRef.current = null;
@@ -534,7 +547,7 @@ function SubmissionsMap() {
       setScreen('paste');
       setPopup(prev => ({ ...prev, visible: false, pinned: false }));
     }
-  }, []); // intentionally no deps — applyUrlState reads live refs
+  };
 
   // ── EFFECTS ───────────────────────────────────────────────────────────────
 
@@ -554,13 +567,13 @@ function SubmissionsMap() {
           'polygon',
         );
         if (hasPolygon) {
-          applyUrlState();
+          applyUrlStateRef.current();
         }
         // If no polygon, the default activeTab='draw' triggers initDrawMap via effect.
       },
     );
 
-    const handlePopState = () => applyUrlState();
+    const handlePopState = () => applyUrlStateRef.current();
     window.addEventListener('popstate', handlePopState);
 
     return () => {
@@ -568,7 +581,7 @@ function SubmissionsMap() {
       window.removeEventListener('popstate', handlePopState);
       clearTimeout(hideTimerRef.current);
     };
-  }, []); // intentionally no deps — effect runs once on mount
+  }, []); // runs once on mount; uses ref to access latest applyUrlState
 
   // Initialize the draw map whenever the draw tab is active
   useEffect(() => {

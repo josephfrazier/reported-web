@@ -204,42 +204,20 @@ function getPlateThumbnailsByKey(results = []) {
   }, {});
 }
 
-const stateExamplePlateDataUrls = {};
+const officialStatePlateStockImagesByState = {
+  NY: {
+    imageUrl:
+      'https://dmv.ny.gov/sites/default/files/styles/panopoly_image_original/public/Plates_2.png?itok=-1gvx8I1',
+    sourceUrl: 'https://dmv.ny.gov/plates/excelsior-plates',
+    sourceName: 'New York DMV',
+  },
+};
 
-function escapeSvgText(text) {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
-}
-
-function getStateExamplePlateDataUrl(licenseState) {
-  const normalizedLicenseState = (licenseState || '').toUpperCase();
-  const stateName = usStateNames[normalizedLicenseState];
-
-  if (!stateName) {
-    return '';
-  }
-
-  if (!stateExamplePlateDataUrls[normalizedLicenseState]) {
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 140">
-  <rect x="6" y="6" width="268" height="128" rx="12" fill="#f8fafc" stroke="#1d4ed8" stroke-width="7"/>
-  <rect x="22" y="22" width="236" height="18" rx="5" fill="#1d4ed8"/>
-  <text x="140" y="35" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="12" font-weight="700">${escapeSvgText(
-    stateName,
-  )}</text>
-  <text x="140" y="84" text-anchor="middle" fill="#0f172a" font-family="Arial, sans-serif" font-size="42" font-weight="700">ABC 1234</text>
-  <text x="140" y="108" text-anchor="middle" fill="#334155" font-family="Arial, sans-serif" font-size="12">EXAMPLE ${escapeSvgText(
-    normalizedLicenseState,
-  )} PLATE</text>
-</svg>`;
-    stateExamplePlateDataUrls[normalizedLicenseState] =
-      `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-  }
-
-  return stateExamplePlateDataUrls[normalizedLicenseState];
+function getStateOfficialPlateStockImage(licenseState) {
+  return (
+    officialStatePlateStockImagesByState[(licenseState || '').toUpperCase()] ||
+    null
+  );
 }
 
 async function fetchPlateResults({
@@ -1040,9 +1018,11 @@ class Home extends React.Component {
     const matchingAlprLicenseState = matchingAlprPlateResult
       ? getLicenseStateFromPlateResult(matchingAlprPlateResult)
       : '';
-    const matchingStateExamplePlate = matchingAlprLicenseState
-      ? getStateExamplePlateDataUrl(matchingAlprLicenseState)
-      : '';
+    const matchingStateOfficialPlateStockImage = matchingAlprLicenseState
+      ? getStateOfficialPlateStockImage(matchingAlprLicenseState)
+      : null;
+    const matchingAlprStateName =
+      usStateNames[matchingAlprLicenseState] || matchingAlprLicenseState;
 
     return (
       <Dropzone
@@ -1606,16 +1586,27 @@ class Home extends React.Component {
                             objectFit: 'contain',
                           }}
                         />
-                        {matchingStateExamplePlate && (
-                          <img
-                            src={matchingStateExamplePlate}
-                            alt={`Example ${usStateNames[matchingAlprLicenseState]} license plate`}
-                            style={{
-                              maxHeight: '5rem',
-                              maxWidth: '12rem',
-                              objectFit: 'contain',
-                            }}
-                          />
+                        {matchingStateOfficialPlateStockImage && (
+                          <a
+                            href={
+                              matchingStateOfficialPlateStockImage.sourceUrl
+                            }
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title={`Official ${matchingAlprStateName} stock plate image from ${matchingStateOfficialPlateStockImage.sourceName}`}
+                          >
+                            <img
+                              src={
+                                matchingStateOfficialPlateStockImage.imageUrl
+                              }
+                              alt={`Official ${matchingAlprStateName} stock license plate`}
+                              style={{
+                                maxHeight: '5rem',
+                                maxWidth: '12rem',
+                                objectFit: 'contain',
+                              }}
+                            />
+                          </a>
                         )}
                       </div>
                     )}

@@ -210,12 +210,52 @@ const officialStatePlateStockImagesByState = {
       'https://dmv.ny.gov/sites/default/files/styles/panopoly_image_original/public/Plates_2.png?itok=-1gvx8I1',
     sourceUrl: 'https://dmv.ny.gov/plates/excelsior-plates',
     sourceName: 'New York DMV',
+    isOfficial: true,
   },
 };
+
+function createGeneratedStatePlateStockImageUrl({ licenseState, stateName }) {
+  const sanitizedLicenseState = (licenseState || '')
+    .toUpperCase()
+    .replace(/[^A-Z]/g, '')
+    .slice(0, 2);
+  const sanitizedStateName = (stateName || '')
+    .toUpperCase()
+    .replace(/[^A-Z ]/g, '')
+    .slice(0, 24);
+  const svg = `
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="180" viewBox="0 0 360 180">
+  <rect x="8" y="8" width="344" height="164" rx="18" fill="#fff" stroke="#1f2937" stroke-width="6" />
+  <rect x="20" y="20" width="320" height="28" rx="8" fill="#1d4ed8" />
+  <text x="180" y="40" text-anchor="middle" fill="#fff" font-size="16" font-family="Arial, sans-serif">${sanitizedStateName}</text>
+  <text x="180" y="110" text-anchor="middle" fill="#111827" font-size="72" font-family="Arial Black, Arial, sans-serif" letter-spacing="3">${sanitizedLicenseState}</text>
+  <text x="180" y="146" text-anchor="middle" fill="#4b5563" font-size="14" font-family="Arial, sans-serif">STATE PLATE REFERENCE</text>
+</svg>
+`.trim();
+
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
+const generatedStatePlateStockImagesByState = Object.fromEntries(
+  Object.entries(usStateNames).map(([licenseState, stateName]) => [
+    licenseState,
+    {
+      imageUrl: createGeneratedStatePlateStockImageUrl({
+        licenseState,
+        stateName,
+      }),
+      sourceUrl:
+        'https://en.wikipedia.org/wiki/Vehicle_registration_plates_of_the_United_States',
+      sourceName: 'generated reference',
+      isOfficial: false,
+    },
+  ]),
+);
 
 function getStateOfficialPlateStockImage(licenseState) {
   return (
     officialStatePlateStockImagesByState[(licenseState || '').toUpperCase()] ||
+    generatedStatePlateStockImagesByState[(licenseState || '').toUpperCase()] ||
     null
   );
 }
@@ -1021,6 +1061,11 @@ class Home extends React.Component {
     const matchingStateOfficialPlateStockImage = matchingAlprLicenseState
       ? getStateOfficialPlateStockImage(matchingAlprLicenseState)
       : null;
+    const matchingStatePlateImageDescriptor =
+      matchingStateOfficialPlateStockImage &&
+      matchingStateOfficialPlateStockImage.isOfficial
+        ? 'Official'
+        : 'Reference';
     const matchingAlprStateName =
       usStateNames[matchingAlprLicenseState] ||
       matchingAlprLicenseState ||
@@ -1595,13 +1640,13 @@ class Home extends React.Component {
                             }
                             target="_blank"
                             rel="noopener noreferrer"
-                            title={`Official ${matchingAlprStateName} stock plate image from ${matchingStateOfficialPlateStockImage.sourceName}`}
+                            title={`${matchingStatePlateImageDescriptor} ${matchingAlprStateName} stock plate image from ${matchingStateOfficialPlateStockImage.sourceName}`}
                           >
                             <img
                               src={
                                 matchingStateOfficialPlateStockImage.imageUrl
                               }
-                              alt={`Official ${matchingAlprStateName} stock license plate`}
+                              alt={`${matchingStatePlateImageDescriptor} ${matchingAlprStateName} stock license plate`}
                               onError={event => {
                                 const { currentTarget } = event;
                                 currentTarget.setAttribute('hidden', 'hidden');

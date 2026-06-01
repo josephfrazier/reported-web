@@ -1022,7 +1022,9 @@ class Home extends React.Component {
       ? getStateOfficialPlateStockImage(matchingAlprLicenseState)
       : null;
     const matchingAlprStateName =
-      usStateNames[matchingAlprLicenseState] || matchingAlprLicenseState;
+      usStateNames[matchingAlprLicenseState] ||
+      matchingAlprLicenseState ||
+      'Unknown state';
 
     return (
       <Dropzone
@@ -1600,6 +1602,10 @@ class Home extends React.Component {
                                 matchingStateOfficialPlateStockImage.imageUrl
                               }
                               alt={`Official ${matchingAlprStateName} stock license plate`}
+                              onError={event => {
+                                const { currentTarget } = event;
+                                currentTarget.setAttribute('hidden', 'hidden');
+                              }}
                               style={{
                                 maxHeight: '5rem',
                                 maxWidth: '12rem',

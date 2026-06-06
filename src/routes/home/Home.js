@@ -49,7 +49,6 @@ import CircularProgress from '@mui/material/CircularProgress';
 import marx from 'marx-css/css/marx.css';
 import homeStyles from './Home.css';
 
-import PreviousSubmissionsList from '../../components/PreviousSubmissionsList.js';
 import PlatePickerModal from './PlatePickerModal.js';
 import { isImage, isVideo } from '../../isImage.js';
 import getNycTimezoneOffset from '../../timezone.js';
@@ -423,7 +422,6 @@ class Home extends React.Component {
       isReverseGeocodingEnabled: true,
       isUserInfoOpen: true,
       isMapOpen: false,
-      isPreviousSubmissionsOpen: false,
     };
 
     const initialStatePerSession = {
@@ -524,8 +522,6 @@ class Home extends React.Component {
     });
 
     this.forceUpdate(); // force "Create/Edit User" fields to render persisted value after load
-
-    this.loadPreviousSubmissions();
   }
 
   onDeleteSubmission = ({ objectId }) => {
@@ -976,16 +972,6 @@ class Home extends React.Component {
     );
   };
 
-  loadPreviousSubmissions = () => {
-    axios
-      .post('/submissions', this.state)
-      .then(({ data }) => {
-        const { submissions } = data;
-        this.setState({ submissions });
-      })
-      .catch(Home.handleAxiosError);
-  };
-
   render() {
     const matchingPlateThumbnail =
       this.state.plateThumbnailsByKey[
@@ -1171,7 +1157,6 @@ class Home extends React.Component {
                         }),
                         () => {
                           this.saveStateToLocalStorage();
-                          this.loadPreviousSubmissions();
                           this.userFormSubmitRef.current.click();
                         },
                       );
@@ -1754,29 +1739,6 @@ class Home extends React.Component {
             </form>
 
             <br />
-
-            <details
-              onToggle={evt =>
-                this.setState({
-                  isPreviousSubmissionsOpen: evt.currentTarget.open,
-                })
-              }
-            >
-              <summary>
-                Previous Submissions (
-                {this.state.submissions.length > 0
-                  ? this.state.submissions.length
-                  : 'loading...'}
-                )
-              </summary>
-
-              {this.state.isPreviousSubmissionsOpen && (
-                <PreviousSubmissionsList
-                  submissions={this.state.submissions}
-                  onDeleteSubmission={this.onDeleteSubmission}
-                />
-              )}
-            </details>
 
             <div style={{ float: 'right' }}>
               <a

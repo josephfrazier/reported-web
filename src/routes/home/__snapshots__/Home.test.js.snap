@@ -696,15 +696,6 @@ exports[`Home renders children correctly 1`] = `
         </fieldset>
       </form>
       <br />
-      <details
-        onToggle={[Function]}
-      >
-        <summary>
-          Previous Submissions (
-          loading...
-          )
-        </summary>
-      </details>
       <div
         style={
           {

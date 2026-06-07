@@ -421,6 +421,7 @@ class Home extends React.Component {
       ...initialStatePerSubmission,
       isAlprEnabled: true,
       isReverseGeocodingEnabled: true,
+      isLoadPreviousSubmissionsEnabled: true,
       isUserInfoOpen: true,
       isMapOpen: false,
       isPreviousSubmissionsOpen: false,
@@ -525,7 +526,9 @@ class Home extends React.Component {
 
     this.forceUpdate(); // force "Create/Edit User" fields to render persisted value after load
 
-    this.loadPreviousSubmissions();
+    if (this.state.isLoadPreviousSubmissionsEnabled) {
+      this.loadPreviousSubmissions();
+    }
   }
 
   onDeleteSubmission = ({ objectId }) => {
@@ -1475,6 +1478,16 @@ class Home extends React.Component {
                     onChange={this.handleInputChange}
                   />{' '}
                   Automatically read addresses from pictures/videos
+                </label>
+
+                <label htmlFor="isLoadPreviousSubmissionsEnabled">
+                  <input
+                    type="checkbox"
+                    checked={this.state.isLoadPreviousSubmissionsEnabled}
+                    name="isLoadPreviousSubmissionsEnabled"
+                    onChange={this.handleInputChange}
+                  />{' '}
+                  Load previous submissions immediately
                 </label>
 
                 <label htmlFor="plate">

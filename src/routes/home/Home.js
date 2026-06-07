@@ -1008,6 +1008,29 @@ class Home extends React.Component {
       });
   };
 
+  getPreviousSubmissionsSummary = () => {
+    const {
+      submissions,
+      isPreviousSubmissionsLoading,
+      hasLoadedPreviousSubmissions,
+      isLoadPreviousSubmissionsEnabled,
+    } = this.state;
+
+    if (submissions.length > 0) {
+      return submissions.length;
+    }
+    if (isPreviousSubmissionsLoading) {
+      return 'loading...';
+    }
+    if (!hasLoadedPreviousSubmissions && !isLoadPreviousSubmissionsEnabled) {
+      return 'expand to load';
+    }
+    if (hasLoadedPreviousSubmissions) {
+      return 0;
+    }
+    return 'loading...';
+  };
+
   render() {
     const matchingPlateThumbnail =
       this.state.plateThumbnailsByKey[
@@ -1016,21 +1039,7 @@ class Home extends React.Component {
           licenseState: this.state.licenseState,
         })
       ];
-    let previousSubmissionsSummary = this.state.submissions.length;
-    if (this.state.submissions.length === 0) {
-      if (this.state.isPreviousSubmissionsLoading) {
-        previousSubmissionsSummary = 'loading...';
-      } else if (
-        !this.state.hasLoadedPreviousSubmissions &&
-        !this.state.isLoadPreviousSubmissionsEnabled
-      ) {
-        previousSubmissionsSummary = 'expand to load';
-      } else if (this.state.hasLoadedPreviousSubmissions) {
-        previousSubmissionsSummary = 0;
-      } else {
-        previousSubmissionsSummary = 'loading...';
-      }
-    }
+    const previousSubmissionsSummary = this.getPreviousSubmissionsSummary();
 
     return (
       <Dropzone

@@ -265,18 +265,6 @@ exports[`Home renders children correctly 1`] = `
             Automatically read addresses from pictures/videos
           </label>
           <label
-            htmlFor="isLoadPreviousSubmissionsEnabled"
-          >
-            <input
-              checked={false}
-              name="isLoadPreviousSubmissionsEnabled"
-              onChange={[Function]}
-              type="checkbox"
-            />
-             
-            Load previous submissions immediately
-          </label>
-          <label
             htmlFor="plate"
           >
             License/Medallion:

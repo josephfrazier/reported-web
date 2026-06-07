@@ -1817,6 +1817,7 @@ class Home extends React.Component {
                 const isPreviousSubmissionsOpen = evt.currentTarget.open;
                 const shouldLoadPreviousSubmissions =
                   isPreviousSubmissionsOpen &&
+                  !this.state.isPreviousSubmissionsLoading &&
                   !this.state.isLoadPreviousSubmissionsEnabled &&
                   !this.state.hasLoadedPreviousSubmissions;
 

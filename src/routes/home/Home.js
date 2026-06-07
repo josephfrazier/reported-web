@@ -1016,6 +1016,21 @@ class Home extends React.Component {
           licenseState: this.state.licenseState,
         })
       ];
+    let previousSubmissionsSummary = this.state.submissions.length;
+    if (this.state.submissions.length === 0) {
+      if (this.state.isPreviousSubmissionsLoading) {
+        previousSubmissionsSummary = 'loading...';
+      } else if (
+        !this.state.hasLoadedPreviousSubmissions &&
+        !this.state.isLoadPreviousSubmissionsEnabled
+      ) {
+        previousSubmissionsSummary = 'expand to load';
+      } else if (this.state.hasLoadedPreviousSubmissions) {
+        previousSubmissionsSummary = 0;
+      } else {
+        previousSubmissionsSummary = 'loading...';
+      }
+    }
 
     return (
       <Dropzone
@@ -1804,18 +1819,7 @@ class Home extends React.Component {
               }}
             >
               <summary>
-                Previous Submissions (
-                {this.state.submissions.length > 0
-                  ? this.state.submissions.length
-                  : this.state.isPreviousSubmissionsLoading
-                    ? 'loading...'
-                    : !this.state.hasLoadedPreviousSubmissions &&
-                        !this.state.isLoadPreviousSubmissionsEnabled
-                      ? 'expand to load'
-                      : this.state.hasLoadedPreviousSubmissions
-                        ? 0
-                        : 'loading...'}
-                )
+                Previous Submissions ({previousSubmissionsSummary})
               </summary>
 
               {this.state.isPreviousSubmissionsOpen && (

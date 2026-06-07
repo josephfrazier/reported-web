@@ -1025,11 +1025,7 @@ class Home extends React.Component {
     if (isPreviousSubmissionsLoading) {
       return 'loading...';
     }
-    if (!hasLoadedPreviousSubmissions) {
-      return isLoadPreviousSubmissionsEnabled ? 'loading...' : 'expand to load';
-    }
-
-    return 'loading...';
+    return isLoadPreviousSubmissionsEnabled ? 'loading...' : 'expand to load';
   };
 
   render() {

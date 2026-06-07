@@ -421,7 +421,7 @@ class Home extends React.Component {
       ...initialStatePerSubmission,
       isAlprEnabled: true,
       isReverseGeocodingEnabled: true,
-      isLoadPreviousSubmissionsEnabled: true,
+      isLoadPreviousSubmissionsEnabled: false,
       isUserInfoOpen: true,
       isMapOpen: false,
       isPreviousSubmissionsOpen: false,

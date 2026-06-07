@@ -1025,10 +1025,10 @@ class Home extends React.Component {
     if (isPreviousSubmissionsLoading) {
       return 'loading...';
     }
-    if (!hasLoadedPreviousSubmissions && !isLoadPreviousSubmissionsEnabled) {
-      return 'expand to load';
+    if (!hasLoadedPreviousSubmissions) {
+      return isLoadPreviousSubmissionsEnabled ? 'loading...' : 'expand to load';
     }
-    // Default while immediate loading is enabled and the first fetch has not resolved yet.
+
     return 'loading...';
   };
 

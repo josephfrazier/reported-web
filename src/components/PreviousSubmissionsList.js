@@ -10,15 +10,27 @@ class PreviousSubmissionsList extends React.Component {
   shouldComponentUpdate(nextProps) {
     return (
       this.props.submissions !== nextProps.submissions ||
-      this.props.onDeleteSubmission !== nextProps.onDeleteSubmission
+      this.props.onDeleteSubmission !== nextProps.onDeleteSubmission ||
+      this.props.isLoading !== nextProps.isLoading ||
+      this.props.hasLoadedPreviousSubmissions !==
+        nextProps.hasLoadedPreviousSubmissions
     );
   }
 
   render() {
-    const { submissions, onDeleteSubmission } = this.props;
+    const {
+      submissions,
+      onDeleteSubmission,
+      isLoading,
+      hasLoadedPreviousSubmissions,
+    } = this.props;
 
-    if (submissions.length === 0) {
+    if (isLoading) {
       return 'Loading submissions...';
+    }
+
+    if (hasLoadedPreviousSubmissions && submissions.length === 0) {
+      return 'No previous submissions found.';
     }
 
     return (
@@ -49,6 +61,8 @@ class PreviousSubmissionsList extends React.Component {
 }
 
 PreviousSubmissionsList.propTypes = {
+  hasLoadedPreviousSubmissions: PropTypes.bool.isRequired,
+  isLoading: PropTypes.bool.isRequired,
   submissions: PropTypes.arrayOf(
     PropTypes.shape({
       objectId: PropTypes.string,

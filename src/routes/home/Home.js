@@ -1524,16 +1524,6 @@ class Home extends React.Component {
                   Automatically read addresses from pictures/videos
                 </label>
 
-                <label htmlFor="isLoadPreviousSubmissionsEnabled">
-                  <input
-                    type="checkbox"
-                    checked={this.state.isLoadPreviousSubmissionsEnabled}
-                    name="isLoadPreviousSubmissionsEnabled"
-                    onChange={this.handleInputChange}
-                  />{' '}
-                  Load previous submissions immediately
-                </label>
-
                 <label htmlFor="plate">
                   License/Medallion:
                   {this.state.isAlprLoading && <CircularProgress size="1em" />}
@@ -1838,10 +1828,31 @@ class Home extends React.Component {
               </summary>
 
               {this.state.isPreviousSubmissionsOpen && (
-                <PreviousSubmissionsList
-                  submissions={this.state.submissions}
-                  onDeleteSubmission={this.onDeleteSubmission}
-                />
+                <>
+                  {this.state.hasLoadedPreviousSubmissions &&
+                    !this.state.isPreviousSubmissionsLoading && (
+                      <label
+                        htmlFor="isLoadPreviousSubmissionsEnabled"
+                        style={{ display: 'block', marginBottom: '1rem' }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={this.state.isLoadPreviousSubmissionsEnabled}
+                          name="isLoadPreviousSubmissionsEnabled"
+                          onChange={this.handleInputChange}
+                        />{' '}
+                        Load previous submissions immediately
+                      </label>
+                    )}
+                  <PreviousSubmissionsList
+                    submissions={this.state.submissions}
+                    onDeleteSubmission={this.onDeleteSubmission}
+                    isLoading={this.state.isPreviousSubmissionsLoading}
+                    hasLoadedPreviousSubmissions={
+                      this.state.hasLoadedPreviousSubmissions
+                    }
+                  />
+                </>
               )}
             </details>
 

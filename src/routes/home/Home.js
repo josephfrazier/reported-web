@@ -434,6 +434,8 @@ class Home extends React.Component {
       isPasswordRevealed: false,
       isUserInfoSaving: false,
       isSubmitting: false,
+      isPreviousSubmissionsLoading: false,
+      hasLoadedPreviousSubmissions: false,
       allPlateResults: [],
       vehicleInfoComponent: null,
       violationSummaryComponent: null,
@@ -980,13 +982,30 @@ class Home extends React.Component {
   };
 
   loadPreviousSubmissions = () => {
+    if (this.state.isPreviousSubmissionsLoading) {
+      return;
+    }
+
+    this.setState({
+      isPreviousSubmissionsLoading: true,
+    });
+
     axios
       .post('/submissions', this.state)
       .then(({ data }) => {
         const { submissions } = data;
-        this.setState({ submissions });
+        this.setState({
+          submissions,
+          isPreviousSubmissionsLoading: false,
+          hasLoadedPreviousSubmissions: true,
+        });
       })
-      .catch(Home.handleAxiosError);
+      .catch(error => {
+        this.setState({
+          isPreviousSubmissionsLoading: false,
+        });
+        Home.handleAxiosError(error);
+      });
   };
 
   render() {
@@ -1769,17 +1788,33 @@ class Home extends React.Component {
             <br />
 
             <details
-              onToggle={evt =>
+              onToggle={evt => {
+                const isPreviousSubmissionsOpen = evt.currentTarget.open;
                 this.setState({
-                  isPreviousSubmissionsOpen: evt.currentTarget.open,
-                })
-              }
+                  isPreviousSubmissionsOpen,
+                });
+
+                if (
+                  isPreviousSubmissionsOpen &&
+                  !this.state.isLoadPreviousSubmissionsEnabled &&
+                  !this.state.hasLoadedPreviousSubmissions
+                ) {
+                  this.loadPreviousSubmissions();
+                }
+              }}
             >
               <summary>
                 Previous Submissions (
                 {this.state.submissions.length > 0
                   ? this.state.submissions.length
-                  : 'loading...'}
+                  : this.state.isPreviousSubmissionsLoading
+                    ? 'loading...'
+                    : !this.state.hasLoadedPreviousSubmissions &&
+                        !this.state.isLoadPreviousSubmissionsEnabled
+                      ? 'expand to load'
+                      : this.state.hasLoadedPreviousSubmissions
+                        ? 0
+                        : 'loading...'}
                 )
               </summary>
 

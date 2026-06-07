@@ -1019,14 +1019,14 @@ class Home extends React.Component {
     if (submissions.length > 0) {
       return submissions.length;
     }
+    if (hasLoadedPreviousSubmissions) {
+      return 0;
+    }
     if (isPreviousSubmissionsLoading) {
       return 'loading...';
     }
     if (!hasLoadedPreviousSubmissions && !isLoadPreviousSubmissionsEnabled) {
       return 'expand to load';
-    }
-    if (hasLoadedPreviousSubmissions) {
-      return 0;
     }
     // Default while immediate loading is enabled and the first fetch has not resolved yet.
     return 'loading...';
@@ -1815,17 +1815,21 @@ class Home extends React.Component {
             <details
               onToggle={evt => {
                 const isPreviousSubmissionsOpen = evt.currentTarget.open;
-                this.setState({
-                  isPreviousSubmissionsOpen,
-                });
-
-                if (
+                const shouldLoadPreviousSubmissions =
                   isPreviousSubmissionsOpen &&
                   !this.state.isLoadPreviousSubmissionsEnabled &&
-                  !this.state.hasLoadedPreviousSubmissions
-                ) {
-                  this.loadPreviousSubmissions();
-                }
+                  !this.state.hasLoadedPreviousSubmissions;
+
+                this.setState(
+                  {
+                    isPreviousSubmissionsOpen,
+                  },
+                  () => {
+                    if (shouldLoadPreviousSubmissions) {
+                      this.loadPreviousSubmissions();
+                    }
+                  },
+                );
               }}
             >
               <summary>

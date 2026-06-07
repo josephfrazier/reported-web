@@ -1028,6 +1028,7 @@ class Home extends React.Component {
     if (hasLoadedPreviousSubmissions) {
       return 0;
     }
+    // Default while immediate loading is enabled and the first fetch has not resolved yet.
     return 'loading...';
   };
 

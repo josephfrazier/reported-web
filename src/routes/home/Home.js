@@ -1837,7 +1837,7 @@ class Home extends React.Component {
                           name="isLoadPreviousSubmissionsEnabled"
                           onChange={this.handleInputChange}
                         />{' '}
-                        Load previous submissions immediately
+                        Load previous submissions immediately next time
                       </label>
                     )}
                   <PreviousSubmissionsList

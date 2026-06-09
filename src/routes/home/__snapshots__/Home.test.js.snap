@@ -701,7 +701,7 @@ exports[`Home renders children correctly 1`] = `
       >
         <summary>
           Previous Submissions (
-          loading...
+          expand to load
           )
         </summary>
       </details>

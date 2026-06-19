@@ -461,6 +461,10 @@ class Home extends React.Component {
   }
 
   componentDidMount() {
+    alert(
+      'Reported cannot currently create 311 Service Requests, so your submissions are not going very far at the moment. See here for details:\n\nhttps://reportedcab.slack.com/archives/C802R14UX/p1781350550709439',
+    );
+
     // if there's no attachments or a time couldn't be extracted, just use now
     if (this.state.attachmentData.length === 0 || !this.state.CreateDate) {
       this.setCreateDate({ millisecondsSinceEpoch: Date.now() });

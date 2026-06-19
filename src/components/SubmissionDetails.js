@@ -32,6 +32,7 @@ class SubmissionDetails extends React.Component {
       timeofreport,
       reportDescription,
       status,
+      reqnumber,
 
       photoData,
       photoData0,
@@ -51,7 +52,7 @@ class SubmissionDetails extends React.Component {
     const tlcTask = (tasks || []).find(
       task => task.action === 'submit 311 complaint',
     );
-    const tlcCaseId = tlcTask && tlcTask.case_id;
+    const tlcCaseId = tlcTask && tlcTask.case_id || reqnumber;
 
     const nypdTask = (tasks || []).find(
       task => task.action === 'submit 311 illegal parking complaint',

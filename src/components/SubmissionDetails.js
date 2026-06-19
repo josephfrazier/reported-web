@@ -52,7 +52,7 @@ class SubmissionDetails extends React.Component {
     const tlcTask = (tasks || []).find(
       task => task.action === 'submit 311 complaint',
     );
-    const tlcCaseId = tlcTask && tlcTask.case_id || reqnumber;
+    const tlcCaseId = (tlcTask && tlcTask.case_id) || reqnumber;
 
     const nypdTask = (tasks || []).find(
       task => task.action === 'submit 311 illegal parking complaint',
@@ -214,6 +214,7 @@ SubmissionDetails.propTypes = {
     timeofreport: PropTypes.string,
     reportDescription: PropTypes.string,
     status: PropTypes.number,
+    reqnumber: PropTypes.string,
 
     photoData: PropTypes.object,
     photoData0: PropTypes.object,

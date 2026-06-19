@@ -359,6 +359,16 @@ exports[`SubmissionDetails renders delete button correctly 1`] = `
     82 Reade St
      on 
     2016-11-18T00:00:00.000Z UTC (MockDate: GMT-0500)
+    <br />
+    TLC Service Request Number:
+     
+    <a
+      href="https://portal.311.nyc.gov/sr-details/?srnum=N/A until submitted to 311"
+      rel="noopener noreferrer"
+      target="_blank"
+    >
+      N/A until submitted to 311
+    </a>
   </summary>
   <p>
     reportDescription

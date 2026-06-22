@@ -181,22 +181,20 @@ function getLicenseStateFromPlateResult(result) {
   }
 }
 
-function getPlateThumbnailKey({ plate, licenseState }) {
-  return `${(plate || '').toUpperCase()}|${(licenseState || '').toUpperCase()}`;
+function getPlateThumbnailKey({ plate }) {
+  return (plate || '').toUpperCase();
 }
 
 function getPlateThumbnailsByKey(results = []) {
   return results.reduce((acc, result) => {
     const plate = (result.plate || '').toUpperCase();
-    const licenseState = getLicenseStateFromPlateResult(result);
 
-    if (!result.plateCropDataUrl || !plate || !licenseState) {
+    if (!result.plateCropDataUrl || !plate) {
       return acc;
     }
 
     const key = getPlateThumbnailKey({
       plate,
-      licenseState,
     });
 
     acc[key] = result.plateCropDataUrl; // eslint-disable-line no-param-reassign

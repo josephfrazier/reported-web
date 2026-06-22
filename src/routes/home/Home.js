@@ -1041,7 +1041,6 @@ class Home extends React.Component {
       this.state.plateThumbnailsByKey[
         getPlateThumbnailKey({
           plate: this.state.plate,
-          licenseState: this.state.licenseState,
         })
       ];
     const previousSubmissionsSummary = this.getPreviousSubmissionsSummary();

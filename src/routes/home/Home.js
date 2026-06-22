@@ -1036,9 +1036,7 @@ class Home extends React.Component {
 
   render() {
     const matchingPlateThumbnail =
-      this.state.plateThumbnailsByKey[
-        getPlateThumbnailKey(this.state.plate)
-      ];
+      this.state.plateThumbnailsByKey[getPlateThumbnailKey(this.state.plate)];
     const previousSubmissionsSummary = this.getPreviousSubmissionsSummary();
 
     return (

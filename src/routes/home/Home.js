@@ -181,7 +181,7 @@ function getLicenseStateFromPlateResult(result) {
   }
 }
 
-function getPlateThumbnailKey({ plate }) {
+function getPlateThumbnailKey(plate) {
   return (plate || '').toUpperCase();
 }
 
@@ -193,9 +193,7 @@ function getPlateThumbnailsByKey(results = []) {
       return acc;
     }
 
-    const key = getPlateThumbnailKey({
-      plate,
-    });
+    const key = getPlateThumbnailKey(plate);
 
     acc[key] = result.plateCropDataUrl; // eslint-disable-line no-param-reassign
     return acc;
@@ -1039,9 +1037,7 @@ class Home extends React.Component {
   render() {
     const matchingPlateThumbnail =
       this.state.plateThumbnailsByKey[
-        getPlateThumbnailKey({
-          plate: this.state.plate,
-        })
+        getPlateThumbnailKey(this.state.plate)
       ];
     const previousSubmissionsSummary = this.getPreviousSubmissionsSummary();
 

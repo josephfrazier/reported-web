@@ -181,23 +181,19 @@ function getLicenseStateFromPlateResult(result) {
   }
 }
 
-function getPlateThumbnailKey({ plate, licenseState }) {
-  return `${(plate || '').toUpperCase()}|${(licenseState || '').toUpperCase()}`;
+function getPlateThumbnailKey(plate) {
+  return (plate || '').toUpperCase();
 }
 
 function getPlateThumbnailsByKey(results = []) {
   return results.reduce((acc, result) => {
     const plate = (result.plate || '').toUpperCase();
-    const licenseState = getLicenseStateFromPlateResult(result);
 
-    if (!result.plateCropDataUrl || !plate || !licenseState) {
+    if (!result.plateCropDataUrl || !plate) {
       return acc;
     }
 
-    const key = getPlateThumbnailKey({
-      plate,
-      licenseState,
-    });
+    const key = getPlateThumbnailKey(plate);
 
     acc[key] = result.plateCropDataUrl; // eslint-disable-line no-param-reassign
     return acc;
@@ -1040,12 +1036,7 @@ class Home extends React.Component {
 
   render() {
     const matchingPlateThumbnail =
-      this.state.plateThumbnailsByKey[
-        getPlateThumbnailKey({
-          plate: this.state.plate,
-          licenseState: this.state.licenseState,
-        })
-      ];
+      this.state.plateThumbnailsByKey[getPlateThumbnailKey(this.state.plate)];
     const previousSubmissionsSummary = this.getPreviousSubmissionsSummary();
 
     return (

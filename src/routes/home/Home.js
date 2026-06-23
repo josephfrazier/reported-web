@@ -93,6 +93,13 @@ const defaultMapSearchBounds = {
   south: 40.496044,
   west: -74.255735,
 };
+const mapBoundsEpsilon = 0.000001;
+const mapBoundsUpdateThrottleMs = 300;
+const mapBoundsAreEqual = (a, b) =>
+  Math.abs(a.east - b.east) < mapBoundsEpsilon &&
+  Math.abs(a.north - b.north) < mapBoundsEpsilon &&
+  Math.abs(a.south - b.south) < mapBoundsEpsilon &&
+  Math.abs(a.west - b.west) < mapBoundsEpsilon;
 
 // adapted from https://www.bignerdranch.com/blog/dont-over-react/
 const urls = new WeakMap();
@@ -461,6 +468,7 @@ class Home extends React.Component {
     this.initialStatePersistent = initialStatePersistent;
     this.userFormSubmitRef = React.createRef();
     this.plateRef = React.createRef();
+    this.mapSearchBoundsUpdateTimeout = null;
   }
 
   componentDidMount() {
@@ -478,6 +486,7 @@ class Home extends React.Component {
     if (this.state.attachmentData.length === 0 || !this.state.CreateDate) {
       this.setCreateDate({ millisecondsSinceEpoch: Date.now() });
     }
+
     geolocate().then(
       ({ coords: { latitude, longitude }, ipProvenance = 'device' }) => {
         // if there's no attachments or a location couldn't be extracted, just use here
@@ -543,6 +552,12 @@ class Home extends React.Component {
 
     if (this.state.isLoadPreviousSubmissionsEnabled) {
       this.loadPreviousSubmissions();
+    }
+  }
+
+  componentWillUnmount() {
+    if (this.mapSearchBoundsUpdateTimeout) {
+      clearTimeout(this.mapSearchBoundsUpdateTimeout);
     }
   }
 
@@ -1684,9 +1699,27 @@ class Home extends React.Component {
                         return;
                       }
 
-                      this.setState({
-                        mapSearchBounds: mapBounds.toJSON(),
-                      });
+                      if (this.mapSearchBoundsUpdateTimeout) {
+                        clearTimeout(this.mapSearchBoundsUpdateTimeout);
+                      }
+
+                      const nextMapSearchBounds = mapBounds.toJSON();
+                      this.mapSearchBoundsUpdateTimeout = setTimeout(() => {
+                        this.mapSearchBoundsUpdateTimeout = null;
+                        this.setState(prevState => {
+                          const { mapSearchBounds } = prevState;
+                          if (
+                            mapBoundsAreEqual(
+                              mapSearchBounds,
+                              nextMapSearchBounds,
+                            )
+                          ) {
+                            return null;
+                          }
+
+                          return { mapSearchBounds: nextMapSearchBounds };
+                        });
+                      }, mapBoundsUpdateThrottleMs);
                     }}
                     onPlacesChanged={() => {
                       const places = this.searchBox.getPlaces();

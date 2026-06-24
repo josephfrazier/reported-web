@@ -52,9 +52,7 @@ class SubmissionDetails extends React.Component {
     const tlcTask = (tasks || []).find(
       task => task.action === 'submit 311 complaint',
     );
-    const tlcCaseId = tlcTask
-      ? tlcTask.case_id
-      : reqnumber !== 'N/A until submitted to 311' && reqnumber;
+    const tlcCaseId = tlcTask ? tlcTask.case_id : reqnumber;
 
     const nypdTask = (tasks || []).find(
       task => task.action === 'submit 311 illegal parking complaint',

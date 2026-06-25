@@ -30,8 +30,6 @@ describe('SubmissionDetails', () => {
       videoData0: 'videoData0',
       videoData1: 'videoData1',
       videoData2: 'videoData2',
-
-      tasks: [],
     };
 
     const wrapper = renderer
@@ -68,8 +66,6 @@ describe('SubmissionDetails', () => {
       videoData0: 'videoData0',
       videoData1: 'videoData1',
       videoData2: 'videoData2',
-
-      tasks: [],
     };
 
     const wrapper = renderer
@@ -106,8 +102,6 @@ describe('SubmissionDetails', () => {
       videoData0: 'videoData0',
       videoData1: 'videoData1',
       videoData2: 'videoData2',
-
-      tasks: [],
     };
 
     const wrapper = renderer

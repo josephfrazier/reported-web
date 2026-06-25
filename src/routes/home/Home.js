@@ -457,16 +457,6 @@ class Home extends React.Component {
   }
 
   componentDidMount() {
-    prompt(
-      [
-        'Reported is currently experiencing bugs creating 311 Service Requests (aka SRs).',
-        'Your SRs may be delayed, and the Previous Submissions section may not show SR numbers even once created.',
-        'We are continuing to work on getting things back to normal, and hope to fix these issues for previously created submissions.',
-        'See this Slack thread for details:',
-      ].join('\n\n'),
-      'https://reportedcab.slack.com/archives/C802R14UX/p1781890945008119?thread_ts=1781350550.709439&cid=C802R14UX',
-    );
-
     // if there's no attachments or a time couldn't be extracted, just use now
     if (this.state.attachmentData.length === 0 || !this.state.CreateDate) {
       this.setCreateDate({ millisecondsSinceEpoch: Date.now() });

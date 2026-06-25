@@ -54,7 +54,7 @@ class SubmissionDetails extends React.Component {
     );
     const tlcCaseId = tlcTask
       ? tlcTask.case_id
-      : tasks.length === 0 &&
+      : tasks?.length === 0 &&
         reqnumber !== 'N/A until submitted to 311' &&
         reqnumber;
 

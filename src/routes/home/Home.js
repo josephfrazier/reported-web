@@ -181,23 +181,19 @@ function getLicenseStateFromPlateResult(result) {
   }
 }
 
-function getPlateThumbnailKey({ plate, licenseState }) {
-  return `${(plate || '').toUpperCase()}|${(licenseState || '').toUpperCase()}`;
+function getPlateThumbnailKey(plate) {
+  return (plate || '').toUpperCase();
 }
 
 function getPlateThumbnailsByKey(results = []) {
   return results.reduce((acc, result) => {
     const plate = (result.plate || '').toUpperCase();
-    const licenseState = getLicenseStateFromPlateResult(result);
 
-    if (!result.plateCropDataUrl || !plate || !licenseState) {
+    if (!result.plateCropDataUrl || !plate) {
       return acc;
     }
 
-    const key = getPlateThumbnailKey({
-      plate,
-      licenseState,
-    });
+    const key = getPlateThumbnailKey(plate);
 
     acc[key] = result.plateCropDataUrl; // eslint-disable-line no-param-reassign
     return acc;
@@ -421,6 +417,7 @@ class Home extends React.Component {
       ...initialStatePerSubmission,
       isAlprEnabled: true,
       isReverseGeocodingEnabled: true,
+      isLoadPreviousSubmissionsEnabled: false,
       isUserInfoOpen: true,
       isMapOpen: false,
       isPreviousSubmissionsOpen: false,
@@ -433,6 +430,8 @@ class Home extends React.Component {
       isPasswordRevealed: false,
       isUserInfoSaving: false,
       isSubmitting: false,
+      isPreviousSubmissionsLoading: false,
+      hasLoadedPreviousSubmissions: false,
       allPlateResults: [],
       vehicleInfoComponent: null,
       violationSummaryComponent: null,
@@ -458,6 +457,16 @@ class Home extends React.Component {
   }
 
   componentDidMount() {
+    prompt(
+      [
+        'Reported is currently experiencing bugs creating 311 Service Requests (aka SRs).',
+        'Your SRs may be delayed, and the Previous Submissions section may not show SR numbers even once created.',
+        'We are continuing to work on getting things back to normal, and hope to fix these issues for previously created submissions.',
+        'See this Slack thread for details:',
+      ].join('\n\n'),
+      'https://reportedcab.slack.com/archives/C802R14UX/p1781890945008119?thread_ts=1781350550.709439&cid=C802R14UX',
+    );
+
     // if there's no attachments or a time couldn't be extracted, just use now
     if (this.state.attachmentData.length === 0 || !this.state.CreateDate) {
       this.setCreateDate({ millisecondsSinceEpoch: Date.now() });
@@ -525,7 +534,9 @@ class Home extends React.Component {
 
     this.forceUpdate(); // force "Create/Edit User" fields to render persisted value after load
 
-    this.loadPreviousSubmissions();
+    if (this.state.isLoadPreviousSubmissionsEnabled) {
+      this.loadPreviousSubmissions();
+    }
   }
 
   onDeleteSubmission = ({ objectId }) => {
@@ -977,23 +988,56 @@ class Home extends React.Component {
   };
 
   loadPreviousSubmissions = () => {
+    if (this.state.isPreviousSubmissionsLoading) {
+      return;
+    }
+
+    this.setState({
+      isPreviousSubmissionsLoading: true,
+    });
+
     axios
       .post('/submissions', this.state)
       .then(({ data }) => {
         const { submissions } = data;
-        this.setState({ submissions });
+        this.setState({
+          submissions,
+          isPreviousSubmissionsLoading: false,
+          hasLoadedPreviousSubmissions: true,
+        });
       })
-      .catch(Home.handleAxiosError);
+      .catch(error => {
+        this.setState({
+          isPreviousSubmissionsLoading: false,
+        });
+        Home.handleAxiosError(error);
+      });
+  };
+
+  getPreviousSubmissionsSummary = () => {
+    const {
+      submissions,
+      isPreviousSubmissionsLoading,
+      hasLoadedPreviousSubmissions,
+      isLoadPreviousSubmissionsEnabled,
+    } = this.state;
+
+    if (submissions.length > 0) {
+      return submissions.length;
+    }
+    if (hasLoadedPreviousSubmissions) {
+      return 0;
+    }
+    if (isPreviousSubmissionsLoading) {
+      return 'loading...';
+    }
+    return isLoadPreviousSubmissionsEnabled ? 'loading...' : 'expand to load';
   };
 
   render() {
     const matchingPlateThumbnail =
-      this.state.plateThumbnailsByKey[
-        getPlateThumbnailKey({
-          plate: this.state.plate,
-          licenseState: this.state.licenseState,
-        })
-      ];
+      this.state.plateThumbnailsByKey[getPlateThumbnailKey(this.state.plate)];
+    const previousSubmissionsSummary = this.getPreviousSubmissionsSummary();
 
     return (
       <Dropzone
@@ -1756,25 +1800,56 @@ class Home extends React.Component {
             <br />
 
             <details
-              onToggle={evt =>
-                this.setState({
-                  isPreviousSubmissionsOpen: evt.currentTarget.open,
-                })
-              }
+              onToggle={evt => {
+                const isPreviousSubmissionsOpen = evt.currentTarget.open;
+                const shouldLoadPreviousSubmissions =
+                  isPreviousSubmissionsOpen &&
+                  !this.state.isPreviousSubmissionsLoading &&
+                  !this.state.isLoadPreviousSubmissionsEnabled &&
+                  !this.state.hasLoadedPreviousSubmissions;
+
+                this.setState(
+                  {
+                    isPreviousSubmissionsOpen,
+                  },
+                  () => {
+                    if (shouldLoadPreviousSubmissions) {
+                      this.loadPreviousSubmissions();
+                    }
+                  },
+                );
+              }}
             >
               <summary>
-                Previous Submissions (
-                {this.state.submissions.length > 0
-                  ? this.state.submissions.length
-                  : 'loading...'}
-                )
+                Previous Submissions ({previousSubmissionsSummary})
               </summary>
 
               {this.state.isPreviousSubmissionsOpen && (
-                <PreviousSubmissionsList
-                  submissions={this.state.submissions}
-                  onDeleteSubmission={this.onDeleteSubmission}
-                />
+                <>
+                  {this.state.hasLoadedPreviousSubmissions &&
+                    !this.state.isPreviousSubmissionsLoading && (
+                      <label
+                        htmlFor="isLoadPreviousSubmissionsEnabled"
+                        style={{ display: 'block', marginBottom: '1rem' }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={this.state.isLoadPreviousSubmissionsEnabled}
+                          name="isLoadPreviousSubmissionsEnabled"
+                          onChange={this.handleInputChange}
+                        />{' '}
+                        Load previous submissions immediately next time
+                      </label>
+                    )}
+                  <PreviousSubmissionsList
+                    submissions={this.state.submissions}
+                    onDeleteSubmission={this.onDeleteSubmission}
+                    isLoading={this.state.isPreviousSubmissionsLoading}
+                    hasLoadedPreviousSubmissions={
+                      this.state.hasLoadedPreviousSubmissions
+                    }
+                  />
+                </>
               )}
             </details>
 

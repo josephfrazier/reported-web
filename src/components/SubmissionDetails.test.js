@@ -85,7 +85,7 @@ describe('SubmissionDetails', () => {
 
   test('renders delete button correctly', () => {
     const submission = {
-      reqnumber: 'reqnumber',
+      reqnumber: 'N/A until submitted to 311',
       medallionNo: 'medallionNo',
       state: 'licenseState',
       typeofcomplaint: 'typeofcomplaint',

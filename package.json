@@ -45,7 +45,6 @@
     "geodist": "^0.2.1",
     "geolib": "^2.0.24",
     "global": "^4.3.2",
-    "heroku-self-ping": "^2.0.1",
     "history": "^4.7.2",
     "humanize-distance": "^1.0.9",
     "image-extensions": "^1.1.0",

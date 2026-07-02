@@ -6,6 +6,21 @@ import SubmissionDetails from './SubmissionDetails.js';
 const objectMap = (obj, fn) =>
   Object.fromEntries(Object.entries(obj).map(([k, v], i) => [k, fn(v, k, i)]));
 
+const getSubmissionKey = submission =>
+  submission.objectId ||
+  submission.clientKey ||
+  [
+    submission.reqnumber,
+    submission.timeofreport,
+    submission.medallionNo || submission.license,
+    submission.state,
+    submission.typeofcomplaint,
+    submission.loc1_address,
+    submission.reportDescription,
+  ]
+    .filter(Boolean)
+    .join('::');
+
 class PreviousSubmissionsList extends React.Component {
   shouldComponentUpdate(nextProps) {
     return (
@@ -47,7 +62,7 @@ class PreviousSubmissionsList extends React.Component {
         </CSVLink>
         <ul>
           {submissions.map(submission => (
-            <li key={submission.objectId}>
+            <li key={getSubmissionKey(submission)}>
               <SubmissionDetails
                 submission={submission}
                 onDeleteSubmission={onDeleteSubmission}

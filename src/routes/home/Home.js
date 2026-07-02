@@ -1348,7 +1348,17 @@ class Home extends React.Component {
                     );
                     this.setState(state => ({
                       attachmentData: [],
-                      submissions: [submission].concat(state.submissions),
+                      submissions: [
+                        {
+                          ...submission,
+                          clientKey:
+                            submission.clientKey ||
+                            submission.objectId ||
+                            `submission-${Date.now()}-${Math.random()
+                              .toString(36)
+                              .slice(2)}`,
+                        },
+                      ].concat(state.submissions),
                       allPlateResults: [],
                       plateThumbnailsByKey: {},
                       vehicleInfoComponent: null,

@@ -61,13 +61,13 @@ const {
 const herokuSelfPingUrl = config.api.serverUrl;
 const herokuSelfPingInterval = 20 * 60 * 1000; // 20 minutes
 const herokuSelfPing = () => {
-  console.log(`Pinging ${herokuSelfPingUrl}...`);
+  console.info(`Pinging ${herokuSelfPingUrl}...`);
   nodeFetch(herokuSelfPingUrl)
     .then(res => {
       if (res.ok) {
-        console.log('herokuSelfPing successful');
+        console.info('herokuSelfPing successful');
       } else {
-        console.error(`herokuSelfPing failed with status ${res.status}`);
+        console.warn(`herokuSelfPing failed with status ${res.status}`);
       }
     })
     .catch(err => {

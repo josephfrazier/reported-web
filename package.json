@@ -51,7 +51,7 @@
     "image-extensions": "^1.1.0",
     "intl": "^1.2.5",
     "isomorphic-style-loader": "^5.4.0",
-    "jsdom": "^16.5.0",
+    "jsdom": "^26.1.0",
     "json-stringify-safe": "^5.0.1",
     "lodash.sortby": "^4.7.0",
     "marx-css": "^3.0.3",

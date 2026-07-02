@@ -57,9 +57,32 @@ const {
   PLATERECOGNIZER_TOKEN_TWO,
 } = process.env;
 
-require('heroku-self-ping').default(config.api.serverUrl, {
-  verbose: true,
-});
+// Ping the app periodically to prevent Heroku eco tier dyno from sleeping
+// Only runs on Heroku (same detection logic as heroku-self-ping)
+const isHeroku =
+  'HEROKU' in process.env ||
+  ('DYNO' in process.env && process.env.HOME === '/app');
+
+if (isHeroku) {
+  const herokuSelfPingUrl = config.api.serverUrl;
+  const herokuSelfPingInterval = 20 * 60 * 1000; // 20 minutes
+  const herokuSelfPing = () => {
+    console.info(`Pinging ${herokuSelfPingUrl}...`);
+    nodeFetch(herokuSelfPingUrl)
+      .then(res => {
+        if (res.ok) {
+          console.info('herokuSelfPing successful');
+        } else {
+          console.warn(`herokuSelfPing failed with status ${res.status}`);
+        }
+      })
+      .catch(err => {
+        console.error('herokuSelfPing failed:', err.message);
+      });
+  };
+  herokuSelfPing(); // ping immediately on startup
+  setInterval(herokuSelfPing, herokuSelfPingInterval);
+}
 
 // http://docs.parseplatform.org/js/guide/#getting-started
 Parse.initialize(PARSE_APP_ID, PARSE_JAVASCRIPT_KEY, PARSE_MASTER_KEY);

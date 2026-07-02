@@ -1,4 +1,10 @@
 {
+  "env": {
+    "PARSE_SERVER_URL": {
+      "description": "See https://reportedcab.slack.com/archives/GMB2JT5UK/p1776030304504859?thread_ts=1774204641.442929&cid=GMB2JT5UK",
+      "value": "https://reported-parse.webabot.com/parse"
+    }
+  },
   "stack": "heroku-24",
   "buildpacks": [
     {

@@ -114,9 +114,8 @@ const jsDateToCreateDate = jsDate =>
 
 async function blobToBuffer({ attachmentFile }) {
   console.time(`blobUtil.blobToArrayBuffer(attachmentFile)`); // eslint-disable-line no-console
-  const attachmentArrayBuffer = await blobUtil.blobToArrayBuffer(
-    attachmentFile,
-  );
+  const attachmentArrayBuffer =
+    await blobUtil.blobToArrayBuffer(attachmentFile);
   console.timeEnd(`blobUtil.blobToArrayBuffer(attachmentFile)`); // eslint-disable-line no-console
 
   console.time(`Buffer.from(attachmentArrayBuffer)`); // eslint-disable-line no-console
@@ -302,13 +301,10 @@ async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
       throw new Error(`${attachmentFile.name} is not an image/video`);
     }
 
-    const {
-      CreateDate,
-      OffsetTimeDigitized,
-    } = await exifr.parse(attachmentArrayBuffer, [
-      'CreateDate',
-      'OffsetTimeDigitized',
-    ]);
+    const { CreateDate, OffsetTimeDigitized } = await exifr.parse(
+      attachmentArrayBuffer,
+      ['CreateDate', 'OffsetTimeDigitized'],
+    );
 
     console.log({ CreateDate, OffsetTimeDigitized }); // eslint-disable-line no-console
 
@@ -317,8 +313,8 @@ async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
       offset: OffsetTimeDigitized
         ? parseInt(OffsetTimeDigitized, 10) * -60
         : CreateDate
-        ? getNycTimezoneOffset(CreateDate)
-        : new Date().getTimezoneOffset(),
+          ? getNycTimezoneOffset(CreateDate)
+          : new Date().getTimezoneOffset(),
     };
   } catch (err) {
     console.error(err.stack);
@@ -631,12 +627,8 @@ class Home extends React.Component {
 
     debouncedGetVehicleType({ plate, licenseState })
       .then(({ data }) => {
-        const {
-          vehicleYear,
-          vehicleMake,
-          vehicleModel,
-          vehicleBody,
-        } = data.result;
+        const { vehicleYear, vehicleMake, vehicleModel, vehicleBody } =
+          data.result;
 
         if (plate !== this.state.plate) {
           console.info('ignoring stale plate:', plate);
@@ -738,10 +730,8 @@ class Home extends React.Component {
           }
 
           const totalViolations = vehicle.violations.length;
-          const {
-            total_fined: fined,
-            total_outstanding: outstanding,
-          } = vehicle.fines;
+          const { total_fined: fined, total_outstanding: outstanding } =
+            vehicle.fines;
 
           const lastTweetPart =
             vehicle.tweet_parts &&
@@ -752,12 +742,18 @@ class Home extends React.Component {
             ? urlMatch[0].replace(/\.$/, '')
             : 'https://howsmydrivingny.nyc/';
 
+          const firstViolation = vehicle.violations[0];
+          const make = firstViolation?.vehicle_make ?? '';
+          const color = firstViolation?.vehicle_color ?? '';
+          const body = firstViolation?.sanitized?.vehicle_body_type ?? '';
+
           this.setState({
             violationSummaryComponent: (
               <React.Fragment>
                 {totalViolations} violation
-                {totalViolations !== 1 ? 's' : ''} found — ${fined} fined, $
-                {outstanding} outstanding
+                {totalViolations !== 1 ? 's' : ''} found{' '}
+                {make && `(${color} ${make} ${body})`} — ${fined.toFixed(2)}{' '}
+                fined, ${outstanding.toFixed(2)} outstanding
                 {' ('}
                 <a href={detailsUrl} target="_blank" rel="noopener noreferrer">
                   more details
@@ -805,12 +801,10 @@ class Home extends React.Component {
             }
 
             // eslint-disable-next-line no-await-in-loop
-            const {
-              attachmentBuffer,
-              attachmentArrayBuffer,
-            } = await blobToBuffer({
-              attachmentFile,
-            });
+            const { attachmentBuffer, attachmentArrayBuffer } =
+              await blobToBuffer({
+                attachmentFile,
+              });
 
             // eslint-disable-next-line no-await-in-loop
             const { ext } = await FileType.fromBuffer(attachmentBuffer);
@@ -922,8 +916,8 @@ class Home extends React.Component {
       target.type === 'checkbox'
         ? target.checked
         : target.type === 'datetime-local'
-        ? target.value.slice(0, 'YYYY-MM-DDThh:mm'.length)
-        : target.value;
+          ? target.value.slice(0, 'YYYY-MM-DDThh:mm'.length)
+          : target.value;
     const { name } = target;
 
     this.setState(
@@ -1121,6 +1115,7 @@ class Home extends React.Component {
                         }),
                         () => {
                           this.saveStateToLocalStorage();
+                          this.loadPreviousSubmissions();
                           this.userFormSubmitRef.current.click();
                         },
                       );

@@ -26,7 +26,7 @@ exports[`readLicenseViaALPR falling back to the second token 1`] = `
       "plateCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: 3ea1f17896751841dd8bd9e4320bc92884012cd1d1f16f24ef5867edd737ec05",
       "region": {
         "code": "us-nj",
-        "score": 0.689,
+        "score": 0.659,
       },
       "score": 1,
       "vehicle": {
@@ -71,7 +71,7 @@ exports[`readLicenseViaALPR falling back to the second token 1`] = `
       "plateCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: 4701977d7c1729b997c1b77289c4f8c4b97b5d3aaa8e257a8debe629dcc06a44",
       "region": {
         "code": "us-ny",
-        "score": 0.933,
+        "score": 0.844,
       },
       "score": 1,
       "vehicle": {
@@ -104,7 +104,7 @@ exports[`readLicenseViaALPR falling back to the second token 1`] = `
       "plateCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: 9a7eed062844c015cabf1a523ebc6257e87ec7b6fedac4a33b0061ea44aecb12",
       "region": {
         "code": "us-ny",
-        "score": 0.876,
+        "score": 0.869,
       },
       "score": 1,
       "vehicle": {
@@ -151,7 +151,7 @@ exports[`readLicenseViaALPR using only the first token 1`] = `
       "plateCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: 3ea1f17896751841dd8bd9e4320bc92884012cd1d1f16f24ef5867edd737ec05",
       "region": {
         "code": "us-nj",
-        "score": 0.689,
+        "score": 0.659,
       },
       "score": 1,
       "vehicle": {
@@ -196,7 +196,7 @@ exports[`readLicenseViaALPR using only the first token 1`] = `
       "plateCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: 4701977d7c1729b997c1b77289c4f8c4b97b5d3aaa8e257a8debe629dcc06a44",
       "region": {
         "code": "us-ny",
-        "score": 0.933,
+        "score": 0.844,
       },
       "score": 1,
       "vehicle": {
@@ -229,7 +229,7 @@ exports[`readLicenseViaALPR using only the first token 1`] = `
       "plateCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: 9a7eed062844c015cabf1a523ebc6257e87ec7b6fedac4a33b0061ea44aecb12",
       "region": {
         "code": "us-ny",
-        "score": 0.876,
+        "score": 0.869,
       },
       "score": 1,
       "vehicle": {

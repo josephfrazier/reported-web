@@ -127,7 +127,6 @@
     "jest": "^30.2.0",
     "jest-environment-jsdom": "^30.4.1",
     "jest-mock-now": "^1.2.0",
-    "localtunnel": "^2.0.2",
     "markdown-it": "^14.2.0",
     "mkdirp": "^0.5.1",
     "null-loader": "^0.1.1",
@@ -208,7 +207,6 @@
     "deploy": "babel-node tools/run deploy",
     "render": "babel-node tools/run render",
     "serve": "babel-node tools/run runServer",
-    "start": "node -r dotenv/config node_modules/.bin/babel-node tools/run start --inspect",
-    "localtunnel": "while true; do yarn lt --port 3000 --subdomain reported-web; done"
+    "start": "node -r dotenv/config node_modules/.bin/babel-node tools/run start --inspect"
   }
 }

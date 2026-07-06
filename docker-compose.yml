@@ -33,6 +33,7 @@ services:
       PARSE_SERVER_MASTER_KEY: ${PARSE_MASTER_KEY:-MASTER_KEY}
       PARSE_SERVER_DATABASE_URI: mongodb://mongo:27017/reported
       PARSE_SERVER_URL: http://parse:1337/parse
+      # Development-only setting; do not enable in production.
       PARSE_SERVER_ALLOW_CLIENT_CLASS_CREATION: "true"
     depends_on:
       - mongo

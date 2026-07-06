@@ -4,4 +4,4 @@ WORKDIR /usr/src/app
 
 RUN corepack enable && corepack prepare yarn@1.22.22 --activate
 
-CMD ["./tools/docker-entrypoint.sh"]
+CMD ["bash", "./tools/docker-entrypoint.sh"]

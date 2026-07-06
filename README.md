@@ -35,6 +35,29 @@ yarn dashboard # Runs a dashboard for the Parse server
 yarn mongo-stop # Stops MongoDB
 ```
 
+## Docker-based local development
+
+If you want to keep local dependencies off your personal machine (especially useful on macOS), you can run the full dev stack in Docker.
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+That replaces running `yarn mongo-start`, `yarn parse`, and `yarn start` manually.
+
+When you're done:
+
+```bash
+docker compose down
+```
+
+To fully reset local Docker state (including Mongo data and `node_modules` volume):
+
+```bash
+docker compose down -v
+```
+
 ## Context on `localStorage` use (w.r.t performance concerns about lag/delay/slowness/latency when typing)
 
 Over the years, reports of slow typing have come from multiple users, and it periodically gets (re)discussed in our Slack.

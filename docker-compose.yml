@@ -1,0 +1,52 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    command: sh -c "yarn install --frozen-lockfile && yarn start"
+    env_file:
+      - .env
+    environment:
+      PARSE_SERVER_URL: ${PARSE_SERVER_URL:-http://parse:1337/parse}
+      PARSE_APP_ID: ${PARSE_APP_ID:-APPLICATION_ID}
+      PARSE_JAVASCRIPT_KEY: ${PARSE_JAVASCRIPT_KEY:-JAVASCRIPT_KEY}
+      PARSE_MASTER_KEY: ${PARSE_MASTER_KEY:-MASTER_KEY}
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+      TRUST_PROXY: ${TRUST_PROXY:-loopback}
+    depends_on:
+      - parse
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+      - "9229:9229"
+    volumes:
+      - .:/usr/src/app
+      - reported_web_node_modules:/usr/src/app/node_modules
+    stdin_open: true
+    tty: true
+
+  parse:
+    image: parseplatform/parse-server:6.5.6
+    environment:
+      PARSE_SERVER_APPLICATION_ID: ${PARSE_APP_ID:-APPLICATION_ID}
+      PARSE_SERVER_JAVASCRIPT_KEY: ${PARSE_JAVASCRIPT_KEY:-JAVASCRIPT_KEY}
+      PARSE_SERVER_MASTER_KEY: ${PARSE_MASTER_KEY:-MASTER_KEY}
+      PARSE_SERVER_DATABASE_URI: mongodb://mongo:27017/reported
+      PARSE_SERVER_URL: http://parse:1337/parse
+      PARSE_SERVER_ALLOW_CLIENT_CLASS_CREATION: "true"
+    depends_on:
+      - mongo
+    ports:
+      - "1337:1337"
+
+  mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - reported_web_mongo_data:/data/db
+
+volumes:
+  reported_web_node_modules:
+  reported_web_mongo_data:

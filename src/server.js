@@ -12,7 +12,6 @@ import assert from 'assert';
 import express from 'express';
 import forceSsl from 'force-ssl-heroku';
 import compression from 'compression';
-import bodyParser from 'body-parser';
 import nodeFetch from 'node-fetch';
 import React from 'react';
 import ReactDOM from 'react-dom/server';
@@ -135,9 +134,9 @@ app.set('trust proxy', config.trustProxy);
 // Register Node.js middleware
 // -----------------------------------------------------------------------------
 app.use(express.static(path.resolve(__dirname, 'public')));
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json({ limit: '80mb' }));
-// attachments are no longer sent as base64 JSON, but bodyParser still tries to parse non-JSON bodies, so this 80mb `limit` needs to be here to avoid errors
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '80mb' }));
+// attachments are no longer sent as base64 JSON, but express's internal usage of `body-parser` still tries to parse non-JSON bodies, so this 80mb `limit` needs to be here to avoid errors
 
 const handlePromiseRejection = res => error => {
   console.error({ error });

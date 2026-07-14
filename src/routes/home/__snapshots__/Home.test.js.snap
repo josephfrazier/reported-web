@@ -228,7 +228,7 @@ exports[`Home renders children correctly 1`] = `
               }
               type="button"
             >
-              Add pictures/videos (up to 3 each, 20MB max each)
+              Add pictures/videos (up to 6 total, 20MB max each, 30MB combined)
             </button>
           </div>
           <div

@@ -89,11 +89,14 @@ Parse.initialize(PARSE_APP_ID, PARSE_JAVASCRIPT_KEY, PARSE_MASTER_KEY);
 Parse.Cloud.useMasterKey();
 Parse.serverURL = PARSE_SERVER_URL;
 
+const HEROKU_SAFE_MULTIPART_LIMIT_BYTES = 30 * 1000 * 1000;
+const MAX_SUBMIT_ATTACHMENTS = 6;
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
     fileSize: 20 * 1000 * 1000, // just under 20MB, should match attachmentFile.size in Home.js
-    files: 6,
+    files: MAX_SUBMIT_ATTACHMENTS,
   },
 });
 // Here's the logic for the above `limits`:
@@ -105,6 +108,8 @@ const upload = multer({
 //   * videoData0
 //   * videoData1
 //   * videoData2
+// * Heroku routers impose a request payload limit, so we also enforce a total
+//   multipart size limit in `/submit` below.
 
 //
 // Tell any CSS tooling (such as Material UI) to use all vendor prefixes if the
@@ -368,10 +373,61 @@ app.use('/requestPasswordReset', (req, res) => {
 });
 
 app.use('/submit', (req, res) => {
+  const requestId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const logSubmitRequest = (label, extra = {}) => {
+    const contentLength = Number(req.headers['content-length']);
+    console.info('submit_request', {
+      requestId,
+      label,
+      method: req.method,
+      url: req.originalUrl,
+      contentLength: Number.isNaN(contentLength) ? null : contentLength,
+      contentType: req.headers['content-type'],
+      transferEncoding: req.headers['transfer-encoding'],
+      complete: req.complete,
+      aborted: req.aborted,
+      readableEnded: req.readableEnded,
+      ...extra,
+    });
+  };
+
+  logSubmitRequest('start');
+
+  req.once('aborted', () => {
+    logSubmitRequest('aborted_event');
+  });
+
+  req.once('close', () => {
+    if (!req.complete || req.aborted) {
+      logSubmitRequest('close_incomplete');
+    }
+  });
+
+  const declaredContentLength = Number(req.headers['content-length']);
+  if (
+    Number.isFinite(declaredContentLength) &&
+    declaredContentLength > HEROKU_SAFE_MULTIPART_LIMIT_BYTES
+  ) {
+    logSubmitRequest('reject_declared_content_length', {
+      limitBytes: HEROKU_SAFE_MULTIPART_LIMIT_BYTES,
+    });
+    res.status(413).json({
+      error: {
+        message:
+          'Upload is too large for this server. Please submit fewer/smaller files.',
+      },
+    });
+    return;
+  }
+
   // Call upload.array directly to intercept errors and respond with JSON, see the following:
   // https://github.com/expressjs/multer/tree/80ee2f52432cc0c81c93b03c6b0b448af1f626e5#error-handling
   upload.array('attachmentData[]')(req, res, error => {
     if (error) {
+      logSubmitRequest('multer_error', {
+        multerCode: error.code,
+        message: error.message,
+      });
       // Make error.message enumerable so it gets sent to the client
       const { message } = error;
       handlePromiseRejection(res)({ ...error, message });
@@ -404,6 +460,43 @@ app.use('/submit', (req, res) => {
     const longitude = Number(longitudeString);
 
     const attachmentData = req.files;
+    const totalAttachmentBytes = attachmentData.reduce(
+      (sum, file) => sum + file.size,
+      0,
+    );
+
+    if (attachmentData.length > MAX_SUBMIT_ATTACHMENTS) {
+      logSubmitRequest('reject_attachment_count', {
+        attachmentCount: attachmentData.length,
+        maxAttachmentCount: MAX_SUBMIT_ATTACHMENTS,
+      });
+      res.status(413).json({
+        error: {
+          message: `Too many attachments. Maximum is ${MAX_SUBMIT_ATTACHMENTS}.`,
+        },
+      });
+      return;
+    }
+
+    if (totalAttachmentBytes > HEROKU_SAFE_MULTIPART_LIMIT_BYTES) {
+      logSubmitRequest('reject_total_attachment_size', {
+        totalAttachmentBytes,
+        limitBytes: HEROKU_SAFE_MULTIPART_LIMIT_BYTES,
+        attachmentCount: attachmentData.length,
+      });
+      res.status(413).json({
+        error: {
+          message:
+            'Total attachment size is too large for this server. Please submit fewer/smaller files.',
+        },
+      });
+      return;
+    }
+
+    logSubmitRequest('parsed', {
+      attachmentCount: attachmentData.length,
+      totalAttachmentBytes,
+    });
 
     const timeofreport = new Date(CreateDate);
     const timeofreported = timeofreport;

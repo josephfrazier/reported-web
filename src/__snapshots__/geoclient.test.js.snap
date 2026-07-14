@@ -2063,21 +2063,14 @@ New York, NY 10123",
             ],
           },
           {
-            "long_name": "10001",
-            "short_name": "10001",
+            "long_name": "10118",
+            "short_name": "10118",
             "types": [
               "postal_code",
             ],
           },
-          {
-            "long_name": "7604",
-            "short_name": "7604",
-            "types": [
-              "postal_code_suffix",
-            ],
-          },
         ],
-        "formatted_address": "Empire State Building, 350 5th Ave, New York, NY 10001, USA",
+        "formatted_address": "Empire State Building, 350 5th Ave, New York, NY 10118, USA",
         "geometry": {
           "bounds": {
             "northeast": {

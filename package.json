@@ -22,7 +22,6 @@
     "axios": "^1.16.0",
     "axios-retry": "^3.4.0",
     "blob-util": "^2.0.2",
-    "body-parser": "^1.20.3",
     "buffer": "^6.0.3",
     "buffer-to-arraybuffer": "^0.0.6",
     "capitalize": "^2.0.4",

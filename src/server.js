@@ -13,6 +13,7 @@ import express from 'express';
 import forceSsl from 'force-ssl-heroku';
 import compression from 'compression';
 import bodyParser from 'body-parser';
+import { randomUUID } from 'crypto';
 import nodeFetch from 'node-fetch';
 import React from 'react';
 import ReactDOM from 'react-dom/server';
@@ -373,7 +374,7 @@ app.use('/requestPasswordReset', (req, res) => {
 });
 
 app.use('/submit', (req, res) => {
-  const requestId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const requestId = randomUUID();
   const logSubmitRequest = (label, extra = {}) => {
     const contentLength = Number(req.headers['content-length']);
     console.info('submit_request', {
@@ -393,15 +394,18 @@ app.use('/submit', (req, res) => {
 
   logSubmitRequest('start');
 
-  req.once('aborted', () => {
+  const onAborted = () => {
     logSubmitRequest('aborted_event');
-  });
+  };
 
-  req.once('close', () => {
+  const onClose = () => {
     if (!req.complete || req.aborted) {
       logSubmitRequest('close_incomplete');
     }
-  });
+  };
+
+  req.once('aborted', onAborted);
+  req.once('close', onClose);
 
   const declaredContentLength = Number(req.headers['content-length']);
   if (
@@ -423,6 +427,9 @@ app.use('/submit', (req, res) => {
   // Call upload.array directly to intercept errors and respond with JSON, see the following:
   // https://github.com/expressjs/multer/tree/80ee2f52432cc0c81c93b03c6b0b448af1f626e5#error-handling
   upload.array('attachmentData[]')(req, res, error => {
+    req.off('aborted', onAborted);
+    req.off('close', onClose);
+
     if (error) {
       logSubmitRequest('multer_error', {
         multerCode: error.code,
@@ -459,7 +466,7 @@ app.use('/submit', (req, res) => {
     const latitude = Number(latitudeString);
     const longitude = Number(longitudeString);
 
-    const attachmentData = req.files;
+    const attachmentData = Array.isArray(req.files) ? req.files : [];
     const totalAttachmentBytes = attachmentData.reduce(
       (sum, file) => sum + file.size,
       0,

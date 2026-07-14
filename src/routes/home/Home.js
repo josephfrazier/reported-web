@@ -89,6 +89,8 @@ const defaultLatitude = 40.7128;
 const defaultLongitude = -74.006;
 const MAX_SUBMIT_ATTACHMENTS = 6;
 const HEROKU_SAFE_MULTIPART_LIMIT_BYTES = 30 * 1000 * 1000;
+const ATTACHMENT_BUTTON_LABEL =
+  'Add pictures/videos (up to 6 total, 20MB max each, 30MB combined)';
 
 // adapted from https://www.bignerdranch.com/blog/dont-over-react/
 const urls = new WeakMap();
@@ -819,41 +821,37 @@ class Home extends React.Component {
   };
 
   handleAttachmentData = async ({ attachmentData }) => {
-    const nextAttachmentData = this.state.attachmentData.concat(attachmentData);
-    const totalAttachmentBytes = nextAttachmentData.reduce(
-      (sum, file) => sum + file.size,
-      0,
-    );
-
-    if (nextAttachmentData.length > MAX_SUBMIT_ATTACHMENTS) {
-      Home.notifyWarning(
-        <React.Fragment>
-          <p>
-            Please attach no more than {MAX_SUBMIT_ATTACHMENTS} files per
-            submission.
-          </p>
-        </React.Fragment>,
-      );
-      return;
-    }
-
-    if (totalAttachmentBytes > HEROKU_SAFE_MULTIPART_LIMIT_BYTES) {
-      Home.notifyWarning(
-        <React.Fragment>
-          <p>
-            Total attachment size is too large. Please remove files so the
-            combined size stays under 30MB.
-          </p>
-        </React.Fragment>,
-      );
-      return;
-    }
+    let validationErrorMessage = '';
 
     this.setState(
-      state => ({
-        attachmentData: state.attachmentData.concat(attachmentData),
-      }),
+      state => {
+        const nextAttachmentData = state.attachmentData.concat(attachmentData);
+        const totalAttachmentBytes = nextAttachmentData.reduce(
+          (sum, file) => sum + file.size,
+          0,
+        );
+
+        if (nextAttachmentData.length > MAX_SUBMIT_ATTACHMENTS) {
+          validationErrorMessage = `Please attach no more than ${MAX_SUBMIT_ATTACHMENTS} files per submission.`;
+          return null;
+        }
+
+        if (totalAttachmentBytes > HEROKU_SAFE_MULTIPART_LIMIT_BYTES) {
+          validationErrorMessage =
+            'Total attachment size is too large. Please remove files so the combined size stays under 30MB.';
+          return null;
+        }
+
+        return {
+          attachmentData: nextAttachmentData,
+        };
+      },
       async () => {
+        if (validationErrorMessage) {
+          Home.notifyWarning(<p>{validationErrorMessage}</p>);
+          return;
+        }
+
         const listsOfExtractions = await Promise.all(
           this.state.attachmentData.map(async (attachmentFile, index) => {
             if (attachmentFile.size > 20 * 1000 * 1000) {
@@ -1430,8 +1428,7 @@ class Home extends React.Component {
                   }}
                 >
                   <button type="button" style={{ whiteSpace: 'wrap' }}>
-                    Add pictures/videos (up to 6 total, 20MB max each, 30MB
-                    combined)
+                    {ATTACHMENT_BUTTON_LABEL}
                   </button>
                 </FileReaderInput>
 

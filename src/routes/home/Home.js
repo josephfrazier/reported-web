@@ -539,6 +539,12 @@ class Home extends React.Component {
   }
 
   onDeleteSubmission = ({ objectId }) => {
+    if (!objectId) {
+      Home.notifyError(
+        'Unable to delete this submission — no objectId available. Try reloading the page and loading previous submissions to get the server-assigned ID.',
+      );
+      return;
+    }
     const confirmationMessage = `Are you sure you want to delete this submission? (objectId: ${objectId})`;
     // eslint-disable-next-line no-alert
     if (!window.confirm(confirmationMessage)) {
@@ -555,6 +561,9 @@ class Home extends React.Component {
             sub => sub.objectId !== objectId,
           ),
         }));
+      })
+      .catch(error => {
+        Home.handleAxiosError(error);
       });
   };
 

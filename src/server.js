@@ -520,6 +520,9 @@ app.use('/submit', (req, res) => {
         const submissionValue = submission.toJSON();
         submissionValue.timeofreport = submissionValue.timeofreport.iso;
         submissionValue.timeofreported = submissionValue.timeofreported.iso;
+        // Explicitly include objectId so the client can pass it
+        // back for delete/cancel operations (see #788)
+        submissionValue.objectId = submission.id;
 
         console.info({ submission: submissionValue });
 

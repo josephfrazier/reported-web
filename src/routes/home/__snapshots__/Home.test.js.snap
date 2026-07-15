@@ -171,6 +171,7 @@ exports[`Home renders children correctly 1`] = `
             >
               <input
                 checked={false}
+                id="testify"
                 name="testify"
                 onChange={[Function]}
                 type="checkbox"
@@ -245,6 +246,7 @@ exports[`Home renders children correctly 1`] = `
           >
             <input
               checked={true}
+              id="isAlprEnabled"
               name="isAlprEnabled"
               onChange={[Function]}
               type="checkbox"
@@ -257,6 +259,7 @@ exports[`Home renders children correctly 1`] = `
           >
             <input
               checked={true}
+              id="isReverseGeocodingEnabled"
               name="isReverseGeocodingEnabled"
               onChange={[Function]}
               type="checkbox"
@@ -675,6 +678,7 @@ exports[`Home renders children correctly 1`] = `
           >
             <input
               checked={false}
+              id="can_be_shared_publicly"
               name="can_be_shared_publicly"
               onChange={[Function]}
               type="checkbox"

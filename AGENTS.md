@@ -31,7 +31,7 @@
 - Lint: `yarn lint`
 - Build: `yarn build`
 - Full test suite: `yarn test`
-- Non-ALPR tests (matches the main CI test workflow): `yarn test:no-alpr`
+- Non-ALPR tests (matches the main CI test workflow): `yarn test:no-flaky`
 - Single test file: `yarn test src/path/to/file.test.js`
 - Dev app:
   1. `yarn mongo-start`
@@ -63,4 +63,4 @@
   - `src/getVehicleType.test.js` calls `api.lookupaplate.com`
   - `src/srlookup.test.js` calls `portal.311.nyc.gov`
   - `src/geoclient.test.js` depends on Google Geocoding and NYC Geoclient
-- In a restricted sandbox with no outbound access, those tests fail with DNS/network errors or timeouts. Work around this by running the narrowest relevant tests, or at least `yarn test:no-alpr` when you want parity with the main CI workflow.
+- In a restricted sandbox with no outbound access, those tests fail with DNS/network errors or timeouts. Work around this by running the narrowest relevant tests, or at least `yarn test:no-flaky` when you want parity with the main CI workflow.

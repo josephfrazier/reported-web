@@ -365,7 +365,16 @@ class Home extends React.Component {
   static handleAxiosError(error) {
     return Promise.reject(error)
       .catch(err => {
-        Home.notifyError(`Error: ${err.response.data.error.message}`);
+        const { message } = err.response.data.error;
+
+        const isEndOfForm = message === 'Unexpected end of form';
+        const addendum = isEndOfForm
+          ? '(Safari/iOS might be causing this, try a different browser/device)'
+          : '';
+
+        Home.notifyError(
+          `Error: ${err.response.data.error.message} ${addendum}`,
+        );
       })
       .catch(err => {
         console.error(err);

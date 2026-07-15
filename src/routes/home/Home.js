@@ -87,6 +87,19 @@ const debouncedSaveStateToLocalStorage = debounce(self => {
 
 const defaultLatitude = 40.7128;
 const defaultLongitude = -74.006;
+const defaultMapSearchBounds = {
+  east: -73.700272,
+  north: 40.915256,
+  south: 40.496044,
+  west: -74.255735,
+};
+const mapBoundsEpsilon = 0.000001;
+const mapBoundsUpdateThrottleMs = 300;
+const mapBoundsAreEqual = (a, b) =>
+  Math.abs(a.east - b.east) < mapBoundsEpsilon &&
+  Math.abs(a.north - b.north) < mapBoundsEpsilon &&
+  Math.abs(a.south - b.south) < mapBoundsEpsilon &&
+  Math.abs(a.west - b.west) < mapBoundsEpsilon;
 
 // adapted from https://www.bignerdranch.com/blog/dont-over-react/
 const urls = new WeakMap();
@@ -451,6 +464,7 @@ class Home extends React.Component {
       platePickerResults: [],
       platePickerLoading: false,
       plateThumbnailsByKey: {},
+      mapSearchBounds: defaultMapSearchBounds,
     };
 
     const initialState = {
@@ -463,6 +477,7 @@ class Home extends React.Component {
     this.initialStatePersistent = initialStatePersistent;
     this.userFormSubmitRef = React.createRef();
     this.plateRef = React.createRef();
+    this.mapSearchBoundsUpdateTimeout = null;
   }
 
   componentDidMount() {
@@ -470,6 +485,7 @@ class Home extends React.Component {
     if (this.state.attachmentData.length === 0 || !this.state.CreateDate) {
       this.setCreateDate({ millisecondsSinceEpoch: Date.now() });
     }
+
     geolocate().then(
       ({ coords: { latitude, longitude }, ipProvenance = 'device' }) => {
         // if there's no attachments or a location couldn't be extracted, just use here
@@ -535,6 +551,12 @@ class Home extends React.Component {
 
     if (this.state.isLoadPreviousSubmissionsEnabled) {
       this.loadPreviousSubmissions();
+    }
+  }
+
+  componentWillUnmount() {
+    if (this.mapSearchBoundsUpdateTimeout) {
+      clearTimeout(this.mapSearchBoundsUpdateTimeout);
     }
   }
 
@@ -1675,6 +1697,38 @@ class Home extends React.Component {
                     onSearchBoxMounted={ref => {
                       this.searchBox = ref;
                     }}
+                    onBoundsChanged={() => {
+                      const mapBounds =
+                        this.mapRef &&
+                        this.mapRef.getBounds &&
+                        this.mapRef.getBounds();
+
+                      if (!mapBounds || !mapBounds.toJSON) {
+                        return;
+                      }
+
+                      if (this.mapSearchBoundsUpdateTimeout) {
+                        clearTimeout(this.mapSearchBoundsUpdateTimeout);
+                      }
+
+                      const nextMapSearchBounds = mapBounds.toJSON();
+                      this.mapSearchBoundsUpdateTimeout = setTimeout(() => {
+                        this.mapSearchBoundsUpdateTimeout = null;
+                        this.setState(prevState => {
+                          const { mapSearchBounds } = prevState;
+                          if (
+                            mapBoundsAreEqual(
+                              mapSearchBounds,
+                              nextMapSearchBounds,
+                            )
+                          ) {
+                            return null;
+                          }
+
+                          return { mapSearchBounds: nextMapSearchBounds };
+                        });
+                      }, mapBoundsUpdateThrottleMs);
+                    }}
                     onPlacesChanged={() => {
                       const places = this.searchBox.getPlaces();
 
@@ -1695,6 +1749,7 @@ class Home extends React.Component {
                         addressProvenance: '(manually set)',
                       });
                     }}
+                    mapSearchBounds={this.state.mapSearchBounds}
                   />
 
                   <button
@@ -1893,8 +1948,10 @@ const MyMapComponentPure = props => {
     position,
     onRef,
     onCenterChanged,
+    onBoundsChanged,
     onSearchBoxMounted,
     onPlacesChanged,
+    mapSearchBounds,
   } = props;
 
   return (
@@ -1903,6 +1960,7 @@ const MyMapComponentPure = props => {
       center={position}
       ref={onRef}
       onCenterChanged={onCenterChanged}
+      onBoundsChanged={onBoundsChanged}
       options={{ mapTypeControl: false, gestureHandling: 'greedy' }}
     >
       <Marker position={position} />
@@ -1910,12 +1968,7 @@ const MyMapComponentPure = props => {
         ref={onSearchBoxMounted}
         controlPosition={window.google.maps.ControlPosition.TOP_LEFT}
         onPlacesChanged={onPlacesChanged}
-        bounds={{
-          east: -73.700272,
-          north: 40.915256,
-          south: 40.496044,
-          west: -74.255735,
-        }}
+        bounds={mapSearchBounds}
       >
         <input
           type="text"
@@ -1947,8 +2000,15 @@ MyMapComponentPure.propTypes = {
 
   onRef: PropTypes.func.isRequired,
   onCenterChanged: PropTypes.func.isRequired,
+  onBoundsChanged: PropTypes.func.isRequired,
   onSearchBoxMounted: PropTypes.func.isRequired,
   onPlacesChanged: PropTypes.func.isRequired,
+  mapSearchBounds: PropTypes.shape({
+    east: PropTypes.number.isRequired,
+    north: PropTypes.number.isRequired,
+    south: PropTypes.number.isRequired,
+    west: PropTypes.number.isRequired,
+  }).isRequired,
 };
 
 const MyMapComponent = compose(

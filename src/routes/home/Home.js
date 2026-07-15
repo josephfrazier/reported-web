@@ -1277,6 +1277,7 @@ class Home extends React.Component {
                   </label>
                   <label htmlFor="testify">
                     <input
+                      id="testify"
                       type="checkbox"
                       checked={this.state.testify}
                       name="testify"
@@ -1511,6 +1512,7 @@ class Home extends React.Component {
 
                 <label htmlFor="isAlprEnabled">
                   <input
+                    id="isAlprEnabled"
                     type="checkbox"
                     checked={this.state.isAlprEnabled}
                     name="isAlprEnabled"
@@ -1521,6 +1523,7 @@ class Home extends React.Component {
 
                 <label htmlFor="isReverseGeocodingEnabled">
                   <input
+                    id="isReverseGeocodingEnabled"
                     type="checkbox"
                     checked={this.state.isReverseGeocodingEnabled}
                     name="isReverseGeocodingEnabled"
@@ -1769,6 +1772,7 @@ class Home extends React.Component {
 
                 <label htmlFor="can_be_shared_publicly">
                   <input
+                    id="can_be_shared_publicly"
                     type="checkbox"
                     checked={this.state.can_be_shared_publicly}
                     name="can_be_shared_publicly"
@@ -1841,6 +1845,7 @@ class Home extends React.Component {
                         style={{ display: 'block', marginBottom: '1rem' }}
                       >
                         <input
+                          id="isLoadPreviousSubmissionsEnabled"
                           type="checkbox"
                           checked={this.state.isLoadPreviousSubmissionsEnabled}
                           name="isLoadPreviousSubmissionsEnabled"

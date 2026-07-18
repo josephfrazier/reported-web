@@ -41,25 +41,25 @@ exports[`Home renders children correctly 1`] = `
         className="Toastify"
       />
       <div
-        className="userStatusBar"
+        className="user-status-bar"
       >
         <div
-          className="userGreeting"
+          className="user-greeting"
         >
           Not logged in
         </div>
         <div
-          className="userActions"
+          className="user-actions"
         >
           <button
-            className="statusBarBtn"
+            className="status-bar-btn"
             onClick={[Function]}
             type="button"
           >
             Log In
           </button>
           <button
-            className="statusBarBtnPrimary"
+            className="status-bar-btn-primary"
             onClick={[Function]}
             type="button"
           >

@@ -42,7 +42,7 @@ input[type='search']::-webkit-search-cancel-button {
 }
 
 /* User Status Bar */
-.userStatusBar {
+.user-status-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -55,7 +55,7 @@ input[type='search']::-webkit-search-cancel-button {
   border: 1px solid #e0e0e0;
 }
 
-.userGreeting {
+.user-greeting {
   font-weight: 500;
   font-size: 1rem;
   display: flex;
@@ -63,13 +63,13 @@ input[type='search']::-webkit-search-cancel-button {
   gap: 0.5rem;
 }
 
-.userActions {
+.user-actions {
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
 }
 
-.statusBarBtn {
+.status-bar-btn {
   padding: 0.4rem 0.9rem;
   border: 1px solid #ccc;
   border-radius: 4px;
@@ -81,31 +81,31 @@ input[type='search']::-webkit-search-cancel-button {
   transition: background 0.15s, border-color 0.15s;
 }
 
-.statusBarBtn:hover {
+.status-bar-btn:hover {
   background: #eee;
   border-color: #999;
 }
 
-.statusBarBtnPrimary {
-  composes: statusBarBtn;
+.status-bar-btn-primary {
+  composes: status-bar-btn;
   background: #007bff;
   color: #fff;
   border-color: #007bff;
 }
 
-.statusBarBtnPrimary:hover {
+.status-bar-btn-primary:hover {
   background: #0069d9;
   border-color: #0069d9;
 }
 
 /* Auth Modal */
-.authModalTabs {
+.auth-modal-tabs {
   display: flex;
   border-bottom: 2px solid #e0e0e0;
   margin-bottom: 1.25rem;
 }
 
-.authModalTab {
+.auth-modal-tab {
   flex: 1;
   padding: 0.75rem 1rem;
   text-align: center;
@@ -120,29 +120,29 @@ input[type='search']::-webkit-search-cancel-button {
   transition: color 0.15s, border-color 0.15s;
 }
 
-.authModalTab:hover {
+.auth-modal-tab:hover {
   color: #333;
 }
 
-.authModalTabActive {
-  composes: authModalTab;
+.auth-modal-tab-active {
+  composes: auth-modal-tab;
   color: #007bff;
   border-bottom-color: #007bff;
   font-weight: 600;
 }
 
-.authModalBody {
+.auth-modal-body {
   padding: 0 0.25rem;
 }
 
-.authModalBody label {
+.auth-modal-body label {
   margin: 0.75rem 0;
 }
 
-.authModalBody input[type='email'],
-.authModalBody input[type='text'],
-.authModalBody input[type='tel'],
-.authModalBody input[type='password'] {
+.auth-modal-body input[type='email'],
+.auth-modal-body input[type='text'],
+.auth-modal-body input[type='tel'],
+.auth-modal-body input[type='password'] {
   width: 100%;
   padding: 0.5rem 0.75rem;
   border: 1px solid #ccc;
@@ -152,23 +152,23 @@ input[type='search']::-webkit-search-cancel-button {
   box-sizing: border-box;
 }
 
-.authFieldRow {
+.auth-field-row {
   display: flex;
   gap: 0.5rem;
   align-items: center;
 }
 
-.authFieldRow input {
+.auth-field-row input {
   flex: 1;
 }
 
-.authFieldRow button {
+.auth-field-row button {
   flex-shrink: 0;
   padding: 0.4rem 0.75rem;
   font-size: 0.85rem;
 }
 
-.authSubmitBtn {
+.auth-submit-btn {
   width: 100%;
   padding: 0.6rem 1rem;
   margin-top: 0.75rem;
@@ -182,16 +182,16 @@ input[type='search']::-webkit-search-cancel-button {
   transition: background 0.15s;
 }
 
-.authSubmitBtn:hover {
+.auth-submit-btn:hover {
   background: #0069d9;
 }
 
-.authSubmitBtn:disabled {
+.auth-submit-btn:disabled {
   background: #999;
   cursor: not-allowed;
 }
 
-.authSwitchLink {
+.auth-switch-link {
   display: block;
   text-align: center;
   margin-top: 1rem;
@@ -199,7 +199,7 @@ input[type='search']::-webkit-search-cancel-button {
   color: #666;
 }
 
-.authSwitchLink button {
+.auth-switch-link button {
   background: none;
   border: none;
   color: #007bff;
@@ -210,11 +210,11 @@ input[type='search']::-webkit-search-cancel-button {
   padding: 0;
 }
 
-.authSwitchLink button:hover {
+.auth-switch-link button:hover {
   color: #0069d9;
 }
 
-.authError {
+.auth-error {
   color: #d32f2f;
   background: #fde8e8;
   padding: 0.5rem 0.75rem;
@@ -224,7 +224,7 @@ input[type='search']::-webkit-search-cancel-button {
 }
 
 /* Edit Profile */
-.editProfileSection {
+.edit-profile-section {
   margin-top: 1rem;
   padding: 1rem;
   background: #f9f9f9;
@@ -232,28 +232,28 @@ input[type='search']::-webkit-search-cancel-button {
   border: 1px solid #e0e0e0;
 }
 
-.editProfileSection h3 {
+.edit-profile-section h3 {
   margin: 0 0 0.75rem;
   font-size: 1rem;
 }
 
 /* Mobile responsive */
-@media (max-width: 480px) {
-  .userStatusBar {
+@media (width <= 480px) {
+  .user-status-bar {
     flex-direction: column;
     align-items: stretch;
     text-align: center;
   }
 
-  .userGreeting {
+  .user-greeting {
     justify-content: center;
   }
 
-  .userActions {
+  .user-actions {
     justify-content: center;
   }
 
-  .authFieldRow {
+  .auth-field-row {
     flex-direction: column;
     align-items: stretch;
   }

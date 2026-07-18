@@ -1199,8 +1199,8 @@ class Home extends React.Component {
             />
 
             {/* User Status Bar */}
-            <div className={homeStyles.userStatusBar}>
-              <div className={homeStyles.userGreeting}>
+            <div className={homeStyles['user-status-bar']}>
+              <div className={homeStyles['user-greeting']}>
                 {this.state.email ? (
                   <>
                     <span role="img" aria-label="user">
@@ -1214,11 +1214,11 @@ class Home extends React.Component {
                   'Not logged in'
                 )}
               </div>
-              <div className={homeStyles.userActions}>
+              <div className={homeStyles['user-actions']}>
                 {this.state.email ? (
                   <button
                     type="button"
-                    className={homeStyles.statusBarBtnPrimary}
+                    className={homeStyles['status-bar-btn-primary']}
                     onClick={() =>
                       this.setState(state => ({
                         isEditProfileOpen: !state.isEditProfileOpen,
@@ -1231,14 +1231,14 @@ class Home extends React.Component {
                   <>
                     <button
                       type="button"
-                      className={homeStyles.statusBarBtn}
+                      className={homeStyles['status-bar-btn']}
                       onClick={() => this.openAuthModal('login')}
                     >
                       Log In
                     </button>
                     <button
                       type="button"
-                      className={homeStyles.statusBarBtnPrimary}
+                      className={homeStyles['status-bar-btn-primary']}
                       onClick={() => this.openAuthModal('signup')}
                     >
                       Sign Up
@@ -1251,7 +1251,7 @@ class Home extends React.Component {
             {/* Edit Profile (shown inline when toggled) */}
             {this.state.isEditProfileOpen && (
               <form
-                className={homeStyles.editProfileSection}
+                className={homeStyles['edit-profile-section']}
                 onSubmit={this.handleSaveProfile}
               >
                 <h3>Edit Profile</h3>
@@ -1305,7 +1305,7 @@ class Home extends React.Component {
                   </label>
                   <button
                     type="submit"
-                    className={homeStyles.authSubmitBtn}
+                    className={homeStyles['auth-submit-btn']}
                     disabled={this.state.isUserInfoSaving}
                     style={{ width: 'auto' }}
                   >
@@ -1333,13 +1333,13 @@ class Home extends React.Component {
               }}
             >
               {/* Tab bar */}
-              <div className={homeStyles.authModalTabs}>
+              <div className={homeStyles['auth-modal-tabs']}>
                 <button
                   type="button"
                   className={
                     this.state.authModalTab === 'login'
-                      ? homeStyles.authModalTabActive
-                      : homeStyles.authModalTab
+                      ? homeStyles['auth-modal-tab-active']
+                      : homeStyles['auth-modal-tab']
                   }
                   onClick={() => this.switchAuthTab('login')}
                 >
@@ -1349,8 +1349,8 @@ class Home extends React.Component {
                   type="button"
                   className={
                     this.state.authModalTab === 'signup'
-                      ? homeStyles.authModalTabActive
-                      : homeStyles.authModalTab
+                      ? homeStyles['auth-modal-tab-active']
+                      : homeStyles['auth-modal-tab']
                   }
                   onClick={() => this.switchAuthTab('signup')}
                 >
@@ -1360,14 +1360,14 @@ class Home extends React.Component {
 
               {/* Error display */}
               {this.state.authError && (
-                <div className={homeStyles.authError}>
+                <div className={homeStyles['auth-error']}>
                   {this.state.authError}
                 </div>
               )}
 
               {/* Log In form */}
               {this.state.authModalTab === 'login' && (
-                <div className={homeStyles.authModalBody}>
+                <div className={homeStyles['auth-modal-body']}>
                   <label htmlFor="auth-email">
                     Email:
                     <input
@@ -1391,7 +1391,7 @@ class Home extends React.Component {
                   </label>
                   <label htmlFor="auth-password">
                     Password:
-                    <div className={homeStyles.authFieldRow}>
+                    <div className={homeStyles['auth-field-row']}>
                       <input
                         required
                         id="auth-password"
@@ -1417,13 +1417,13 @@ class Home extends React.Component {
                   </label>
                   <button
                     type="button"
-                    className={homeStyles.authSubmitBtn}
+                    className={homeStyles['auth-submit-btn']}
                     disabled={this.state.isUserInfoSaving}
                     onClick={this.handleLogIn}
                   >
                     {this.state.isUserInfoSaving ? 'Logging in...' : 'Log In'}
                   </button>
-                  <div className={homeStyles.authSwitchLink}>
+                  <div className={homeStyles['auth-switch-link']}>
                     <button
                       type="button"
                       onClick={this.handlePasswordReset}
@@ -1432,7 +1432,7 @@ class Home extends React.Component {
                       Forgot your password?
                     </button>
                   </div>
-                  <div className={homeStyles.authSwitchLink}>
+                  <div className={homeStyles['auth-switch-link']}>
                     Don&apos;t have an account?{' '}
                     <button
                       type="button"
@@ -1446,7 +1446,7 @@ class Home extends React.Component {
 
               {/* Sign Up form */}
               {this.state.authModalTab === 'signup' && (
-                <div className={homeStyles.authModalBody}>
+                <div className={homeStyles['auth-modal-body']}>
                   <label htmlFor="auth-signup-email">
                     Email:
                     <input
@@ -1470,7 +1470,7 @@ class Home extends React.Component {
                   </label>
                   <label htmlFor="auth-signup-password">
                     Password:
-                    <div className={homeStyles.authFieldRow}>
+                    <div className={homeStyles['auth-field-row']}>
                       <input
                         required
                         id="auth-signup-password"
@@ -1543,7 +1543,7 @@ class Home extends React.Component {
                   </label>
                   <button
                     type="button"
-                    className={homeStyles.authSubmitBtn}
+                    className={homeStyles['auth-submit-btn']}
                     disabled={this.state.isUserInfoSaving}
                     onClick={this.handleSignUp}
                   >
@@ -1551,7 +1551,7 @@ class Home extends React.Component {
                       ? 'Creating account...'
                       : 'Sign Up'}
                   </button>
-                  <div className={homeStyles.authSwitchLink}>
+                  <div className={homeStyles['auth-switch-link']}>
                     Already have an account?{' '}
                     <button
                       type="button"

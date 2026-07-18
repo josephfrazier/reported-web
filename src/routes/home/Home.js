@@ -427,7 +427,6 @@ class Home extends React.Component {
       isAlprEnabled: true,
       isReverseGeocodingEnabled: true,
       isLoadPreviousSubmissionsEnabled: false,
-      isUserInfoOpen: true,
       isMapOpen: false,
       isPreviousSubmissionsOpen: false,
     };
@@ -451,6 +450,11 @@ class Home extends React.Component {
       platePickerResults: [],
       platePickerLoading: false,
       plateThumbnailsByKey: {},
+
+      isAuthModalOpen: false,
+      authModalTab: 'login',
+      isEditProfileOpen: false,
+      authError: null,
     };
 
     const initialState = {
@@ -461,7 +465,6 @@ class Home extends React.Component {
     this.state = initialState;
     this.initialStatePerSubmission = initialStatePerSubmission;
     this.initialStatePersistent = initialStatePersistent;
-    this.userFormSubmitRef = React.createRef();
     this.plateRef = React.createRef();
   }
 
@@ -1022,6 +1025,112 @@ class Home extends React.Component {
       });
   };
 
+  openAuthModal = (tab = 'login') => {
+    this.setState({
+      isAuthModalOpen: true,
+      authModalTab: tab,
+      authError: null,
+    });
+  };
+
+  closeAuthModal = () => {
+    this.setState({ isAuthModalOpen: false, authError: null });
+  };
+
+  switchAuthTab = tab => {
+    this.setState({ authModalTab: tab, authError: null });
+  };
+
+  handleLogIn = async () => {
+    this.setState({ isUserInfoSaving: true, authError: null });
+    try {
+      const { data } = await axios.post('/api/logIn', this.state);
+      const { FirstName, LastName, Phone, testify } = data;
+      this.setState(
+        state => ({
+          FirstName: FirstName || state.FirstName,
+          LastName: LastName || state.LastName,
+          Phone: Phone || state.Phone,
+          testify: testify || state.testify,
+          isUserInfoSaving: false,
+          isAuthModalOpen: false,
+        }),
+        () => {
+          this.saveStateToLocalStorage();
+          this.loadPreviousSubmissions();
+        },
+      );
+    } catch (err) {
+      this.setState({ isUserInfoSaving: false });
+      Home.handleAxiosError(err);
+    }
+  };
+
+  handleSignUp = async () => {
+    this.setState({ isUserInfoSaving: true, authError: null });
+    try {
+      const { data } = await axios.post('/api/logIn', this.state);
+      const { FirstName, LastName, Phone, testify } = data;
+      this.setState(
+        state => ({
+          FirstName: FirstName || state.FirstName,
+          LastName: LastName || state.LastName,
+          Phone: Phone || state.Phone,
+          testify: testify || state.testify,
+        }),
+        async () => {
+          try {
+            await axios.post('/saveUser', this.state);
+            this.setState({ isUserInfoSaving: false, isAuthModalOpen: false });
+            this.saveStateToLocalStorage();
+            this.loadPreviousSubmissions();
+          } catch (saveErr) {
+            this.setState({ isUserInfoSaving: false });
+            Home.handleAxiosError(saveErr);
+          }
+        },
+      );
+    } catch (err) {
+      this.setState({ isUserInfoSaving: false });
+      Home.handleAxiosError(err);
+    }
+  };
+
+  handlePasswordReset = async () => {
+    const { email } = this.state;
+    if (!email) {
+      this.setState({ authError: 'Please enter your email address first.' });
+      return;
+    }
+    this.setState({ isUserInfoSaving: true, authError: null });
+    try {
+      await axios.post('/requestPasswordReset', { email });
+      const message = `Please check ${email} to reset your password.`;
+      Home.notifyInfo(message);
+      this.setState({ isUserInfoSaving: false });
+    } catch (err) {
+      this.setState({ isUserInfoSaving: false });
+      Home.handleAxiosError(err);
+    }
+  };
+
+  handleSaveProfile = async e => {
+    e.preventDefault();
+    this.setState({ isUserInfoSaving: true });
+    try {
+      await axios.post('/saveUser', this.state);
+      this.setState({ isUserInfoSaving: false, isEditProfileOpen: false });
+      document.querySelector(`.${homeStyles.root}`).scrollTo({
+        top: 100,
+        left: 100,
+        behavior: 'smooth',
+      });
+    } catch (err) {
+      this.setState({ isUserInfoSaving: false });
+      Home.handleAxiosError(err);
+    }
+  };
+
   getPreviousSubmissionsSummary = () => {
     const {
       submissions,
@@ -1089,162 +1198,70 @@ class Home extends React.Component {
               theme="dark"
             />
 
-            {/* TODO use tabbed interface instead of toggling <details> ? */}
-            <details
-              open={this.state.isUserInfoOpen}
-              onToggle={evt => {
-                this.setState({
-                  isUserInfoOpen: evt.target.open,
-                });
-              }}
-            >
-              <summary>Create/Edit User (click to expand)</summary>
-
-              <form
-                onSubmit={e => {
-                  e.preventDefault();
-                  this.setState({ isUserInfoSaving: true });
-                  axios
-                    .post('/saveUser', this.state)
-                    .then(() => {
-                      this.setState({ isUserInfoOpen: false });
-                      document.querySelector(`.${homeStyles.root}`).scrollTo({
-                        top: 100,
-                        left: 100,
-                        behavior: 'smooth',
-                      });
-                    })
-                    .catch(Home.handleAxiosError)
-                    .then(() => {
-                      this.setState({ isUserInfoSaving: false });
-                    });
-                }}
-              >
-                <fieldset disabled={this.state.isUserInfoSaving}>
-                  <label htmlFor="email">
-                    Email:{' '}
-                    <input
-                      required
-                      onInvalid={() => this.setState({ isUserInfoOpen: true })}
-                      type="email"
-                      autoComplete="email"
-                      value={this.state.email}
-                      name="email"
-                      onChange={event => {
-                        this.handleInputChange({
-                          target: {
-                            name: event.target.name,
-                            value: event.target.value.replace(/@.*/, atDomain =>
-                              atDomain.toLowerCase(),
-                            ),
-                          },
-                        });
-                      }}
-                    />
-                  </label>
-                  <label htmlFor="password">
-                    {
-                      "Password (this is saved on your device, so use a password you don't use anywhere else): "
-                    }
-                    <div style={{ display: 'flex' }}>
-                      <input
-                        required
-                        onInvalid={() =>
-                          this.setState({ isUserInfoOpen: true })
-                        }
-                        type={
-                          this.state.isPasswordRevealed ? 'text' : 'password'
-                        }
-                        autoComplete="current-password"
-                        value={this.state.password}
-                        name="password"
-                        onChange={this.handleInputChange}
-                      />
-                      &nbsp;
-                      <button
-                        type="button"
-                        onClick={() => {
-                          this.setState(state => ({
-                            isPasswordRevealed: !state.isPasswordRevealed,
-                          }));
-                        }}
-                      >
-                        {this.state.isPasswordRevealed ? 'Hide' : 'Show'}
-                      </button>
-                      &nbsp;
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const { email } = this.state;
-                          axios
-                            .post('/requestPasswordReset', {
-                              email,
-                            })
-                            .then(() => {
-                              const message = `Please check ${email} to reset your password.`;
-                              Home.notifyInfo(message);
-                            })
-                            .catch(Home.handleAxiosError);
-                        }}
-                      >
-                        Reset
-                      </button>
-                    </div>
-                  </label>
+            {/* User Status Bar */}
+            <div className={homeStyles.userStatusBar}>
+              <div className={homeStyles.userGreeting}>
+                {this.state.email ? (
+                  <>
+                    <span role="img" aria-label="user">
+                      👤
+                    </span>{' '}
+                    {this.state.FirstName
+                      ? `${this.state.FirstName} ${this.state.LastName}`
+                      : this.state.email}
+                  </>
+                ) : (
+                  'Not logged in'
+                )}
+              </div>
+              <div className={homeStyles.userActions}>
+                {this.state.email ? (
                   <button
                     type="button"
-                    disabled={this.state.isUserInfoSaving}
-                    onClick={async () => {
-                      this.setState({ isUserInfoSaving: true });
-
-                      const { data } = await axios
-                        .post('/api/logIn', this.state)
-                        .catch(err => {
-                          Home.handleAxiosError(err);
-                          return { data: false };
-                        });
-
-                      this.setState({ isUserInfoSaving: false });
-
-                      if (!data) {
-                        return;
-                      }
-
-                      const { FirstName, LastName, Phone, testify } = data;
-
-                      this.setState(
-                        // If a new user clicks the button after filling all the fields,
-                        // don't override them with empty data from the server.
-                        state => ({
-                          FirstName: FirstName || state.FirstName,
-                          LastName: LastName || state.LastName,
-                          Phone: Phone || state.Phone,
-                          testify: testify || state.testify,
-                        }),
-                        () => {
-                          this.saveStateToLocalStorage();
-                          this.loadPreviousSubmissions();
-                          this.userFormSubmitRef.current.click();
-                        },
-                      );
-                    }}
+                    className={homeStyles.statusBarBtnPrimary}
+                    onClick={() =>
+                      this.setState(state => ({
+                        isEditProfileOpen: !state.isEditProfileOpen,
+                      }))
+                    }
                   >
-                    Sign Up / Log In
+                    {this.state.isEditProfileOpen ? 'Cancel' : 'Edit Profile'}
                   </button>
-                  <br />
-                  <br />
-                  (If you cannot log in even after resetting your password,
-                  email{' '}
-                  <a href="mailto:reportedapp@gmail.com">
-                    reportedapp@gmail.com
-                  </a>
-                  )
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className={homeStyles.statusBarBtn}
+                      onClick={() => this.openAuthModal('login')}
+                    >
+                      Log In
+                    </button>
+                    <button
+                      type="button"
+                      className={homeStyles.statusBarBtnPrimary}
+                      onClick={() => this.openAuthModal('signup')}
+                    >
+                      Sign Up
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Edit Profile (shown inline when toggled) */}
+            {this.state.isEditProfileOpen && (
+              <form
+                className={homeStyles.editProfileSection}
+                onSubmit={this.handleSaveProfile}
+              >
+                <h3>Edit Profile</h3>
+                <fieldset disabled={this.state.isUserInfoSaving}>
                   <label htmlFor="FirstName">
                     First Name:{' '}
                     <input
                       required
-                      onInvalid={() => this.setState({ isUserInfoOpen: true })}
                       type="text"
+                      id="FirstName"
                       autoComplete="given-name"
                       value={this.state.FirstName}
                       name="FirstName"
@@ -1255,8 +1272,8 @@ class Home extends React.Component {
                     Last Name:{' '}
                     <input
                       required
-                      onInvalid={() => this.setState({ isUserInfoOpen: true })}
                       type="text"
+                      id="LastName"
                       autoComplete="family-name"
                       value={this.state.LastName}
                       name="LastName"
@@ -1267,8 +1284,8 @@ class Home extends React.Component {
                     Phone Number:{' '}
                     <input
                       required
-                      onInvalid={() => this.setState({ isUserInfoOpen: true })}
                       type="tel"
+                      id="Phone"
                       autoComplete="tel"
                       value={this.state.Phone}
                       name="Phone"
@@ -1288,19 +1305,266 @@ class Home extends React.Component {
                   </label>
                   <button
                     type="submit"
+                    className={homeStyles.authSubmitBtn}
                     disabled={this.state.isUserInfoSaving}
-                    ref={this.userFormSubmitRef}
+                    style={{ width: 'auto' }}
                   >
                     {this.state.isUserInfoSaving ? 'Saving...' : 'Save'}
                   </button>
                 </fieldset>
               </form>
-            </details>
+            )}
+
+            {/* Auth Modal */}
+            <Modal
+              parentSelector={() =>
+                document.querySelector(`.${homeStyles.root}`) || document.body
+              }
+              isOpen={this.state.isAuthModalOpen}
+              onRequestClose={this.closeAuthModal}
+              style={{
+                content: {
+                  maxWidth: '440px',
+                  margin: '0 auto',
+                  padding: '1.5rem',
+                  borderRadius: '8px',
+                  bottom: 'auto',
+                },
+              }}
+            >
+              {/* Tab bar */}
+              <div className={homeStyles.authModalTabs}>
+                <button
+                  type="button"
+                  className={
+                    this.state.authModalTab === 'login'
+                      ? homeStyles.authModalTabActive
+                      : homeStyles.authModalTab
+                  }
+                  onClick={() => this.switchAuthTab('login')}
+                >
+                  Log In
+                </button>
+                <button
+                  type="button"
+                  className={
+                    this.state.authModalTab === 'signup'
+                      ? homeStyles.authModalTabActive
+                      : homeStyles.authModalTab
+                  }
+                  onClick={() => this.switchAuthTab('signup')}
+                >
+                  Sign Up
+                </button>
+              </div>
+
+              {/* Error display */}
+              {this.state.authError && (
+                <div className={homeStyles.authError}>
+                  {this.state.authError}
+                </div>
+              )}
+
+              {/* Log In form */}
+              {this.state.authModalTab === 'login' && (
+                <div className={homeStyles.authModalBody}>
+                  <label htmlFor="auth-email">
+                    Email:
+                    <input
+                      required
+                      id="auth-email"
+                      type="email"
+                      autoComplete="email"
+                      value={this.state.email}
+                      name="email"
+                      onChange={event => {
+                        this.handleInputChange({
+                          target: {
+                            name: event.target.name,
+                            value: event.target.value.replace(/@.*/, atDomain =>
+                              atDomain.toLowerCase(),
+                            ),
+                          },
+                        });
+                      }}
+                    />
+                  </label>
+                  <label htmlFor="auth-password">
+                    Password:
+                    <div className={homeStyles.authFieldRow}>
+                      <input
+                        required
+                        id="auth-password"
+                        type={
+                          this.state.isPasswordRevealed ? 'text' : 'password'
+                        }
+                        autoComplete="current-password"
+                        value={this.state.password}
+                        name="password"
+                        onChange={this.handleInputChange}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          this.setState(state => ({
+                            isPasswordRevealed: !state.isPasswordRevealed,
+                          }));
+                        }}
+                      >
+                        {this.state.isPasswordRevealed ? 'Hide' : 'Show'}
+                      </button>
+                    </div>
+                  </label>
+                  <button
+                    type="button"
+                    className={homeStyles.authSubmitBtn}
+                    disabled={this.state.isUserInfoSaving}
+                    onClick={this.handleLogIn}
+                  >
+                    {this.state.isUserInfoSaving ? 'Logging in...' : 'Log In'}
+                  </button>
+                  <div className={homeStyles.authSwitchLink}>
+                    <button
+                      type="button"
+                      onClick={this.handlePasswordReset}
+                      disabled={this.state.isUserInfoSaving}
+                    >
+                      Forgot your password?
+                    </button>
+                  </div>
+                  <div className={homeStyles.authSwitchLink}>
+                    Don&apos;t have an account?{' '}
+                    <button
+                      type="button"
+                      onClick={() => this.switchAuthTab('signup')}
+                    >
+                      Sign Up
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Sign Up form */}
+              {this.state.authModalTab === 'signup' && (
+                <div className={homeStyles.authModalBody}>
+                  <label htmlFor="auth-signup-email">
+                    Email:
+                    <input
+                      required
+                      id="auth-signup-email"
+                      type="email"
+                      autoComplete="email"
+                      value={this.state.email}
+                      name="email"
+                      onChange={event => {
+                        this.handleInputChange({
+                          target: {
+                            name: event.target.name,
+                            value: event.target.value.replace(/@.*/, atDomain =>
+                              atDomain.toLowerCase(),
+                            ),
+                          },
+                        });
+                      }}
+                    />
+                  </label>
+                  <label htmlFor="auth-signup-password">
+                    Password:
+                    <div className={homeStyles.authFieldRow}>
+                      <input
+                        required
+                        id="auth-signup-password"
+                        type={
+                          this.state.isPasswordRevealed ? 'text' : 'password'
+                        }
+                        autoComplete="new-password"
+                        value={this.state.password}
+                        name="password"
+                        onChange={this.handleInputChange}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          this.setState(state => ({
+                            isPasswordRevealed: !state.isPasswordRevealed,
+                          }));
+                        }}
+                      >
+                        {this.state.isPasswordRevealed ? 'Hide' : 'Show'}
+                      </button>
+                    </div>
+                  </label>
+                  <label htmlFor="auth-signup-firstname">
+                    First Name:
+                    <input
+                      required
+                      id="auth-signup-firstname"
+                      type="text"
+                      autoComplete="given-name"
+                      value={this.state.FirstName}
+                      name="FirstName"
+                      onChange={this.handleInputChange}
+                    />
+                  </label>
+                  <label htmlFor="auth-signup-lastname">
+                    Last Name:
+                    <input
+                      required
+                      id="auth-signup-lastname"
+                      type="text"
+                      autoComplete="family-name"
+                      value={this.state.LastName}
+                      name="LastName"
+                      onChange={this.handleInputChange}
+                    />
+                  </label>
+                  <label htmlFor="auth-signup-phone">
+                    Phone Number:
+                    <input
+                      required
+                      id="auth-signup-phone"
+                      type="tel"
+                      autoComplete="tel"
+                      value={this.state.Phone}
+                      name="Phone"
+                      onChange={this.handleInputChange}
+                    />
+                  </label>
+                  <label htmlFor="auth-signup-testify">
+                    <input
+                      id="auth-signup-testify"
+                      type="checkbox"
+                      checked={this.state.testify}
+                      name="testify"
+                      onChange={this.handleInputChange}
+                    />{' '}
+                    I&apos;m willing to testify at a hearing, which can be done
+                    by phone.
+                  </label>
+                  <button
+                    type="button"
+                    className={homeStyles.authSubmitBtn}
+                    disabled={this.state.isUserInfoSaving}
+                    onClick={this.handleSignUp}
+                  >
+                    {this.state.isUserInfoSaving
+                      ? 'Creating account...'
+                      : 'Sign Up'}
+                  </button>
+                  <div className={homeStyles.authSwitchLink}>
+                    Already have an account?{' '}
+                    <button
+                      type="button"
+                      onClick={() => this.switchAuthTab('login')}
+                    >
+                      Log In
+                    </button>
+                  </div>
+                </div>
+              )}
+            </Modal>
 
             <form
-              style={{
-                display: this.state.isUserInfoOpen ? 'none' : 'block',
-              }}
               onSubmit={async e => {
                 e.preventDefault();
 

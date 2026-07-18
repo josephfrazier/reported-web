@@ -40,3 +40,221 @@ input[type='search'] {
 input[type='search']::-webkit-search-cancel-button {
   appearance: searchfield-cancel-button;
 }
+
+/* User Status Bar */
+.userStatusBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  background: #f5f5f5;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.userGreeting {
+  font-weight: 500;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.userActions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.statusBarBtn {
+  padding: 0.4rem 0.9rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+  color: #222;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-family: inherit;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.statusBarBtn:hover {
+  background: #eee;
+  border-color: #999;
+}
+
+.statusBarBtnPrimary {
+  composes: statusBarBtn;
+  background: #007bff;
+  color: #fff;
+  border-color: #007bff;
+}
+
+.statusBarBtnPrimary:hover {
+  background: #0069d9;
+  border-color: #0069d9;
+}
+
+/* Auth Modal */
+.authModalTabs {
+  display: flex;
+  border-bottom: 2px solid #e0e0e0;
+  margin-bottom: 1.25rem;
+}
+
+.authModalTab {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  text-align: center;
+  cursor: pointer;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  font-size: 1rem;
+  font-family: inherit;
+  color: #666;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.authModalTab:hover {
+  color: #333;
+}
+
+.authModalTabActive {
+  composes: authModalTab;
+  color: #007bff;
+  border-bottom-color: #007bff;
+  font-weight: 600;
+}
+
+.authModalBody {
+  padding: 0 0.25rem;
+}
+
+.authModalBody label {
+  margin: 0.75rem 0;
+}
+
+.authModalBody input[type='email'],
+.authModalBody input[type='text'],
+.authModalBody input[type='tel'],
+.authModalBody input[type='password'] {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.authFieldRow {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.authFieldRow input {
+  flex: 1;
+}
+
+.authFieldRow button {
+  flex-shrink: 0;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+.authSubmitBtn {
+  width: 100%;
+  padding: 0.6rem 1rem;
+  margin-top: 0.75rem;
+  background: #007bff;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.authSubmitBtn:hover {
+  background: #0069d9;
+}
+
+.authSubmitBtn:disabled {
+  background: #999;
+  cursor: not-allowed;
+}
+
+.authSwitchLink {
+  display: block;
+  text-align: center;
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.authSwitchLink button {
+  background: none;
+  border: none;
+  color: #007bff;
+  cursor: pointer;
+  font-size: inherit;
+  font-family: inherit;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.authSwitchLink button:hover {
+  color: #0069d9;
+}
+
+.authError {
+  color: #d32f2f;
+  background: #fde8e8;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+}
+
+/* Edit Profile */
+.editProfileSection {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #f9f9f9;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.editProfileSection h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+}
+
+/* Mobile responsive */
+@media (max-width: 480px) {
+  .userStatusBar {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+
+  .userGreeting {
+    justify-content: center;
+  }
+
+  .userActions {
+    justify-content: center;
+  }
+
+  .authFieldRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

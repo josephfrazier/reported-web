@@ -40,161 +40,35 @@ exports[`Home renders children correctly 1`] = `
       <div
         className="Toastify"
       />
-      <details
-        onToggle={[Function]}
-        open={true}
+      <div
+        className="userStatusBar"
       >
-        <summary>
-          Create/Edit User (click to expand)
-        </summary>
-        <form
-          onSubmit={[Function]}
+        <div
+          className="userGreeting"
         >
-          <fieldset
-            disabled={false}
+          Not logged in
+        </div>
+        <div
+          className="userActions"
+        >
+          <button
+            className="statusBarBtn"
+            onClick={[Function]}
+            type="button"
           >
-            <label
-              htmlFor="email"
-            >
-              Email:
-               
-              <input
-                autoComplete="email"
-                name="email"
-                onChange={[Function]}
-                onInvalid={[Function]}
-                required={true}
-                type="email"
-                value=""
-              />
-            </label>
-            <label
-              htmlFor="password"
-            >
-              Password (this is saved on your device, so use a password you don't use anywhere else): 
-              <div
-                style={
-                  {
-                    "display": "flex",
-                  }
-                }
-              >
-                <input
-                  autoComplete="current-password"
-                  name="password"
-                  onChange={[Function]}
-                  onInvalid={[Function]}
-                  required={true}
-                  type="password"
-                  value=""
-                />
-                 
-                <button
-                  onClick={[Function]}
-                  type="button"
-                >
-                  Show
-                </button>
-                 
-                <button
-                  onClick={[Function]}
-                  type="button"
-                >
-                  Reset
-                </button>
-              </div>
-            </label>
-            <button
-              disabled={false}
-              onClick={[Function]}
-              type="button"
-            >
-              Sign Up / Log In
-            </button>
-            <br />
-            <br />
-            (If you cannot log in even after resetting your password, email
-             
-            <a
-              href="mailto:reportedapp@gmail.com"
-            >
-              reportedapp@gmail.com
-            </a>
-            )
-            <label
-              htmlFor="FirstName"
-            >
-              First Name:
-               
-              <input
-                autoComplete="given-name"
-                name="FirstName"
-                onChange={[Function]}
-                onInvalid={[Function]}
-                required={true}
-                type="text"
-                value=""
-              />
-            </label>
-            <label
-              htmlFor="LastName"
-            >
-              Last Name:
-               
-              <input
-                autoComplete="family-name"
-                name="LastName"
-                onChange={[Function]}
-                onInvalid={[Function]}
-                required={true}
-                type="text"
-                value=""
-              />
-            </label>
-            <label
-              htmlFor="Phone"
-            >
-              Phone Number:
-               
-              <input
-                autoComplete="tel"
-                name="Phone"
-                onChange={[Function]}
-                onInvalid={[Function]}
-                required={true}
-                type="tel"
-                value=""
-              />
-            </label>
-            <label
-              htmlFor="testify"
-            >
-              <input
-                checked={false}
-                id="testify"
-                name="testify"
-                onChange={[Function]}
-                type="checkbox"
-              />
-               
-              I'm willing to testify at a hearing, which can be done by phone.
-            </label>
-            <button
-              disabled={false}
-              type="submit"
-            >
-              Save
-            </button>
-          </fieldset>
-        </form>
-      </details>
+            Log In
+          </button>
+          <button
+            className="statusBarBtnPrimary"
+            onClick={[Function]}
+            type="button"
+          >
+            Sign Up
+          </button>
+        </div>
+      </div>
       <form
         onSubmit={[Function]}
-        style={
-          {
-            "display": "none",
-          }
-        }
       >
         <fieldset
           disabled={false}

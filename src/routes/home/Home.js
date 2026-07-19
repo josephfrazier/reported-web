@@ -596,7 +596,7 @@ class Home extends React.Component {
   }
 
   getLocalStorageKey() {
-    return this.props.localStorageKey || 'reported-home-state';
+    return this.props.localStorageKey || 'reportedWebHomeState';
   }
 
   getStateFilterKeys() {

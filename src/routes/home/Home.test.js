@@ -49,7 +49,7 @@ function renderHome() {
 
 describe('Home', () => {
   test('renders submission form and Previous Submissions when logged in', () => {
-    const storageKey = 'home-logged-in-test';
+    const storageKey = 'reportedWebHomeState';
     localStorage.setItem(
       storageKey,
       JSON.stringify({ email: 'test@example.com' }),

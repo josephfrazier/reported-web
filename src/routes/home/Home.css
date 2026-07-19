@@ -258,3 +258,19 @@ input[type='search']::-webkit-search-cancel-button {
     align-items: stretch;
   }
 }
+
+.auth-prompt {
+  text-align: center;
+  padding: 2rem;
+  margin: 1rem 0;
+}
+
+.auth-prompt button {
+  background: none;
+  border: none;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+}

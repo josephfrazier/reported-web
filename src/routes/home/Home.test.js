@@ -18,36 +18,58 @@ import boroughBoundariesFeatureCollection from '../../../public/borough-boundari
 require('timezone-mock').register('US/Eastern');
 require('jest-mock-now')();
 
-describe('Home', () => {
-  test('renders children correctly', () => {
-    const typeofcomplaintValues = [
-      'Blocked the bike lane',
-      'Blocked the crosswalk',
-      'Honked horn (no emergency)',
-      'Failed to yield to pedestrian',
-      'Drove aggressively',
-      'Was on a cell phone while driving',
-      'Refused to pick me up',
-      'Was courteous, kind or polite',
-      'Went above and beyond to help',
-    ];
+const typeofcomplaintValues = [
+  'Blocked the bike lane',
+  'Blocked the crosswalk',
+  'Honked horn (no emergency)',
+  'Failed to yield to pedestrian',
+  'Drove aggressively',
+  'Was on a cell phone while driving',
+  'Refused to pick me up',
+  'Was courteous, kind or polite',
+  'Went above and beyond to help',
+];
 
-    const insertCss = () => {};
-    const tree = renderer.create(
-      <StyleContext.Provider value={{ insertCss }}>
-        <App context={{ fetch: () => {}, pathname: '' }}>
-          <Home
-            typeofcomplaintValues={typeofcomplaintValues}
-            boroughBoundariesFeatureCollection={
-              boroughBoundariesFeatureCollection
-            }
-          />
-        </App>
-      </StyleContext.Provider>,
-    );
+const insertCss = () => {};
+
+function renderHome() {
+  return renderer.create(
+    <StyleContext.Provider value={{ insertCss }}>
+      <App context={{ fetch: () => {}, pathname: '' }}>
+        <Home
+          typeofcomplaintValues={typeofcomplaintValues}
+          boroughBoundariesFeatureCollection={
+            boroughBoundariesFeatureCollection
+          }
+        />
+      </App>
+    </StyleContext.Provider>,
+  );
+}
+
+describe('Home', () => {
+  test('renders auth prompt and hides form when logged out', () => {
+    const tree = renderHome();
 
     expect(tree.toJSON()).toMatchSnapshot();
 
     tree.unmount();
+  });
+
+  test('renders submission form and Previous Submissions when logged in', () => {
+    localStorage.setItem(
+      'Home',
+      JSON.stringify({ email: 'test@example.com' }),
+    );
+
+    let tree;
+    renderer.act(() => {
+      tree = renderHome();
+    });
+
+    expect(tree.toJSON()).toMatchSnapshot();
+
+    tree.unmount();
+    localStorage.removeItem('Home');
   });
 });

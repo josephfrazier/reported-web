@@ -48,14 +48,6 @@ function renderHome() {
 }
 
 describe('Home', () => {
-  test('renders auth prompt and hides form when logged out', () => {
-    const tree = renderHome();
-
-    expect(tree.toJSON()).toMatchSnapshot();
-
-    tree.unmount();
-  });
-
   test('renders submission form and Previous Submissions when logged in', () => {
     const storageKey = 'home-logged-in-test';
     localStorage.setItem(
@@ -84,5 +76,13 @@ describe('Home', () => {
 
     tree.unmount();
     localStorage.removeItem(storageKey);
+  });
+
+  test('renders auth prompt and hides form when logged out', () => {
+    const tree = renderHome();
+
+    expect(tree.toJSON()).toMatchSnapshot();
+
+    tree.unmount();
   });
 });

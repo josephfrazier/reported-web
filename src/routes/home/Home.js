@@ -509,22 +509,6 @@ class Home extends React.Component {
       },
     );
 
-    // generate a random passphrase for first-time users and show it to them
-    if (!this.state.password) {
-      // async so that test snapshots don't change
-      setTimeout(() => {
-        const options = {
-          language: wordlist,
-          wordcount: 6,
-          format: 'string',
-        };
-        this.setState({
-          password: diceware(options),
-          isPasswordRevealed: true,
-        });
-      });
-    }
-
     // Allow users to paste image data
     // adapted from https://github.com/charliewilco/react-gluejar/blob/b69d7cfa9d08bfb34d8eb6815e4b548528218883/src/index.js#L85
     window.addEventListener('paste', clipboardEvent => {
@@ -1052,6 +1036,22 @@ class Home extends React.Component {
       authModalTab: tab,
       authError: null,
     });
+
+    // Generate a random passphrase for first-time sign-ups.
+    if (tab === 'signup' && !this.state.password) {
+      // setTimeout so that test snapshots don't depend on RNG.
+      setTimeout(() => {
+        const options = {
+          language: wordlist,
+          wordcount: 6,
+          format: 'string',
+        };
+        this.setState({
+          password: diceware(options),
+          isPasswordRevealed: true,
+        });
+      });
+    }
   };
 
   closeAuthModal = () => {

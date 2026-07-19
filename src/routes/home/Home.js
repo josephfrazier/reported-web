@@ -195,7 +195,7 @@ function getPlateThumbnailsByKey(results = []) {
 
     const key = getPlateThumbnailKey(plate);
 
-    acc[key] = result.plateCropDataUrl; // eslint-disable-line no-param-reassign
+    acc[key] = result.plateCropDataUrl;
     return acc;
   }, {});
 }
@@ -857,13 +857,11 @@ class Home extends React.Component {
               );
             }
 
-            // eslint-disable-next-line no-await-in-loop
             const { attachmentBuffer, attachmentArrayBuffer } =
               await blobToBuffer({
                 attachmentFile,
               });
 
-            // eslint-disable-next-line no-await-in-loop
             const { ext } = await FileType.fromBuffer(attachmentBuffer);
 
             this.setState({ isAlprLoading: true });

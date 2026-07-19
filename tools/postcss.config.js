@@ -7,8 +7,6 @@
  * LICENSE.txt file in the root directory of this source tree.
  */
 
-/* eslint-disable global-require */
-
 const pkg = require('../package.json');
 
 module.exports = () => ({

@@ -95,7 +95,7 @@ async function deploy() {
   // generates optimized and minimized bundles
   process.argv.push('--release');
   if (remote.static) process.argv.push('--static');
-  await run(require('./build.js').default); // eslint-disable-line global-require
+  await run(require('./build.js').default);
   if (process.argv.includes('--static')) {
     await cleanDir('build/*', {
       nosort: true,

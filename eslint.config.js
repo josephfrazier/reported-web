@@ -19,6 +19,18 @@ const { ignorePatterns, ...rulesConfig } = legacyConfig;
 module.exports = [
   { ignores: ignorePatterns },
   ...compat.config(rulesConfig),
+
+  // Build scripts: allowed to reference build output and use dynamic requires
+  {
+    files: ['tools/**/*.js'],
+    rules: {
+      'import/no-unresolved': 'off',
+      'import/no-extraneous-dependencies': 'off',
+      'global-require': 'off',
+      'import/no-dynamic-require': 'off',
+    },
+  },
+
   {
     files: ['**/*.test.js', '**/__mocks__/**/*.js'],
     languageOptions: {

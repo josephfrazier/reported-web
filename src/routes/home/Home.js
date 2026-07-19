@@ -1498,6 +1498,14 @@ class Home extends React.Component {
                     </button>
                   </div>
                   <div className={homeStyles['auth-switch-link']}>
+                    (If you cannot log in even after resetting your password,
+                    email{' '}
+                    <a href="mailto:reportedapp@gmail.com">
+                      reportedapp@gmail.com
+                    </a>
+                    )
+                  </div>
+                  <div className={homeStyles['auth-switch-link']}>
                     Don&apos;t have an account?{' '}
                     <button
                       type="button"

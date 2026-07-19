@@ -1542,7 +1542,8 @@ class Home extends React.Component {
                     />
                   </label>
                   <label htmlFor="auth-signup-password">
-                    Password:
+                    Password (this is saved on your device, so use a password
+                    you don&apos;t use anywhere else):
                     <div className={homeStyles['auth-field-row']}>
                       <input
                         required

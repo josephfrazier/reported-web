@@ -178,7 +178,6 @@ async function start() {
         if (['abort', 'fail'].includes(app.hot.status())) {
           console.warn(`${hmrPrefix}Cannot apply update.`);
           delete require.cache[require.resolve('../build/server')];
-
           app = require('../build/server.js').default;
           console.warn(`${hmrPrefix}App has been reloaded.`);
         } else {
@@ -206,7 +205,6 @@ async function start() {
   console.info(`[${format(timeStart)}] Launching server...`);
 
   // Load compiled src/server.js as a middleware
-
   app = require('../build/server.js').default;
   appPromiseIsResolved = true;
   appPromiseResolve();

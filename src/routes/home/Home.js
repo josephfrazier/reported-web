@@ -576,6 +576,10 @@ class Home extends React.Component {
     );
   }
 
+  getLocalStorageKey() {
+    return this.props.localStorageKey || 'reported-home-state';
+  }
+
   getStateFilterKeys() {
     // used by react-localstorage to determine which `state` keys to save, see https://github.com/josephfrazier/react-localstorage/tree/75f0303aa775e1625ef9cb0d936b6aa0bcdbaffc#filtering
     return Object.keys(this.initialStatePersistent);
@@ -1108,7 +1112,7 @@ class Home extends React.Component {
         hasLoadedPreviousSubmissions: false,
       },
       () => {
-        this.saveStateToLocalStorage();
+        localStorage.removeItem(this.getLocalStorageKey());
       },
     );
   };
@@ -2220,6 +2224,11 @@ class Home extends React.Component {
 Home.propTypes = {
   typeofcomplaintValues: PropTypes.arrayOf(PropTypes.string).isRequired,
   boroughBoundariesFeatureCollection: PropTypes.object.isRequired,
+  localStorageKey: PropTypes.string,
+};
+
+Home.defaultProps = {
+  localStorageKey: undefined,
 };
 
 const MyMapComponentPure = props => {

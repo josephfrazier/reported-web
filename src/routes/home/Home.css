@@ -191,6 +191,22 @@ input[type='search']::-webkit-search-cancel-button {
   cursor: not-allowed;
 }
 
+.auth-prompt {
+  text-align: center;
+  padding: 2rem;
+  margin: 1rem 0;
+}
+
+.auth-prompt button {
+  background: none;
+  border: none;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+}
+
 .auth-switch-link {
   display: block;
   text-align: center;
@@ -257,20 +273,4 @@ input[type='search']::-webkit-search-cancel-button {
     flex-direction: column;
     align-items: stretch;
   }
-}
-
-.auth-prompt {
-  text-align: center;
-  padding: 2rem;
-  margin: 1rem 0;
-}
-
-.auth-prompt button {
-  background: none;
-  border: none;
-  color: inherit;
-  text-decoration: underline;
-  cursor: pointer;
-  font: inherit;
-  padding: 0;
 }

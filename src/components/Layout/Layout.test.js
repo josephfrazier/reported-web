@@ -7,7 +7,6 @@
  * LICENSE.txt file in the root directory of this source tree.
  */
 
-/* eslint-env jest */
 /* eslint-disable padded-blocks, no-unused-expressions */
 
 import React from 'react';

@@ -1,7 +1,6 @@
 /**
  * @jest-environment node
  */
-/* eslint-env jest */
 
 import { validateLocation, processValidation } from './geoclient.js';
 

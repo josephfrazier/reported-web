@@ -1,7 +1,6 @@
 /**
  * @jest-environment node
  */
-/* eslint-env jest */
 
 import { readFileSync } from 'fs';
 import { hash } from 'crypto';

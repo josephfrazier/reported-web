@@ -1038,20 +1038,8 @@ class Home extends React.Component {
       isPasswordRevealed: tab === 'signup',
     });
 
-    // Generate a random passphrase for first-time sign-ups.
-    if (tab === 'signup' && !this.state.password) {
-      // setTimeout so that test snapshots don't depend on RNG.
-      setTimeout(() => {
-        const options = {
-          language: wordlist,
-          wordcount: 6,
-          format: 'string',
-        };
-        this.setState({
-          password: diceware(options),
-          isPasswordRevealed: true,
-        });
-      });
+    if (tab === 'signup') {
+      this.maybeGeneratePassword();
     }
   };
 
@@ -1065,6 +1053,10 @@ class Home extends React.Component {
       authError: null,
       isPasswordRevealed: tab === 'signup',
     });
+
+    if (tab === 'signup') {
+      this.maybeGeneratePassword();
+    }
   };
 
   handleLogIn = async () => {
@@ -1197,6 +1189,23 @@ class Home extends React.Component {
     }
     return isLoadPreviousSubmissionsEnabled ? 'loading...' : 'expand to load';
   };
+
+  maybeGeneratePassword() {
+    if (!this.state.password) {
+      // setTimeout so that test snapshots don't depend on RNG.
+      setTimeout(() => {
+        const options = {
+          language: wordlist,
+          wordcount: 6,
+          format: 'string',
+        };
+        this.setState({
+          password: diceware(options),
+          isPasswordRevealed: true,
+        });
+      });
+    }
+  }
 
   render() {
     const matchingPlateThumbnail =

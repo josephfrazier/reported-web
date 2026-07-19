@@ -1035,6 +1035,7 @@ class Home extends React.Component {
       isAuthModalOpen: true,
       authModalTab: tab,
       authError: null,
+      isPasswordRevealed: tab === 'signup',
     });
 
     // Generate a random passphrase for first-time sign-ups.
@@ -1059,7 +1060,11 @@ class Home extends React.Component {
   };
 
   switchAuthTab = tab => {
-    this.setState({ authModalTab: tab, authError: null });
+    this.setState({
+      authModalTab: tab,
+      authError: null,
+      isPasswordRevealed: tab === 'signup',
+    });
   };
 
   handleLogIn = async () => {

@@ -1,5 +1,147 @@
 // Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
 
+exports[`Home renders auth prompt and hides form when logged out 1`] = `
+<div
+  aria-disabled={false}
+  className="root"
+  onClick={[Function]}
+  onDragEnter={[Function]}
+  onDragLeave={[Function]}
+  onDragOver={[Function]}
+  onDragStart={[Function]}
+  onDrop={[Function]}
+  style={
+    {
+      "bottom": 0,
+      "left": 0,
+      "overflowY": "scroll",
+      "position": "fixed",
+      "right": 0,
+      "top": 0,
+    }
+  }
+>
+  <div
+    className="container"
+  >
+    <main>
+      <h1>
+        <a
+          href="https://reportedly.weebly.com/"
+          style={
+            {
+              "textDecoration": "underline",
+            }
+          }
+        >
+          Reported
+        </a>
+      </h1>
+      <div
+        className="Toastify"
+      />
+      <div
+        className="user-status-bar"
+      >
+        <div
+          className="user-greeting"
+        >
+          Not logged in
+        </div>
+        <div
+          className="user-actions"
+        >
+          <button
+            className="status-bar-btn"
+            onClick={[Function]}
+            type="button"
+          >
+            Log In
+          </button>
+          <button
+            className="status-bar-btn-primary"
+            onClick={[Function]}
+            type="button"
+          >
+            Sign Up
+          </button>
+        </div>
+      </div>
+      <div
+        className="auth-prompt"
+      >
+        <p>
+          Please
+           
+          <button
+            onClick={[Function]}
+            type="button"
+          >
+            log in
+          </button>
+           
+          or
+           
+          <button
+            onClick={[Function]}
+            type="button"
+          >
+            sign up
+          </button>
+           
+          to submit a report.
+        </p>
+      </div>
+      <br />
+      <div
+        style={
+          {
+            "float": "right",
+          }
+        }
+      >
+        <a
+          href="/electricitibikes"
+          style={
+            {
+              "background": "black",
+              "border": "1em solid black",
+              "borderRadius": "2em",
+              "textDecoration": "none",
+            }
+          }
+        >
+          <span
+            aria-label="high voltage"
+            role="img"
+          >
+            ⚡
+          </span>
+        </a>
+      </div>
+    </main>
+  </div>
+  <input
+    autoComplete="off"
+    disabled={false}
+    multiple={true}
+    onChange={[Function]}
+    style={
+      {
+        "bottom": 0,
+        "left": 0,
+        "opacity": 0.00001,
+        "pointerEvents": "none",
+        "position": "absolute",
+        "right": 0,
+        "top": 0,
+      }
+    }
+    type="file"
+  />
+</div>
+`;
+
 exports[`Home renders submission form and Previous Submissions when logged in 1`] = `
 <div
   aria-disabled={false}
@@ -52,7 +194,7 @@ exports[`Home renders submission form and Previous Submissions when logged in 1`
           >
             👤
           </span>
-
+           
           test@example.com
         </div>
         <div
@@ -64,6 +206,13 @@ exports[`Home renders submission form and Previous Submissions when logged in 1`
             type="button"
           >
             Edit Profile
+          </button>
+          <button
+            className="status-bar-btn"
+            onClick={[Function]}
+            type="button"
+          >
+            Log Out
           </button>
         </div>
       </div>
@@ -125,7 +274,7 @@ exports[`Home renders submission form and Previous Submissions when logged in 1`
               onChange={[Function]}
               type="checkbox"
             />
-
+             
             Automatically read license plates from pictures/videos
           </label>
           <label
@@ -138,7 +287,7 @@ exports[`Home renders submission form and Previous Submissions when logged in 1`
               onChange={[Function]}
               type="checkbox"
             />
-
+             
             Automatically read addresses from pictures/videos
           </label>
           <label
@@ -450,7 +599,7 @@ exports[`Home renders submission form and Previous Submissions when logged in 1`
             htmlFor="typeofcomplaint"
           >
             Type:
-
+             
             <select
               name="typeofcomplaint"
               onChange={[Function]}
@@ -506,8 +655,8 @@ exports[`Home renders submission form and Previous Submissions when logged in 1`
           <label
             htmlFor="where"
           >
-            Where:
-
+            Where: 
+            
             <br />
             <button
               name="where"
@@ -519,14 +668,14 @@ exports[`Home renders submission form and Previous Submissions when logged in 1`
               }
               type="button"
             >
-
+              
             </button>
           </label>
           <label
             htmlFor="CreateDate"
           >
             When:
-
+             
             <input
               name="CreateDate"
               onChange={[Function]}
@@ -539,7 +688,7 @@ exports[`Home renders submission form and Previous Submissions when logged in 1`
             htmlFor="reportDescription"
           >
             Description:
-
+             
             <textarea
               autoComplete="off"
               name="reportDescription"
@@ -557,7 +706,7 @@ exports[`Home renders submission form and Previous Submissions when logged in 1`
               onChange={[Function]}
               type="checkbox"
             />
-
+             
             Allow the photos/videos, description, category, and location to be publicly displayed
           </label>
           <button
@@ -583,148 +732,6 @@ exports[`Home renders submission form and Previous Submissions when logged in 1`
           )
         </summary>
       </details>
-      <div
-        style={
-          {
-            "float": "right",
-          }
-        }
-      >
-        <a
-          href="/electricitibikes"
-          style={
-            {
-              "background": "black",
-              "border": "1em solid black",
-              "borderRadius": "2em",
-              "textDecoration": "none",
-            }
-          }
-        >
-          <span
-            aria-label="high voltage"
-            role="img"
-          >
-            ⚡
-          </span>
-        </a>
-      </div>
-    </main>
-  </div>
-  <input
-    autoComplete="off"
-    disabled={false}
-    multiple={true}
-    onChange={[Function]}
-    style={
-      {
-        "bottom": 0,
-        "left": 0,
-        "opacity": 0.00001,
-        "pointerEvents": "none",
-        "position": "absolute",
-        "right": 0,
-        "top": 0,
-      }
-    }
-    type="file"
-  />
-</div>
-`;
-
-exports[`Home renders auth prompt and hides form when logged out 1`] = `
-<div
-  aria-disabled={false}
-  className="root"
-  onClick={[Function]}
-  onDragEnter={[Function]}
-  onDragLeave={[Function]}
-  onDragOver={[Function]}
-  onDragStart={[Function]}
-  onDrop={[Function]}
-  style={
-    {
-      "bottom": 0,
-      "left": 0,
-      "overflowY": "scroll",
-      "position": "fixed",
-      "right": 0,
-      "top": 0,
-    }
-  }
->
-  <div
-    className="container"
-  >
-    <main>
-      <h1>
-        <a
-          href="https://reportedly.weebly.com/"
-          style={
-            {
-              "textDecoration": "underline",
-            }
-          }
-        >
-          Reported
-        </a>
-      </h1>
-      <div
-        className="Toastify"
-      />
-      <div
-        className="user-status-bar"
-      >
-        <div
-          className="user-greeting"
-        >
-          Not logged in
-        </div>
-        <div
-          className="user-actions"
-        >
-          <button
-            className="status-bar-btn"
-            onClick={[Function]}
-            type="button"
-          >
-            Log In
-          </button>
-          <button
-            className="status-bar-btn-primary"
-            onClick={[Function]}
-            type="button"
-          >
-            Sign Up
-          </button>
-        </div>
-      </div>
-      <div
-        className="auth-prompt"
-      >
-        <p>
-          Please
-
-          <button
-            onClick={[Function]}
-            type="button"
-          >
-            log in
-          </button>
-
-          or
-
-          <button
-            onClick={[Function]}
-            type="button"
-          >
-            sign up
-          </button>
-
-          to submit a report.
-        </p>
-      </div>
-      <br />
       <div
         style={
           {

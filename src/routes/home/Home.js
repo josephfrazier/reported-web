@@ -1094,6 +1094,25 @@ class Home extends React.Component {
     }
   };
 
+  handleLogOut = () => {
+    this.setState(
+      {
+        email: '',
+        password: '',
+        FirstName: '',
+        LastName: '',
+        Phone: '',
+        testify: false,
+        submissions: [],
+        isEditProfileOpen: false,
+        hasLoadedPreviousSubmissions: false,
+      },
+      () => {
+        this.saveStateToLocalStorage();
+      },
+    );
+  };
+
   handlePasswordReset = async () => {
     const { email } = this.state;
     if (!email) {
@@ -1216,17 +1235,26 @@ class Home extends React.Component {
               </div>
               <div className={homeStyles['user-actions']}>
                 {this.isLoggedIn() ? (
-                  <button
-                    type="button"
-                    className={homeStyles['status-bar-btn-primary']}
-                    onClick={() =>
-                      this.setState(state => ({
-                        isEditProfileOpen: !state.isEditProfileOpen,
-                      }))
-                    }
-                  >
-                    {this.state.isEditProfileOpen ? 'Cancel' : 'Edit Profile'}
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      className={homeStyles['status-bar-btn-primary']}
+                      onClick={() =>
+                        this.setState(state => ({
+                          isEditProfileOpen: !state.isEditProfileOpen,
+                        }))
+                      }
+                    >
+                      {this.state.isEditProfileOpen ? 'Cancel' : 'Edit Profile'}
+                    </button>
+                    <button
+                      type="button"
+                      className={homeStyles['status-bar-btn']}
+                      onClick={this.handleLogOut}
+                    >
+                      Log Out
+                    </button>
+                  </>
                 ) : (
                   <>
                     <button

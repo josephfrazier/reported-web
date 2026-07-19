@@ -1129,6 +1129,8 @@ class Home extends React.Component {
     }
   };
 
+  isLoggedIn = () => !!this.state.email;
+
   getPreviousSubmissionsSummary = () => {
     const {
       submissions,
@@ -1199,7 +1201,7 @@ class Home extends React.Component {
             {/* User Status Bar */}
             <div className={homeStyles['user-status-bar']}>
               <div className={homeStyles['user-greeting']}>
-                {this.state.email ? (
+                {this.isLoggedIn() ? (
                   <>
                     <span role="img" aria-label="user">
                       👤
@@ -1213,7 +1215,7 @@ class Home extends React.Component {
                 )}
               </div>
               <div className={homeStyles['user-actions']}>
-                {this.state.email ? (
+                {this.isLoggedIn() ? (
                   <button
                     type="button"
                     className={homeStyles['status-bar-btn-primary']}
@@ -1562,7 +1564,7 @@ class Home extends React.Component {
               )}
             </Modal>
 
-            {this.state.email ? (
+            {this.isLoggedIn() ? (
               <form
                 onSubmit={async e => {
                   e.preventDefault();
@@ -2106,7 +2108,7 @@ class Home extends React.Component {
 
             <br />
 
-            {this.state.email && (
+            {this.isLoggedIn() && (
               <details
                 onToggle={evt => {
                   const isPreviousSubmissionsOpen = evt.currentTarget.open;

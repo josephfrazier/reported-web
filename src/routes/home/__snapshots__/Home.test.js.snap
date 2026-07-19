@@ -93,7 +93,6 @@ exports[`Home renders children correctly 1`] = `
         </p>
       </div>
       <br />
-      
       <div
         style={
           {

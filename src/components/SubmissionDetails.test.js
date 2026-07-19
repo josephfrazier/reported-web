@@ -1,5 +1,3 @@
-/* eslint-disable padded-blocks, no-unused-expressions */
-
 import '@babel/polyfill';
 import React from 'react';
 import renderer from 'react-test-renderer';

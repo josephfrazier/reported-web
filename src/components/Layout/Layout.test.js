@@ -7,9 +7,6 @@
  * LICENSE.txt file in the root directory of this source tree.
  */
 
-/* eslint-env jest */
-/* eslint-disable padded-blocks, no-unused-expressions */
-
 import React from 'react';
 import renderer from 'react-test-renderer';
 import StyleContext from 'isomorphic-style-loader/StyleContext';

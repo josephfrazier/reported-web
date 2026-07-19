@@ -1,7 +1,6 @@
 /**
  * @jest-environment node
  */
-/* eslint-env jest */
 
 import getVehicleType from './getVehicleType.js';
 

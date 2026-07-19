@@ -469,6 +469,25 @@ class Home extends React.Component {
   }
 
   componentDidMount() {
+    // Migrate from old localStorage key to new explicit key.
+    // The old key came from getDisplayName() which resolved to 'Function'
+    // for class components (Component.constructor.name === 'Function').
+    // This can be removed once all users have been migrated.
+    const oldKey = 'Function';
+    const newKey = this.getLocalStorageKey();
+    if (newKey !== oldKey) {
+      const oldData = localStorage.getItem(oldKey);
+      if (oldData && !localStorage.getItem(newKey)) {
+        localStorage.setItem(newKey, oldData);
+        localStorage.removeItem(oldKey);
+        try {
+          this.setState(JSON.parse(oldData));
+        } catch {
+          // Ignore parse errors from corrupted data.
+        }
+      }
+    }
+
     // if there's no attachments or a time couldn't be extracted, just use now
     if (this.state.attachmentData.length === 0 || !this.state.CreateDate) {
       this.setCreateDate({ millisecondsSinceEpoch: Date.now() });

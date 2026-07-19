@@ -118,4 +118,17 @@ module.exports = {
       },
     },
   },
+
+  overrides: [
+    {
+      // css-modules plugin hangs on bracket notation (e.g. homeStyles['kebab-case'])
+      // used for CSS Modules classes with hyphens. Also affects other files that
+      // import Home.css (the plugin parses the CSS and gets stuck on composes chains)
+      files: ['src/routes/home/Home.js', 'src/routes/home/PlatePickerModal.js'],
+      rules: {
+        'css-modules/no-unused-class': 'off',
+        'css-modules/no-undef-class': 'off',
+      },
+    },
+  ],
 };

@@ -57,19 +57,32 @@ describe('Home', () => {
   });
 
   test('renders submission form and Previous Submissions when logged in', () => {
+    const storageKey = 'home-logged-in-test';
     localStorage.setItem(
-      'Home',
+      storageKey,
       JSON.stringify({ email: 'test@example.com' }),
     );
 
     let tree;
     renderer.act(() => {
-      tree = renderHome();
+      tree = renderer.create(
+        <StyleContext.Provider value={{ insertCss }}>
+          <App context={{ fetch: () => {}, pathname: '' }}>
+            <Home
+              localStorageKey={storageKey}
+              typeofcomplaintValues={typeofcomplaintValues}
+              boroughBoundariesFeatureCollection={
+                boroughBoundariesFeatureCollection
+              }
+            />
+          </App>
+        </StyleContext.Provider>,
+      );
     });
 
     expect(tree.toJSON()).toMatchSnapshot();
 
     tree.unmount();
-    localStorage.removeItem('Home');
+    localStorage.removeItem(storageKey);
   });
 });

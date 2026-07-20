@@ -1463,8 +1463,6 @@ class Home extends React.Component {
                             background: 'white',
                           }}
                           onClick={() => {
-                            const wasLastPhoto =
-                              this.state.attachmentData.length === 1;
                             this.setState(
                               state => {
                                 const attachmentData =
@@ -1472,6 +1470,10 @@ class Home extends React.Component {
                                     file => file.name !== name,
                                   );
                                 if (attachmentData.length === 0) {
+                                  this.setCoords({
+                                    latitude: defaultLatitude,
+                                    longitude: defaultLongitude,
+                                  });
                                   return {
                                     attachmentData,
                                     plate: '',
@@ -1484,14 +1486,6 @@ class Home extends React.Component {
                                   };
                                 }
                                 return { attachmentData };
-                              },
-                              () => {
-                                if (wasLastPhoto) {
-                                  this.setCoords({
-                                    latitude: defaultLatitude,
-                                    longitude: defaultLongitude,
-                                  });
-                                }
                               },
                             );
                           }}

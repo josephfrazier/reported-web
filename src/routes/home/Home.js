@@ -1477,10 +1477,18 @@ class Home extends React.Component {
                                   plateThumbnailsByKey: {},
                                   vehicleInfoComponent: null,
                                   violationSummaryComponent: null,
+                                  CreateDate: jsDateToCreateDate(new Date()),
+                                  formatted_address: '',
                                 };
                               }
                               return { attachmentData };
                             });
+                            if (this.state.attachmentData.length === 1) {
+                              this.setCoords({
+                                latitude: defaultLatitude,
+                                longitude: defaultLongitude,
+                              });
+                            }
                           }}
                         >
                           <span role="img" aria-label="Delete photo/video">

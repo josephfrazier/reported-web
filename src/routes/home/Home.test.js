@@ -32,11 +32,12 @@ const typeofcomplaintValues = [
 
 const insertCss = () => {};
 
-function renderHome() {
+function renderHome({ localStorageKey } = {}) {
   return renderer.create(
     <StyleContext.Provider value={{ insertCss }}>
       <App context={{ fetch: () => {}, pathname: '' }}>
         <Home
+          localStorageKey={localStorageKey}
           typeofcomplaintValues={typeofcomplaintValues}
           boroughBoundariesFeatureCollection={
             boroughBoundariesFeatureCollection
@@ -60,19 +61,7 @@ describe('Home', () => {
 
     let tree;
     renderer.act(() => {
-      tree = renderer.create(
-        <StyleContext.Provider value={{ insertCss }}>
-          <App context={{ fetch: () => {}, pathname: '' }}>
-            <Home
-              localStorageKey={storageKey}
-              typeofcomplaintValues={typeofcomplaintValues}
-              boroughBoundariesFeatureCollection={
-                boroughBoundariesFeatureCollection
-              }
-            />
-          </App>
-        </StyleContext.Provider>,
-      );
+      tree = renderHome({ localStorageKey: storageKey });
     });
 
     expect(tree.toJSON()).toMatchSnapshot();

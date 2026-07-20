@@ -1463,32 +1463,37 @@ class Home extends React.Component {
                             background: 'white',
                           }}
                           onClick={() => {
-                            this.setState(state => {
-                              const attachmentData =
-                                state.attachmentData.filter(
-                                  file => file.name !== name,
-                                );
-                              if (attachmentData.length === 0) {
-                                return {
-                                  attachmentData,
-                                  plate: '',
-                                  licenseState: 'NY',
-                                  allPlateResults: [],
-                                  plateThumbnailsByKey: {},
-                                  vehicleInfoComponent: null,
-                                  violationSummaryComponent: null,
-                                  CreateDate: jsDateToCreateDate(new Date()),
-                                  formatted_address: '',
-                                };
-                              }
-                              return { attachmentData };
-                            });
-                            if (this.state.attachmentData.length === 1) {
-                              this.setCoords({
-                                latitude: defaultLatitude,
-                                longitude: defaultLongitude,
-                              });
-                            }
+                            const wasLastPhoto =
+                              this.state.attachmentData.length === 1;
+                            this.setState(
+                              state => {
+                                const attachmentData =
+                                  state.attachmentData.filter(
+                                    file => file.name !== name,
+                                  );
+                                if (attachmentData.length === 0) {
+                                  return {
+                                    attachmentData,
+                                    plate: '',
+                                    licenseState: 'NY',
+                                    allPlateResults: [],
+                                    plateThumbnailsByKey: {},
+                                    vehicleInfoComponent: null,
+                                    violationSummaryComponent: null,
+                                    CreateDate: jsDateToCreateDate(new Date()),
+                                  };
+                                }
+                                return { attachmentData };
+                              },
+                              () => {
+                                if (wasLastPhoto) {
+                                  this.setCoords({
+                                    latitude: defaultLatitude,
+                                    longitude: defaultLongitude,
+                                  });
+                                }
+                              },
+                            );
                           }}
                         >
                           <span role="img" aria-label="Delete photo/video">

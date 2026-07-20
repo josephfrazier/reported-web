@@ -1473,6 +1473,9 @@ class Home extends React.Component {
                                   latitude: defaultLatitude,
                                   longitude: defaultLongitude,
                                 });
+                                this.setCreateDate({
+                                  millisecondsSinceEpoch: Date.now(),
+                                });
                                 return {
                                   attachmentData,
                                   plate: '',
@@ -1481,7 +1484,6 @@ class Home extends React.Component {
                                   plateThumbnailsByKey: {},
                                   vehicleInfoComponent: null,
                                   violationSummaryComponent: null,
-                                  CreateDate: jsDateToCreateDate(new Date()),
                                 };
                               }
                               return { attachmentData };

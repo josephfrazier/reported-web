@@ -1463,31 +1463,29 @@ class Home extends React.Component {
                             background: 'white',
                           }}
                           onClick={() => {
-                            this.setState(
-                              state => {
-                                const attachmentData =
-                                  state.attachmentData.filter(
-                                    file => file.name !== name,
-                                  );
-                                if (attachmentData.length === 0) {
-                                  this.setCoords({
-                                    latitude: defaultLatitude,
-                                    longitude: defaultLongitude,
-                                  });
-                                  return {
-                                    attachmentData,
-                                    plate: '',
-                                    licenseState: 'NY',
-                                    allPlateResults: [],
-                                    plateThumbnailsByKey: {},
-                                    vehicleInfoComponent: null,
-                                    violationSummaryComponent: null,
-                                    CreateDate: jsDateToCreateDate(new Date()),
-                                  };
-                                }
-                                return { attachmentData };
-                              },
-                            );
+                            this.setState(state => {
+                              const attachmentData =
+                                state.attachmentData.filter(
+                                  file => file.name !== name,
+                                );
+                              if (attachmentData.length === 0) {
+                                this.setCoords({
+                                  latitude: defaultLatitude,
+                                  longitude: defaultLongitude,
+                                });
+                                return {
+                                  attachmentData,
+                                  plate: '',
+                                  licenseState: 'NY',
+                                  allPlateResults: [],
+                                  plateThumbnailsByKey: {},
+                                  vehicleInfoComponent: null,
+                                  violationSummaryComponent: null,
+                                  CreateDate: jsDateToCreateDate(new Date()),
+                                };
+                              }
+                              return { attachmentData };
+                            });
                           }}
                         >
                           <span role="img" aria-label="Delete photo/video">

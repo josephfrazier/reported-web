@@ -63,7 +63,7 @@ exports[`Home renders Edit Profile UI 1`] = `
             onClick={[Function]}
             type="button"
           >
-            Edit Profile
+            Cancel
           </button>
           <button
             className="status-bar-btn"
@@ -74,6 +74,88 @@ exports[`Home renders Edit Profile UI 1`] = `
           </button>
         </div>
       </div>
+      <form
+        className="edit-profile-section"
+        onSubmit={[Function]}
+      >
+        <h3>
+          Edit Profile
+        </h3>
+        <fieldset
+          disabled={false}
+        >
+          <label
+            htmlFor="FirstName"
+          >
+            First Name:
+             
+            <input
+              autoComplete="given-name"
+              id="FirstName"
+              name="FirstName"
+              onChange={[Function]}
+              required={true}
+              type="text"
+              value=""
+            />
+          </label>
+          <label
+            htmlFor="LastName"
+          >
+            Last Name:
+             
+            <input
+              autoComplete="family-name"
+              id="LastName"
+              name="LastName"
+              onChange={[Function]}
+              required={true}
+              type="text"
+              value=""
+            />
+          </label>
+          <label
+            htmlFor="Phone"
+          >
+            Phone Number:
+             
+            <input
+              autoComplete="tel"
+              id="Phone"
+              name="Phone"
+              onChange={[Function]}
+              required={true}
+              type="tel"
+              value=""
+            />
+          </label>
+          <label
+            htmlFor="testify"
+          >
+            <input
+              checked={false}
+              id="testify"
+              name="testify"
+              onChange={[Function]}
+              type="checkbox"
+            />
+             
+            I'm willing to testify at a hearing, which can be done by phone.
+          </label>
+          <button
+            className="auth-submit-btn"
+            disabled={false}
+            style={
+              {
+                "width": "auto",
+              }
+            }
+            type="submit"
+          >
+            Save
+          </button>
+        </fieldset>
+      </form>
       <form
         onSubmit={[Function]}
       >

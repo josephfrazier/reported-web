@@ -430,13 +430,15 @@ class Home extends React.Component {
       isMapOpen: false,
       isPreviousSubmissionsOpen: false,
       loginSuccessful: false,
+      isPasswordRevealed: false,
+      authModalTab: 'login',
+      isEditProfileOpen: false,
     };
 
     const initialStatePerSession = {
       attachmentData: [],
 
       isAlprLoading: false,
-      isPasswordRevealed: false,
       isUserInfoSaving: false,
       isSubmitting: false,
       isPreviousSubmissionsLoading: false,
@@ -453,8 +455,6 @@ class Home extends React.Component {
       plateThumbnailsByKey: {},
 
       isAuthModalOpen: false,
-      authModalTab: 'login',
-      isEditProfileOpen: false,
       authError: null,
     };
 

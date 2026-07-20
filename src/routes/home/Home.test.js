@@ -90,38 +90,48 @@ describe('Home', () => {
   });
 
   test('renders Log In modal UI', () => {
+    const storageKey = 'reportedWebHomeState';
+    localStorage.setItem(
+      storageKey,
+      JSON.stringify({ authModalTab: 'login' }),
+    );
+
     let tree;
     renderer.act(() => {
-      tree = renderHome();
+      tree = renderHome({ localStorageKey: storageKey });
     });
     renderer.act(() => {
-      findHomeInstance(tree.root).setState({
-        isAuthModalOpen: true,
-        authModalTab: 'login',
-      });
+      findHomeInstance(tree.root).setState({ isAuthModalOpen: true });
     });
 
     expect(tree.toJSON()).toMatchSnapshot();
 
     tree.unmount();
+    localStorage.removeItem(storageKey);
   });
 
   test('renders Sign Up modal UI', () => {
-    let tree;
-    renderer.act(() => {
-      tree = renderHome();
-    });
-    renderer.act(() => {
-      findHomeInstance(tree.root).setState({
-        isAuthModalOpen: true,
+    const storageKey = 'reportedWebHomeState';
+    localStorage.setItem(
+      storageKey,
+      JSON.stringify({
         authModalTab: 'signup',
         isPasswordRevealed: true,
-      });
+      }),
+    );
+
+    let tree;
+    renderer.act(() => {
+      tree = renderHome({ localStorageKey: storageKey });
+    });
+    renderer.act(() => {
+      findHomeInstance(tree.root).setState({ isAuthModalOpen: true });
     });
 
     expect(tree.toJSON()).toMatchSnapshot();
 
     tree.unmount();
+    localStorage.removeItem(storageKey);
   });
 
   test('renders Edit Profile UI', () => {
@@ -131,17 +141,13 @@ describe('Home', () => {
       JSON.stringify({
         email: 'test@example.com',
         loginSuccessful: true,
+        isEditProfileOpen: true,
       }),
     );
 
     let tree;
     renderer.act(() => {
       tree = renderHome({ localStorageKey: storageKey });
-    });
-    renderer.act(() => {
-      findHomeInstance(tree.root).setState({
-        isEditProfileOpen: true,
-      });
     });
 
     expect(tree.toJSON()).toMatchSnapshot();

@@ -429,6 +429,7 @@ class Home extends React.Component {
       isLoadPreviousSubmissionsEnabled: false,
       isMapOpen: false,
       isPreviousSubmissionsOpen: false,
+      loginSuccessful: false,
     };
 
     const initialStatePerSession = {
@@ -455,7 +456,6 @@ class Home extends React.Component {
       authModalTab: 'login',
       isEditProfileOpen: false,
       authError: null,
-      loginSuccessful: false,
     };
 
     const initialState = {
@@ -488,13 +488,6 @@ class Home extends React.Component {
         }
       }
 
-    }
-
-    // If we have saved credentials from a previous session, try to
-    // re-authenticate automatically so the submission form appears
-    // without a manual login round-trip.
-    if (this.state.email && this.state.password) {
-      this.handleLogIn();
     }
 
     // if there's no attachments or a time couldn't be extracted, just use now

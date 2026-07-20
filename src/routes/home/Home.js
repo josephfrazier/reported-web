@@ -490,11 +490,11 @@ class Home extends React.Component {
 
     }
 
-    // If we have a saved email from a previous session, the user was
-    // already logged in — mark them as such so the submission form
-    // appears without waiting for another login round-trip.
-    if (this.state.email) {
-      this.setState({ loginSuccessful: true });
+    // If we have saved credentials from a previous session, try to
+    // re-authenticate automatically so the submission form appears
+    // without a manual login round-trip.
+    if (this.state.email && this.state.password) {
+      this.handleLogIn();
     }
 
     // if there's no attachments or a time couldn't be extracted, just use now

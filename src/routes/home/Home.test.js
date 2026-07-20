@@ -11,12 +11,21 @@ import '@babel/polyfill';
 import React from 'react';
 import renderer from 'react-test-renderer';
 import StyleContext from 'isomorphic-style-loader/StyleContext';
+import axios from 'axios';
 import App from '../../components/App.js';
 import Home from './Home.js';
 import boroughBoundariesFeatureCollection from '../../../public/borough-boundaries-clipped-to-shoreline.geo.json';
 
 require('timezone-mock').register('US/Eastern');
 require('jest-mock-now')();
+
+jest.mock('axios', () => {
+  const actualAxios = jest.requireActual('axios');
+  return {
+    ...actualAxios,
+    post: jest.fn(),
+  };
+});
 
 const typeofcomplaintValues = [
   'Blocked the bike lane',
@@ -48,15 +57,22 @@ function renderHome() {
 }
 
 describe('Home', () => {
-  test('renders submission form and Previous Submissions when logged in', () => {
+  test('renders submission form and Previous Submissions when logged in', async () => {
     const storageKey = 'reportedWebHomeState';
     localStorage.setItem(
       storageKey,
-      JSON.stringify({ email: 'test@example.com' }),
+      JSON.stringify({
+        email: 'test@example.com',
+        password: 'test-password',
+      }),
     );
 
+    axios.post.mockResolvedValue({
+      data: { FirstName: '', LastName: '', Phone: '', testify: false },
+    });
+
     let tree;
-    renderer.act(() => {
+    await renderer.act(async () => {
       tree = renderer.create(
         <StyleContext.Provider value={{ insertCss }}>
           <App context={{ fetch: () => {}, pathname: '' }}>

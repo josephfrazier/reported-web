@@ -455,6 +455,7 @@ class Home extends React.Component {
       authModalTab: 'login',
       isEditProfileOpen: false,
       authError: null,
+      loginSuccessful: false,
     };
 
     const initialState = {
@@ -486,6 +487,14 @@ class Home extends React.Component {
           // Ignore parse errors from corrupted data.
         }
       }
+
+    }
+
+    // If we have a saved email from a previous session, the user was
+    // already logged in — mark them as such so the submission form
+    // appears without waiting for another login round-trip.
+    if (this.state.email) {
+      this.setState({ loginSuccessful: true });
     }
 
     // if there's no attachments or a time couldn't be extracted, just use now
@@ -1072,6 +1081,7 @@ class Home extends React.Component {
           testify: testify || state.testify,
           isUserInfoSaving: false,
           isAuthModalOpen: false,
+          loginSuccessful: true,
         }),
         () => {
           this.saveStateToLocalStorage();
@@ -1095,6 +1105,7 @@ class Home extends React.Component {
           LastName: LastName || state.LastName,
           Phone: Phone || state.Phone,
           testify: testify || state.testify,
+          loginSuccessful: true,
         }),
         async () => {
           try {
@@ -1126,6 +1137,7 @@ class Home extends React.Component {
         submissions: [],
         isEditProfileOpen: false,
         hasLoadedPreviousSubmissions: false,
+        loginSuccessful: false,
       },
       () => {
         localStorage.removeItem(this.getLocalStorageKey());
@@ -1168,7 +1180,7 @@ class Home extends React.Component {
     }
   };
 
-  isLoggedIn = () => !!this.state.email;
+  isLoggedIn = () => this.state.loginSuccessful;
 
   getPreviousSubmissionsSummary = () => {
     const {

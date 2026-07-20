@@ -32,6 +32,17 @@ const typeofcomplaintValues = [
 
 const insertCss = () => {};
 
+function findHomeInstance(node) {
+  if (node.instance && typeof node.instance.setState === 'function') {
+    return node.instance;
+  }
+  for (const child of node.children) {
+    const found = findHomeInstance(child);
+    if (found) return found;
+  }
+  return null;
+}
+
 function renderHome({ localStorageKey } = {}) {
   return renderer.create(
     <StyleContext.Provider value={{ insertCss }}>
@@ -76,5 +87,66 @@ describe('Home', () => {
     expect(tree.toJSON()).toMatchSnapshot();
 
     tree.unmount();
+  });
+
+  test('renders Log In modal UI', () => {
+    let tree;
+    renderer.act(() => {
+      tree = renderHome();
+    });
+    renderer.act(() => {
+      findHomeInstance(tree.root).setState({
+        isAuthModalOpen: true,
+        authModalTab: 'login',
+      });
+    });
+
+    expect(tree.toJSON()).toMatchSnapshot();
+
+    tree.unmount();
+  });
+
+  test('renders Sign Up modal UI', () => {
+    let tree;
+    renderer.act(() => {
+      tree = renderHome();
+    });
+    renderer.act(() => {
+      findHomeInstance(tree.root).setState({
+        isAuthModalOpen: true,
+        authModalTab: 'signup',
+        isPasswordRevealed: true,
+      });
+    });
+
+    expect(tree.toJSON()).toMatchSnapshot();
+
+    tree.unmount();
+  });
+
+  test('renders Edit Profile UI', () => {
+    const storageKey = 'reportedWebHomeState';
+    localStorage.setItem(
+      storageKey,
+      JSON.stringify({
+        email: 'test@example.com',
+        loginSuccessful: true,
+      }),
+    );
+
+    let tree;
+    renderer.act(() => {
+      tree = renderHome({ localStorageKey: storageKey });
+    });
+    renderer.act(() => {
+      findHomeInstance(tree.root).setState({
+        isEditProfileOpen: true,
+      });
+    });
+
+    expect(tree.toJSON()).toMatchSnapshot();
+
+    tree.unmount();
+    localStorage.removeItem(storageKey);
   });
 });

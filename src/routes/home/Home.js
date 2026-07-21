@@ -1642,7 +1642,7 @@ class Home extends React.Component {
               )}
             </Modal>
 
-            {this.isLoggedIn() ? (
+            {this.isLoggedIn() && !this.state.isEditProfileOpen ? (
               <form
                 onSubmit={async e => {
                   e.preventDefault();

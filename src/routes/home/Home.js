@@ -489,6 +489,7 @@ class Home extends React.Component {
           // Ignore parse errors from corrupted data.
         }
       }
+    }
 
     // if there's no attachments or a time couldn't be extracted, just use now
     if (this.state.attachmentData.length === 0 || !this.state.CreateDate) {

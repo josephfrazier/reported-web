@@ -427,9 +427,9 @@ class Home extends React.Component {
       isAlprEnabled: true,
       isReverseGeocodingEnabled: true,
       isLoadPreviousSubmissionsEnabled: false,
-      isUserInfoOpen: true,
       isMapOpen: false,
       isPreviousSubmissionsOpen: false,
+      loginSuccessful: false,
     };
 
     const initialStatePerSession = {
@@ -451,6 +451,11 @@ class Home extends React.Component {
       platePickerResults: [],
       platePickerLoading: false,
       plateThumbnailsByKey: {},
+
+      isAuthModalOpen: false,
+      authModalTab: 'login',
+      isEditProfileOpen: false,
+      authError: null,
     };
 
     const initialState = {
@@ -461,15 +466,44 @@ class Home extends React.Component {
     this.state = initialState;
     this.initialStatePerSubmission = initialStatePerSubmission;
     this.initialStatePersistent = initialStatePersistent;
-    this.userFormSubmitRef = React.createRef();
     this.plateRef = React.createRef();
   }
 
   componentDidMount() {
+    // Copy from old localStorage key to new explicit key.
+    // The old key came from getDisplayName() which resolved to 'Function'
+    // for class components (Component.constructor.name === 'Function').
+    // This can be removed once all users have been migrated.
+    const oldKey = 'Function';
+    const newKey = this.getLocalStorageKey();
+    if (newKey !== oldKey) {
+      const oldData = localStorage.getItem(oldKey);
+      if (oldData && !localStorage.getItem(newKey)) {
+        try {
+          const parsedOldData = JSON.parse(oldData);
+          localStorage.setItem(newKey, JSON.stringify(parsedOldData));
+          // TODO: uncomment this line once this migration has been live for a bit without revert-worthy bug reports
+          // localStorage.removeItem(oldKey);
+          this.setState(parsedOldData);
+        } catch {
+          // Ignore parse errors from corrupted data.
+        }
+      }
+    }
+
     // if there's no attachments or a time couldn't be extracted, just use now
     if (this.state.attachmentData.length === 0 || !this.state.CreateDate) {
       this.setCreateDate({ millisecondsSinceEpoch: Date.now() });
     }
+
+    // Start reverse-geocoding the default coordinates right away so the
+    // "Where" button shows an address even before geolocation resolves
+    // (or if it fails, e.g. in a private window).
+    this.setCoords({
+      latitude: defaultLatitude,
+      longitude: defaultLongitude,
+    });
+
     geolocate().then(
       ({ coords: { latitude, longitude }, ipProvenance = 'device' }) => {
         // if there's no attachments or a location couldn't be extracted, just use here
@@ -486,22 +520,6 @@ class Home extends React.Component {
         }
       },
     );
-
-    // generate a random passphrase for first-time users and show it to them
-    if (!this.state.password) {
-      // async so that test snapshots don't change
-      setTimeout(() => {
-        const options = {
-          language: wordlist,
-          wordcount: 6,
-          format: 'string',
-        };
-        this.setState({
-          password: diceware(options),
-          isPasswordRevealed: true,
-        });
-      });
-    }
 
     // Allow users to paste image data
     // adapted from https://github.com/charliewilco/react-gluejar/blob/b69d7cfa9d08bfb34d8eb6815e4b548528218883/src/index.js#L85
@@ -571,6 +589,10 @@ class Home extends React.Component {
     return omit(this.state, (val, key) =>
       Object.keys(this.initialStatePerSubmission).includes(key),
     );
+  }
+
+  getLocalStorageKey() {
+    return this.props.localStorageKey || 'reportedWebHomeState';
   }
 
   getStateFilterKeys() {
@@ -1020,6 +1042,158 @@ class Home extends React.Component {
       });
   };
 
+  openAuthModal = (tab = 'login') => {
+    this.setState({
+      isAuthModalOpen: true,
+      authModalTab: tab,
+      authError: null,
+      isPasswordRevealed: tab === 'signup',
+    });
+
+    if (tab === 'signup') {
+      this.maybeGeneratePassword();
+    }
+  };
+
+  closeAuthModal = () => {
+    this.setState({ isAuthModalOpen: false, authError: null });
+  };
+
+  switchAuthTab = tab => {
+    this.setState({
+      authModalTab: tab,
+      authError: null,
+      isPasswordRevealed: tab === 'signup',
+    });
+
+    if (tab === 'signup') {
+      this.maybeGeneratePassword();
+    }
+  };
+
+  handleLogIn = async () => {
+    this.setState({ isUserInfoSaving: true, authError: null });
+    try {
+      const { data } = await axios.post('/api/logIn', {
+        email: this.state.email,
+        password: this.state.password,
+      });
+      const { FirstName, LastName, Phone, testify } = data;
+      this.setState(
+        state => ({
+          FirstName: FirstName || state.FirstName,
+          LastName: LastName || state.LastName,
+          Phone: Phone || state.Phone,
+          testify: typeof testify === 'boolean' ? testify : state.testify,
+          isUserInfoSaving: false,
+          isAuthModalOpen: false,
+          loginSuccessful: true,
+        }),
+        () => {
+          this.saveStateToLocalStorage();
+          this.loadPreviousSubmissions();
+        },
+      );
+    } catch (err) {
+      this.setState({ isUserInfoSaving: false });
+      Home.handleAxiosError(err);
+    }
+  };
+
+  handleSignUp = async () => {
+    this.setState({ isUserInfoSaving: true, authError: null });
+    try {
+      const { data } = await axios.post('/api/logIn', {
+        email: this.state.email,
+        password: this.state.password,
+      });
+      const { FirstName, LastName, Phone, testify } = data;
+      this.setState(
+        state => ({
+          FirstName: FirstName || state.FirstName,
+          LastName: LastName || state.LastName,
+          Phone: Phone || state.Phone,
+          testify: typeof testify === 'boolean' ? testify : state.testify,
+          loginSuccessful: true,
+        }),
+        async () => {
+          try {
+            await axios.post('/saveUser', this.state);
+            this.setState({ isUserInfoSaving: false, isAuthModalOpen: false });
+            this.saveStateToLocalStorage();
+            this.loadPreviousSubmissions();
+          } catch (saveErr) {
+            this.setState({
+              isUserInfoSaving: false,
+              loginSuccessful: false,
+            });
+            Home.handleAxiosError(saveErr);
+          }
+        },
+      );
+    } catch (err) {
+      this.setState({ isUserInfoSaving: false });
+      Home.handleAxiosError(err);
+    }
+  };
+
+  handleLogOut = () => {
+    this.setState(
+      {
+        email: '',
+        password: '',
+        FirstName: '',
+        LastName: '',
+        Phone: '',
+        testify: false,
+        submissions: [],
+        isEditProfileOpen: false,
+        hasLoadedPreviousSubmissions: false,
+        loginSuccessful: false,
+      },
+      () => {
+        localStorage.removeItem(this.getLocalStorageKey());
+      },
+    );
+  };
+
+  handlePasswordReset = async () => {
+    const { email } = this.state;
+    if (!email) {
+      this.setState({ authError: 'Please enter your email address first.' });
+      return;
+    }
+    this.setState({ isUserInfoSaving: true, authError: null });
+    try {
+      await axios.post('/requestPasswordReset', { email });
+      const message = `Please check ${email} to reset your password.`;
+      Home.notifyInfo(message);
+      this.setState({ isUserInfoSaving: false });
+    } catch (err) {
+      this.setState({ isUserInfoSaving: false });
+      Home.handleAxiosError(err);
+    }
+  };
+
+  handleSaveProfile = async e => {
+    e.preventDefault();
+    this.setState({ isUserInfoSaving: true });
+    try {
+      await axios.post('/saveUser', this.state);
+      this.setState({ isUserInfoSaving: false, isEditProfileOpen: false });
+      document.querySelector(`.${homeStyles.root}`).scrollTo({
+        top: 100,
+        left: 100,
+        behavior: 'smooth',
+      });
+    } catch (err) {
+      this.setState({ isUserInfoSaving: false });
+      Home.handleAxiosError(err);
+    }
+  };
+
+  isLoggedIn = () => this.state.loginSuccessful;
+
   getPreviousSubmissionsSummary = () => {
     const {
       submissions,
@@ -1039,6 +1213,23 @@ class Home extends React.Component {
     }
     return isLoadPreviousSubmissionsEnabled ? 'loading...' : 'expand to load';
   };
+
+  maybeGeneratePassword() {
+    if (!this.state.password) {
+      // setTimeout so that test snapshots don't depend on RNG.
+      setTimeout(() => {
+        const options = {
+          language: wordlist,
+          wordcount: 6,
+          format: 'string',
+        };
+        this.setState({
+          password: diceware(options),
+          isPasswordRevealed: true,
+        });
+      });
+    }
+  }
 
   render() {
     const matchingPlateThumbnail =
@@ -1087,162 +1278,79 @@ class Home extends React.Component {
               theme="dark"
             />
 
-            {/* TODO use tabbed interface instead of toggling <details> ? */}
-            <details
-              open={this.state.isUserInfoOpen}
-              onToggle={evt => {
-                this.setState({
-                  isUserInfoOpen: evt.target.open,
-                });
-              }}
-            >
-              <summary>Create/Edit User (click to expand)</summary>
-
-              <form
-                onSubmit={e => {
-                  e.preventDefault();
-                  this.setState({ isUserInfoSaving: true });
-                  axios
-                    .post('/saveUser', this.state)
-                    .then(() => {
-                      this.setState({ isUserInfoOpen: false });
-                      document.querySelector(`.${homeStyles.root}`).scrollTo({
-                        top: 100,
-                        left: 100,
-                        behavior: 'smooth',
-                      });
-                    })
-                    .catch(Home.handleAxiosError)
-                    .then(() => {
-                      this.setState({ isUserInfoSaving: false });
-                    });
-                }}
-              >
-                <fieldset disabled={this.state.isUserInfoSaving}>
-                  <label htmlFor="email">
-                    Email:{' '}
-                    <input
-                      required
-                      onInvalid={() => this.setState({ isUserInfoOpen: true })}
-                      type="email"
-                      autoComplete="email"
-                      value={this.state.email}
-                      name="email"
-                      onChange={event => {
-                        this.handleInputChange({
-                          target: {
-                            name: event.target.name,
-                            value: event.target.value.replace(/@.*/, atDomain =>
-                              atDomain.toLowerCase(),
-                            ),
-                          },
-                        });
-                      }}
-                    />
-                  </label>
-                  <label htmlFor="password">
-                    {
-                      "Password (this is saved on your device, so use a password you don't use anywhere else): "
-                    }
-                    <div style={{ display: 'flex' }}>
-                      <input
-                        required
-                        onInvalid={() =>
-                          this.setState({ isUserInfoOpen: true })
-                        }
-                        type={
-                          this.state.isPasswordRevealed ? 'text' : 'password'
-                        }
-                        autoComplete="current-password"
-                        value={this.state.password}
-                        name="password"
-                        onChange={this.handleInputChange}
-                      />
-                      &nbsp;
-                      <button
-                        type="button"
-                        onClick={() => {
-                          this.setState(state => ({
-                            isPasswordRevealed: !state.isPasswordRevealed,
-                          }));
-                        }}
-                      >
-                        {this.state.isPasswordRevealed ? 'Hide' : 'Show'}
-                      </button>
-                      &nbsp;
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const { email } = this.state;
-                          axios
-                            .post('/requestPasswordReset', {
-                              email,
-                            })
-                            .then(() => {
-                              const message = `Please check ${email} to reset your password.`;
-                              Home.notifyInfo(message);
-                            })
-                            .catch(Home.handleAxiosError);
-                        }}
-                      >
-                        Reset
-                      </button>
-                    </div>
-                  </label>
-                  <button
-                    type="button"
-                    disabled={this.state.isUserInfoSaving}
-                    onClick={async () => {
-                      this.setState({ isUserInfoSaving: true });
-
-                      const { data } = await axios
-                        .post('/api/logIn', this.state)
-                        .catch(err => {
-                          Home.handleAxiosError(err);
-                          return { data: false };
-                        });
-
-                      this.setState({ isUserInfoSaving: false });
-
-                      if (!data) {
-                        return;
+            {/* User Status Bar */}
+            <div className={homeStyles['user-status-bar']}>
+              <div className={homeStyles['user-greeting']}>
+                {this.isLoggedIn() ? (
+                  <>
+                    <span role="img" aria-label="user">
+                      👤
+                    </span>{' '}
+                    {this.state.FirstName
+                      ? `${this.state.FirstName} ${this.state.LastName}`
+                      : this.state.email}
+                  </>
+                ) : (
+                  'Not logged in'
+                )}
+              </div>
+              <div className={homeStyles['user-actions']}>
+                {this.isLoggedIn() ? (
+                  <>
+                    <button
+                      type="button"
+                      className={homeStyles['status-bar-btn-primary']}
+                      onClick={() =>
+                        this.setState(state => ({
+                          isEditProfileOpen: !state.isEditProfileOpen,
+                        }))
                       }
+                    >
+                      {this.state.isEditProfileOpen ? 'Cancel' : 'Edit Profile'}
+                    </button>
+                    <button
+                      type="button"
+                      className={homeStyles['status-bar-btn']}
+                      onClick={this.handleLogOut}
+                    >
+                      Log Out
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className={homeStyles['status-bar-btn']}
+                      onClick={() => this.openAuthModal('login')}
+                    >
+                      Log In
+                    </button>
+                    <button
+                      type="button"
+                      className={homeStyles['status-bar-btn-primary']}
+                      onClick={() => this.openAuthModal('signup')}
+                    >
+                      Sign Up
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
 
-                      const { FirstName, LastName, Phone, testify } = data;
-
-                      this.setState(
-                        // If a new user clicks the button after filling all the fields,
-                        // don't override them with empty data from the server.
-                        state => ({
-                          FirstName: FirstName || state.FirstName,
-                          LastName: LastName || state.LastName,
-                          Phone: Phone || state.Phone,
-                          testify: testify || state.testify,
-                        }),
-                        () => {
-                          this.saveStateToLocalStorage();
-                          this.loadPreviousSubmissions();
-                          this.userFormSubmitRef.current.click();
-                        },
-                      );
-                    }}
-                  >
-                    Sign Up / Log In
-                  </button>
-                  <br />
-                  <br />
-                  (If you cannot log in even after resetting your password,
-                  email{' '}
-                  <a href="mailto:reportedapp@gmail.com">
-                    reportedapp@gmail.com
-                  </a>
-                  )
+            {/* Edit Profile (shown inline when toggled) */}
+            {this.state.isEditProfileOpen && (
+              <form
+                className={homeStyles['edit-profile-section']}
+                onSubmit={this.handleSaveProfile}
+              >
+                <h3>Edit Profile</h3>
+                <fieldset disabled={this.state.isUserInfoSaving}>
                   <label htmlFor="FirstName">
                     First Name:{' '}
                     <input
                       required
-                      onInvalid={() => this.setState({ isUserInfoOpen: true })}
                       type="text"
+                      id="FirstName"
                       autoComplete="given-name"
                       value={this.state.FirstName}
                       name="FirstName"
@@ -1253,8 +1361,8 @@ class Home extends React.Component {
                     Last Name:{' '}
                     <input
                       required
-                      onInvalid={() => this.setState({ isUserInfoOpen: true })}
                       type="text"
+                      id="LastName"
                       autoComplete="family-name"
                       value={this.state.LastName}
                       name="LastName"
@@ -1265,8 +1373,8 @@ class Home extends React.Component {
                     Phone Number:{' '}
                     <input
                       required
-                      onInvalid={() => this.setState({ isUserInfoOpen: true })}
                       type="tel"
+                      id="Phone"
                       autoComplete="tel"
                       value={this.state.Phone}
                       name="Phone"
@@ -1286,603 +1394,897 @@ class Home extends React.Component {
                   </label>
                   <button
                     type="submit"
+                    className={homeStyles['auth-submit-btn']}
                     disabled={this.state.isUserInfoSaving}
-                    ref={this.userFormSubmitRef}
+                    style={{ width: 'auto' }}
                   >
                     {this.state.isUserInfoSaving ? 'Saving...' : 'Save'}
                   </button>
                 </fieldset>
               </form>
-            </details>
+            )}
 
-            <form
+            {/* Auth Modal */}
+            <Modal
+              parentSelector={() =>
+                document.querySelector(`.${homeStyles.root}`) || document.body
+              }
+              isOpen={this.state.isAuthModalOpen}
+              onRequestClose={this.closeAuthModal}
               style={{
-                display: this.state.isUserInfoOpen ? 'none' : 'block',
-              }}
-              onSubmit={async e => {
-                e.preventDefault();
-
-                if (
-                  this.state.latitude === defaultLatitude &&
-                  this.state.longitude === defaultLongitude
-                ) {
-                  Home.notifyError(
-                    'Please provide the location of the incident',
-                  );
-                  return;
-                }
-
-                this.setState({
-                  isSubmitting: true,
-                });
-                axios
-                  .post(
-                    '/submit',
-                    objectToFormData({
-                      ...this.getPerSubmissionState(),
-                      attachmentData: this.state.attachmentData,
-                      CreateDate: new Date(this.state.CreateDate).toISOString(),
-                    }),
-                    {
-                      onUploadProgress: progressEvent => {
-                        const {
-                          loaded: submitProgressValue,
-                          total: submitProgressMax,
-                        } = progressEvent;
-
-                        this.setState({
-                          submitProgressValue,
-                          submitProgressMax,
-                        });
-                      },
-
-                      onDownloadProgress: progressEvent => {
-                        const {
-                          loaded: submitProgressValue,
-                          total: submitProgressMax,
-                        } = progressEvent;
-
-                        this.setState({
-                          submitProgressValue,
-                          submitProgressMax,
-                        });
-                      },
-                    },
-                  )
-                  .then(({ data }) => {
-                    const { submission } = data;
-                    document.querySelector(`.${homeStyles.root}`).scrollTo({
-                      top: 100,
-                      left: 100,
-                      behavior: 'smooth',
-                    });
-                    console.info(
-                      `submitted successfully. Returned data: ${JSON.stringify(
-                        data,
-                        null,
-                        2,
-                      )}`,
-                    );
-                    this.setState(state => ({
-                      attachmentData: [],
-                      submissions: [submission].concat(state.submissions),
-                      allPlateResults: [],
-                      plateThumbnailsByKey: {},
-                      vehicleInfoComponent: null,
-                      violationSummaryComponent: null,
-                      reportDescription: '',
-                    }));
-                    this.setLicensePlate({ plate: '', licenseState: 'NY' });
-                    this.setCoords({
-                      latitude: defaultLatitude,
-                      longitude: defaultLongitude,
-                    });
-                    Home.notifySuccess(
-                      <React.Fragment>
-                        <p>Thanks for your submission!</p>
-                        <p>
-                          Your information has been submitted to Reported. It
-                          may take up to 24 hours for it to be processed.
-                        </p>
-
-                        {/*
-                        <p>objectId: {data.submission.objectId}</p>
-                        */}
-                      </React.Fragment>,
-                    );
-                  })
-                  .catch(Home.handleAxiosError)
-                  .then(() => {
-                    this.setState({
-                      isSubmitting: false,
-                      submitProgressValue: null,
-                      submitProgressMax: null,
-                    });
-                  })
-                  .then(() => {
-                    this.saveStateToLocalStorage();
-                  });
+                content: {
+                  maxWidth: '440px',
+                  margin: '0 auto',
+                  padding: '1.5rem',
+                  borderRadius: '8px',
+                  bottom: 'auto',
+                },
               }}
             >
-              <fieldset disabled={this.state.isSubmitting}>
-                <FileReaderInput
-                  multiple
-                  as="buffer"
-                  onChange={this.handleAttachmentInput}
-                  style={{
-                    float: 'left',
-                    margin: '1px',
-                  }}
+              {/* Tab bar */}
+              <div className={homeStyles['auth-modal-tabs']}>
+                <button
+                  type="button"
+                  className={
+                    this.state.authModalTab === 'login'
+                      ? homeStyles['auth-modal-tab-active']
+                      : homeStyles['auth-modal-tab']
+                  }
+                  onClick={() => this.switchAuthTab('login')}
                 >
-                  <button type="button" style={{ whiteSpace: 'wrap' }}>
-                    Add pictures/videos (up to 3 each, 20MB max each)
-                  </button>
-                </FileReaderInput>
-
-                <div
-                  style={{
-                    clear: 'both',
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                  }}
+                  Log In
+                </button>
+                <button
+                  type="button"
+                  className={
+                    this.state.authModalTab === 'signup'
+                      ? homeStyles['auth-modal-tab-active']
+                      : homeStyles['auth-modal-tab']
+                  }
+                  onClick={() => this.switchAuthTab('signup')}
                 >
-                  {this.state.attachmentData.map(attachmentFile => {
-                    const { name } = attachmentFile;
-                    const ext = fileExtension(name);
-                    const isImg = isImage({ ext });
-                    const src = getBlobUrl(attachmentFile);
+                  Sign Up
+                </button>
+              </div>
 
-                    return (
-                      <div
-                        key={name}
-                        style={{
-                          width: '33%',
-                          margin: '0.1%',
-                          flexGrow: 1,
-                          position: 'relative',
+              {/* Error display */}
+              {this.state.authError && (
+                <div className={homeStyles['auth-error']}>
+                  {this.state.authError}
+                </div>
+              )}
+
+              {/* Log In form */}
+              {this.state.authModalTab === 'login' && (
+                <div className={homeStyles['auth-modal-body']}>
+                  <label htmlFor="auth-email">
+                    Email:
+                    <input
+                      required
+                      id="auth-email"
+                      type="email"
+                      autoComplete="email"
+                      value={this.state.email}
+                      name="email"
+                      onChange={event => {
+                        this.handleInputChange({
+                          target: {
+                            name: event.target.name,
+                            value: event.target.value.replace(/@.*/, atDomain =>
+                              atDomain.toLowerCase(),
+                            ),
+                          },
+                        });
+                      }}
+                    />
+                  </label>
+                  <label htmlFor="auth-password">
+                    Password:
+                    <div className={homeStyles['auth-field-row']}>
+                      <input
+                        required
+                        id="auth-password"
+                        type={
+                          this.state.isPasswordRevealed ? 'text' : 'password'
+                        }
+                        autoComplete="current-password"
+                        value={this.state.password}
+                        name="password"
+                        onChange={this.handleInputChange}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          this.setState(state => ({
+                            isPasswordRevealed: !state.isPasswordRevealed,
+                          }));
                         }}
                       >
-                        <a href={src} target="_blank" rel="noopener noreferrer">
-                          {isImg ? (
-                            <img src={src} alt={name} />
-                          ) : (
-                            /* eslint-disable-next-line jsx-a11y/media-has-caption */
-                            <video src={src} alt={name} />
-                          )}
-                        </a>
+                        {this.state.isPasswordRevealed ? 'Hide' : 'Show'}
+                      </button>
+                    </div>
+                  </label>
+                  <button
+                    type="button"
+                    className={homeStyles['auth-submit-btn']}
+                    disabled={this.state.isUserInfoSaving}
+                    onClick={this.handleLogIn}
+                  >
+                    {this.state.isUserInfoSaving ? 'Logging in...' : 'Log In'}
+                  </button>
+                  <div className={homeStyles['auth-switch-link']}>
+                    <button
+                      type="button"
+                      onClick={this.handlePasswordReset}
+                      disabled={this.state.isUserInfoSaving}
+                    >
+                      Forgot your password?
+                    </button>
+                  </div>
+                  <div className={homeStyles['auth-switch-link']}>
+                    (If you cannot log in even after resetting your password,
+                    email{' '}
+                    <a href="mailto:reportedapp@gmail.com">
+                      reportedapp@gmail.com
+                    </a>
+                    )
+                  </div>
+                  <div className={homeStyles['auth-switch-link']}>
+                    Don&apos;t have an account?{' '}
+                    <button
+                      type="button"
+                      onClick={() => this.switchAuthTab('signup')}
+                    >
+                      Sign Up
+                    </button>
+                  </div>
+                </div>
+              )}
 
-                        <button
-                          type="button"
+              {/* Sign Up form */}
+              {this.state.authModalTab === 'signup' && (
+                <div className={homeStyles['auth-modal-body']}>
+                  <label htmlFor="auth-signup-email">
+                    Email:
+                    <input
+                      required
+                      id="auth-signup-email"
+                      type="email"
+                      autoComplete="email"
+                      value={this.state.email}
+                      name="email"
+                      onChange={event => {
+                        this.handleInputChange({
+                          target: {
+                            name: event.target.name,
+                            value: event.target.value.replace(/@.*/, atDomain =>
+                              atDomain.toLowerCase(),
+                            ),
+                          },
+                        });
+                      }}
+                    />
+                  </label>
+                  <label htmlFor="auth-signup-password">
+                    Password (this is saved on your device, so use a password
+                    you don&apos;t use anywhere else):
+                    <div className={homeStyles['auth-field-row']}>
+                      <input
+                        required
+                        id="auth-signup-password"
+                        type={
+                          this.state.isPasswordRevealed ? 'text' : 'password'
+                        }
+                        autoComplete="new-password"
+                        value={this.state.password}
+                        name="password"
+                        onChange={this.handleInputChange}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          this.setState(state => ({
+                            isPasswordRevealed: !state.isPasswordRevealed,
+                          }));
+                        }}
+                      >
+                        {this.state.isPasswordRevealed ? 'Hide' : 'Show'}
+                      </button>
+                    </div>
+                  </label>
+                  <label htmlFor="auth-signup-firstname">
+                    First Name:
+                    <input
+                      required
+                      id="auth-signup-firstname"
+                      type="text"
+                      autoComplete="given-name"
+                      value={this.state.FirstName}
+                      name="FirstName"
+                      onChange={this.handleInputChange}
+                    />
+                  </label>
+                  <label htmlFor="auth-signup-lastname">
+                    Last Name:
+                    <input
+                      required
+                      id="auth-signup-lastname"
+                      type="text"
+                      autoComplete="family-name"
+                      value={this.state.LastName}
+                      name="LastName"
+                      onChange={this.handleInputChange}
+                    />
+                  </label>
+                  <label htmlFor="auth-signup-phone">
+                    Phone Number:
+                    <input
+                      required
+                      id="auth-signup-phone"
+                      type="tel"
+                      autoComplete="tel"
+                      value={this.state.Phone}
+                      name="Phone"
+                      onChange={this.handleInputChange}
+                    />
+                  </label>
+                  <label htmlFor="auth-signup-testify">
+                    <input
+                      id="auth-signup-testify"
+                      type="checkbox"
+                      checked={this.state.testify}
+                      name="testify"
+                      onChange={this.handleInputChange}
+                    />{' '}
+                    I&apos;m willing to testify at a hearing, which can be done
+                    by phone.
+                  </label>
+                  <button
+                    type="button"
+                    className={homeStyles['auth-submit-btn']}
+                    disabled={this.state.isUserInfoSaving}
+                    onClick={this.handleSignUp}
+                  >
+                    {this.state.isUserInfoSaving
+                      ? 'Creating account...'
+                      : 'Sign Up'}
+                  </button>
+                  <div className={homeStyles['auth-switch-link']}>
+                    Already have an account?{' '}
+                    <button
+                      type="button"
+                      onClick={() => this.switchAuthTab('login')}
+                    >
+                      Log In
+                    </button>
+                  </div>
+                </div>
+              )}
+            </Modal>
+
+            {!this.isLoggedIn() && (
+              <div className={homeStyles['auth-prompt']}>
+                <p>
+                  Please{' '}
+                  <button
+                    type="button"
+                    onClick={() => this.openAuthModal('login')}
+                  >
+                    log in
+                  </button>{' '}
+                  or{' '}
+                  <button
+                    type="button"
+                    onClick={() => this.openAuthModal('signup')}
+                  >
+                    sign up
+                  </button>{' '}
+                  to submit a report.
+                </p>
+              </div>
+            )}
+            {this.isLoggedIn() && !this.state.isEditProfileOpen && (
+              <form
+                onSubmit={async e => {
+                  e.preventDefault();
+
+                  if (
+                    this.state.latitude === defaultLatitude &&
+                    this.state.longitude === defaultLongitude
+                  ) {
+                    Home.notifyError(
+                      'Please provide the location of the incident',
+                    );
+                    return;
+                  }
+
+                  this.setState({
+                    isSubmitting: true,
+                  });
+                  axios
+                    .post(
+                      '/submit',
+                      objectToFormData({
+                        ...this.getPerSubmissionState(),
+                        attachmentData: this.state.attachmentData,
+                        CreateDate: new Date(
+                          this.state.CreateDate,
+                        ).toISOString(),
+                      }),
+                      {
+                        onUploadProgress: progressEvent => {
+                          const {
+                            loaded: submitProgressValue,
+                            total: submitProgressMax,
+                          } = progressEvent;
+
+                          this.setState({
+                            submitProgressValue,
+                            submitProgressMax,
+                          });
+                        },
+
+                        onDownloadProgress: progressEvent => {
+                          const {
+                            loaded: submitProgressValue,
+                            total: submitProgressMax,
+                          } = progressEvent;
+
+                          this.setState({
+                            submitProgressValue,
+                            submitProgressMax,
+                          });
+                        },
+                      },
+                    )
+                    .then(({ data }) => {
+                      const { submission } = data;
+                      document.querySelector(`.${homeStyles.root}`).scrollTo({
+                        top: 100,
+                        left: 100,
+                        behavior: 'smooth',
+                      });
+                      console.info(
+                        `submitted successfully. Returned data: ${JSON.stringify(
+                          data,
+                          null,
+                          2,
+                        )}`,
+                      );
+                      this.setState(state => ({
+                        attachmentData: [],
+                        submissions: [submission].concat(state.submissions),
+                        allPlateResults: [],
+                        plateThumbnailsByKey: {},
+                        vehicleInfoComponent: null,
+                        violationSummaryComponent: null,
+                        reportDescription: '',
+                      }));
+                      this.setLicensePlate({ plate: '', licenseState: 'NY' });
+                      this.setCoords({
+                        latitude: defaultLatitude,
+                        longitude: defaultLongitude,
+                      });
+                      Home.notifySuccess(
+                        <React.Fragment>
+                          <p>Thanks for your submission!</p>
+                          <p>
+                            Your information has been submitted to Reported. It
+                            may take up to 24 hours for it to be processed.
+                          </p>
+
+                          {/*
+                        <p>objectId: {data.submission.objectId}</p>
+                        */}
+                        </React.Fragment>,
+                      );
+                    })
+                    .catch(Home.handleAxiosError)
+                    .then(() => {
+                      this.setState({
+                        isSubmitting: false,
+                        submitProgressValue: null,
+                        submitProgressMax: null,
+                      });
+                    })
+                    .then(() => {
+                      this.saveStateToLocalStorage();
+                    });
+                }}
+              >
+                <fieldset disabled={this.state.isSubmitting}>
+                  <FileReaderInput
+                    multiple
+                    as="buffer"
+                    onChange={this.handleAttachmentInput}
+                    style={{
+                      float: 'left',
+                      margin: '1px',
+                    }}
+                  >
+                    <button type="button" style={{ whiteSpace: 'wrap' }}>
+                      Add pictures/videos (up to 3 each, 20MB max each)
+                    </button>
+                  </FileReaderInput>
+
+                  <div
+                    style={{
+                      clear: 'both',
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    {this.state.attachmentData.map(attachmentFile => {
+                      const { name } = attachmentFile;
+                      const ext = fileExtension(name);
+                      const isImg = isImage({ ext });
+                      const src = getBlobUrl(attachmentFile);
+
+                      return (
+                        <div
+                          key={name}
                           style={{
-                            position: 'absolute',
-                            top: 0,
-                            right: 0,
-                            padding: 0,
-                            margin: '1px',
-                            color: 'red', // Ubuntu Chrome shows black otherwise
-                            background: 'white',
-                          }}
-                          onClick={() => {
-                            this.setState(state => {
-                              const attachmentData =
-                                state.attachmentData.filter(
-                                  file => file.name !== name,
-                                );
-                              if (attachmentData.length === 0) {
-                                this.setCoords({
-                                  latitude: defaultLatitude,
-                                  longitude: defaultLongitude,
-                                });
-                                this.setCreateDate({
-                                  millisecondsSinceEpoch: Date.now(),
-                                });
-                                return {
-                                  attachmentData,
-                                  plate: '',
-                                  licenseState: 'NY',
-                                  allPlateResults: [],
-                                  plateThumbnailsByKey: {},
-                                  vehicleInfoComponent: null,
-                                  violationSummaryComponent: null,
-                                };
-                              }
-                              return { attachmentData };
-                            });
+                            width: '33%',
+                            margin: '0.1%',
+                            flexGrow: 1,
+                            position: 'relative',
                           }}
                         >
-                          <span role="img" aria-label="Delete photo/video">
-                            ❌
-                          </span>
-                        </button>
+                          <a
+                            href={src}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            {isImg ? (
+                              <img src={src} alt={name} />
+                            ) : (
+                              /* eslint-disable-next-line jsx-a11y/media-has-caption */
+                              <video src={src} alt={name} />
+                            )}
+                          </a>
 
-                        {isImg && (
                           <button
                             type="button"
                             style={{
                               position: 'absolute',
                               top: 0,
-                              left: 0,
+                              right: 0,
                               padding: 0,
                               margin: '1px',
+                              color: 'red', // Ubuntu Chrome shows black otherwise
                               background: 'white',
                             }}
-                            onClick={() =>
-                              this.handlePlatePickerClick(attachmentFile)
-                            }
-                            disabled={this.state.platePickerLoading}
+                            onClick={() => {
+                              this.setState(state => {
+                                const attachmentData =
+                                  state.attachmentData.filter(
+                                    file => file.name !== name,
+                                  );
+                                if (attachmentData.length === 0) {
+                                  this.setCoords({
+                                    latitude: defaultLatitude,
+                                    longitude: defaultLongitude,
+                                  });
+                                  this.setCreateDate({
+                                    millisecondsSinceEpoch: Date.now(),
+                                  });
+                                  return {
+                                    attachmentData,
+                                    plate: '',
+                                    licenseState: 'NY',
+                                    allPlateResults: [],
+                                    plateThumbnailsByKey: {},
+                                    vehicleInfoComponent: null,
+                                    violationSummaryComponent: null,
+                                  };
+                                }
+                                return { attachmentData };
+                              });
+                            }}
                           >
-                            {this.state.platePickerLoading ? (
-                              <CircularProgress size="1em" />
-                            ) : (
-                              <span
-                                role="img"
-                                aria-label="Pick license plate from photo"
-                              >
-                                🔍
-                              </span>
-                            )}
+                            <span role="img" aria-label="Delete photo/video">
+                              ❌
+                            </span>
                           </button>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
 
-                <label htmlFor="isAlprEnabled">
-                  <input
-                    id="isAlprEnabled"
-                    type="checkbox"
-                    checked={this.state.isAlprEnabled}
-                    name="isAlprEnabled"
-                    onChange={this.handleInputChange}
-                  />{' '}
-                  Automatically read license plates from pictures/videos
-                </label>
-
-                <label htmlFor="isReverseGeocodingEnabled">
-                  <input
-                    id="isReverseGeocodingEnabled"
-                    type="checkbox"
-                    checked={this.state.isReverseGeocodingEnabled}
-                    name="isReverseGeocodingEnabled"
-                    onChange={this.handleInputChange}
-                  />{' '}
-                  Automatically read addresses from pictures/videos
-                </label>
-
-                <label htmlFor="plate">
-                  License/Medallion:
-                  {this.state.isAlprLoading && <CircularProgress size="1em" />}
-                  <div
-                    style={{
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      alignItems: 'flex-start',
-                      gap: '0.5rem',
-                    }}
-                  >
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <input
-                        required
-                        type="search"
-                        value={this.state.plate}
-                        name="plate"
-                        list="plateSuggestions"
-                        autoComplete="off"
-                        ref={this.plateRef}
-                        placeholder={this.state.allPlateResults[0]?.plate.toUpperCase()}
-                        onChange={event => {
-                          const plate = event.target.value.toUpperCase();
-                          const matchedResult = this.state.allPlateResults.find(
-                            r => r.plate.toUpperCase() === plate,
-                          );
-                          const licenseState = matchedResult
-                            ? getLicenseStateFromPlateResult(matchedResult)
-                            : null;
-                          this.setLicensePlate({ plate, licenseState });
-                        }}
-                      />
-                      <datalist id="plateSuggestions">
-                        {this.state.allPlateResults.map(result => (
-                          <option value={result.plate.toUpperCase()} />
-                        ))}
-                      </datalist>
-                      <select
-                        style={{
-                          marginTop: '0.5rem',
-                        }}
-                        value={this.state.licenseState}
-                        name="licenseState"
-                        onChange={event => {
-                          this.setLicensePlate({
-                            plate: this.state.plate,
-                            licenseState: event.target.value,
-                          });
-                        }}
-                      >
-                        {Object.entries(usStateNames)
-                          .sort(([, name1], [, name2]) =>
-                            name1
-                              .toUpperCase()
-                              .localeCompare(name2.toUpperCase()),
-                          )
-                          .map(([abbr, name]) => (
-                            <option key={abbr} value={abbr}>
-                              {name}
-                            </option>
-                          ))}
-                      </select>
-                    </div>
-                    {matchingPlateThumbnail && (
-                      <img
-                        src={matchingPlateThumbnail}
-                        alt="Detected license plate"
-                        style={{
-                          maxHeight: '5rem',
-                          maxWidth: '12rem',
-                          objectFit: 'contain',
-                        }}
-                      />
-                    )}
+                          {isImg && (
+                            <button
+                              type="button"
+                              style={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                padding: 0,
+                                margin: '1px',
+                                background: 'white',
+                              }}
+                              onClick={() =>
+                                this.handlePlatePickerClick(attachmentFile)
+                              }
+                              disabled={this.state.platePickerLoading}
+                            >
+                              {this.state.platePickerLoading ? (
+                                <CircularProgress size="1em" />
+                              ) : (
+                                <span
+                                  role="img"
+                                  aria-label="Pick license plate from photo"
+                                >
+                                  🔍
+                                </span>
+                              )}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
-                  <div>{this.state.violationSummaryComponent}</div>
-                  <div>{this.state.vehicleInfoComponent}</div>
-                </label>
 
-                <label htmlFor="typeofcomplaint">
-                  Type:{' '}
-                  <select
-                    value={this.state.typeofcomplaint}
-                    name="typeofcomplaint"
-                    onChange={this.handleInputChange}
-                  >
-                    {this.props.typeofcomplaintValues.map(typeofcomplaint => (
-                      <option key={typeofcomplaint} value={typeofcomplaint}>
-                        {typeofcomplaint}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                  <label htmlFor="isAlprEnabled">
+                    <input
+                      id="isAlprEnabled"
+                      type="checkbox"
+                      checked={this.state.isAlprEnabled}
+                      name="isAlprEnabled"
+                      onChange={this.handleInputChange}
+                    />{' '}
+                    Automatically read license plates from pictures/videos
+                  </label>
 
-                <label htmlFor="where">
-                  Where: {this.state.addressProvenance}
-                  <br />
-                  <button
-                    type="button"
-                    name="where"
-                    onClick={() => this.setState({ isMapOpen: true })}
-                    style={{
-                      width: '100%',
-                    }}
-                  >
-                    {this.state.formatted_address
-                      .split(', ')
-                      .slice(0, 2)
-                      .join(', ')}
-                  </button>
-                </label>
+                  <label htmlFor="isReverseGeocodingEnabled">
+                    <input
+                      id="isReverseGeocodingEnabled"
+                      type="checkbox"
+                      checked={this.state.isReverseGeocodingEnabled}
+                      name="isReverseGeocodingEnabled"
+                      onChange={this.handleInputChange}
+                    />{' '}
+                    Automatically read addresses from pictures/videos
+                  </label>
 
-                <Modal
-                  parentSelector={() =>
-                    document.querySelector(`.${homeStyles.root}`) ||
-                    document.body
-                  }
-                  isOpen={this.state.isMapOpen}
-                  onRequestClose={() => this.setState({ isMapOpen: false })}
-                  style={{
-                    content: {
-                      padding: 0,
-                    },
-                  }}
-                >
-                  <MyMapComponent
-                    key="map"
-                    position={{
-                      lat: this.state.latitude,
-                      lng: this.state.longitude,
-                    }}
-                    onRef={mapRef => {
-                      this.mapRef = mapRef;
-                    }}
-                    onCenterChanged={() => {
-                      const latitude = this.mapRef.getCenter().lat();
-                      const longitude = this.mapRef.getCenter().lng();
-                      this.setCoords({
-                        latitude,
-                        longitude,
-                        addressProvenance: '(manually set)',
-                      });
-                    }}
-                    onSearchBoxMounted={ref => {
-                      this.searchBox = ref;
-                    }}
-                    onPlacesChanged={() => {
-                      const places = this.searchBox.getPlaces();
-
-                      const nextMarkers = places.map(place => ({
-                        position: place.geometry.location,
-                      }));
-                      const { latitude, longitude } =
-                        nextMarkers.length > 0
-                          ? {
-                              latitude: nextMarkers[0].position.lat(),
-                              longitude: nextMarkers[0].position.lng(),
-                            }
-                          : this.state;
-
-                      this.setCoords({
-                        latitude,
-                        longitude,
-                        addressProvenance: '(manually set)',
-                      });
-                    }}
-                  />
-
-                  <button
-                    type="button"
-                    style={{
-                      float: 'left',
-                    }}
-                    onClick={() => {
-                      geolocate()
-                        .then(
-                          ({
-                            coords: { latitude, longitude },
-                            ipProvenance = 'device',
-                          }) => {
-                            this.setCoords({
-                              latitude,
-                              longitude,
-                              addressProvenance: `(from ${ipProvenance}: ${latitude}, ${longitude})`,
+                  <label htmlFor="plate">
+                    License/Medallion:
+                    {this.state.isAlprLoading && (
+                      <CircularProgress size="1em" />
+                    )}
+                    <div
+                      style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        alignItems: 'flex-start',
+                        gap: '0.5rem',
+                      }}
+                    >
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <input
+                          required
+                          type="search"
+                          value={this.state.plate}
+                          name="plate"
+                          list="plateSuggestions"
+                          autoComplete="off"
+                          ref={this.plateRef}
+                          placeholder={this.state.allPlateResults[0]?.plate.toUpperCase()}
+                          onChange={event => {
+                            const plate = event.target.value.toUpperCase();
+                            const matchedResult =
+                              this.state.allPlateResults.find(
+                                r => r.plate.toUpperCase() === plate,
+                              );
+                            const licenseState = matchedResult
+                              ? getLicenseStateFromPlateResult(matchedResult)
+                              : null;
+                            this.setLicensePlate({ plate, licenseState });
+                          }}
+                        />
+                        <datalist id="plateSuggestions">
+                          {this.state.allPlateResults.map(result => (
+                            <option value={result.plate.toUpperCase()} />
+                          ))}
+                        </datalist>
+                        <select
+                          style={{
+                            marginTop: '0.5rem',
+                          }}
+                          value={this.state.licenseState}
+                          name="licenseState"
+                          onChange={event => {
+                            this.setLicensePlate({
+                              plate: this.state.plate,
+                              licenseState: event.target.value,
                             });
-                          },
-                        )
-                        .catch(err => {
-                          Home.notifyError(err.message);
-                          console.error(err);
-                        });
-                    }}
-                  >
-                    Use current location
-                  </button>
+                          }}
+                        >
+                          {Object.entries(usStateNames)
+                            .sort(([, name1], [, name2]) =>
+                              name1
+                                .toUpperCase()
+                                .localeCompare(name2.toUpperCase()),
+                            )
+                            .map(([abbr, name]) => (
+                              <option key={abbr} value={abbr}>
+                                {name}
+                              </option>
+                            ))}
+                        </select>
+                      </div>
+                      {matchingPlateThumbnail && (
+                        <img
+                          src={matchingPlateThumbnail}
+                          alt="Detected license plate"
+                          style={{
+                            maxHeight: '5rem',
+                            maxWidth: '12rem',
+                            objectFit: 'contain',
+                          }}
+                        />
+                      )}
+                    </div>
+                    <div>{this.state.violationSummaryComponent}</div>
+                    <div>{this.state.vehicleInfoComponent}</div>
+                  </label>
 
-                  <button
-                    type="button"
-                    onClick={() => this.setState({ isMapOpen: false })}
-                    style={{
-                      float: 'right',
-                    }}
-                  >
-                    Close
-                  </button>
-                </Modal>
+                  <label htmlFor="typeofcomplaint">
+                    Type:{' '}
+                    <select
+                      value={this.state.typeofcomplaint}
+                      name="typeofcomplaint"
+                      onChange={this.handleInputChange}
+                    >
+                      {this.props.typeofcomplaintValues.map(typeofcomplaint => (
+                        <option key={typeofcomplaint} value={typeofcomplaint}>
+                          {typeofcomplaint}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
 
-                <PlatePickerModal
-                  isOpen={this.state.platePickerModalOpen}
-                  results={this.state.platePickerResults}
-                  onSelectPlate={({ plate, licenseState }) => {
-                    this.setLicensePlate({ plate, licenseState });
-                    this.setState({ platePickerModalOpen: false });
-                  }}
-                  onClose={() => this.setState({ platePickerModalOpen: false })}
-                />
+                  <label htmlFor="where">
+                    Where: {this.state.addressProvenance}
+                    <br />
+                    <button
+                      type="button"
+                      name="where"
+                      onClick={() => this.setState({ isMapOpen: true })}
+                      style={{
+                        width: '100%',
+                      }}
+                    >
+                      {this.state.formatted_address
+                        .split(', ')
+                        .slice(0, 2)
+                        .join(', ')}
+                    </button>
+                  </label>
 
-                <label htmlFor="CreateDate">
-                  When:{' '}
-                  <input
-                    required
-                    type="datetime-local"
-                    value={this.state.CreateDate}
-                    name="CreateDate"
-                    onChange={this.handleInputChange}
-                  />
-                </label>
-
-                <label htmlFor="reportDescription">
-                  Description:{' '}
-                  <textarea
-                    value={this.state.reportDescription}
-                    name="reportDescription"
-                    onChange={this.handleInputChange}
-                    autoComplete="off"
-                  />
-                </label>
-
-                <label htmlFor="can_be_shared_publicly">
-                  <input
-                    id="can_be_shared_publicly"
-                    type="checkbox"
-                    checked={this.state.can_be_shared_publicly}
-                    name="can_be_shared_publicly"
-                    onChange={this.handleInputChange}
-                  />{' '}
-                  Allow the photos/videos, description, category, and location
-                  to be publicly displayed
-                </label>
-
-                {this.state.isSubmitting ? (
-                  <progress
-                    max={this.state.submitProgressMax}
-                    value={this.state.submitProgressValue}
-                    style={{
-                      width: '100%',
-                    }}
-                  >
-                    {this.state.submitProgressValue}/
-                    {this.state.submitProgressMax}
-                  </progress>
-                ) : (
-                  <button
-                    type="submit"
-                    disabled={
-                      this.state.isSubmitting || !this.state.coordsAreInNyc
+                  <Modal
+                    parentSelector={() =>
+                      document.querySelector(`.${homeStyles.root}`) ||
+                      document.body
                     }
+                    isOpen={this.state.isMapOpen}
+                    onRequestClose={() => this.setState({ isMapOpen: false })}
                     style={{
-                      width: '100%',
+                      content: {
+                        padding: 0,
+                      },
                     }}
                   >
-                    Submit
-                  </button>
-                )}
-              </fieldset>
-            </form>
+                    <MyMapComponent
+                      key="map"
+                      position={{
+                        lat: this.state.latitude,
+                        lng: this.state.longitude,
+                      }}
+                      onRef={mapRef => {
+                        this.mapRef = mapRef;
+                      }}
+                      onCenterChanged={() => {
+                        const latitude = this.mapRef.getCenter().lat();
+                        const longitude = this.mapRef.getCenter().lng();
+                        this.setCoords({
+                          latitude,
+                          longitude,
+                          addressProvenance: '(manually set)',
+                        });
+                      }}
+                      onSearchBoxMounted={ref => {
+                        this.searchBox = ref;
+                      }}
+                      onPlacesChanged={() => {
+                        const places = this.searchBox.getPlaces();
+
+                        const nextMarkers = places.map(place => ({
+                          position: place.geometry.location,
+                        }));
+                        const { latitude, longitude } =
+                          nextMarkers.length > 0
+                            ? {
+                                latitude: nextMarkers[0].position.lat(),
+                                longitude: nextMarkers[0].position.lng(),
+                              }
+                            : this.state;
+
+                        this.setCoords({
+                          latitude,
+                          longitude,
+                          addressProvenance: '(manually set)',
+                        });
+                      }}
+                    />
+
+                    <button
+                      type="button"
+                      style={{
+                        float: 'left',
+                      }}
+                      onClick={() => {
+                        geolocate()
+                          .then(
+                            ({
+                              coords: { latitude, longitude },
+                              ipProvenance = 'device',
+                            }) => {
+                              this.setCoords({
+                                latitude,
+                                longitude,
+                                addressProvenance: `(from ${ipProvenance}: ${latitude}, ${longitude})`,
+                              });
+                            },
+                          )
+                          .catch(err => {
+                            Home.notifyError(err.message);
+                            console.error(err);
+                          });
+                      }}
+                    >
+                      Use current location
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => this.setState({ isMapOpen: false })}
+                      style={{
+                        float: 'right',
+                      }}
+                    >
+                      Close
+                    </button>
+                  </Modal>
+
+                  <PlatePickerModal
+                    isOpen={this.state.platePickerModalOpen}
+                    results={this.state.platePickerResults}
+                    onSelectPlate={({ plate, licenseState }) => {
+                      this.setLicensePlate({ plate, licenseState });
+                      this.setState({ platePickerModalOpen: false });
+                    }}
+                    onClose={() =>
+                      this.setState({ platePickerModalOpen: false })
+                    }
+                  />
+
+                  <label htmlFor="CreateDate">
+                    When:{' '}
+                    <input
+                      required
+                      type="datetime-local"
+                      value={this.state.CreateDate}
+                      name="CreateDate"
+                      onChange={this.handleInputChange}
+                    />
+                  </label>
+
+                  <label htmlFor="reportDescription">
+                    Description:{' '}
+                    <textarea
+                      value={this.state.reportDescription}
+                      name="reportDescription"
+                      onChange={this.handleInputChange}
+                      autoComplete="off"
+                    />
+                  </label>
+
+                  <label htmlFor="can_be_shared_publicly">
+                    <input
+                      id="can_be_shared_publicly"
+                      type="checkbox"
+                      checked={this.state.can_be_shared_publicly}
+                      name="can_be_shared_publicly"
+                      onChange={this.handleInputChange}
+                    />{' '}
+                    Allow the photos/videos, description, category, and location
+                    to be publicly displayed
+                  </label>
+
+                  {this.state.isSubmitting ? (
+                    <progress
+                      max={this.state.submitProgressMax}
+                      value={this.state.submitProgressValue}
+                      style={{
+                        width: '100%',
+                      }}
+                    >
+                      {this.state.submitProgressValue}/
+                      {this.state.submitProgressMax}
+                    </progress>
+                  ) : (
+                    <button
+                      type="submit"
+                      disabled={
+                        this.state.isSubmitting || !this.state.coordsAreInNyc
+                      }
+                      style={{
+                        width: '100%',
+                      }}
+                    >
+                      Submit
+                    </button>
+                  )}
+                </fieldset>
+              </form>
+            )}
 
             <br />
 
-            <details
-              onToggle={evt => {
-                const isPreviousSubmissionsOpen = evt.currentTarget.open;
-                const shouldLoadPreviousSubmissions =
-                  isPreviousSubmissionsOpen &&
-                  !this.state.isPreviousSubmissionsLoading &&
-                  !this.state.isLoadPreviousSubmissionsEnabled &&
-                  !this.state.hasLoadedPreviousSubmissions;
+            {this.isLoggedIn() && !this.state.isEditProfileOpen && (
+              <details
+                onToggle={evt => {
+                  const isPreviousSubmissionsOpen = evt.currentTarget.open;
+                  const shouldLoadPreviousSubmissions =
+                    isPreviousSubmissionsOpen &&
+                    !this.state.isPreviousSubmissionsLoading &&
+                    !this.state.isLoadPreviousSubmissionsEnabled &&
+                    !this.state.hasLoadedPreviousSubmissions;
 
-                this.setState(
-                  {
-                    isPreviousSubmissionsOpen,
-                  },
-                  () => {
-                    if (shouldLoadPreviousSubmissions) {
-                      this.loadPreviousSubmissions();
-                    }
-                  },
-                );
-              }}
-            >
-              <summary>
-                Previous Submissions ({previousSubmissionsSummary})
-              </summary>
+                  this.setState(
+                    {
+                      isPreviousSubmissionsOpen,
+                    },
+                    () => {
+                      if (shouldLoadPreviousSubmissions) {
+                        this.loadPreviousSubmissions();
+                      }
+                    },
+                  );
+                }}
+              >
+                <summary>
+                  Previous Submissions ({previousSubmissionsSummary})
+                </summary>
 
-              {this.state.isPreviousSubmissionsOpen && (
-                <>
-                  {this.state.hasLoadedPreviousSubmissions &&
-                    !this.state.isPreviousSubmissionsLoading && (
-                      <label
-                        htmlFor="isLoadPreviousSubmissionsEnabled"
-                        style={{ display: 'block', marginBottom: '1rem' }}
-                      >
-                        <input
-                          id="isLoadPreviousSubmissionsEnabled"
-                          type="checkbox"
-                          checked={this.state.isLoadPreviousSubmissionsEnabled}
-                          name="isLoadPreviousSubmissionsEnabled"
-                          onChange={this.handleInputChange}
-                        />{' '}
-                        Load previous submissions immediately next time
-                      </label>
-                    )}
-                  <PreviousSubmissionsList
-                    submissions={this.state.submissions}
-                    onDeleteSubmission={this.onDeleteSubmission}
-                    isLoading={this.state.isPreviousSubmissionsLoading}
-                    hasLoadedPreviousSubmissions={
-                      this.state.hasLoadedPreviousSubmissions
-                    }
-                  />
-                </>
-              )}
-            </details>
+                {this.state.isPreviousSubmissionsOpen && (
+                  <>
+                    {this.state.hasLoadedPreviousSubmissions &&
+                      !this.state.isPreviousSubmissionsLoading && (
+                        <label
+                          htmlFor="isLoadPreviousSubmissionsEnabled"
+                          style={{ display: 'block', marginBottom: '1rem' }}
+                        >
+                          <input
+                            id="isLoadPreviousSubmissionsEnabled"
+                            type="checkbox"
+                            checked={
+                              this.state.isLoadPreviousSubmissionsEnabled
+                            }
+                            name="isLoadPreviousSubmissionsEnabled"
+                            onChange={this.handleInputChange}
+                          />{' '}
+                          Load previous submissions immediately next time
+                        </label>
+                      )}
+                    <PreviousSubmissionsList
+                      submissions={this.state.submissions}
+                      onDeleteSubmission={this.onDeleteSubmission}
+                      isLoading={this.state.isPreviousSubmissionsLoading}
+                      hasLoadedPreviousSubmissions={
+                        this.state.hasLoadedPreviousSubmissions
+                      }
+                    />
+                  </>
+                )}
+              </details>
+            )}
 
             <div style={{ float: 'right' }}>
               <a
@@ -1909,6 +2311,11 @@ class Home extends React.Component {
 Home.propTypes = {
   typeofcomplaintValues: PropTypes.arrayOf(PropTypes.string).isRequired,
   boroughBoundariesFeatureCollection: PropTypes.object.isRequired,
+  localStorageKey: PropTypes.string,
+};
+
+Home.defaultProps = {
+  localStorageKey: undefined,
 };
 
 const MyMapComponentPure = props => {

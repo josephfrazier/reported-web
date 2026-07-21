@@ -39,11 +39,12 @@ const typeofcomplaintValues = [
 
 const insertCss = () => {};
 
-function renderHome({ localStorageKey } = {}) {
+function renderHome({ localStorageKey, homeRef } = {}) {
   return renderer.create(
     <StyleContext.Provider value={{ insertCss }}>
       <App context={{ fetch: () => {}, pathname: '' }}>
         <Home
+          ref={homeRef}
           localStorageKey={localStorageKey}
           typeofcomplaintValues={typeofcomplaintValues}
           boroughBoundariesFeatureCollection={
@@ -86,46 +87,40 @@ describe('Home', () => {
   });
 
   test('renders Log In modal UI', () => {
-    const storageKey = 'reportedWebHomeState';
-    localStorage.setItem(
-      storageKey,
-      JSON.stringify({
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ homeRef });
+    });
+    renderer.act(() => {
+      homeRef.current.setState({
         isAuthModalOpen: true,
         authModalTab: 'login',
-      }),
-    );
-
-    let tree;
-    renderer.act(() => {
-      tree = renderHome({ localStorageKey: storageKey });
+      });
     });
 
     expect(tree.toJSON()).toMatchSnapshot();
 
     tree.unmount();
-    localStorage.removeItem(storageKey);
   });
 
   test('renders Sign Up modal UI', () => {
-    const storageKey = 'reportedWebHomeState';
-    localStorage.setItem(
-      storageKey,
-      JSON.stringify({
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ homeRef });
+    });
+    renderer.act(() => {
+      homeRef.current.setState({
         isAuthModalOpen: true,
         authModalTab: 'signup',
         isPasswordRevealed: true,
-      }),
-    );
-
-    let tree;
-    renderer.act(() => {
-      tree = renderHome({ localStorageKey: storageKey });
+      });
     });
 
     expect(tree.toJSON()).toMatchSnapshot();
 
     tree.unmount();
-    localStorage.removeItem(storageKey);
   });
 
   test('renders Edit Profile UI', () => {
@@ -135,13 +130,16 @@ describe('Home', () => {
       JSON.stringify({
         email: 'test@example.com',
         loginSuccessful: true,
-        isEditProfileOpen: true,
       }),
     );
 
     let tree;
+    const homeRef = React.createRef();
     renderer.act(() => {
-      tree = renderHome({ localStorageKey: storageKey });
+      tree = renderHome({ localStorageKey: storageKey, homeRef });
+    });
+    renderer.act(() => {
+      homeRef.current.setState({ isEditProfileOpen: true });
     });
 
     expect(tree.toJSON()).toMatchSnapshot();

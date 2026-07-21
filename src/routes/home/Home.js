@@ -479,16 +479,16 @@ class Home extends React.Component {
     if (newKey !== oldKey) {
       const oldData = localStorage.getItem(oldKey);
       if (oldData && !localStorage.getItem(newKey)) {
-        localStorage.setItem(newKey, oldData);
-        // TODO: uncomment this line once this migration has been live for a bit without revert-worthy bug reports
-        // localStorage.removeItem(oldKey);
         try {
-          this.setState(JSON.parse(oldData));
+          const parsedOldData = JSON.parse(oldData);
+          localStorage.setItem(newKey, JSON.stringify(parsedOldData));
+          // TODO: uncomment this line once this migration has been live for a bit without revert-worthy bug reports
+          // localStorage.removeItem(oldKey);
+          this.setState(parsedOldData);
         } catch {
           // Ignore parse errors from corrupted data.
         }
       }
-    }
 
     // if there's no attachments or a time couldn't be extracted, just use now
     if (this.state.attachmentData.length === 0 || !this.state.CreateDate) {

@@ -1126,6 +1126,7 @@ class Home extends React.Component {
             this.setState({
               isUserInfoSaving: false,
               loginSuccessful: false,
+              authModalTab: 'login',
             });
             Home.handleAxiosError(saveErr);
           }

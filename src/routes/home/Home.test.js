@@ -10,6 +10,11 @@
 import '@babel/polyfill';
 import React from 'react';
 import renderer from 'react-test-renderer';
+import Modal from 'react-modal';
+
+jest.mock('react-modal', () => ({ children, isOpen }) =>
+  isOpen ? children : null,
+);
 import StyleContext from 'isomorphic-style-loader/StyleContext';
 import App from '../../components/App.js';
 import Home from './Home.js';
@@ -33,12 +38,16 @@ const typeofcomplaintValues = [
 const insertCss = () => {};
 
 function findHomeInstance(node) {
-  if (node.instance && typeof node.instance.setState === 'function') {
+  // Walk the rendered tree for the Home-derived component instance,
+  // identified by the presence of handleLogIn on its prototype chain.
+  if (node.instance && typeof node.instance.handleLogIn === 'function') {
     return node.instance;
   }
-  for (const child of node.children) {
-    const found = findHomeInstance(child);
-    if (found) return found;
+  if (node.children) {
+    for (const child of node.children) {
+      const found = findHomeInstance(child);
+      if (found) return found;
+    }
   }
   return null;
 }

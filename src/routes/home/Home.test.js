@@ -10,15 +10,17 @@
 import '@babel/polyfill';
 import React from 'react';
 import renderer from 'react-test-renderer';
-import Modal from 'react-modal';
-
-jest.mock('react-modal', () => ({ children, isOpen }) =>
-  isOpen ? children : null,
-);
 import StyleContext from 'isomorphic-style-loader/StyleContext';
 import App from '../../components/App.js';
 import Home from './Home.js';
 import boroughBoundariesFeatureCollection from '../../../public/borough-boundaries-clipped-to-shoreline.geo.json';
+
+jest.mock(
+  'react-modal',
+  () =>
+    ({ children, isOpen }) =>
+      isOpen ? children : null,
+);
 
 require('timezone-mock').register('US/Eastern');
 require('jest-mock-now')();

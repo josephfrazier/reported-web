@@ -494,7 +494,11 @@ class Home extends React.Component {
     // Existing users who saved email & password before loginSuccessful
     // was introduced won't have it set. Try to log them in so the
     // server can validate the credentials and set the flag properly.
-    if (this.state.email && this.state.password && !this.state.loginSuccessful) {
+    if (
+      this.state.email &&
+      this.state.password &&
+      !this.state.loginSuccessful
+    ) {
       this.handleLogIn();
     }
 

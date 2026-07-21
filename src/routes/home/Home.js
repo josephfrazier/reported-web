@@ -2206,7 +2206,7 @@ class Home extends React.Component {
 
             <br />
 
-            {this.isLoggedIn() && (
+            {this.isLoggedIn() && !this.state.isEditProfileOpen && (
               <details
                 onToggle={evt => {
                   const isPreviousSubmissionsOpen = evt.currentTarget.open;

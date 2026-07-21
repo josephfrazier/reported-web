@@ -182,15 +182,6 @@ exports[`Home renders Edit Profile UI 1`] = `
         </p>
       </div>
       <br />
-      <details
-        onToggle={[Function]}
-      >
-        <summary>
-          Previous Submissions (
-          expand to load
-          )
-        </summary>
-      </details>
       <div
         style={
           {

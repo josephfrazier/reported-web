@@ -1126,16 +1126,14 @@ class Home extends React.Component {
             this.setState({
               isUserInfoSaving: false,
               loginSuccessful: false,
+              authModalTab: 'login',
             });
             Home.handleAxiosError(saveErr);
           }
         },
       );
     } catch (err) {
-      this.setState({
-        isUserInfoSaving: false,
-        authModalTab: 'login',
-      });
+      this.setState({ isUserInfoSaving: false });
       Home.handleAxiosError(err);
     }
   };

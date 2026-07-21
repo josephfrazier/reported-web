@@ -156,31 +156,6 @@ exports[`Home renders Edit Profile UI 1`] = `
           </button>
         </fieldset>
       </form>
-      <div
-        className="auth-prompt"
-      >
-        <p>
-          Please
-           
-          <button
-            onClick={[Function]}
-            type="button"
-          >
-            log in
-          </button>
-           
-          or
-           
-          <button
-            onClick={[Function]}
-            type="button"
-          >
-            sign up
-          </button>
-           
-          to submit a report.
-        </p>
-      </div>
       <br />
       <div
         style={

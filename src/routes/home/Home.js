@@ -1642,7 +1642,28 @@ class Home extends React.Component {
               )}
             </Modal>
 
-            {this.isLoggedIn() && !this.state.isEditProfileOpen ? (
+            {!this.isLoggedIn() && (
+              <div className={homeStyles['auth-prompt']}>
+                <p>
+                  Please{' '}
+                  <button
+                    type="button"
+                    onClick={() => this.openAuthModal('login')}
+                  >
+                    log in
+                  </button>{' '}
+                  or{' '}
+                  <button
+                    type="button"
+                    onClick={() => this.openAuthModal('signup')}
+                  >
+                    sign up
+                  </button>{' '}
+                  to submit a report.
+                </p>
+              </div>
+            )}
+            {this.isLoggedIn() && !this.state.isEditProfileOpen && (
               <form
                 onSubmit={async e => {
                   e.preventDefault();
@@ -2182,26 +2203,6 @@ class Home extends React.Component {
                   )}
                 </fieldset>
               </form>
-            ) : (
-              <div className={homeStyles['auth-prompt']}>
-                <p>
-                  Please{' '}
-                  <button
-                    type="button"
-                    onClick={() => this.openAuthModal('login')}
-                  >
-                    log in
-                  </button>{' '}
-                  or{' '}
-                  <button
-                    type="button"
-                    onClick={() => this.openAuthModal('signup')}
-                  >
-                    sign up
-                  </button>{' '}
-                  to submit a report.
-                </p>
-              </div>
             )}
 
             <br />

@@ -39,21 +39,6 @@ const typeofcomplaintValues = [
 
 const insertCss = () => {};
 
-function findHomeInstance(node) {
-  // Walk the rendered tree for the Home-derived component instance,
-  // identified by the presence of handleLogIn on its prototype chain.
-  if (node.instance && typeof node.instance.handleLogIn === 'function') {
-    return node.instance;
-  }
-  if (node.children) {
-    for (const child of node.children) {
-      const found = findHomeInstance(child);
-      if (found) return found;
-    }
-  }
-  return null;
-}
-
 function renderHome({ localStorageKey } = {}) {
   return renderer.create(
     <StyleContext.Provider value={{ insertCss }}>
@@ -101,38 +86,46 @@ describe('Home', () => {
   });
 
   test('renders Log In modal UI', () => {
-    let tree;
-    renderer.act(() => {
-      tree = renderHome();
-    });
-    renderer.act(() => {
-      findHomeInstance(tree.root).setState({
+    const storageKey = 'reportedWebHomeState';
+    localStorage.setItem(
+      storageKey,
+      JSON.stringify({
         isAuthModalOpen: true,
         authModalTab: 'login',
-      });
+      }),
+    );
+
+    let tree;
+    renderer.act(() => {
+      tree = renderHome({ localStorageKey: storageKey });
     });
 
     expect(tree.toJSON()).toMatchSnapshot();
 
     tree.unmount();
+    localStorage.removeItem(storageKey);
   });
 
   test('renders Sign Up modal UI', () => {
-    let tree;
-    renderer.act(() => {
-      tree = renderHome();
-    });
-    renderer.act(() => {
-      findHomeInstance(tree.root).setState({
+    const storageKey = 'reportedWebHomeState';
+    localStorage.setItem(
+      storageKey,
+      JSON.stringify({
         isAuthModalOpen: true,
         authModalTab: 'signup',
         isPasswordRevealed: true,
-      });
+      }),
+    );
+
+    let tree;
+    renderer.act(() => {
+      tree = renderHome({ localStorageKey: storageKey });
     });
 
     expect(tree.toJSON()).toMatchSnapshot();
 
     tree.unmount();
+    localStorage.removeItem(storageKey);
   });
 
   test('renders Edit Profile UI', () => {
@@ -142,17 +135,13 @@ describe('Home', () => {
       JSON.stringify({
         email: 'test@example.com',
         loginSuccessful: true,
+        isEditProfileOpen: true,
       }),
     );
 
     let tree;
     renderer.act(() => {
       tree = renderHome({ localStorageKey: storageKey });
-    });
-    renderer.act(() => {
-      findHomeInstance(tree.root).setState({
-        isEditProfileOpen: true,
-      });
     });
 
     expect(tree.toJSON()).toMatchSnapshot();

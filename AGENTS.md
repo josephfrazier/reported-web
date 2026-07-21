@@ -52,7 +52,7 @@
 - If you change API or submission behavior, inspect both `src/server.js` and `src/routes/home/Home.js`; client and server responsibilities are split between them.
 - Keep tests near the affected module when possible; this repo uses a mix of colocated tests and snapshots under `src/**/__snapshots__/`.
 - Do not "clean up" existing warnings unless your task is specifically about them.
-- Before committing changes, run `yarn fix` to auto-fix lint issues and update snapshots.
+- Before committing changes, run `yarn fix` to auto-fix lint issues.
 
 ## Validation and CI gotchas
 

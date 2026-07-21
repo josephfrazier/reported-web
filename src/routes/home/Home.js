@@ -1093,7 +1093,10 @@ class Home extends React.Component {
   handleSignUp = async () => {
     this.setState({ isUserInfoSaving: true, authError: null });
     try {
-      const { data } = await axios.post('/api/logIn', this.state);
+      const { data } = await axios.post('/api/logIn', {
+        email: this.state.email,
+        password: this.state.password,
+      });
       const { FirstName, LastName, Phone, testify } = data;
       this.setState(
         state => ({

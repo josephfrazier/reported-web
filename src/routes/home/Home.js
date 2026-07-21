@@ -470,7 +470,7 @@ class Home extends React.Component {
   }
 
   componentDidMount() {
-    // Migrate from old localStorage key to new explicit key.
+    // Copy from old localStorage key to new explicit key.
     // The old key came from getDisplayName() which resolved to 'Function'
     // for class components (Component.constructor.name === 'Function').
     // This can be removed once all users have been migrated.
@@ -480,7 +480,8 @@ class Home extends React.Component {
       const oldData = localStorage.getItem(oldKey);
       if (oldData && !localStorage.getItem(newKey)) {
         localStorage.setItem(newKey, oldData);
-        localStorage.removeItem(oldKey);
+        // TODO: uncomment this line once this migration has been live for a bit without revert-worthy bug reports
+        // localStorage.removeItem(oldKey);
         try {
           this.setState(JSON.parse(oldData));
         } catch {

@@ -1104,7 +1104,7 @@ class Home extends React.Component {
           FirstName: FirstName || state.FirstName,
           LastName: LastName || state.LastName,
           Phone: Phone || state.Phone,
-          testify: testify || state.testify,
+          testify: typeof testify === 'boolean' ? testify : state.testify,
           loginSuccessful: true,
         }),
         async () => {

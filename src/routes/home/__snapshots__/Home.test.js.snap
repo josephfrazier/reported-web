@@ -1384,7 +1384,6 @@ exports[`Home renders submission form and Previous Submissions when logged in 1`
             htmlFor="where"
           >
             Where: 
-            
             <br />
             <button
               name="where"
@@ -1396,7 +1395,7 @@ exports[`Home renders submission form and Previous Submissions when logged in 1`
               }
               type="button"
             >
-              
+              Finding Address...
             </button>
           </label>
           <label

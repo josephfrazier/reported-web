@@ -495,6 +495,15 @@ class Home extends React.Component {
     if (this.state.attachmentData.length === 0 || !this.state.CreateDate) {
       this.setCreateDate({ millisecondsSinceEpoch: Date.now() });
     }
+
+    // Start reverse-geocoding the default coordinates right away so the
+    // "Where" button shows an address even before geolocation resolves
+    // (or if it fails, e.g. in a private window).
+    this.setCoords({
+      latitude: defaultLatitude,
+      longitude: defaultLongitude,
+    });
+
     geolocate().then(
       ({ coords: { latitude, longitude }, ipProvenance = 'device' }) => {
         // if there's no attachments or a location couldn't be extracted, just use here

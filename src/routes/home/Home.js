@@ -1114,7 +1114,10 @@ class Home extends React.Component {
             this.saveStateToLocalStorage();
             this.loadPreviousSubmissions();
           } catch (saveErr) {
-            this.setState({ isUserInfoSaving: false });
+            this.setState({
+              isUserInfoSaving: false,
+              loginSuccessful: false,
+            });
             Home.handleAxiosError(saveErr);
           }
         },

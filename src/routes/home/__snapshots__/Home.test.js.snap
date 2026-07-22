@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
 
-exports[`Home renders children correctly 1`] = `
+exports[`Home renders Edit Profile UI 1`] = `
 <div
   aria-disabled={false}
   className="root"
@@ -40,161 +40,912 @@ exports[`Home renders children correctly 1`] = `
       <div
         className="Toastify"
       />
-      <details
-        onToggle={[Function]}
-        open={true}
+      <div
+        className="user-status-bar"
       >
-        <summary>
-          Create/Edit User (click to expand)
-        </summary>
-        <form
-          onSubmit={[Function]}
+        <div
+          className="user-greeting"
         >
-          <fieldset
-            disabled={false}
+          <span
+            aria-label="user"
+            role="img"
           >
-            <label
-              htmlFor="email"
-            >
-              Email:
-               
-              <input
-                autoComplete="email"
-                name="email"
-                onChange={[Function]}
-                onInvalid={[Function]}
-                required={true}
-                type="email"
-                value=""
-              />
-            </label>
-            <label
-              htmlFor="password"
-            >
-              Password (this is saved on your device, so use a password you don't use anywhere else): 
-              <div
-                style={
-                  {
-                    "display": "flex",
-                  }
-                }
-              >
-                <input
-                  autoComplete="current-password"
-                  name="password"
-                  onChange={[Function]}
-                  onInvalid={[Function]}
-                  required={true}
-                  type="password"
-                  value=""
-                />
-                 
-                <button
-                  onClick={[Function]}
-                  type="button"
-                >
-                  Show
-                </button>
-                 
-                <button
-                  onClick={[Function]}
-                  type="button"
-                >
-                  Reset
-                </button>
-              </div>
-            </label>
+            👤
+          </span>
+           
+          test@example.com
+        </div>
+        <div
+          className="user-actions"
+        >
+          <button
+            className="status-bar-btn-primary"
+            onClick={[Function]}
+            type="button"
+          >
+            Cancel
+          </button>
+          <button
+            className="status-bar-btn"
+            onClick={[Function]}
+            type="button"
+          >
+            Log Out
+          </button>
+        </div>
+      </div>
+      <form
+        className="edit-profile-section"
+        onSubmit={[Function]}
+      >
+        <h3>
+          Edit Profile
+        </h3>
+        <fieldset
+          disabled={false}
+        >
+          <label
+            htmlFor="FirstName"
+          >
+            First Name:
+             
+            <input
+              autoComplete="given-name"
+              id="FirstName"
+              name="FirstName"
+              onChange={[Function]}
+              required={true}
+              type="text"
+              value=""
+            />
+          </label>
+          <label
+            htmlFor="LastName"
+          >
+            Last Name:
+             
+            <input
+              autoComplete="family-name"
+              id="LastName"
+              name="LastName"
+              onChange={[Function]}
+              required={true}
+              type="text"
+              value=""
+            />
+          </label>
+          <label
+            htmlFor="Phone"
+          >
+            Phone Number:
+             
+            <input
+              autoComplete="tel"
+              id="Phone"
+              name="Phone"
+              onChange={[Function]}
+              required={true}
+              type="tel"
+              value=""
+            />
+          </label>
+          <label
+            htmlFor="testify"
+          >
+            <input
+              checked={false}
+              id="testify"
+              name="testify"
+              onChange={[Function]}
+              type="checkbox"
+            />
+             
+            I'm willing to testify at a hearing, which can be done by phone.
+          </label>
+          <button
+            className="auth-submit-btn"
+            disabled={false}
+            style={
+              {
+                "width": "auto",
+              }
+            }
+            type="submit"
+          >
+            Save
+          </button>
+        </fieldset>
+      </form>
+      <br />
+      <div
+        style={
+          {
+            "float": "right",
+          }
+        }
+      >
+        <a
+          href="/electricitibikes"
+          style={
+            {
+              "background": "black",
+              "border": "1em solid black",
+              "borderRadius": "2em",
+              "textDecoration": "none",
+            }
+          }
+        >
+          <span
+            aria-label="high voltage"
+            role="img"
+          >
+            ⚡
+          </span>
+        </a>
+      </div>
+    </main>
+  </div>
+  <input
+    autoComplete="off"
+    disabled={false}
+    multiple={true}
+    onChange={[Function]}
+    style={
+      {
+        "bottom": 0,
+        "left": 0,
+        "opacity": 0.00001,
+        "pointerEvents": "none",
+        "position": "absolute",
+        "right": 0,
+        "top": 0,
+      }
+    }
+    type="file"
+  />
+</div>
+`;
+
+exports[`Home renders Log In modal UI 1`] = `
+<div
+  aria-disabled={false}
+  className="root"
+  onClick={[Function]}
+  onDragEnter={[Function]}
+  onDragLeave={[Function]}
+  onDragOver={[Function]}
+  onDragStart={[Function]}
+  onDrop={[Function]}
+  style={
+    {
+      "bottom": 0,
+      "left": 0,
+      "overflowY": "scroll",
+      "position": "fixed",
+      "right": 0,
+      "top": 0,
+    }
+  }
+>
+  <div
+    className="container"
+  >
+    <main>
+      <h1>
+        <a
+          href="https://reportedly.weebly.com/"
+          style={
+            {
+              "textDecoration": "underline",
+            }
+          }
+        >
+          Reported
+        </a>
+      </h1>
+      <div
+        className="Toastify"
+      />
+      <div
+        className="user-status-bar"
+      >
+        <div
+          className="user-greeting"
+        >
+          Not logged in
+        </div>
+        <div
+          className="user-actions"
+        >
+          <button
+            className="status-bar-btn"
+            onClick={[Function]}
+            type="button"
+          >
+            Log In
+          </button>
+          <button
+            className="status-bar-btn-primary"
+            onClick={[Function]}
+            type="button"
+          >
+            Sign Up
+          </button>
+        </div>
+      </div>
+      <div
+        className="auth-modal-tabs"
+      >
+        <button
+          className="auth-modal-tab-active"
+          onClick={[Function]}
+          type="button"
+        >
+          Log In
+        </button>
+        <button
+          className="auth-modal-tab"
+          onClick={[Function]}
+          type="button"
+        >
+          Sign Up
+        </button>
+      </div>
+      <div
+        className="auth-modal-body"
+      >
+        <label
+          htmlFor="auth-email"
+        >
+          Email:
+          <input
+            autoComplete="email"
+            id="auth-email"
+            name="email"
+            onChange={[Function]}
+            required={true}
+            type="email"
+            value=""
+          />
+        </label>
+        <label
+          htmlFor="auth-password"
+        >
+          Password:
+          <div
+            className="auth-field-row"
+          >
+            <input
+              autoComplete="current-password"
+              id="auth-password"
+              name="password"
+              onChange={[Function]}
+              required={true}
+              type="password"
+              value=""
+            />
             <button
-              disabled={false}
               onClick={[Function]}
               type="button"
             >
-              Sign Up / Log In
+              Show
             </button>
-            <br />
-            <br />
-            (If you cannot log in even after resetting your password, email
-             
-            <a
-              href="mailto:reportedapp@gmail.com"
-            >
-              reportedapp@gmail.com
-            </a>
-            )
-            <label
-              htmlFor="FirstName"
-            >
-              First Name:
-               
-              <input
-                autoComplete="given-name"
-                name="FirstName"
-                onChange={[Function]}
-                onInvalid={[Function]}
-                required={true}
-                type="text"
-                value=""
-              />
-            </label>
-            <label
-              htmlFor="LastName"
-            >
-              Last Name:
-               
-              <input
-                autoComplete="family-name"
-                name="LastName"
-                onChange={[Function]}
-                onInvalid={[Function]}
-                required={true}
-                type="text"
-                value=""
-              />
-            </label>
-            <label
-              htmlFor="Phone"
-            >
-              Phone Number:
-               
-              <input
-                autoComplete="tel"
-                name="Phone"
-                onChange={[Function]}
-                onInvalid={[Function]}
-                required={true}
-                type="tel"
-                value=""
-              />
-            </label>
-            <label
-              htmlFor="testify"
-            >
-              <input
-                checked={false}
-                id="testify"
-                name="testify"
-                onChange={[Function]}
-                type="checkbox"
-              />
-               
-              I'm willing to testify at a hearing, which can be done by phone.
-            </label>
-            <button
-              disabled={false}
-              type="submit"
-            >
-              Save
-            </button>
-          </fieldset>
-        </form>
-      </details>
-      <form
-        onSubmit={[Function]}
+          </div>
+        </label>
+        <button
+          className="auth-submit-btn"
+          disabled={false}
+          onClick={[Function]}
+          type="button"
+        >
+          Log In
+        </button>
+        <div
+          className="auth-switch-link"
+        >
+          <button
+            disabled={false}
+            onClick={[Function]}
+            type="button"
+          >
+            Forgot your password?
+          </button>
+        </div>
+        <div
+          className="auth-switch-link"
+        >
+          (If you cannot log in even after resetting your password, email
+           
+          <a
+            href="mailto:reportedapp@gmail.com"
+          >
+            reportedapp@gmail.com
+          </a>
+          )
+        </div>
+        <div
+          className="auth-switch-link"
+        >
+          Don't have an account?
+           
+          <button
+            onClick={[Function]}
+            type="button"
+          >
+            Sign Up
+          </button>
+        </div>
+      </div>
+      <div
+        className="auth-prompt"
+      >
+        <p>
+          Please
+           
+          <button
+            onClick={[Function]}
+            type="button"
+          >
+            log in
+          </button>
+           
+          or
+           
+          <button
+            onClick={[Function]}
+            type="button"
+          >
+            sign up
+          </button>
+           
+          to submit a report.
+        </p>
+      </div>
+      <br />
+      <div
         style={
           {
-            "display": "none",
+            "float": "right",
           }
         }
+      >
+        <a
+          href="/electricitibikes"
+          style={
+            {
+              "background": "black",
+              "border": "1em solid black",
+              "borderRadius": "2em",
+              "textDecoration": "none",
+            }
+          }
+        >
+          <span
+            aria-label="high voltage"
+            role="img"
+          >
+            ⚡
+          </span>
+        </a>
+      </div>
+    </main>
+  </div>
+  <input
+    autoComplete="off"
+    disabled={false}
+    multiple={true}
+    onChange={[Function]}
+    style={
+      {
+        "bottom": 0,
+        "left": 0,
+        "opacity": 0.00001,
+        "pointerEvents": "none",
+        "position": "absolute",
+        "right": 0,
+        "top": 0,
+      }
+    }
+    type="file"
+  />
+</div>
+`;
+
+exports[`Home renders Sign Up modal UI 1`] = `
+<div
+  aria-disabled={false}
+  className="root"
+  onClick={[Function]}
+  onDragEnter={[Function]}
+  onDragLeave={[Function]}
+  onDragOver={[Function]}
+  onDragStart={[Function]}
+  onDrop={[Function]}
+  style={
+    {
+      "bottom": 0,
+      "left": 0,
+      "overflowY": "scroll",
+      "position": "fixed",
+      "right": 0,
+      "top": 0,
+    }
+  }
+>
+  <div
+    className="container"
+  >
+    <main>
+      <h1>
+        <a
+          href="https://reportedly.weebly.com/"
+          style={
+            {
+              "textDecoration": "underline",
+            }
+          }
+        >
+          Reported
+        </a>
+      </h1>
+      <div
+        className="Toastify"
+      />
+      <div
+        className="user-status-bar"
+      >
+        <div
+          className="user-greeting"
+        >
+          Not logged in
+        </div>
+        <div
+          className="user-actions"
+        >
+          <button
+            className="status-bar-btn"
+            onClick={[Function]}
+            type="button"
+          >
+            Log In
+          </button>
+          <button
+            className="status-bar-btn-primary"
+            onClick={[Function]}
+            type="button"
+          >
+            Sign Up
+          </button>
+        </div>
+      </div>
+      <div
+        className="auth-modal-tabs"
+      >
+        <button
+          className="auth-modal-tab"
+          onClick={[Function]}
+          type="button"
+        >
+          Log In
+        </button>
+        <button
+          className="auth-modal-tab-active"
+          onClick={[Function]}
+          type="button"
+        >
+          Sign Up
+        </button>
+      </div>
+      <div
+        className="auth-modal-body"
+      >
+        <label
+          htmlFor="auth-signup-email"
+        >
+          Email:
+          <input
+            autoComplete="email"
+            id="auth-signup-email"
+            name="email"
+            onChange={[Function]}
+            required={true}
+            type="email"
+            value=""
+          />
+        </label>
+        <label
+          htmlFor="auth-signup-password"
+        >
+          Password (this is saved on your device, so use a password you don't use anywhere else):
+          <div
+            className="auth-field-row"
+          >
+            <input
+              autoComplete="new-password"
+              id="auth-signup-password"
+              name="password"
+              onChange={[Function]}
+              required={true}
+              type="text"
+              value=""
+            />
+            <button
+              onClick={[Function]}
+              type="button"
+            >
+              Hide
+            </button>
+          </div>
+        </label>
+        <label
+          htmlFor="auth-signup-firstname"
+        >
+          First Name:
+          <input
+            autoComplete="given-name"
+            id="auth-signup-firstname"
+            name="FirstName"
+            onChange={[Function]}
+            required={true}
+            type="text"
+            value=""
+          />
+        </label>
+        <label
+          htmlFor="auth-signup-lastname"
+        >
+          Last Name:
+          <input
+            autoComplete="family-name"
+            id="auth-signup-lastname"
+            name="LastName"
+            onChange={[Function]}
+            required={true}
+            type="text"
+            value=""
+          />
+        </label>
+        <label
+          htmlFor="auth-signup-phone"
+        >
+          Phone Number:
+          <input
+            autoComplete="tel"
+            id="auth-signup-phone"
+            name="Phone"
+            onChange={[Function]}
+            required={true}
+            type="tel"
+            value=""
+          />
+        </label>
+        <label
+          htmlFor="auth-signup-testify"
+        >
+          <input
+            checked={false}
+            id="auth-signup-testify"
+            name="testify"
+            onChange={[Function]}
+            type="checkbox"
+          />
+           
+          I'm willing to testify at a hearing, which can be done by phone.
+        </label>
+        <button
+          className="auth-submit-btn"
+          disabled={false}
+          onClick={[Function]}
+          type="button"
+        >
+          Sign Up
+        </button>
+        <div
+          className="auth-switch-link"
+        >
+          Already have an account?
+           
+          <button
+            onClick={[Function]}
+            type="button"
+          >
+            Log In
+          </button>
+        </div>
+      </div>
+      <div
+        className="auth-prompt"
+      >
+        <p>
+          Please
+           
+          <button
+            onClick={[Function]}
+            type="button"
+          >
+            log in
+          </button>
+           
+          or
+           
+          <button
+            onClick={[Function]}
+            type="button"
+          >
+            sign up
+          </button>
+           
+          to submit a report.
+        </p>
+      </div>
+      <br />
+      <div
+        style={
+          {
+            "float": "right",
+          }
+        }
+      >
+        <a
+          href="/electricitibikes"
+          style={
+            {
+              "background": "black",
+              "border": "1em solid black",
+              "borderRadius": "2em",
+              "textDecoration": "none",
+            }
+          }
+        >
+          <span
+            aria-label="high voltage"
+            role="img"
+          >
+            ⚡
+          </span>
+        </a>
+      </div>
+    </main>
+  </div>
+  <input
+    autoComplete="off"
+    disabled={false}
+    multiple={true}
+    onChange={[Function]}
+    style={
+      {
+        "bottom": 0,
+        "left": 0,
+        "opacity": 0.00001,
+        "pointerEvents": "none",
+        "position": "absolute",
+        "right": 0,
+        "top": 0,
+      }
+    }
+    type="file"
+  />
+</div>
+`;
+
+exports[`Home renders auth prompt and hides form when logged out 1`] = `
+<div
+  aria-disabled={false}
+  className="root"
+  onClick={[Function]}
+  onDragEnter={[Function]}
+  onDragLeave={[Function]}
+  onDragOver={[Function]}
+  onDragStart={[Function]}
+  onDrop={[Function]}
+  style={
+    {
+      "bottom": 0,
+      "left": 0,
+      "overflowY": "scroll",
+      "position": "fixed",
+      "right": 0,
+      "top": 0,
+    }
+  }
+>
+  <div
+    className="container"
+  >
+    <main>
+      <h1>
+        <a
+          href="https://reportedly.weebly.com/"
+          style={
+            {
+              "textDecoration": "underline",
+            }
+          }
+        >
+          Reported
+        </a>
+      </h1>
+      <div
+        className="Toastify"
+      />
+      <div
+        className="user-status-bar"
+      >
+        <div
+          className="user-greeting"
+        >
+          Not logged in
+        </div>
+        <div
+          className="user-actions"
+        >
+          <button
+            className="status-bar-btn"
+            onClick={[Function]}
+            type="button"
+          >
+            Log In
+          </button>
+          <button
+            className="status-bar-btn-primary"
+            onClick={[Function]}
+            type="button"
+          >
+            Sign Up
+          </button>
+        </div>
+      </div>
+      <div
+        className="auth-prompt"
+      >
+        <p>
+          Please
+           
+          <button
+            onClick={[Function]}
+            type="button"
+          >
+            log in
+          </button>
+           
+          or
+           
+          <button
+            onClick={[Function]}
+            type="button"
+          >
+            sign up
+          </button>
+           
+          to submit a report.
+        </p>
+      </div>
+      <br />
+      <div
+        style={
+          {
+            "float": "right",
+          }
+        }
+      >
+        <a
+          href="/electricitibikes"
+          style={
+            {
+              "background": "black",
+              "border": "1em solid black",
+              "borderRadius": "2em",
+              "textDecoration": "none",
+            }
+          }
+        >
+          <span
+            aria-label="high voltage"
+            role="img"
+          >
+            ⚡
+          </span>
+        </a>
+      </div>
+    </main>
+  </div>
+  <input
+    autoComplete="off"
+    disabled={false}
+    multiple={true}
+    onChange={[Function]}
+    style={
+      {
+        "bottom": 0,
+        "left": 0,
+        "opacity": 0.00001,
+        "pointerEvents": "none",
+        "position": "absolute",
+        "right": 0,
+        "top": 0,
+      }
+    }
+    type="file"
+  />
+</div>
+`;
+
+exports[`Home renders submission form and Previous Submissions when logged in 1`] = `
+<div
+  aria-disabled={false}
+  className="root"
+  onClick={[Function]}
+  onDragEnter={[Function]}
+  onDragLeave={[Function]}
+  onDragOver={[Function]}
+  onDragStart={[Function]}
+  onDrop={[Function]}
+  style={
+    {
+      "bottom": 0,
+      "left": 0,
+      "overflowY": "scroll",
+      "position": "fixed",
+      "right": 0,
+      "top": 0,
+    }
+  }
+>
+  <div
+    className="container"
+  >
+    <main>
+      <h1>
+        <a
+          href="https://reportedly.weebly.com/"
+          style={
+            {
+              "textDecoration": "underline",
+            }
+          }
+        >
+          Reported
+        </a>
+      </h1>
+      <div
+        className="Toastify"
+      />
+      <div
+        className="user-status-bar"
+      >
+        <div
+          className="user-greeting"
+        >
+          <span
+            aria-label="user"
+            role="img"
+          >
+            👤
+          </span>
+           
+          test@example.com
+        </div>
+        <div
+          className="user-actions"
+        >
+          <button
+            className="status-bar-btn-primary"
+            onClick={[Function]}
+            type="button"
+          >
+            Edit Profile
+          </button>
+          <button
+            className="status-bar-btn"
+            onClick={[Function]}
+            type="button"
+          >
+            Log Out
+          </button>
+        </div>
+      </div>
+      <form
+        onSubmit={[Function]}
       >
         <fieldset
           disabled={false}
@@ -633,7 +1384,6 @@ exports[`Home renders children correctly 1`] = `
             htmlFor="where"
           >
             Where: 
-            
             <br />
             <button
               name="where"
@@ -645,7 +1395,7 @@ exports[`Home renders children correctly 1`] = `
               }
               type="button"
             >
-              
+              Finding Address...
             </button>
           </label>
           <label

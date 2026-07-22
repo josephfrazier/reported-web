@@ -40,3 +40,237 @@ input[type='search'] {
 input[type='search']::-webkit-search-cancel-button {
   appearance: searchfield-cancel-button;
 }
+
+/* User Status Bar */
+.user-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  background: #f5f5f5;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.user-greeting {
+  font-weight: 500;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.user-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.status-bar-btn {
+  padding: 0.4rem 0.9rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+  color: #222;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-family: inherit;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.status-bar-btn:hover {
+  background: #eee;
+  border-color: #999;
+}
+
+.status-bar-btn-primary {
+  composes: status-bar-btn;
+  background: #007bff;
+  color: #fff;
+  border-color: #007bff;
+}
+
+.status-bar-btn-primary:hover {
+  background: #0069d9;
+  border-color: #0069d9;
+}
+
+/* Auth Modal */
+.auth-modal-tabs {
+  display: flex;
+  border-bottom: 2px solid #e0e0e0;
+  margin-bottom: 1.25rem;
+}
+
+.auth-modal-tab {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  text-align: center;
+  cursor: pointer;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  font-size: 1rem;
+  font-family: inherit;
+  color: #666;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.auth-modal-tab:hover {
+  color: #333;
+}
+
+.auth-modal-tab-active {
+  composes: auth-modal-tab;
+  color: #007bff;
+  border-bottom-color: #007bff;
+  font-weight: 600;
+}
+
+.auth-modal-body {
+  padding: 0 0.25rem;
+}
+
+.auth-modal-body label {
+  margin: 0.75rem 0;
+}
+
+.auth-modal-body input[type='email'],
+.auth-modal-body input[type='text'],
+.auth-modal-body input[type='tel'],
+.auth-modal-body input[type='password'] {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.auth-field-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.auth-field-row input {
+  flex: 1;
+}
+
+.auth-field-row button {
+  flex-shrink: 0;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+.auth-submit-btn {
+  width: 100%;
+  padding: 0.6rem 1rem;
+  margin-top: 0.75rem;
+  background: #007bff;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.auth-submit-btn:hover {
+  background: #0069d9;
+}
+
+.auth-submit-btn:disabled {
+  background: #999;
+  cursor: not-allowed;
+}
+
+.auth-prompt {
+  text-align: center;
+  padding: 2rem;
+  margin: 1rem 0;
+}
+
+.auth-prompt button {
+  background: none;
+  border: none;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+}
+
+.auth-switch-link {
+  display: block;
+  text-align: center;
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.auth-switch-link button {
+  background: none;
+  border: none;
+  color: #007bff;
+  cursor: pointer;
+  font-size: inherit;
+  font-family: inherit;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.auth-switch-link button:hover {
+  color: #0069d9;
+}
+
+.auth-error {
+  color: #d32f2f;
+  background: #fde8e8;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+}
+
+/* Edit Profile */
+.edit-profile-section {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #f9f9f9;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.edit-profile-section h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+}
+
+/* Mobile responsive */
+@media (width <= 480px) {
+  .user-status-bar {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+
+  .user-greeting {
+    justify-content: center;
+  }
+
+  .user-actions {
+    justify-content: center;
+  }
+
+  .auth-field-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

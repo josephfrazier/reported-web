@@ -1,6 +1,12 @@
 import axios from 'axios';
 import axiosRetry from 'axios-retry';
 
+if (process.env.BROWSER) {
+  throw new Error(
+    'Do not import `geoclient.js` from inside the client-side code.',
+  );
+}
+
 import cbData from './districts-info.json';
 
 const { GEO_APP_KEY, GOOGLE_API_KEY } = process.env;

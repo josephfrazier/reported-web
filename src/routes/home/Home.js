@@ -262,7 +262,7 @@ async function extractPlate({
 
     // Choose first result with T######C plate if it exists, see https://github.com/josephfrazier/reported-web/issues/584
     let result = results.filter(r =>
-      r.plate.toUpperCase().match(/^T\d\d\d\d\d\dC$/),
+      r.plate?.toUpperCase().match(/^T\d\d\d\d\d\dC$/),
     )[0];
     if (!result) {
       result = results[0];
@@ -273,7 +273,7 @@ async function extractPlate({
     } catch {
       result.licenseState = null;
     }
-    result.plate = result.plate.toUpperCase();
+    result.plate = result.plate?.toUpperCase();
     result.allPlateResults = results;
 
     return result;
@@ -1975,12 +1975,12 @@ class Home extends React.Component {
                           list="plateSuggestions"
                           autoComplete="off"
                           ref={this.plateRef}
-                          placeholder={this.state.allPlateResults?.[0]?.plate.toUpperCase()}
+                          placeholder={this.state.allPlateResults?.[0]?.plate?.toUpperCase()}
                           onChange={event => {
                             const plate = event.target.value.toUpperCase();
                             const matchedResult =
                               this.state.allPlateResults.find(
-                                r => r.plate.toUpperCase() === plate,
+                                r => r.plate?.toUpperCase() === plate,
                               );
                             const licenseState = matchedResult
                               ? getLicenseStateFromPlateResult(matchedResult)
@@ -1990,7 +1990,7 @@ class Home extends React.Component {
                         />
                         <datalist id="plateSuggestions">
                           {this.state.allPlateResults?.map(result => (
-                            <option value={result.plate.toUpperCase()} />
+                            <option value={result.plate?.toUpperCase()} />
                           ))}
                         </datalist>
                         <select

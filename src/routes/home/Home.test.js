@@ -148,6 +148,32 @@ describe('Home', () => {
     localStorage.removeItem(storageKey);
   });
 
+  test('renders with allPlateResults entry missing plate', () => {
+    const storageKey = 'reportedWebHomeState';
+    localStorage.setItem(
+      storageKey,
+      JSON.stringify({
+        email: 'test@example.com',
+        loginSuccessful: true,
+      }),
+    );
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ localStorageKey: storageKey, homeRef });
+    });
+    // Entry exists but has no .plate — .toUpperCase() on undefined throws
+    renderer.act(() => {
+      homeRef.current.setState({ allPlateResults: [{ region: {} }] });
+    });
+
+    expect(tree.toJSON()).toMatchSnapshot();
+
+    tree.unmount();
+    localStorage.removeItem(storageKey);
+  });
+
   test('renders Edit Profile UI', () => {
     const storageKey = 'reportedWebHomeState';
     localStorage.setItem(

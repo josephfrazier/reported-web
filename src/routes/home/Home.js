@@ -1989,7 +1989,7 @@ class Home extends React.Component {
                           }}
                         />
                         <datalist id="plateSuggestions">
-                          {this.state.allPlateResults.map(result => (
+                          {this.state.allPlateResults?.map(result => (
                             <option value={result.plate.toUpperCase()} />
                           ))}
                         </datalist>

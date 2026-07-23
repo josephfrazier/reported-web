@@ -1975,7 +1975,7 @@ class Home extends React.Component {
                           list="plateSuggestions"
                           autoComplete="off"
                           ref={this.plateRef}
-                          placeholder={this.state.allPlateResults[0]?.plate.toUpperCase()}
+                          placeholder={this.state.allPlateResults?.[0]?.plate.toUpperCase()}
                           onChange={event => {
                             const plate = event.target.value.toUpperCase();
                             const matchedResult =

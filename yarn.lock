@@ -8028,10 +8028,10 @@ object-keys@^1.1.1:
   resolved "https://registry.yarnpkg.com/object-keys/-/object-keys-1.1.1.tgz#1c47f272df277f3b1daf061677d9c82e2322c60e"
   integrity sha512-NuAESUOUMrlIXOfHKzD6bpPu3tYt3xvjNdRIQ+FeT0lNb4K8WR70CaDxhuNguS2XG+GjkyMwOzsN5ZktImfhLA==
 
-object-to-formdata@^1.4.3:
-  version "1.6.4"
-  resolved "https://registry.yarnpkg.com/object-to-formdata/-/object-to-formdata-1.6.4.tgz#ee2c3693ae6829ce8847f77eff7a3d8289c843e1"
-  integrity sha512-1XZmRyR6yBhDxogp+9Vi00FFDtCah8x8FGc98lgvBzZlGeQGxj00pKmWHtzl7vrSpqPx5zXVb/XbiP5ZS2karg==
+object-to-formdata@^5.0.0:
+  version "5.0.0"
+  resolved "https://registry.yarnpkg.com/object-to-formdata/-/object-to-formdata-5.0.0.tgz#d5a9ea70a64660d08f42c8432d256ac6038d62d0"
+  integrity sha512-reALyBo3+Nq71Py5uto2tjdxoAun83YqNBqElAWMNiOwfQxAnpMQiFPpZEvRL3kjShxsiBhNY/ikLUbc42TZ1Q==
 
 object.assign@^4.1.0, object.assign@^4.1.2, object.assign@^4.1.4, object.assign@^4.1.7:
   version "4.1.7"

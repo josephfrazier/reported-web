@@ -260,8 +260,8 @@ New York, NY 10007",
         },
         "place_id": "ChIJgTPiDCJawokRZqACvDgMnm8",
         "types": [
+          "premise",
           "street_address",
-          "subpremise",
         ],
       },
       {
@@ -1345,8 +1345,8 @@ New York, NY 10007",
         },
         "place_id": "ChIJgTPiDCJawokRZqACvDgMnm8",
         "types": [
+          "premise",
           "street_address",
-          "subpremise",
         ],
       },
       {

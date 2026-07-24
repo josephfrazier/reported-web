@@ -655,7 +655,7 @@ app.get('/api/submissions-in-polygon', (req, res) => {
 //
 // Register server-side rendering middleware
 // -----------------------------------------------------------------------------
-app.get('*', async (req, res, next) => {
+app.get('/{*splat}', async (req, res, next) => {
   try {
     const css = new Set();
 

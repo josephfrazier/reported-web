@@ -32,7 +32,7 @@ import captureFrame from 'capture-frame';
 import pEvent from 'p-event';
 import omit from 'object.omit';
 import bufferToArrayBuffer from 'buffer-to-arraybuffer';
-import objectToFormData from 'object-to-formdata';
+import { serialize } from 'object-to-formdata';
 import usStateNames from 'datasets-us-states-abbr-names';
 import fileExtension from 'file-extension';
 import diceware from 'diceware-generator';
@@ -225,7 +225,7 @@ async function fetchPlateResults({
   );
   console.timeEnd(`bufferToBlob(${attachmentFile.name})`); // eslint-disable-line no-console
 
-  const formData = objectToFormData({
+  const formData = serialize({
     attachmentFile: attachmentBlob,
     email,
     password,
@@ -1715,13 +1715,16 @@ class Home extends React.Component {
                   axios
                     .post(
                       '/submit',
-                      objectToFormData({
-                        ...this.getPerSubmissionState(),
-                        attachmentData: this.state.attachmentData,
-                        CreateDate: new Date(
-                          this.state.CreateDate,
-                        ).toISOString(),
-                      }),
+                      serialize(
+                        {
+                          ...this.getPerSubmissionState(),
+                          attachmentData: this.state.attachmentData,
+                          CreateDate: new Date(
+                            this.state.CreateDate,
+                          ).toISOString(),
+                        },
+                        { allowEmptyArrays: true },
+                      ),
                       {
                         onUploadProgress: progressEvent => {
                           const {

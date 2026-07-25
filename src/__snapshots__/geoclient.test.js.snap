@@ -243,18 +243,18 @@ New York, NY 10007",
         "formatted_address": "230 Broadway, New York, NY 10007, USA",
         "geometry": {
           "location": {
-            "lat": 40.7124826,
-            "lng": -74.0059236,
+            "lat": 40.7125188,
+            "lng": -74.005892,
           },
           "location_type": "ROOFTOP",
           "viewport": {
             "northeast": {
-              "lat": 40.7138315802915,
-              "lng": -74.00457461970849,
+              "lat": 40.71386778029149,
+              "lng": -74.0045430197085,
             },
             "southwest": {
-              "lat": 40.71113361970851,
-              "lng": -74.0072725802915,
+              "lat": 40.71116981970849,
+              "lng": -74.00724098029151,
             },
           },
         },
@@ -267,10 +267,17 @@ New York, NY 10007",
       {
         "address_components": [
           {
-            "long_name": "New York City Hall",
-            "short_name": "New York City Hall",
+            "long_name": "29",
+            "short_name": "29",
             "types": [
-              "premise",
+              "street_number",
+            ],
+          },
+          {
+            "long_name": "Nicolas str",
+            "short_name": "Nicolas str",
+            "types": [
+              "route",
             ],
           },
           {
@@ -322,52 +329,48 @@ New York, NY 10007",
             ],
           },
         ],
-        "formatted_address": "New York City Hall, New York, NY 10007, USA",
+        "formatted_address": "29 Nicolas str, New York, NY 10007, USA",
         "geometry": {
-          "bounds": {
-            "northeast": {
-              "lat": 40.7130243,
-              "lng": -74.0055682,
-            },
-            "southwest": {
-              "lat": 40.7124519,
-              "lng": -74.0064381,
-            },
-          },
           "location": {
-            "lat": 40.7127503,
-            "lng": -74.0059765,
+            "lat": 40.7127753,
+            "lng": -74.0059728,
           },
           "location_type": "ROOFTOP",
           "viewport": {
             "northeast": {
-              "lat": 40.7139226802915,
-              "lng": -74.00472326970849,
+              "lat": 40.71417683029149,
+              "lng": -74.00483901970848,
             },
             "southwest": {
-              "lat": 40.7112247197085,
-              "lng": -74.0074212302915,
+              "lat": 40.71147886970849,
+              "lng": -74.0075369802915,
             },
           },
         },
         "navigation_points": [
           {
             "location": {
-              "latitude": 40.7127159,
-              "longitude": -74.006543,
+              "latitude": 40.7128491,
+              "longitude": -74.0059091,
             },
+            "restricted_travel_modes": [
+              "DRIVE",
+            ],
           },
           {
             "location": {
-              "latitude": 40.7121692,
-              "longitude": -74.0057323,
+              "latitude": 40.7127539,
+              "longitude": -74.0064295,
             },
+            "restricted_travel_modes": [
+              "WALK",
+            ],
           },
         ],
-        "place_id": "ChIJMfxeDCJawokRaUdk7prx_pY",
+        "place_id": "ChIJSyX8DCJawokRVmNe4UeFtt0",
         "types": [
-          "premise",
           "street_address",
+          "subpremise",
         ],
       },
       {
@@ -1328,18 +1331,18 @@ New York, NY 10007",
         "formatted_address": "230 Broadway, New York, NY 10007, USA",
         "geometry": {
           "location": {
-            "lat": 40.7124826,
-            "lng": -74.0059236,
+            "lat": 40.7125188,
+            "lng": -74.005892,
           },
           "location_type": "ROOFTOP",
           "viewport": {
             "northeast": {
-              "lat": 40.7138315802915,
-              "lng": -74.00457461970849,
+              "lat": 40.71386778029149,
+              "lng": -74.0045430197085,
             },
             "southwest": {
-              "lat": 40.71113361970851,
-              "lng": -74.0072725802915,
+              "lat": 40.71116981970849,
+              "lng": -74.00724098029151,
             },
           },
         },
@@ -1352,10 +1355,17 @@ New York, NY 10007",
       {
         "address_components": [
           {
-            "long_name": "New York City Hall",
-            "short_name": "New York City Hall",
+            "long_name": "29",
+            "short_name": "29",
             "types": [
-              "premise",
+              "street_number",
+            ],
+          },
+          {
+            "long_name": "Nicolas str",
+            "short_name": "Nicolas str",
+            "types": [
+              "route",
             ],
           },
           {
@@ -1407,52 +1417,48 @@ New York, NY 10007",
             ],
           },
         ],
-        "formatted_address": "New York City Hall, New York, NY 10007, USA",
+        "formatted_address": "29 Nicolas str, New York, NY 10007, USA",
         "geometry": {
-          "bounds": {
-            "northeast": {
-              "lat": 40.7130243,
-              "lng": -74.0055682,
-            },
-            "southwest": {
-              "lat": 40.7124519,
-              "lng": -74.0064381,
-            },
-          },
           "location": {
-            "lat": 40.7127503,
-            "lng": -74.0059765,
+            "lat": 40.7127753,
+            "lng": -74.0059728,
           },
           "location_type": "ROOFTOP",
           "viewport": {
             "northeast": {
-              "lat": 40.7139226802915,
-              "lng": -74.00472326970849,
+              "lat": 40.71417683029149,
+              "lng": -74.00483901970848,
             },
             "southwest": {
-              "lat": 40.7112247197085,
-              "lng": -74.0074212302915,
+              "lat": 40.71147886970849,
+              "lng": -74.0075369802915,
             },
           },
         },
         "navigation_points": [
           {
             "location": {
-              "latitude": 40.7127159,
-              "longitude": -74.006543,
+              "latitude": 40.7128491,
+              "longitude": -74.0059091,
             },
+            "restricted_travel_modes": [
+              "DRIVE",
+            ],
           },
           {
             "location": {
-              "latitude": 40.7121692,
-              "longitude": -74.0057323,
+              "latitude": 40.7127539,
+              "longitude": -74.0064295,
             },
+            "restricted_travel_modes": [
+              "WALK",
+            ],
           },
         ],
-        "place_id": "ChIJMfxeDCJawokRaUdk7prx_pY",
+        "place_id": "ChIJSyX8DCJawokRVmNe4UeFtt0",
         "types": [
-          "premise",
           "street_address",
+          "subpremise",
         ],
       },
       {

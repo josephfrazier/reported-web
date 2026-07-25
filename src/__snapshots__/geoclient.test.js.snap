@@ -570,7 +570,7 @@ New York, NY 10007",
 }
 `;
 
-exports[`processValidation returns the right object around 3521-3501 Riverdale Ave, The Bronx, NY 10463 1`] = `
+exports[`processValidation returns the right object around 3521 Riverdale Ave, The Bronx, NY 10463 1`] = `
 {
   "cb_data": {
     "address": "5676 Riverdale Avenue,

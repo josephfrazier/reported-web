@@ -1344,39 +1344,19 @@ exports[`Home renders submission form and Previous Submissions when logged in 1`
                 Blocked the crosswalk
               </option>
               <option
-                value="Honked horn (no emergency)"
+                value="Drove recklessly"
               >
-                Honked horn (no emergency)
+                Drove recklessly
               </option>
               <option
-                value="Failed to yield to pedestrian"
+                value="Parked illegally"
               >
-                Failed to yield to pedestrian
+                Parked illegally
               </option>
               <option
-                value="Drove aggressively"
+                value="Ran a red light or stop sign"
               >
-                Drove aggressively
-              </option>
-              <option
-                value="Was on a cell phone while driving"
-              >
-                Was on a cell phone while driving
-              </option>
-              <option
-                value="Refused to pick me up"
-              >
-                Refused to pick me up
-              </option>
-              <option
-                value="Was courteous, kind or polite"
-              >
-                Was courteous, kind or polite
-              </option>
-              <option
-                value="Went above and beyond to help"
-              >
-                Went above and beyond to help
+                Ran a red light or stop sign
               </option>
             </select>
           </label>
@@ -1984,39 +1964,19 @@ exports[`Home renders with allPlateResults entry missing plate 1`] = `
                 Blocked the crosswalk
               </option>
               <option
-                value="Honked horn (no emergency)"
+                value="Drove recklessly"
               >
-                Honked horn (no emergency)
+                Drove recklessly
               </option>
               <option
-                value="Failed to yield to pedestrian"
+                value="Parked illegally"
               >
-                Failed to yield to pedestrian
+                Parked illegally
               </option>
               <option
-                value="Drove aggressively"
+                value="Ran a red light or stop sign"
               >
-                Drove aggressively
-              </option>
-              <option
-                value="Was on a cell phone while driving"
-              >
-                Was on a cell phone while driving
-              </option>
-              <option
-                value="Refused to pick me up"
-              >
-                Refused to pick me up
-              </option>
-              <option
-                value="Was courteous, kind or polite"
-              >
-                Was courteous, kind or polite
-              </option>
-              <option
-                value="Went above and beyond to help"
-              >
-                Went above and beyond to help
+                Ran a red light or stop sign
               </option>
             </select>
           </label>
@@ -2622,39 +2582,19 @@ exports[`Home renders with undefined allPlateResults 1`] = `
                 Blocked the crosswalk
               </option>
               <option
-                value="Honked horn (no emergency)"
+                value="Drove recklessly"
               >
-                Honked horn (no emergency)
+                Drove recklessly
               </option>
               <option
-                value="Failed to yield to pedestrian"
+                value="Parked illegally"
               >
-                Failed to yield to pedestrian
+                Parked illegally
               </option>
               <option
-                value="Drove aggressively"
+                value="Ran a red light or stop sign"
               >
-                Drove aggressively
-              </option>
-              <option
-                value="Was on a cell phone while driving"
-              >
-                Was on a cell phone while driving
-              </option>
-              <option
-                value="Refused to pick me up"
-              >
-                Refused to pick me up
-              </option>
-              <option
-                value="Was courteous, kind or polite"
-              >
-                Was courteous, kind or polite
-              </option>
-              <option
-                value="Went above and beyond to help"
-              >
-                Went above and beyond to help
+                Ran a red light or stop sign
               </option>
             </select>
           </label>

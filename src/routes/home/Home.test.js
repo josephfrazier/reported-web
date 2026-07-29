@@ -28,13 +28,9 @@ require('jest-mock-now')();
 const typeofcomplaintValues = [
   'Blocked the bike lane',
   'Blocked the crosswalk',
-  'Honked horn (no emergency)',
-  'Failed to yield to pedestrian',
-  'Drove aggressively',
-  'Was on a cell phone while driving',
-  'Refused to pick me up',
-  'Was courteous, kind or polite',
-  'Went above and beyond to help',
+  'Drove recklessly',
+  'Parked illegally',
+  'Ran a red light or stop sign',
 ];
 
 const insertCss = () => {};

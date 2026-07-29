@@ -9,6 +9,7 @@
 
 import path from 'path';
 import assert from 'assert';
+import { execSync } from 'child_process';
 import express from 'express';
 import forceSsl from 'force-ssl-heroku';
 import compression from 'compression';
@@ -55,6 +56,17 @@ const {
   PLATERECOGNIZER_TOKEN,
   PLATERECOGNIZER_TOKEN_TWO,
 } = process.env;
+
+let commitHash = process.env.HEROKU_BUILD_COMMIT || 'unknown';
+if (commitHash === 'unknown') {
+  try {
+    commitHash = execSync('git rev-parse --short HEAD', {
+      encoding: 'utf8',
+    }).trim();
+  } catch (e) {
+    console.warn('Could not determine git commit hash:', e.message);
+  }
+}
 
 // Ping the app periodically to prevent Heroku eco tier dyno from sleeping
 // Only runs on Heroku (same detection logic as heroku-self-ping)
@@ -677,6 +689,7 @@ app.get('/{*splat}', async (req, res, next) => {
     const context = {
       insertCss,
       fetch,
+      commitHash,
       // The twins below are wild, be careful!
       pathname: req.path,
       query: req.query,
@@ -712,6 +725,7 @@ app.get('/{*splat}', async (req, res, next) => {
     data.scripts = Array.from(scripts);
     data.app = {
       apiUrl: config.api.clientUrl,
+      commitHash,
     };
 
     const html = ReactDOM.renderToStaticMarkup(<Html {...data} />);

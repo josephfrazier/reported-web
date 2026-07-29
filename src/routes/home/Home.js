@@ -2315,6 +2315,20 @@ class Home extends React.Component {
                 </span>
               </a>
             </div>
+
+            {this.props.commitHash && (
+              <div
+                style={{
+                  clear: 'both',
+                  textAlign: 'center',
+                  fontSize: '0.75rem',
+                  color: '#999',
+                  paddingTop: '1rem',
+                }}
+              >
+                {this.props.commitHash}
+              </div>
+            )}
           </main>
         </div>
       </Dropzone>
@@ -2326,10 +2340,12 @@ Home.propTypes = {
   typeofcomplaintValues: PropTypes.arrayOf(PropTypes.string).isRequired,
   boroughBoundariesFeatureCollection: PropTypes.object.isRequired,
   localStorageKey: PropTypes.string,
+  commitHash: PropTypes.string,
 };
 
 Home.defaultProps = {
   localStorageKey: undefined,
+  commitHash: undefined,
 };
 
 const MyMapComponentPure = props => {

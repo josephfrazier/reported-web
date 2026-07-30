@@ -35,6 +35,12 @@ yarn dashboard # Runs a dashboard for the Parse server
 yarn mongo-stop # Stops MongoDB
 ```
 
+## `Unexpected end of form` errors
+
+These have been seen a few times from a couple users, seemingly limited to iOS, but on both Safari and Chrome.
+Chrome on iOS has worked at least once for an affected user, but not consistently.
+So far, my recommendation for this error is to use a non-iOS device.
+
 ## Context on `localStorage` use (w.r.t performance concerns about lag/delay/slowness/latency when typing)
 
 Over the years, reports of slow typing have come from multiple users, and it periodically gets (re)discussed in our Slack.

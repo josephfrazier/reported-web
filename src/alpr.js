@@ -130,7 +130,7 @@ export default function readLicenseViaALPR({
                 );
                 crops.plateCropDataUrl = await cropBox(result.box);
               } catch (err) {
-                console.error('Failed to crop image:', err); // eslint-disable-line no-console
+                console.error('Failed to crop image:', err);
               }
               return { ...result, ...crops };
             }),

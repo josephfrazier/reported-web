@@ -27,6 +27,7 @@ const context = {
   fetch: createFetch(fetch, {
     baseUrl: window.App.apiUrl,
   }),
+  commitHash: window.App.commitHash,
 };
 
 // insertCss function for client-side rendering

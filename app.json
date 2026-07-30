@@ -5,7 +5,7 @@
       "value": "https://reported-parse.webabot.com/parse"
     }
   },
-  "stack": "heroku-24",
+  "stack": "heroku-26",
   "buildpacks": [
     {
       "url": "heroku/nodejs"

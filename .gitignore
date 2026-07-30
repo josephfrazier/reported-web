@@ -24,6 +24,7 @@ yarn-error.log*
 logs
 
 # Editors and IDEs
+.claude/settings.local.json
 .idea
 .vscode/*
 !.vscode/settings.json

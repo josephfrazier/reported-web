@@ -1902,7 +1902,7 @@ class Home extends React.Component {
                                   <button
                                     type="button"
                                     key={`${plate}-${box.xmin}-${box.ymin}`}
-                                    className={homeStyles.plateOverlay}
+                                    className={homeStyles['plate-overlay']}
                                     style={{
                                       left: `${(box.xmin / imageWidth) * 100}%`,
                                       top: `${(box.ymin / imageHeight) * 100}%`,
@@ -1924,7 +1924,9 @@ class Home extends React.Component {
                                     }}
                                   >
                                     <span
-                                      className={homeStyles.plateOverlayTooltip}
+                                      className={
+                                        homeStyles['plate-overlay-tooltip']
+                                      }
                                     >
                                       {plate}
                                       {licenseState && ` (${licenseState})`}

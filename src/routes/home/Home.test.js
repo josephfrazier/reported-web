@@ -214,14 +214,16 @@ describe('Home', () => {
     const overlay = tree.root.findByProps({
       'aria-label': 'Select license plate ABC123',
     });
-    expect(overlay.props.className).toBe('plateOverlay');
+    expect(overlay.props.className).toBe('plate-overlay');
     expect(overlay.props.style).toEqual({
       left: '10%',
       top: '40%',
       width: '20%',
       height: '10%',
     });
-    expect(overlay.props.children.props.className).toBe('plateOverlayTooltip');
+    expect(overlay.props.children.props.className).toBe(
+      'plate-overlay-tooltip',
+    );
     expect(overlay.props.children.props.children).toEqual(['ABC123', ' (NY)']);
 
     renderer.act(() => {

@@ -232,8 +232,8 @@ async function fetchPlateResults({
   });
   const { data } = await axios.post('/platerecognizer', formData);
 
-  attachmentPlateCache.set(attachmentFile, data.results);
-  return data.results;
+  attachmentPlateCache.set(attachmentFile, data);
+  return data;
 }
 
 async function extractPlate({
@@ -252,13 +252,14 @@ async function extractPlate({
       return { plate: '', licenseState: '' };
     }
 
-    const results = await fetchPlateResults({
+    const data = await fetchPlateResults({
       attachmentFile,
       attachmentBuffer,
       ext,
       email,
       password,
     });
+    const { results } = data;
 
     // Choose first result with T######C plate if it exists, see https://github.com/josephfrazier/reported-web/issues/584
     let result = results.filter(r =>
@@ -275,6 +276,7 @@ async function extractPlate({
     }
     result.plate = result.plate?.toUpperCase();
     result.allPlateResults = results;
+    result.allPlateData = data;
 
     return result;
   } catch (err) {
@@ -451,6 +453,7 @@ class Home extends React.Component {
       platePickerResults: [],
       platePickerLoading: false,
       plateThumbnailsByKey: {},
+      plateDataByAttachmentName: {},
 
       isAuthModalOpen: false,
       authModalTab: 'login',
@@ -917,6 +920,12 @@ class Home extends React.Component {
                       ...state.plateThumbnailsByKey,
                       ...getPlateThumbnailsByKey(result.allPlateResults),
                     },
+                    plateDataByAttachmentName: result.allPlateData
+                      ? {
+                          ...state.plateDataByAttachmentName,
+                          [attachmentFile.name]: result.allPlateData,
+                        }
+                      : state.plateDataByAttachmentName,
                   }));
                 })
                 .finally(() => {
@@ -984,13 +993,14 @@ class Home extends React.Component {
       const { email, password } = this.state;
       const { attachmentBuffer } = await blobToBuffer({ attachmentFile });
       const ext = fileExtension(attachmentFile.name);
-      const results = await fetchPlateResults({
+      const data = await fetchPlateResults({
         attachmentFile,
         attachmentBuffer,
         ext,
         email,
         password,
       });
+      const { results } = data;
 
       this.setState(state => ({
         platePickerResults: results,
@@ -999,6 +1009,10 @@ class Home extends React.Component {
         plateThumbnailsByKey: {
           ...state.plateThumbnailsByKey,
           ...getPlateThumbnailsByKey(results),
+        },
+        plateDataByAttachmentName: {
+          ...state.plateDataByAttachmentName,
+          [attachmentFile.name]: data,
         },
       }));
     } catch (err) {
@@ -1770,6 +1784,7 @@ class Home extends React.Component {
                         submissions: [submission].concat(state.submissions),
                         allPlateResults: [],
                         plateThumbnailsByKey: {},
+                        plateDataByAttachmentName: {},
                         vehicleInfoComponent: null,
                         violationSummaryComponent: null,
                         reportDescription: '',
@@ -1833,6 +1848,8 @@ class Home extends React.Component {
                       const ext = fileExtension(name);
                       const isImg = isImage({ ext });
                       const src = getBlobUrl(attachmentFile);
+                      const attachmentPlateData =
+                        this.state.plateDataByAttachmentName[name];
 
                       return (
                         <div
@@ -1844,18 +1861,79 @@ class Home extends React.Component {
                             position: 'relative',
                           }}
                         >
-                          <a
-                            href={src}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <div
+                            style={{
+                              position: 'relative',
+                              display: 'inline-block',
+                              maxWidth: '100%',
+                            }}
                           >
-                            {isImg ? (
-                              <img src={src} alt={name} />
-                            ) : (
-                              /* eslint-disable-next-line jsx-a11y/media-has-caption */
-                              <video src={src} alt={name} />
-                            )}
-                          </a>
+                            <a
+                              href={src}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              {isImg ? (
+                                <img src={src} alt={name} />
+                              ) : (
+                                /* eslint-disable-next-line jsx-a11y/media-has-caption */
+                                <video src={src} alt={name} />
+                              )}
+                            </a>
+                            {isImg &&
+                              attachmentPlateData?.results?.map(result => {
+                                const { box } = result;
+                                const plate = result.plate?.toUpperCase();
+                                const {
+                                  image_width: imageWidth,
+                                  image_height: imageHeight,
+                                } = attachmentPlateData;
+                                if (
+                                  !box ||
+                                  !plate ||
+                                  !imageWidth ||
+                                  !imageHeight
+                                ) {
+                                  return null;
+                                }
+                                const licenseState =
+                                  getLicenseStateFromPlateResult(result);
+
+                                return (
+                                  <button
+                                    type="button"
+                                    key={`${plate}-${box.xmin}-${box.ymin}`}
+                                    className={homeStyles.plateOverlay}
+                                    style={{
+                                      left: `${(box.xmin / imageWidth) * 100}%`,
+                                      top: `${(box.ymin / imageHeight) * 100}%`,
+                                      width: `${
+                                        ((box.xmax - box.xmin) / imageWidth) *
+                                        100
+                                      }%`,
+                                      height: `${
+                                        ((box.ymax - box.ymin) / imageHeight) *
+                                        100
+                                      }%`,
+                                    }}
+                                    aria-label={`Select license plate ${plate}`}
+                                    onClick={() => {
+                                      this.setLicensePlate({
+                                        plate,
+                                        licenseState,
+                                      });
+                                    }}
+                                  >
+                                    <span
+                                      className={homeStyles.plateOverlayTooltip}
+                                    >
+                                      {plate}
+                                      {licenseState && ` (${licenseState})`}
+                                    </span>
+                                  </button>
+                                );
+                              })}
+                          </div>
 
                           <button
                             type="button"
@@ -1888,11 +1966,18 @@ class Home extends React.Component {
                                     licenseState: 'NY',
                                     allPlateResults: [],
                                     plateThumbnailsByKey: {},
+                                    plateDataByAttachmentName: {},
                                     vehicleInfoComponent: null,
                                     violationSummaryComponent: null,
                                   };
                                 }
-                                return { attachmentData };
+                                return {
+                                  attachmentData,
+                                  plateDataByAttachmentName: omit(
+                                    state.plateDataByAttachmentName,
+                                    name,
+                                  ),
+                                };
                               });
                             }}
                           >

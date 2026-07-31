@@ -170,6 +170,69 @@ describe('Home', () => {
     localStorage.removeItem(storageKey);
   });
 
+  test('renders plate overlays on uploaded images and selects plate on click', () => {
+    const storageKey = 'reportedWebHomeState';
+    localStorage.setItem(
+      storageKey,
+      JSON.stringify({
+        email: 'test@example.com',
+        loginSuccessful: true,
+      }),
+    );
+
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ localStorageKey: storageKey, homeRef });
+    });
+    renderer.act(() => {
+      homeRef.current.setState({
+        attachmentData: [
+          new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }),
+        ],
+        plateDataByAttachmentName: {
+          'photo.jpg': {
+            results: [
+              {
+                plate: 'abc123',
+                region: { code: 'us-ny' },
+                box: { xmin: 100, ymin: 200, xmax: 300, ymax: 250 },
+              },
+            ],
+            image_width: 1000,
+            image_height: 500,
+          },
+        },
+      });
+    });
+
+    const overlay = tree.root.findByProps({
+      'aria-label': 'Select license plate ABC123',
+    });
+    expect(overlay.props.className).toBe('plateOverlay');
+    expect(overlay.props.style).toEqual({
+      left: '10%',
+      top: '40%',
+      width: '20%',
+      height: '10%',
+    });
+    expect(overlay.props.children.props.className).toBe('plateOverlayTooltip');
+    expect(overlay.props.children.props.children).toEqual(['ABC123', ' (NY)']);
+
+    renderer.act(() => {
+      overlay.props.onClick();
+    });
+    expect(homeRef.current.state.plate).toBe('ABC123');
+    expect(homeRef.current.state.licenseState).toBe('NY');
+
+    tree.unmount();
+    localStorage.removeItem(storageKey);
+    global.URL.createObjectURL = originalCreateObjectURL;
+  });
+
   test('renders Edit Profile UI', () => {
     const storageKey = 'reportedWebHomeState';
     localStorage.setItem(

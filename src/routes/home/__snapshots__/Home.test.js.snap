@@ -1488,7 +1488,7 @@ exports[`Home renders submission form and Previous Submissions when logged in 1`
 </div>
 `;
 
-exports[`Home renders with allPlateResults entry missing plate 1`] = `
+exports[`Home renders with allPlateData entry missing plate 1`] = `
 <div
   aria-disabled={false}
   className="root"
@@ -2108,7 +2108,7 @@ exports[`Home renders with allPlateResults entry missing plate 1`] = `
 </div>
 `;
 
-exports[`Home renders with undefined allPlateResults 1`] = `
+exports[`Home renders with undefined allPlateData 1`] = `
 <div
   aria-disabled={false}
   className="root"

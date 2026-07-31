@@ -119,7 +119,7 @@ describe('Home', () => {
     tree.unmount();
   });
 
-  test('renders with undefined allPlateResults', () => {
+  test('renders with undefined allPlateData', () => {
     const storageKey = 'reportedWebHomeState';
     localStorage.setItem(
       storageKey,
@@ -135,7 +135,7 @@ describe('Home', () => {
       tree = renderHome({ localStorageKey: storageKey, homeRef });
     });
     renderer.act(() => {
-      homeRef.current.setState({ allPlateResults: undefined });
+      homeRef.current.setState({ allPlateData: undefined });
     });
 
     expect(tree.toJSON()).toMatchSnapshot();
@@ -144,7 +144,7 @@ describe('Home', () => {
     localStorage.removeItem(storageKey);
   });
 
-  test('renders with allPlateResults entry missing plate', () => {
+  test('renders with allPlateData entry missing plate', () => {
     const storageKey = 'reportedWebHomeState';
     localStorage.setItem(
       storageKey,
@@ -161,7 +161,9 @@ describe('Home', () => {
     });
     // Entry exists but has no .plate — .toUpperCase() on undefined throws
     renderer.act(() => {
-      homeRef.current.setState({ allPlateResults: [{ region: {} }] });
+      homeRef.current.setState({
+        allPlateData: { results: [{ region: {} }] },
+      });
     });
 
     expect(tree.toJSON()).toMatchSnapshot();

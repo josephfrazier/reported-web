@@ -275,7 +275,6 @@ async function extractPlate({
       result.licenseState = null;
     }
     result.plate = result.plate?.toUpperCase();
-    result.allPlateResults = results;
     result.allPlateData = data;
 
     return result;
@@ -443,7 +442,7 @@ class Home extends React.Component {
       isSubmitting: false,
       isPreviousSubmissionsLoading: false,
       hasLoadedPreviousSubmissions: false,
-      allPlateResults: [],
+      allPlateData: null,
       vehicleInfoComponent: null,
       violationSummaryComponent: null,
       submissions: [],
@@ -915,10 +914,10 @@ class Home extends React.Component {
                     this.setLicensePlate(result);
                   }
                   this.setState(state => ({
-                    allPlateResults: result.allPlateResults,
+                    allPlateData: result.allPlateData,
                     plateThumbnailsByKey: {
                       ...state.plateThumbnailsByKey,
-                      ...getPlateThumbnailsByKey(result.allPlateResults),
+                      ...getPlateThumbnailsByKey(result.allPlateData?.results),
                     },
                     plateDataByAttachmentName: result.allPlateData
                       ? {
@@ -1782,7 +1781,7 @@ class Home extends React.Component {
                       this.setState(state => ({
                         attachmentData: [],
                         submissions: [submission].concat(state.submissions),
-                        allPlateResults: [],
+                        allPlateData: null,
                         plateThumbnailsByKey: {},
                         plateDataByAttachmentName: {},
                         vehicleInfoComponent: null,
@@ -1964,7 +1963,7 @@ class Home extends React.Component {
                                     attachmentData,
                                     plate: '',
                                     licenseState: 'NY',
-                                    allPlateResults: [],
+                                    allPlateData: null,
                                     plateThumbnailsByKey: {},
                                     plateDataByAttachmentName: {},
                                     vehicleInfoComponent: null,
@@ -2063,11 +2062,11 @@ class Home extends React.Component {
                           list="plateSuggestions"
                           autoComplete="off"
                           ref={this.plateRef}
-                          placeholder={this.state.allPlateResults?.[0]?.plate?.toUpperCase()}
+                          placeholder={this.state.allPlateData?.results?.[0]?.plate?.toUpperCase()}
                           onChange={event => {
                             const plate = event.target.value.toUpperCase();
                             const matchedResult =
-                              this.state.allPlateResults.find(
+                              this.state.allPlateData?.results?.find(
                                 r => r.plate?.toUpperCase() === plate,
                               );
                             const licenseState = matchedResult
@@ -2077,7 +2076,7 @@ class Home extends React.Component {
                           }}
                         />
                         <datalist id="plateSuggestions">
-                          {this.state.allPlateResults?.map(result => (
+                          {this.state.allPlateData?.results?.map(result => (
                             <option value={result.plate?.toUpperCase()} />
                           ))}
                         </datalist>

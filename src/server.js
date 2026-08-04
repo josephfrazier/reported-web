@@ -643,6 +643,7 @@ app.get('/api/submissions-in-polygon', (req, res) => {
   const query = new Parse.Query(Submission);
   query.withinPolygon('location', polygonCoords);
   query.equalTo('can_be_shared_publicly', true);
+  query.notEqualTo('license', 'TEST');
   query.limit(POLYGON_RESULT_LIMIT);
   query.select(POLYGON_FIELDS);
 

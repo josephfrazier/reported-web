@@ -11,7 +11,8 @@ describe('geosearch', () => {
       long: -73.985428,
     });
 
-    result.geocoding.timestamp = "RESET BY SNAPSHOT TEST, WOULD BE A NUMBER LIKE `1785874040249`";
+    result.geocoding.timestamp =
+      'RESET BY SNAPSHOT TEST, WOULD BE A NUMBER LIKE `1785874040249`';
 
     expect(result).toMatchSnapshot();
   });
@@ -22,7 +23,8 @@ describe('geosearch', () => {
       long: -74.006,
     });
 
-    result.geocoding.timestamp = "RESET BY SNAPSHOT TEST, WOULD BE A NUMBER LIKE `1785874040249`";
+    result.geocoding.timestamp =
+      'RESET BY SNAPSHOT TEST, WOULD BE A NUMBER LIKE `1785874040249`';
 
     expect(result).toMatchSnapshot();
   });
@@ -33,7 +35,8 @@ describe('geosearch', () => {
       long: '-74.006',
     });
 
-    result.geocoding.timestamp = "RESET BY SNAPSHOT TEST, WOULD BE A NUMBER LIKE `1785874040249`";
+    result.geocoding.timestamp =
+      'RESET BY SNAPSHOT TEST, WOULD BE A NUMBER LIKE `1785874040249`';
 
     expect(result).toMatchSnapshot();
   });
@@ -44,7 +47,8 @@ describe('geosearch', () => {
       long: -73.91039722222223,
     });
 
-    result.geocoding.timestamp = "RESET BY SNAPSHOT TEST, WOULD BE A NUMBER LIKE `1785874040249`";
+    result.geocoding.timestamp =
+      'RESET BY SNAPSHOT TEST, WOULD BE A NUMBER LIKE `1785874040249`';
 
     expect(result).toMatchSnapshot();
   });

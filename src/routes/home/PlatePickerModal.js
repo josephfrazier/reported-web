@@ -2,7 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import Modal from 'react-modal';
 
-import homeStyles from './Home.css'; // eslint-disable-line css-modules/no-unused-class
+import homeStyles from './Home.css';
 
 function PlatePickerModal({ isOpen, results, onSelectPlate, onClose }) {
   return (

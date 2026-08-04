@@ -650,15 +650,17 @@ class Home extends React.Component {
     debouncedGeosearch({ latitude, longitude }).then(data => {
       const feature = data.features?.[0];
       const properties = feature?.properties || {};
+      const label = properties.label || '';
       const houseNumber = properties.housenumber || '';
       const street = properties.name || '';
       const borough = properties.borough || '';
+      const formattedAddress =
+        label ||
+        [houseNumber, street].filter(Boolean).join(' ') +
+          (borough ? `, ${borough}` : '');
 
       this.setState({
-        formatted_address: capitalize.words(
-          [houseNumber, street].filter(Boolean).join(' ') +
-            (borough ? `, ${borough}` : ''),
-        ),
+        formatted_address: capitalize.words(formattedAddress),
       });
     });
   };

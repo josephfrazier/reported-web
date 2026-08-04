@@ -2,31 +2,42 @@
  * @jest-environment node
  */
 
-import axios from 'axios';
-
 import { geosearch } from './geoclient.js';
 
-jest.mock('axios');
-
 describe('geosearch', () => {
-  test('calls the planning labs reverse endpoint', async () => {
-    axios.get.mockResolvedValue({ data: { features: [] } });
-
+  test('returns the right object around the Empire State Building', async () => {
     const result = await geosearch({
       lat: 40.748817,
       long: -73.985428,
     });
 
-    expect(axios.get).toHaveBeenCalledWith(
-      'https://geosearch.planninglabs.nyc/v2/reverse',
-      {
-        params: {
-          'point.lat': 40.748817,
-          'point.lon': -73.985428,
-          size: 1,
-        },
-      },
-    );
-    expect(result).toEqual({ features: [] });
+    expect(result).toMatchSnapshot();
+  });
+
+  test('returns the right object', async () => {
+    const result = await geosearch({
+      lat: 40.7128,
+      long: -74.006,
+    });
+
+    expect(result).toMatchSnapshot();
+  });
+
+  test('returns the right object for string lat/long', async () => {
+    const result = await geosearch({
+      lat: '40.7128',
+      long: '-74.006',
+    });
+
+    expect(result).toMatchSnapshot();
+  });
+
+  test('returns the right object around 3521 Riverdale Ave, The Bronx, NY 10463', async () => {
+    const result = await geosearch({
+      lat: 40.88067222222222,
+      long: -73.91039722222223,
+    });
+
+    expect(result).toMatchSnapshot();
   });
 });

@@ -53,6 +53,8 @@ function PlatePickerModal({ isOpen, results, onSelectPlate, onClose }) {
                   minHeight: 0,
                   maxHeight: '100%',
                   objectFit: 'contain',
+                  borderRadius: 0,
+                  marginTop: 0,
                 }}
               />
             )}
@@ -65,6 +67,8 @@ function PlatePickerModal({ isOpen, results, onSelectPlate, onClose }) {
                   minHeight: 0,
                   maxHeight: '100%',
                   objectFit: 'contain',
+                  borderRadius: 0,
+                  marginTop: 0,
                 }}
               />
             )}

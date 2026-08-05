@@ -22,28 +22,29 @@
  *   - margin/padding/border zeroed on every element via universal reset
  * Google Maps relies on browser defaults and its own unlayered styles
  * for its controls.  Explicitly reset these inside the map container.
+ * Wrapped in :global() so CSS Modules does not rename .gm-style.
  */
-.gm-style img,
-.gm-style svg,
-.gm-style video,
-.gm-style canvas,
-.gm-style iframe,
-.gm-style embed,
-.gm-style object {
+:global(.gm-style) img,
+:global(.gm-style) svg,
+:global(.gm-style) video,
+:global(.gm-style) canvas,
+:global(.gm-style) iframe,
+:global(.gm-style) embed,
+:global(.gm-style) object {
   display: revert;
   vertical-align: revert;
   margin-block-start: 0 !important;
   margin-top: 0 !important;
 }
 
-.gm-style img,
-.gm-style video {
+:global(.gm-style) img,
+:global(.gm-style) video {
   border-radius: 0 !important;
   max-inline-size: revert;
   block-size: revert;
 }
 
-.gm-style button {
+:global(.gm-style) button {
   all: revert-layer;
 }
 

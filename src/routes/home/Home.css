@@ -61,7 +61,7 @@
 
 summary {
   outline: none;
-  font-weight: 400;
+  font-weight: inherit;
 }
 
 label {

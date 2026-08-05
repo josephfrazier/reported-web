@@ -114,6 +114,17 @@ input[type='search']::-webkit-search-cancel-button {
   all: revert-layer;
 }
 
+/*
+ * react-modal content has no clearfix; floated buttons ("Use current
+ * location" / "Close") leave trailing whitespace that creates a gap.
+ */
+/* stylelint-disable-next-line selector-class-pattern */
+:global(.ReactModal__Content)::after {
+  content: '';
+  display: table;
+  clear: both;
+}
+
 /* User Status Bar */
 .user-status-bar {
   display: flex;

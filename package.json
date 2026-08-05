@@ -55,7 +55,6 @@
     "mem": "^4.0.0",
     "mp4box": "https://github.com/josephfrazier/mp4box.js#commonjs",
     "multer": "^2.2.0",
-    "node-fetch": "^2.6.7",
     "normalize.css": "^8.0.0",
     "object-to-formdata": "^5.0.0",
     "object.omit": "^3.0.0",

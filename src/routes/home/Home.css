@@ -13,6 +13,19 @@
   box-sizing: border-box;
 }
 
+/*
+ * marx v5's universal reset (in @layer marx.base) zeroes margin/padding/
+ * border on every element.  Google Maps controls rely on browser-default
+ * values for internal layout (e.g. the Street View pegman).  Revert the
+ * reset inside the map container so those controls render correctly.
+ */
+.gm-style,
+.gm-style * {
+  margin: revert;
+  padding: revert;
+  border: revert;
+}
+
 .root {
   padding-left: 20px;
   padding-right: 20px;

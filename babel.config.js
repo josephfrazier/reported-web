@@ -23,5 +23,5 @@ module.exports = {
     '@babel/preset-react',
   ],
   plugins: ['@babel/plugin-transform-class-properties'],
-  ignore: ['node_modules', 'build'],
+  ignore: ['build'],
 };

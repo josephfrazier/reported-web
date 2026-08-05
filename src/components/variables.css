@@ -9,6 +9,12 @@
 
 :root {
   /*
+   * Prevent marx-css v5 dark mode — the app is not designed for it yet.
+   * See https://github.com/josephfrazier/reported-web/pull/865
+   */
+  color-scheme: light;
+
+  /*
    * Typography
    * ======================================================================== */
 

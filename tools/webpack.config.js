@@ -388,7 +388,6 @@ const clientConfig = {
       fs: false,
       net: false,
       tls: false,
-      stream: false,
       buffer: require.resolve('buffer/'),
     },
     alias: {

@@ -64,6 +64,16 @@ summary {
   font-weight: inherit;
 }
 
+/*
+ * marx v5 sets explicit font-weight on dt (bold) and summary (500).
+ * Layout.css sets html { font-weight: 100 }, so the v3 computed
+ * weight was 100 (inherited) for both.  Explicit declarations beat
+ * inheritance even when layered, so use inherit to restore v3 behavior.
+ */
+dt {
+  font-weight: inherit;
+}
+
 label {
   display: block;
   margin: 1em 0;

@@ -55,6 +55,7 @@ function PlatePickerModal({ isOpen, results, onSelectPlate, onClose }) {
                   objectFit: 'contain',
                   borderRadius: 0,
                   marginTop: 0,
+                  marginBlockStart: 0,
                 }}
               />
             )}
@@ -69,6 +70,7 @@ function PlatePickerModal({ isOpen, results, onSelectPlate, onClose }) {
                   objectFit: 'contain',
                   borderRadius: 0,
                   marginTop: 0,
+                  marginBlockStart: 0,
                 }}
               />
             )}

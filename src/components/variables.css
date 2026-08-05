@@ -9,12 +9,6 @@
 
 :root {
   /*
-   * Prevent marx-css v5 dark mode — the app is not designed for it yet.
-   * See https://github.com/josephfrazier/reported-web/pull/865
-   */
-  color-scheme: light;
-
-  /*
    * Typography
    * ======================================================================== */
 
@@ -34,4 +28,10 @@
   --screen-sm-min: 768px;  /* Small screen / tablet */
   --screen-md-min: 992px;  /* Medium screen / desktop */
   --screen-lg-min: 1200px; /* Large screen / wide desktop */
+
+  /*
+   * Prevent marx-css v5 dark mode — the app is not designed for it yet.
+   * See https://github.com/josephfrazier/reported-web/pull/865
+   */
+  color-scheme: light;
 }

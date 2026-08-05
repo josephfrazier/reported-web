@@ -34,14 +34,18 @@ label {
 }
 
 /*
- * Restore marx-css v3-style line-height on form elements.
- * normalize.css (unlayered) sets line-height: 1.15, which beats
- * marx v5's layered line-height.  We set it here so text inside
- * inputs/selects/textarea doesn't look cramped.
+ * Restore marx-css v3-style font properties on form elements.
+ * marx v5's `font: inherit` shorthand (layered) inherits all font
+ * sub-properties from body, and normalize.css (unlayered) overrides
+ * font-family/font-size/line-height.  Explicitly set everything here
+ * so text inside inputs/selects/textarea matches the v3 look.
  */
 input,
 select,
 textarea {
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 400;
   line-height: var(--marx-leading, 1.5);
 }
 

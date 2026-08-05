@@ -9,10 +9,10 @@
 
 import path from 'path';
 import assert from 'assert';
+import { execSync } from 'child_process';
 import express from 'express';
 import forceSsl from 'force-ssl-heroku';
 import compression from 'compression';
-import bodyParser from 'body-parser';
 import nodeFetch from 'node-fetch';
 import React from 'react';
 import ReactDOM from 'react-dom/server';
@@ -24,7 +24,7 @@ import stringify from 'json-stringify-safe';
 import StyleContext from 'isomorphic-style-loader/StyleContext';
 
 import { isImage, isVideo } from './isImage.js';
-import { validateLocation, processValidation } from './geoclient.js';
+import { geosearch } from './geoclient.js';
 import getVehicleType from './getVehicleType.js';
 import srlookup from './srlookup.js';
 
@@ -57,9 +57,43 @@ const {
   PLATERECOGNIZER_TOKEN_TWO,
 } = process.env;
 
-require('heroku-self-ping').default(config.api.serverUrl, {
-  verbose: true,
-});
+let commitHash = process.env.HEROKU_BUILD_COMMIT || 'unknown';
+if (commitHash === 'unknown') {
+  try {
+    commitHash = execSync('git rev-parse --short HEAD', {
+      encoding: 'utf8',
+    }).trim();
+  } catch (e) {
+    console.warn('Could not determine git commit hash:', e.message);
+  }
+}
+
+// Ping the app periodically to prevent Heroku eco tier dyno from sleeping
+// Only runs on Heroku (same detection logic as heroku-self-ping)
+const isHeroku =
+  'HEROKU' in process.env ||
+  ('DYNO' in process.env && process.env.HOME === '/app');
+
+if (isHeroku) {
+  const herokuSelfPingUrl = config.api.serverUrl;
+  const herokuSelfPingInterval = 20 * 60 * 1000; // 20 minutes
+  const herokuSelfPing = () => {
+    console.info(`Pinging ${herokuSelfPingUrl}...`);
+    nodeFetch(herokuSelfPingUrl)
+      .then(res => {
+        if (res.ok) {
+          console.info('herokuSelfPing successful');
+        } else {
+          console.warn(`herokuSelfPing failed with status ${res.status}`);
+        }
+      })
+      .catch(err => {
+        console.error('herokuSelfPing failed:', err.message);
+      });
+  };
+  herokuSelfPing(); // ping immediately on startup
+  setInterval(herokuSelfPing, herokuSelfPingInterval);
+}
 
 // http://docs.parseplatform.org/js/guide/#getting-started
 Parse.initialize(PARSE_APP_ID, PARSE_JAVASCRIPT_KEY, PARSE_MASTER_KEY);
@@ -112,9 +146,9 @@ app.set('trust proxy', config.trustProxy);
 // Register Node.js middleware
 // -----------------------------------------------------------------------------
 app.use(express.static(path.resolve(__dirname, 'public')));
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json({ limit: '80mb' }));
-// attachments are no longer sent as base64 JSON, but bodyParser still tries to parse non-JSON bodies, so this 80mb `limit` needs to be here to avoid errors
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '80mb' }));
+// attachments are no longer sent as base64 JSON, but express's internal usage of `body-parser` still tries to parse non-JSON bodies, so this 80mb `limit` needs to be here to avoid errors
 
 const handlePromiseRejection = res => error => {
   console.error({ error });
@@ -216,16 +250,9 @@ app.use('/api/categories', (req, res) => {
     .catch(handlePromiseRejection(res));
 });
 
-app.use('/api/validate_location', (req, res) => {
+app.use('/api/geosearch', (req, res) => {
   const { lat, long } = req.body;
-  validateLocation({ lat, long })
-    .then(body => res.json(body))
-    .catch(handlePromiseRejection(res));
-});
-
-app.use('/api/process_validation', (req, res) => {
-  const { lat, long } = req.body;
-  processValidation({ lat, long })
+  geosearch({ lat, long })
     .then(body => res.json(body))
     .catch(handlePromiseRejection(res));
 });
@@ -472,9 +499,9 @@ app.use('/submit', (req, res) => {
             .slice(0, 3)
             .map(async ({ attachmentBuffer, ext }, index) => {
               const key = `photoData${index}`;
-              const file = new Parse.File(`${key}.${ext}`, [
-                ...attachmentBuffer,
-              ]);
+              const file = new Parse.File(`${key}.${ext}`, {
+                base64: attachmentBuffer.toString('base64'),
+              });
               await file.save();
               submission.set(key, file);
             }),
@@ -482,9 +509,9 @@ app.use('/submit', (req, res) => {
             .slice(0, 3)
             .map(async ({ attachmentBuffer, ext }, index) => {
               const key = `videoData${index}`;
-              const file = new Parse.File(`${key}.${ext}`, [
-                ...attachmentBuffer,
-              ]);
+              const file = new Parse.File(`${key}.${ext}`, {
+                base64: attachmentBuffer.toString('base64'),
+              });
               await file.save();
               submission.set(key, file.url());
             }),
@@ -498,6 +525,9 @@ app.use('/submit', (req, res) => {
         const submissionValue = submission.toJSON();
         submissionValue.timeofreport = submissionValue.timeofreport.iso;
         submissionValue.timeofreported = submissionValue.timeofreported.iso;
+        // Explicitly include objectId so the client can pass it
+        // back for delete/cancel operations (see #788)
+        submissionValue.objectId = submission.id;
 
         console.info({ submission: submissionValue });
 
@@ -541,6 +571,93 @@ app.use('/getVehicleType/:licensePlate/:licenseState?', (req, res) => {
     .catch(handlePromiseRejection(res));
 });
 
+app.get('/submissions-map', (req, res) => {
+  res.sendFile(path.resolve(__dirname, 'public', 'submissions-map.html'));
+});
+
+const POLYGON_FIELDS = [
+  'location',
+  'timeofreport',
+  'license',
+  'state',
+  'typeofcomplaint',
+  'loc1_address',
+  'reqnumber',
+  'photoData0',
+  'photoData1',
+  'photoData2',
+  'can_be_shared_publicly',
+];
+
+const POLYGON_RESULT_LIMIT = 10000;
+
+app.get('/api/submissions-in-polygon', (req, res) => {
+  let polygonCoords = null;
+
+  const polygonParam = req.query.polygon;
+  if (typeof polygonParam !== 'string' || !polygonParam.trim()) {
+    res.status(400).json({
+      error:
+        'Query parameter "polygon" is required and must be a non-empty string.',
+    });
+    return;
+  }
+
+  const rawVertices = polygonParam.trim().split(';');
+  if (rawVertices.length < 3) {
+    res.status(400).json({ error: 'Polygon must have at least 3 vertices.' });
+    return;
+  }
+  try {
+    polygonCoords = rawVertices.map((pair, idx) => {
+      const parts = pair.split(',');
+      if (parts.length !== 2) {
+        throw new Error(`Vertex ${idx} is invalid: expected "lat,lng"`);
+      }
+      const lat = parseFloat(parts[0]);
+      const lng = parseFloat(parts[1]);
+      if (Number.isNaN(lat) || Number.isNaN(lng)) {
+        throw new Error(`Vertex ${idx} has non-numeric coordinates`);
+      }
+      if (lat < -90 || lat > 90) {
+        throw new Error(`Vertex ${idx} latitude out of range (-90 to 90)`);
+      }
+      if (lng < -180 || lng > 180) {
+        throw new Error(`Vertex ${idx} longitude out of range (-180 to 180)`);
+      }
+      return [lng, lat];
+    });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+    return;
+  }
+
+  const Submission = Parse.Object.extend('submission');
+  const query = new Parse.Query(Submission);
+  query.withinPolygon('location', polygonCoords);
+  query.equalTo('can_be_shared_publicly', true);
+  query.notEqualTo('license', 'TEST');
+  query.limit(POLYGON_RESULT_LIMIT);
+  query.select(POLYGON_FIELDS);
+
+  query
+    .find()
+    .then(parseResults => {
+      const results = parseResults.map(obj => {
+        const json = obj.toJSON();
+        return Object.fromEntries(
+          POLYGON_FIELDS.map(k => [k, json[k] ?? null]),
+        );
+      });
+
+      res.json({
+        results,
+        capped: parseResults.length >= POLYGON_RESULT_LIMIT,
+      });
+    })
+    .catch(handlePromiseRejection(res));
+});
+
 //
 // Register server-side rendering middleware
 // -----------------------------------------------------------------------------
@@ -566,6 +683,7 @@ app.get('*', async (req, res, next) => {
     const context = {
       insertCss,
       fetch,
+      commitHash,
       // The twins below are wild, be careful!
       pathname: req.path,
       query: req.query,
@@ -601,6 +719,7 @@ app.get('*', async (req, res, next) => {
     data.scripts = Array.from(scripts);
     data.app = {
       apiUrl: config.api.clientUrl,
+      commitHash,
     };
 
     const html = ReactDOM.renderToStaticMarkup(<Html {...data} />);

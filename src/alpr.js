@@ -2,6 +2,10 @@ import sharp from 'sharp';
 import nodeFetch from 'node-fetch';
 import FormData from 'form-data';
 
+// Disable sharp's internal LRU cache so processed image data is released
+// immediately instead of being held in memory across requests.
+sharp.cache(false);
+
 async function orientImageBuffer({ attachmentBuffer }) {
   console.time(`orientImageBuffer`); // eslint-disable-line no-console
   // eslint-disable-next-line no-console
@@ -126,7 +130,7 @@ export default function readLicenseViaALPR({
                 );
                 crops.plateCropDataUrl = await cropBox(result.box);
               } catch (err) {
-                console.error('Failed to crop image:', err); // eslint-disable-line no-console
+                console.error('Failed to crop image:', err);
               }
               return { ...result, ...crops };
             }),

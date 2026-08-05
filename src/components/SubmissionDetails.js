@@ -26,11 +26,13 @@ class SubmissionDetails extends React.Component {
     const {
       medallionNo,
       license,
+      state: licenseState,
       typeofcomplaint,
       loc1_address, // eslint-disable-line camelcase
       timeofreport,
       reportDescription,
       status,
+      reqnumber,
 
       photoData,
       photoData0,
@@ -50,7 +52,11 @@ class SubmissionDetails extends React.Component {
     const tlcTask = (tasks || []).find(
       task => task.action === 'submit 311 complaint',
     );
-    const tlcCaseId = tlcTask && tlcTask.case_id;
+    const tlcCaseId = tlcTask
+      ? tlcTask.case_id
+      : tasks?.length === 0 &&
+        reqnumber !== 'N/A until submitted to 311' &&
+        reqnumber;
 
     const nypdTask = (tasks || []).find(
       task => task.action === 'submit 311 illegal parking complaint',
@@ -156,7 +162,7 @@ class SubmissionDetails extends React.Component {
         }}
       >
         <summary>
-          {medallionNo || license} {typeofcomplaint} near{' '}
+          {medallionNo || license} ({licenseState}) {typeofcomplaint} near{' '}
           {/* eslint-disable-next-line camelcase */}
           {(loc1_address || '').split(',')[0]} on {humanTimeString}
           {tlcCaseId && (
@@ -206,11 +212,13 @@ SubmissionDetails.propTypes = {
   submission: PropTypes.shape({
     medallionNo: PropTypes.string,
     license: PropTypes.string,
+    state: PropTypes.string,
     typeofcomplaint: PropTypes.string,
     loc1_address: PropTypes.string,
     timeofreport: PropTypes.string,
     reportDescription: PropTypes.string,
     status: PropTypes.number,
+    reqnumber: PropTypes.string,
 
     photoData: PropTypes.object,
     photoData0: PropTypes.object,

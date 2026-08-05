@@ -13,7 +13,6 @@ import { execSync } from 'child_process';
 import express from 'express';
 import forceSsl from 'force-ssl-heroku';
 import compression from 'compression';
-import nodeFetch from 'node-fetch';
 import React from 'react';
 import ReactDOM from 'react-dom/server';
 import PrettyError from 'pretty-error';
@@ -79,7 +78,7 @@ if (isHeroku) {
   const herokuSelfPingInterval = 20 * 60 * 1000; // 20 minutes
   const herokuSelfPing = () => {
     console.info(`Pinging ${herokuSelfPingUrl}...`);
-    nodeFetch(herokuSelfPingUrl)
+    fetch(herokuSelfPingUrl)
       .then(res => {
         if (res.ok) {
           console.info('herokuSelfPing successful');
@@ -673,7 +672,7 @@ app.get('*', async (req, res, next) => {
     };
 
     // Universal HTTP client
-    const fetch = createFetch(nodeFetch, {
+    const fetch = createFetch(globalThis.fetch, {
       baseUrl: config.api.serverUrl,
       cookie: req.headers.cookie,
     });

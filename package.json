@@ -55,7 +55,6 @@
     "mime-bytes": "^0.30.0",
     "mp4box": "https://github.com/josephfrazier/mp4box.js#commonjs",
     "multer": "^2.2.0",
-    "node-fetch": "^3.3.2",
     "normalize.css": "^8.0.0",
     "object-to-formdata": "^5.0.0",
     "object.omit": "^3.0.0",

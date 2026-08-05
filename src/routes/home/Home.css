@@ -15,15 +15,14 @@
 
 /*
  * marx v5's universal reset (in @layer marx.base) zeroes margin/padding/
- * border on every element.  Google Maps controls rely on browser-default
- * values for internal layout (e.g. the Street View pegman).  Revert the
- * reset inside the map container so those controls render correctly.
+ * border on every element, and other v5 rules set display/vertical-align
+ * on media elements.  Google Maps controls rely on their own unlayered
+ * styles for internal layout.  revert-layer unwinds only the marx layer,
+ * leaving Google Maps' styles intact.
  */
 .gm-style,
 .gm-style * {
-  margin: revert;
-  padding: revert;
-  border: revert;
+  all: revert-layer;
 }
 
 .root {

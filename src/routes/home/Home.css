@@ -49,6 +49,17 @@ textarea {
   line-height: var(--marx-leading, 1.5);
 }
 
+/*
+ * marx v5 bumps button font-weight from 400 to 500; dial it back so
+ * button text doesn't look heavier than it did under v3.
+ */
+button,
+input[type='submit'],
+input[type='reset'],
+input[type='button'] {
+  font-weight: 400;
+}
+
 input[type='search'] {
   appearance: searchfield;
 }

@@ -9,11 +9,10 @@
 
 import path from 'path';
 import assert from 'assert';
+import { execSync } from 'child_process';
 import express from 'express';
 import forceSsl from 'force-ssl-heroku';
 import compression from 'compression';
-import bodyParser from 'body-parser';
-import nodeFetch from 'node-fetch';
 import React from 'react';
 import ReactDOM from 'react-dom/server';
 import PrettyError from 'pretty-error';
@@ -24,7 +23,7 @@ import stringify from 'json-stringify-safe';
 import StyleContext from 'isomorphic-style-loader/StyleContext';
 
 import { isImage, isVideo } from './isImage.js';
-import { validateLocation, processValidation } from './geoclient.js';
+import { geosearch } from './geoclient.js';
 import getVehicleType from './getVehicleType.js';
 import srlookup from './srlookup.js';
 
@@ -57,9 +56,43 @@ const {
   PLATERECOGNIZER_TOKEN_TWO,
 } = process.env;
 
-require('heroku-self-ping').default(config.api.serverUrl, {
-  verbose: true,
-});
+let commitHash = process.env.HEROKU_BUILD_COMMIT || 'unknown';
+if (commitHash === 'unknown') {
+  try {
+    commitHash = execSync('git rev-parse --short HEAD', {
+      encoding: 'utf8',
+    }).trim();
+  } catch (e) {
+    console.warn('Could not determine git commit hash:', e.message);
+  }
+}
+
+// Ping the app periodically to prevent Heroku eco tier dyno from sleeping
+// Only runs on Heroku (same detection logic as heroku-self-ping)
+const isHeroku =
+  'HEROKU' in process.env ||
+  ('DYNO' in process.env && process.env.HOME === '/app');
+
+if (isHeroku) {
+  const herokuSelfPingUrl = config.api.serverUrl;
+  const herokuSelfPingInterval = 20 * 60 * 1000; // 20 minutes
+  const herokuSelfPing = () => {
+    console.info(`Pinging ${herokuSelfPingUrl}...`);
+    fetch(herokuSelfPingUrl)
+      .then(res => {
+        if (res.ok) {
+          console.info('herokuSelfPing successful');
+        } else {
+          console.warn(`herokuSelfPing failed with status ${res.status}`);
+        }
+      })
+      .catch(err => {
+        console.error('herokuSelfPing failed:', err.message);
+      });
+  };
+  herokuSelfPing(); // ping immediately on startup
+  setInterval(herokuSelfPing, herokuSelfPingInterval);
+}
 
 // http://docs.parseplatform.org/js/guide/#getting-started
 Parse.initialize(PARSE_APP_ID, PARSE_JAVASCRIPT_KEY, PARSE_MASTER_KEY);
@@ -112,9 +145,9 @@ app.set('trust proxy', config.trustProxy);
 // Register Node.js middleware
 // -----------------------------------------------------------------------------
 app.use(express.static(path.resolve(__dirname, 'public')));
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json({ limit: '80mb' }));
-// attachments are no longer sent as base64 JSON, but bodyParser still tries to parse non-JSON bodies, so this 80mb `limit` needs to be here to avoid errors
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '80mb' }));
+// attachments are no longer sent as base64 JSON, but express's internal usage of `body-parser` still tries to parse non-JSON bodies, so this 80mb `limit` needs to be here to avoid errors
 
 const handlePromiseRejection = res => error => {
   console.error({ error });
@@ -216,16 +249,9 @@ app.use('/api/categories', (req, res) => {
     .catch(handlePromiseRejection(res));
 });
 
-app.use('/api/validate_location', (req, res) => {
+app.use('/api/geosearch', (req, res) => {
   const { lat, long } = req.body;
-  validateLocation({ lat, long })
-    .then(body => res.json(body))
-    .catch(handlePromiseRejection(res));
-});
-
-app.use('/api/process_validation', (req, res) => {
-  const { lat, long } = req.body;
-  processValidation({ lat, long })
+  geosearch({ lat, long })
     .then(body => res.json(body))
     .catch(handlePromiseRejection(res));
 });
@@ -498,6 +524,9 @@ app.use('/submit', (req, res) => {
         const submissionValue = submission.toJSON();
         submissionValue.timeofreport = submissionValue.timeofreport.iso;
         submissionValue.timeofreported = submissionValue.timeofreported.iso;
+        // Explicitly include objectId so the client can pass it
+        // back for delete/cancel operations (see #788)
+        submissionValue.objectId = submission.id;
 
         console.info({ submission: submissionValue });
 
@@ -606,6 +635,7 @@ app.get('/api/submissions-in-polygon', (req, res) => {
   const query = new Parse.Query(Submission);
   query.withinPolygon('location', polygonCoords);
   query.equalTo('can_be_shared_publicly', true);
+  query.notEqualTo('license', 'TEST');
   query.limit(POLYGON_RESULT_LIMIT);
   query.select(POLYGON_FIELDS);
 
@@ -642,7 +672,7 @@ app.get('*', async (req, res, next) => {
     };
 
     // Universal HTTP client
-    const fetch = createFetch(nodeFetch, {
+    const fetch = createFetch(globalThis.fetch, {
       baseUrl: config.api.serverUrl,
       cookie: req.headers.cookie,
     });
@@ -652,6 +682,7 @@ app.get('*', async (req, res, next) => {
     const context = {
       insertCss,
       fetch,
+      commitHash,
       // The twins below are wild, be careful!
       pathname: req.path,
       query: req.query,
@@ -687,6 +718,7 @@ app.get('*', async (req, res, next) => {
     data.scripts = Array.from(scripts);
     data.app = {
       apiUrl: config.api.clientUrl,
+      commitHash,
     };
 
     const html = ReactDOM.renderToStaticMarkup(<Html {...data} />);

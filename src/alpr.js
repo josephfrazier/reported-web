@@ -1,5 +1,4 @@
 import sharp from 'sharp';
-import nodeFetch from 'node-fetch';
 import FormData from 'form-data';
 
 // Disable sharp's internal LRU cache so processed image data is released
@@ -63,7 +62,7 @@ function platerecognizer({ attachmentBytesRotated, PLATERECOGNIZER_TOKEN }) {
   // body.append("regions", "us-ny"); // Change to your country
   body.append('regions', 'us'); // Change to your country
 
-  return nodeFetch('https://api.platerecognizer.com/v1/plate-reader/', {
+  return fetch('https://api.platerecognizer.com/v1/plate-reader/', {
     method: 'POST',
     headers: {
       Authorization: `Token ${PLATERECOGNIZER_TOKEN}`,
@@ -130,7 +129,7 @@ export default function readLicenseViaALPR({
                 );
                 crops.plateCropDataUrl = await cropBox(result.box);
               } catch (err) {
-                console.error('Failed to crop image:', err); // eslint-disable-line no-console
+                console.error('Failed to crop image:', err);
               }
               return { ...result, ...crops };
             }),

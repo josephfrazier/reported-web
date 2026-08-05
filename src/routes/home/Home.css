@@ -13,41 +13,6 @@
   box-sizing: border-box;
 }
 
-/*
- * marx v5 adds several rules that break Google Maps controls:
- *   - display: block + vertical-align: middle on img/svg/video/iframe
- *   - margin-block-start on img/video/iframe
- *   - border-radius on img/video
- *   - padding, font, background, border, border-radius on buttons
- *   - margin/padding/border zeroed on every element via universal reset
- * Google Maps relies on browser defaults and its own unlayered styles
- * for its controls.  Explicitly reset these inside the map container.
- * Wrapped in :global() so CSS Modules does not rename .gm-style.
- */
-:global(.gm-style) img,
-:global(.gm-style) svg,
-:global(.gm-style) video,
-:global(.gm-style) canvas,
-:global(.gm-style) iframe,
-:global(.gm-style) embed,
-:global(.gm-style) object {
-  display: revert;
-  vertical-align: revert;
-  margin-block-start: 0;
-  margin-top: 0;
-}
-
-:global(.gm-style) img,
-:global(.gm-style) video {
-  border-radius: 0;
-  max-inline-size: revert;
-  block-size: revert;
-}
-
-:global(.gm-style) button {
-  all: revert-layer;
-}
-
 .root {
   padding-left: 20px;
   padding-right: 20px;
@@ -112,6 +77,41 @@ input[type='search'] {
 
 input[type='search']::-webkit-search-cancel-button {
   appearance: searchfield-cancel-button;
+}
+
+/*
+ * marx v5 adds several rules that break Google Maps controls:
+ *   - display: block + vertical-align: middle on img/svg/video/iframe
+ *   - margin-block-start on img/video/iframe
+ *   - border-radius on img/video
+ *   - padding, font, background, border, border-radius on buttons
+ *   - margin/padding/border zeroed on every element via universal reset
+ * Google Maps relies on browser defaults and its own unlayered styles
+ * for its controls.  Explicitly reset these inside the map container.
+ * Wrapped in :global() so CSS Modules does not rename .gm-style.
+ */
+:global(.gm-style) img,
+:global(.gm-style) svg,
+:global(.gm-style) video,
+:global(.gm-style) canvas,
+:global(.gm-style) iframe,
+:global(.gm-style) embed,
+:global(.gm-style) object {
+  display: revert;
+  vertical-align: revert;
+  margin-block-start: 0;
+  margin-top: 0;
+}
+
+:global(.gm-style) img,
+:global(.gm-style) video {
+  border-radius: 0;
+  max-inline-size: revert;
+  block-size: revert;
+}
+
+:global(.gm-style) button {
+  all: revert-layer;
 }
 
 /* User Status Bar */

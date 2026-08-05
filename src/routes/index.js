@@ -40,6 +40,13 @@ const routes = {
       load: () => import(/* webpackChunkName: 'about' */ './about/index.js'),
     },
     {
+      path: '/submissions-map',
+      load: () =>
+        import(
+          /* webpackChunkName: 'submissions-map' */ './submissions-map/index.js'
+        ),
+    },
+    {
       path: '/privacy',
       load: () =>
         import(/* webpackChunkName: 'privacy' */ './privacy/index.js'),

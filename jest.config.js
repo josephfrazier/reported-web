@@ -95,7 +95,9 @@ module.exports = {
       '<rootDir>/tools/lib/fileTransformer.js',
   },
 
-  // transformIgnorePatterns: // [array<string>]
+  transformIgnorePatterns: [
+    '/node_modules/(?!(file-type|strtok3|token-types|uint8array-extras|@tokenizer/inflate)/)',
+  ],
   // unmockedModulePathPatterns: // [array<string>]
 
   verbose: true, // [boolean]

@@ -25,7 +25,7 @@ import {
 import { SearchBox } from 'react-google-maps/lib/components/places/SearchBox';
 import withLocalStorage from 'react-localstorage';
 import debounce from 'debounce-promise';
-import FileType from 'file-type/browser';
+import { fileTypeFromBuffer } from 'file-type';
 import MP4Box from 'mp4box';
 import execall from 'execall';
 import captureFrame from 'capture-frame';
@@ -894,7 +894,7 @@ class Home extends React.Component {
                 attachmentFile,
               });
 
-            const { ext } = await FileType.fromBuffer(attachmentBuffer);
+            const { ext } = await fileTypeFromBuffer(attachmentBuffer);
 
             this.setState({ isAlprLoading: true });
             return Promise.allSettled([

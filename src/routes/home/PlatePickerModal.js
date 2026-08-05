@@ -51,11 +51,12 @@ function PlatePickerModal({ isOpen, results, onSelectPlate, onClose }) {
                 style={{
                   minWidth: 0,
                   minHeight: 0,
-                  height: '100%',
+                  maxHeight: '100%',
                   objectFit: 'contain',
                   borderRadius: 0,
                   marginTop: 0,
                   marginBlockStart: 0,
+                  display: 'inline',
                 }}
               />
             )}
@@ -66,11 +67,12 @@ function PlatePickerModal({ isOpen, results, onSelectPlate, onClose }) {
                 style={{
                   minWidth: 0,
                   minHeight: 0,
-                  height: '100%',
+                  maxHeight: '100%',
                   objectFit: 'contain',
                   borderRadius: 0,
                   marginTop: 0,
                   marginBlockStart: 0,
+                  display: 'inline',
                 }}
               />
             )}

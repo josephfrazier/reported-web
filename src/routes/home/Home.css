@@ -33,6 +33,18 @@ label {
   margin: 1em 0;
 }
 
+/*
+ * Restore marx-css v3-style line-height on form elements.
+ * normalize.css (unlayered) sets line-height: 1.15, which beats
+ * marx v5's layered line-height.  We set it here so text inside
+ * inputs/selects/textarea doesn't look cramped.
+ */
+input,
+select,
+textarea {
+  line-height: var(--marx-leading, 1.5);
+}
+
 input[type='search'] {
   appearance: searchfield;
 }

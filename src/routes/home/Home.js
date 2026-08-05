@@ -60,8 +60,8 @@ usStateNames.DC = 'District of Columbia';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyDlwm2ykA0ohTXeVepQYvkcmdjz2M2CKEI';
 
-const debouncedProcessValidation = debounce(async ({ latitude, longitude }) => {
-  const { data } = await axios.post('/api/process_validation', {
+const debouncedGeosearch = debounce(async ({ latitude, longitude }) => {
+  const { data } = await axios.post('/api/geosearch', {
     lat: latitude,
     long: longitude,
   });
@@ -647,10 +647,12 @@ class Home extends React.Component {
       coordsAreInNyc: true,
     });
 
-    debouncedProcessValidation({ latitude, longitude }).then(data => {
+    debouncedGeosearch({ latitude, longitude }).then(data => {
+      const { properties } = data.features[0];
+
       this.setState({
         formatted_address: capitalize.words(
-          `${data.geoclient_response.address.houseNumber} ${data.geoclient_response.address.streetName1In}, ${data.geoclient_response.address.firstBoroughName}`,
+          `${properties.housenumber} ${properties.street}, ${properties.borough}`,
         ),
       });
     });

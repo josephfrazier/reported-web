@@ -24,7 +24,7 @@ import stringify from 'json-stringify-safe';
 import StyleContext from 'isomorphic-style-loader/StyleContext';
 
 import { isImage, isVideo } from './isImage.js';
-import { validateLocation, processValidation } from './geoclient.js';
+import { geosearch } from './geoclient.js';
 import getVehicleType from './getVehicleType.js';
 import srlookup from './srlookup.js';
 
@@ -250,16 +250,9 @@ app.use('/api/categories', (req, res) => {
     .catch(handlePromiseRejection(res));
 });
 
-app.use('/api/validate_location', (req, res) => {
+app.use('/api/geosearch', (req, res) => {
   const { lat, long } = req.body;
-  validateLocation({ lat, long })
-    .then(body => res.json(body))
-    .catch(handlePromiseRejection(res));
-});
-
-app.use('/api/process_validation', (req, res) => {
-  const { lat, long } = req.body;
-  processValidation({ lat, long })
+  geosearch({ lat, long })
     .then(body => res.json(body))
     .catch(handlePromiseRejection(res));
 });
@@ -643,6 +636,7 @@ app.get('/api/submissions-in-polygon', (req, res) => {
   const query = new Parse.Query(Submission);
   query.withinPolygon('location', polygonCoords);
   query.equalTo('can_be_shared_publicly', true);
+  query.notEqualTo('license', 'TEST');
   query.limit(POLYGON_RESULT_LIMIT);
   query.select(POLYGON_FIELDS);
 

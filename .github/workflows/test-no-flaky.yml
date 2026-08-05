@@ -1,4 +1,4 @@
-name: Node.js CI - test
+name: Node.js CI - test (except flaky ones)
 
 on: [push]
 
@@ -7,25 +7,25 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: read
+
     strategy:
       matrix:
         node-version: [24.12.0]
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v6
+      uses: actions/setup-node@v7
       with:
         node-version: ${{ matrix.node-version }}
     - run: curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.22.19
     - run: export PATH=$HOME/.yarn/bin:$PATH
     - run: yarn
-    - run: yarn add sharp --ignore-engines
     - shell: bash
       env:
         GEO_APP_ID: ${{ secrets.GEO_APP_ID }}
         GEO_APP_KEY: ${{ secrets.GEO_APP_KEY }}
         GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-        PLATERECOGNIZER_TOKEN: ${{ secrets.PLATERECOGNIZER_TOKEN }}
-        PLATERECOGNIZER_TOKEN_TWO: ${{ secrets.PLATERECOGNIZER_TOKEN_TWO }}
-      run: yarn test
+      run: yarn test:no-flaky

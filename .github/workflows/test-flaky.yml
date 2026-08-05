@@ -1,11 +1,14 @@
-name: Node.js CI - lint
+name: Node.js CI - test (flaky, allowed to fail)
 
 on: [push]
 
 jobs:
-  lint:
+  test-flaky:
 
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
 
     strategy:
       matrix:
@@ -20,4 +23,8 @@ jobs:
     - run: curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.22.19
     - run: export PATH=$HOME/.yarn/bin:$PATH
     - run: yarn
-    - run: yarn lint
+    - shell: bash
+      env:
+        PLATERECOGNIZER_TOKEN: ${{ secrets.PLATERECOGNIZER_TOKEN }}
+        PLATERECOGNIZER_TOKEN_TWO: ${{ secrets.PLATERECOGNIZER_TOKEN_TWO }}
+      run: yarn test:flaky

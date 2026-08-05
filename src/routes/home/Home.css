@@ -115,14 +115,19 @@ input[type='search']::-webkit-search-cancel-button {
 }
 
 /*
- * react-modal content has no clearfix; floated buttons ("Use current
- * location" / "Close") leave trailing whitespace that creates a gap.
+ * Use flexbox so the map fills available space and the floated buttons
+ * sit at the bottom without hardcoding their height into a calc().
  */
 /* stylelint-disable-next-line selector-class-pattern */
-:global(.ReactModal__Content)::after {
-  content: '';
-  display: table;
-  clear: both;
+:global(.ReactModal__Content) {
+  display: flex;
+  flex-direction: column;
+}
+
+/* stylelint-disable-next-line selector-class-pattern */
+:global(.ReactModal__Content) > :first-child {
+  flex: 1;
+  min-height: 0;
 }
 
 /* User Status Bar */

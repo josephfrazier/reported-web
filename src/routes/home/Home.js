@@ -1852,7 +1852,14 @@ class Home extends React.Component {
                             rel="noopener noreferrer"
                           >
                             {isImg ? (
-                              <img src={src} alt={name} />
+                              <img
+                                src={src}
+                                alt={name}
+                                style={{
+                                  borderRadius: 0,
+                                  marginTop: 0,
+                                }}
+                              />
                             ) : (
                               /* eslint-disable-next-line jsx-a11y/media-has-caption */
                               <video src={src} alt={name} />

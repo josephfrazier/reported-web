@@ -47,6 +47,7 @@ import capitalize from 'capitalize';
 import CircularProgress from '@mui/material/CircularProgress';
 
 import marx from 'marx-css/css/marx.css';
+import { readLicensePlateFromFile } from '../../alpr-browser.js';
 import homeStyles from './Home.css';
 
 import PreviousSubmissionsList from '../../components/PreviousSubmissionsList.js';
@@ -200,13 +201,7 @@ function getPlateThumbnailsByKey(results = []) {
   }, {});
 }
 
-async function fetchPlateResults({
-  attachmentFile,
-  attachmentBuffer,
-  ext,
-  email,
-  password,
-}) {
+async function fetchPlateResults({ attachmentFile, attachmentBuffer, ext }) {
   if (attachmentPlateCache.has(attachmentFile)) {
     console.info(`found cached plate results for ${attachmentFile.name}!`);
     return attachmentPlateCache.get(attachmentFile);
@@ -219,21 +214,15 @@ async function fetchPlateResults({
     throw new Error(`${attachmentFile.name} is not an image/video`);
   }
 
-  console.time(`bufferToBlob(${attachmentFile.name})`); // eslint-disable-line no-console
+  console.time(`alprBrowser(${attachmentFile.name})`); // eslint-disable-line no-console
   const attachmentBlob = await blobUtil.arrayBufferToBlob(
     bufferToArrayBuffer(attachmentBuffer),
   );
-  console.timeEnd(`bufferToBlob(${attachmentFile.name})`); // eslint-disable-line no-console
+  const { results } = await readLicensePlateFromFile(attachmentBlob);
+  console.timeEnd(`alprBrowser(${attachmentFile.name})`); // eslint-disable-line no-console
 
-  const formData = serialize({
-    attachmentFile: attachmentBlob,
-    email,
-    password,
-  });
-  const { data } = await axios.post('/platerecognizer', formData);
-
-  attachmentPlateCache.set(attachmentFile, data.results);
-  return data.results;
+  attachmentPlateCache.set(attachmentFile, results);
+  return results;
 }
 
 async function extractPlate({
@@ -241,8 +230,6 @@ async function extractPlate({
   attachmentBuffer,
   ext,
   isAlprEnabled,
-  email,
-  password,
 }) {
   try {
     console.time('extractPlate'); // eslint-disable-line no-console
@@ -256,8 +243,6 @@ async function extractPlate({
       attachmentFile,
       attachmentBuffer,
       ext,
-      email,
-      password,
     });
 
     // Choose first result with T######C plate if it exists, see https://github.com/josephfrazier/reported-web/issues/584
@@ -903,8 +888,6 @@ class Home extends React.Component {
                 attachmentBuffer,
                 ext,
                 isAlprEnabled: this.state.isAlprEnabled,
-                email: this.state.email,
-                password: this.state.password,
               })
                 .then(result => {
                   if (
@@ -983,15 +966,12 @@ class Home extends React.Component {
     this.setState({ platePickerLoading: true });
 
     try {
-      const { email, password } = this.state;
       const { attachmentBuffer } = await blobToBuffer({ attachmentFile });
       const ext = fileExtension(attachmentFile.name);
       const results = await fetchPlateResults({
         attachmentFile,
         attachmentBuffer,
         ext,
-        email,
-        password,
       });
 
       this.setState(state => ({

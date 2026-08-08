@@ -36,7 +36,6 @@ import router from './router.js';
 // import assets from './asset-manifest.json'; // eslint-disable-line import/no-unresolved
 import chunks from './chunk-manifest.json'; // eslint-disable-line import/no-unresolved
 import config from './config.js';
-import readLicenseViaALPR from './alpr.js';
 
 require('dotenv').config();
 
@@ -52,8 +51,6 @@ const {
   PARSE_MASTER_KEY,
   PARSE_SERVER_URL,
   HEROKU_RELEASE_VERSION,
-  PLATERECOGNIZER_TOKEN,
-  PLATERECOGNIZER_TOKEN_TWO,
 } = process.env;
 
 let commitHash = process.env.HEROKU_BUILD_COMMIT || 'unknown';
@@ -535,32 +532,6 @@ app.use('/submit', (req, res) => {
       .catch(handlePromiseRejection(res));
   });
 });
-
-// adapted from https://docs.platerecognizer.com/?javascript#license-plate-recognition
-app.use(
-  '/platerecognizer',
-  upload.single('attachmentFile'),
-  async (req, res) => {
-    const { email, password } = req.body;
-
-    try {
-      await logIn({ email, password });
-    } catch (error) {
-      handlePromiseRejection(res)(error);
-      return;
-    }
-
-    const attachmentBuffer = req.file.buffer;
-
-    readLicenseViaALPR({
-      attachmentBuffer,
-      PLATERECOGNIZER_TOKEN,
-      PLATERECOGNIZER_TOKEN_TWO,
-    })
-      .then(data => res.json(data))
-      .catch(handlePromiseRejection(res));
-  },
-);
 
 // ported from https://github.com/jeffrono/Reported/blob/19b588171315a3093d53986f9fb995059f5084b4/v2/enrich_functions.rb#L325-L346
 app.use('/getVehicleType/:licensePlate/:licenseState?', (req, res) => {

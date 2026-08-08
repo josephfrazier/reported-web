@@ -89,11 +89,13 @@ async function start() {
   );
   clientConfig.plugins.push(new webpack.HotModuleReplacementPlugin());
 
-  // Configure server-side hot module replacement
+  // Configure server-side hot module replacement.
+  // Hot-update files must live alongside the main server bundle (not in a
+  // subdirectory) because the chunk-loading `require()` calls inside them
+  // resolve relative to the hot-update file's own location.
   const serverConfig = webpackConfig.find(config => config.name === 'server');
-  serverConfig.output.hotUpdateMainFilename = 'updates/[hash].hot-update.json';
-  serverConfig.output.hotUpdateChunkFilename =
-    'updates/[id].[hash].hot-update.js';
+  serverConfig.output.hotUpdateMainFilename = '[hash].hot-update.json';
+  serverConfig.output.hotUpdateChunkFilename = '[id].[hash].hot-update.js';
   serverConfig.module.rules = serverConfig.module.rules.filter(
     x => x.loader !== 'null-loader',
   );

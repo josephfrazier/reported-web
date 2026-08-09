@@ -165,7 +165,7 @@ exports[`Home renders Edit Profile UI 1`] = `
         }
       >
         <a
-          href="/electricitibikes"
+          href="/submissions-map"
           style={
             {
               "background": "black",
@@ -176,10 +176,10 @@ exports[`Home renders Edit Profile UI 1`] = `
           }
         >
           <span
-            aria-label="high voltage"
+            aria-label="world map"
             role="img"
           >
-            ⚡
+            🗺️
           </span>
         </a>
       </div>
@@ -410,7 +410,7 @@ exports[`Home renders Log In modal UI 1`] = `
         }
       >
         <a
-          href="/electricitibikes"
+          href="/submissions-map"
           style={
             {
               "background": "black",
@@ -421,10 +421,10 @@ exports[`Home renders Log In modal UI 1`] = `
           }
         >
           <span
-            aria-label="high voltage"
+            aria-label="world map"
             role="img"
           >
-            ⚡
+            🗺️
           </span>
         </a>
       </div>
@@ -687,7 +687,7 @@ exports[`Home renders Sign Up modal UI 1`] = `
         }
       >
         <a
-          href="/electricitibikes"
+          href="/submissions-map"
           style={
             {
               "background": "black",
@@ -698,10 +698,10 @@ exports[`Home renders Sign Up modal UI 1`] = `
           }
         >
           <span
-            aria-label="high voltage"
+            aria-label="world map"
             role="img"
           >
-            ⚡
+            🗺️
           </span>
         </a>
       </div>
@@ -829,7 +829,7 @@ exports[`Home renders auth prompt and hides form when logged out 1`] = `
         }
       >
         <a
-          href="/electricitibikes"
+          href="/submissions-map"
           style={
             {
               "background": "black",
@@ -840,10 +840,10 @@ exports[`Home renders auth prompt and hides form when logged out 1`] = `
           }
         >
           <span
-            aria-label="high voltage"
+            aria-label="world map"
             role="img"
           >
-            ⚡
+            🗺️
           </span>
         </a>
       </div>
@@ -1447,7 +1447,7 @@ exports[`Home renders submission form and Previous Submissions when logged in 1`
         }
       >
         <a
-          href="/electricitibikes"
+          href="/submissions-map"
           style={
             {
               "background": "black",
@@ -1458,10 +1458,10 @@ exports[`Home renders submission form and Previous Submissions when logged in 1`
           }
         >
           <span
-            aria-label="high voltage"
+            aria-label="world map"
             role="img"
           >
-            ⚡
+            🗺️
           </span>
         </a>
       </div>
@@ -2067,7 +2067,7 @@ exports[`Home renders with allPlateResults entry missing plate 1`] = `
         }
       >
         <a
-          href="/electricitibikes"
+          href="/submissions-map"
           style={
             {
               "background": "black",
@@ -2078,10 +2078,10 @@ exports[`Home renders with allPlateResults entry missing plate 1`] = `
           }
         >
           <span
-            aria-label="high voltage"
+            aria-label="world map"
             role="img"
           >
-            ⚡
+            🗺️
           </span>
         </a>
       </div>
@@ -2685,7 +2685,7 @@ exports[`Home renders with undefined allPlateResults 1`] = `
         }
       >
         <a
-          href="/electricitibikes"
+          href="/submissions-map"
           style={
             {
               "background": "black",
@@ -2696,10 +2696,10 @@ exports[`Home renders with undefined allPlateResults 1`] = `
           }
         >
           <span
-            aria-label="high voltage"
+            aria-label="world map"
             role="img"
           >
-            ⚡
+            🗺️
           </span>
         </a>
       </div>

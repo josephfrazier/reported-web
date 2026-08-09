@@ -1055,6 +1055,12 @@ class Home extends React.Component {
       });
   };
 
+  focusAuthEmail = tab => {
+    const emailId = tab === 'signup' ? 'auth-signup-email' : 'auth-email';
+    const el = document.getElementById(emailId);
+    if (el) el.focus();
+  };
+
   openAuthModal = (tab = 'login') => {
     this.setState(
       {
@@ -1063,11 +1069,7 @@ class Home extends React.Component {
         authError: null,
         isPasswordRevealed: tab === 'signup',
       },
-      () => {
-        const emailId = tab === 'signup' ? 'auth-signup-email' : 'auth-email';
-        const el = document.getElementById(emailId);
-        if (el) el.focus();
-      },
+      () => this.focusAuthEmail(tab),
     );
 
     if (tab === 'signup') {
@@ -1086,11 +1088,7 @@ class Home extends React.Component {
         authError: null,
         isPasswordRevealed: tab === 'signup',
       },
-      () => {
-        const emailId = tab === 'signup' ? 'auth-signup-email' : 'auth-email';
-        const el = document.getElementById(emailId);
-        if (el) el.focus();
-      },
+      () => this.focusAuthEmail(tab),
     );
 
     if (tab === 'signup') {

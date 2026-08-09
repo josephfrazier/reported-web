@@ -15,16 +15,11 @@ import boroughBoundariesFeatureCollection from '../../../public/borough-boundari
 
 async function action({ fetch, commitHash, cookies }) {
   // get complaint categories from server
-  let typeofcomplaintValues = [];
-  try {
-    const resp = await fetch('/api/categories');
-    const { categories } = await resp.json();
-    typeofcomplaintValues = sortBy(categories, 'createdAt').map(
-      ({ text }) => text,
-    );
-  } catch {
-    // fall back to empty list (e.g. when Parse is not configured)
-  }
+  const resp = await fetch('/api/categories');
+  const { categories } = await resp.json();
+  const typeofcomplaintValues = sortBy(categories, 'createdAt').map(
+    ({ text }) => text,
+  );
 
   // Parse persistent state from cookie set by the client
   let initialState = null;

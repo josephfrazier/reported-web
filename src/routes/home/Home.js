@@ -1226,6 +1226,10 @@ class Home extends React.Component {
       },
       () => {
         setHomeStateCookie('', 0);
+        // Remove old localStorage keys so they aren't re-migrated
+        // if the user logs back in later.
+        localStorage.removeItem('Function');
+        localStorage.removeItem('reportedWebHomeState');
       },
     );
   };

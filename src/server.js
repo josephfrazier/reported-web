@@ -18,6 +18,7 @@ import ReactDOM from 'react-dom/server';
 import PrettyError from 'pretty-error';
 import Parse from 'parse/node';
 import FileType from 'file-type/browser';
+import cookie from 'cookie';
 import multer from 'multer';
 import stringify from 'json-stringify-safe';
 import StyleContext from 'isomorphic-style-loader/StyleContext';
@@ -677,12 +678,16 @@ app.get('*', async (req, res, next) => {
       cookie: req.headers.cookie,
     });
 
+    // Parse cookies from the request header into a plain object
+    const cookies = cookie.parse(req.headers.cookie || '');
+
     // Global (context) variables that can be easily accessed from any React component
     // https://facebook.github.io/react/docs/context.html
     const context = {
       insertCss,
       fetch,
       commitHash,
+      cookies,
       // The twins below are wild, be careful!
       pathname: req.path,
       query: req.query,

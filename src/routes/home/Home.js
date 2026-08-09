@@ -23,7 +23,6 @@ import {
   Marker,
 } from 'react-google-maps';
 import { SearchBox } from 'react-google-maps/lib/components/places/SearchBox';
-import withLocalStorage from 'react-localstorage';
 import debounce from 'debounce-promise';
 import FileType from 'file-type/browser';
 import MP4Box from 'mp4box';
@@ -34,6 +33,7 @@ import omit from 'object.omit';
 import bufferToArrayBuffer from 'buffer-to-arraybuffer';
 import { serialize } from 'object-to-formdata';
 import usStateNames from 'datasets-us-states-abbr-names';
+import cookie from 'cookie';
 import fileExtension from 'file-extension';
 import diceware from 'diceware-generator';
 import wordlist from 'diceware-wordlist-en-eff';
@@ -60,6 +60,18 @@ usStateNames.DC = 'District of Columbia';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyDlwm2ykA0ohTXeVepQYvkcmdjz2M2CKEI';
 
+const COOKIE_KEY = 'reportedWebHomeState';
+const COOKIE_MAX_AGE = 365 * 24 * 60 * 60; // 1 year in seconds
+
+const setHomeStateCookie = (value, maxAge) => {
+  document.cookie = cookie.serialize(COOKIE_KEY, value, {
+    maxAge,
+    path: '/',
+    sameSite: 'lax',
+    secure: window.location.protocol === 'https:',
+  });
+};
+
 const debouncedGeosearch = debounce(async ({ latitude, longitude }) => {
   const { data } = await axios.post('/api/geosearch', {
     lat: latitude,
@@ -81,8 +93,8 @@ const debouncedGetViolations = debounce(async ({ plate, licenseState }) => {
   return { apiUrl, response };
 }, 1000);
 
-const debouncedSaveStateToLocalStorage = debounce(self => {
-  self.saveStateToLocalStorage();
+const debouncedSavePersistentStateToCookie = debounce(self => {
+  self.savePersistentStateToCookie();
 }, 500);
 
 const defaultLatitude = 40.7128;
@@ -461,6 +473,9 @@ class Home extends React.Component {
     const initialState = {
       ...initialStatePersistent,
       ...initialStatePerSession,
+      // Apply server-provided initial state (from cookie via SSR) over the defaults.
+      // This ensures logged-in users see the correct UI immediately on first render.
+      ...(props.initialState || {}),
     };
 
     this.state = initialState;
@@ -472,23 +487,28 @@ class Home extends React.Component {
   }
 
   componentDidMount() {
-    // Copy from old localStorage key to new explicit key.
-    // The old key came from getDisplayName() which resolved to 'Function'
-    // for class components (Component.constructor.name === 'Function').
-    // This can be removed once all users have been migrated.
-    const oldKey = 'Function';
-    const newKey = this.getLocalStorageKey();
-    if (newKey !== oldKey) {
-      const oldData = localStorage.getItem(oldKey);
-      if (oldData && !localStorage.getItem(newKey)) {
-        try {
-          const parsedOldData = JSON.parse(oldData);
-          localStorage.setItem(newKey, JSON.stringify(parsedOldData));
-          // TODO: uncomment this line once this migration has been live for a bit without revert-worthy bug reports
-          // localStorage.removeItem(oldKey);
-          this.setState(parsedOldData);
-        } catch {
-          // Ignore parse errors from corrupted data.
+    // Migrate from old localStorage key ('Function') to cookie.
+    // The old localStorage key came from getDisplayName() which resolved to
+    // 'Function' for class components. The newer key was 'reportedWebHomeState'.
+    // Migrate both old localStorage keys to the cookie if no cookie exists yet.
+    if (!document.cookie.includes(`${COOKIE_KEY}=`)) {
+      const migrateKeys = ['Function', 'reportedWebHomeState'];
+      for (const key of migrateKeys) {
+        const oldData = localStorage.getItem(key);
+        if (oldData) {
+          try {
+            const parsed = JSON.parse(oldData);
+            // Filter to only persistent keys before storing in cookie
+            const persistentData = {};
+            Object.keys(this.initialStatePersistent).forEach(k => {
+              if (k in parsed) persistentData[k] = parsed[k];
+            });
+            setHomeStateCookie(JSON.stringify(persistentData), COOKIE_MAX_AGE);
+            this.setState(persistentData);
+            break;
+          } catch {
+            // Ignore parse errors from corrupted data.
+          }
         }
       }
     }
@@ -618,15 +638,6 @@ class Home extends React.Component {
     return omit(this.state, (val, key) =>
       Object.keys(this.initialStatePerSubmission).includes(key),
     );
-  }
-
-  getLocalStorageKey() {
-    return this.props.localStorageKey || 'reportedWebHomeState';
-  }
-
-  getStateFilterKeys() {
-    // used by react-localstorage to determine which `state` keys to save, see https://github.com/josephfrazier/react-localstorage/tree/75f0303aa775e1625ef9cb0d936b6aa0bcdbaffc#filtering
-    return Object.keys(this.initialStatePersistent);
   }
 
   setCoords = (
@@ -1042,7 +1053,7 @@ class Home extends React.Component {
       {
         [name]: value,
       },
-      () => debouncedSaveStateToLocalStorage(this),
+      () => debouncedSavePersistentStateToCookie(this),
     );
   };
 
@@ -1122,7 +1133,7 @@ class Home extends React.Component {
           loginSuccessful: true,
         }),
         () => {
-          this.saveStateToLocalStorage();
+          this.savePersistentStateToCookie();
           this.loadPreviousSubmissions();
         },
       );
@@ -1153,7 +1164,7 @@ class Home extends React.Component {
           try {
             await axios.post('/saveUser', this.state);
             this.setState({ isUserInfoSaving: false, isAuthModalOpen: false });
-            this.saveStateToLocalStorage();
+            this.savePersistentStateToCookie();
             this.loadPreviousSubmissions();
           } catch (saveErr) {
             this.setState({
@@ -1185,7 +1196,7 @@ class Home extends React.Component {
         loginSuccessful: false,
       },
       () => {
-        localStorage.removeItem(this.getLocalStorageKey());
+        setHomeStateCookie('', 0);
       },
     );
   };
@@ -1245,6 +1256,14 @@ class Home extends React.Component {
       return 'loading...';
     }
     return isLoadPreviousSubmissionsEnabled ? 'loading...' : 'expand to load';
+  };
+
+  savePersistentStateToCookie = () => {
+    const persistentState = {};
+    Object.keys(this.initialStatePersistent).forEach(key => {
+      persistentState[key] = this.state[key];
+    });
+    setHomeStateCookie(JSON.stringify(persistentState), COOKIE_MAX_AGE);
   };
 
   maybeGeneratePassword() {
@@ -1830,7 +1849,7 @@ class Home extends React.Component {
                       });
                     })
                     .then(() => {
-                      this.saveStateToLocalStorage();
+                      this.savePersistentStateToCookie();
                     });
                 }}
               >
@@ -2367,13 +2386,13 @@ class Home extends React.Component {
 Home.propTypes = {
   typeofcomplaintValues: PropTypes.arrayOf(PropTypes.string).isRequired,
   boroughBoundariesFeatureCollection: PropTypes.object.isRequired,
-  localStorageKey: PropTypes.string,
   commitHash: PropTypes.string,
+  initialState: PropTypes.object,
 };
 
 Home.defaultProps = {
-  localStorageKey: undefined,
   commitHash: undefined,
+  initialState: null,
 };
 
 const MyMapComponentPure = props => {
@@ -2452,8 +2471,4 @@ const MyMapComponent = compose(
   withGoogleMap,
 )(MyMapComponentPure);
 
-export default withStyles(
-  marx,
-  homeStyles,
-  toastifyStyles,
-)(withLocalStorage(Home));
+export default withStyles(marx, homeStyles, toastifyStyles)(Home);

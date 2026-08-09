@@ -483,6 +483,8 @@ class Home extends React.Component {
     this.initialStatePerSubmission = initialStatePerSubmission;
     this.initialStatePersistent = initialStatePersistent;
     this.plateRef = React.createRef();
+    this.loginEmailRef = React.createRef();
+    this.signupEmailRef = React.createRef();
   }
 
   componentDidMount() {
@@ -589,6 +591,22 @@ class Home extends React.Component {
       !this.state.hasLoadedPreviousSubmissions
     ) {
       this.loadPreviousSubmissions();
+    }
+  }
+
+  componentDidUpdate(prevProps, prevState) {
+    if (
+      this.state.isAuthModalOpen &&
+      (this.state.authModalTab !== prevState.authModalTab ||
+        !prevState.isAuthModalOpen)
+    ) {
+      const ref =
+        this.state.authModalTab === 'signup'
+          ? this.signupEmailRef
+          : this.loginEmailRef;
+      requestAnimationFrame(() => {
+        if (ref.current) ref.current.focus();
+      });
     }
   }
 
@@ -1100,7 +1118,8 @@ class Home extends React.Component {
     }
   };
 
-  handleLogIn = async () => {
+  handleLogIn = async e => {
+    if (e) e.preventDefault();
     this.setState({ isUserInfoSaving: true, authError: null });
     try {
       const { data } = await axios.post('/api/logIn', {
@@ -1129,7 +1148,8 @@ class Home extends React.Component {
     }
   };
 
-  handleSignUp = async () => {
+  handleSignUp = async e => {
+    e.preventDefault();
     this.setState({ isUserInfoSaving: true, authError: null });
     try {
       const { data } = await axios.post('/api/logIn', {
@@ -1493,10 +1513,14 @@ class Home extends React.Component {
 
               {/* Log In form */}
               {this.state.authModalTab === 'login' && (
-                <div className={homeStyles['auth-modal-body']}>
+                <form
+                  className={homeStyles['auth-modal-body']}
+                  onSubmit={this.handleLogIn}
+                >
                   <label htmlFor="auth-email">
                     Email:
                     <input
+                      ref={this.loginEmailRef}
                       required
                       id="auth-email"
                       type="email"
@@ -1542,10 +1566,9 @@ class Home extends React.Component {
                     </div>
                   </label>
                   <button
-                    type="button"
+                    type="submit"
                     className={homeStyles['auth-submit-btn']}
                     disabled={this.state.isUserInfoSaving}
-                    onClick={this.handleLogIn}
                   >
                     {this.state.isUserInfoSaving ? 'Logging in...' : 'Log In'}
                   </button>
@@ -1575,15 +1598,19 @@ class Home extends React.Component {
                       Sign Up
                     </button>
                   </div>
-                </div>
+                </form>
               )}
 
               {/* Sign Up form */}
               {this.state.authModalTab === 'signup' && (
-                <div className={homeStyles['auth-modal-body']}>
+                <form
+                  className={homeStyles['auth-modal-body']}
+                  onSubmit={this.handleSignUp}
+                >
                   <label htmlFor="auth-signup-email">
                     Email:
                     <input
+                      ref={this.signupEmailRef}
                       required
                       id="auth-signup-email"
                       type="email"
@@ -1677,10 +1704,9 @@ class Home extends React.Component {
                     by phone.
                   </label>
                   <button
-                    type="button"
+                    type="submit"
                     className={homeStyles['auth-submit-btn']}
                     disabled={this.state.isUserInfoSaving}
-                    onClick={this.handleSignUp}
                   >
                     {this.state.isUserInfoSaving
                       ? 'Creating account...'
@@ -1695,7 +1721,7 @@ class Home extends React.Component {
                       Log In
                     </button>
                   </div>
-                </div>
+                </form>
               )}
             </Modal>
 

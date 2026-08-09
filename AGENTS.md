@@ -48,11 +48,13 @@
 ## Change guidance
 
 - Prefer small, surgical edits; this repo has several large legacy files and old dependencies.
+- **Never amend commits** unless explicitly asked as a one-off. Always create new commits on top instead.
 - Add or change page routes in `src/routes/` and register them in `src/routes/index.js`.
 - If you change API or submission behavior, inspect both `src/server.js` and `src/routes/home/Home.js`; client and server responsibilities are split between them.
 - Keep tests near the affected module when possible; this repo uses a mix of colocated tests and snapshots under `src/**/__snapshots__/`.
 - Do not "clean up" existing warnings unless your task is specifically about them.
 - Before committing changes, run `yarn fix` to auto-fix lint issues.
+- When asked to update AGENTS.md in the middle of other work: find an unmerged branch that only touches AGENTS.md (or create one if it doesn't exist), switch to it, make the changes there, commit, run `git show` so the diff is visible, then switch back to the previous branch.
 
 ## Validation and CI gotchas
 
@@ -65,3 +67,7 @@
   - `src/srlookup.test.js` calls `portal.311.nyc.gov`
   - `src/geoclient.test.js` depends on Google Geocoding and NYC Geoclient
 - In a restricted sandbox with no outbound access, those tests fail with DNS/network errors or timeouts. Work around this by running the narrowest relevant tests, or at least `yarn test:no-flaky` when you want parity with the main CI workflow.
+
+## Commit message style
+
+- Use markdown backtick code snippets for identifiers in commit message titles and bodies: `handleLogIn`, `type="submit"`, `<form>`, `src/routes/home/Home.js`.

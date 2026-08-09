@@ -1,0 +1,56 @@
+name: Auto-fix lint and update snapshots
+
+on:
+  pull_request:
+
+jobs:
+  fix-and-update-snapshots:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+
+      - name: Use Node.js 24.12.0
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.12.0
+
+      - run: curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.22.19
+      - run: export PATH=$HOME/.yarn/bin:$PATH
+      - run: yarn
+
+      - name: Run yarn fix
+        run: yarn fix
+
+      - name: Commit and push lint fixes
+        run: |
+          if git diff --exit-code --quiet; then
+            echo "No lint fixes to commit"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add -A
+            git commit -m 'Apply `yarn fix` lint auto-fixes'
+            git push
+          fi
+
+      - name: Update test snapshots
+        run: yarn test:no-flaky -u
+
+      - name: Commit and push snapshot updates
+        run: |
+          if git diff --exit-code --quiet; then
+            echo "No snapshot updates to commit"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add -A
+            git commit -m 'Update test snapshots with `yarn test:no-flaky -u`'
+            git push
+          fi

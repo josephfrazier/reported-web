@@ -38,7 +38,7 @@ jobs:
             git config user.name "$(git log -1 --format='%an')"
             git config user.email "$(git log -1 --format='%ae')"
             git add -A
-            git commit -m 'Apply `yarn fix` lint auto-fixes'
+            git commit -m '[bot] Apply `yarn fix` lint auto-fixes'
             git push
             echo "pushed=true" >> "$GITHUB_OUTPUT"
           fi
@@ -56,6 +56,6 @@ jobs:
             git config user.name "$(git log -1 --format='%an')"
             git config user.email "$(git log -1 --format='%ae')"
             git add -A
-            git commit -m 'Update test snapshots with `yarn test:no-flaky -u`'
+            git commit -m '[bot] Update test snapshots with `yarn test:no-flaky -u`'
             git push
           fi

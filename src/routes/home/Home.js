@@ -212,6 +212,26 @@ function getPlateThumbnailsByKey(results = []) {
   }, {});
 }
 
+const urlRegex = /(https?:\/\/\S+)/;
+
+// Turn bare URLs in a string into clickable React <a> elements.
+// Returns a plain string when there are no URLs, or an array of mixed
+// strings and <a> elements otherwise — both valid as JSX children.
+function linkifyText(text) {
+  if (typeof text !== 'string') return text;
+  const parts = text.split(urlRegex);
+  if (parts.length === 1) return text;
+  return parts.map((part, i) =>
+    i % 2 === 1 ? (
+      <a key={part} href={part} target="_blank" rel="noopener noreferrer">
+        {part}
+      </a>
+    ) : (
+      part
+    ),
+  );
+}
+
 async function fetchPlateResults({
   attachmentFile,
   attachmentBuffer,
@@ -975,7 +995,7 @@ class Home extends React.Component {
                 isReverseGeocodingEnabled: this.state.isReverseGeocodingEnabled,
               }).then(({ latitude, longitude }) => {
                 if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
-                  throw 'location (may have been stripped by Android, see <a href="https://github.com/josephfrazier/reported-web/issues/751">details</a>)'; // eslint-disable-line no-throw-literal
+                  throw 'location (may have been stripped by Android, see https://github.com/josephfrazier/reported-web/issues/751 for details)'; // eslint-disable-line no-throw-literal
                 }
 
                 this.setCoords({
@@ -1001,16 +1021,15 @@ class Home extends React.Component {
           return;
         }
 
-        const missingValuesHtml = rejected.map(v => v.reason).join(', ');
+        const missingValuesString = rejected.map(v => v.reason).join(', ');
         const hasMultipleAttachments = this.state.attachmentData.length > 1;
         const fileCopy = hasMultipleAttachments ? 'the files.' : 'the file.';
 
         Home.notifyWarning(
           <React.Fragment>
             <p>
-              Could not extract the{' '}
-              <span dangerouslySetInnerHTML={{ __html: missingValuesHtml }} />{' '}
-              from {fileCopy} Please enter/confirm any missing values manually.
+              Could not extract the {linkifyText(missingValuesString)} from{' '}
+              {fileCopy} Please enter/confirm any missing values manually.
             </p>
           </React.Fragment>,
         );

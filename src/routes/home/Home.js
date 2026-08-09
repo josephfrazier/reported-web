@@ -1056,19 +1056,12 @@ class Home extends React.Component {
   };
 
   openAuthModal = (tab = 'login') => {
-    this.setState(
-      {
-        isAuthModalOpen: true,
-        authModalTab: tab,
-        authError: null,
-        isPasswordRevealed: tab === 'signup',
-      },
-      () => {
-        const emailId = tab === 'signup' ? 'auth-signup-email' : 'auth-email';
-        const el = document.getElementById(emailId);
-        if (el) el.focus();
-      },
-    );
+    this.setState({
+      isAuthModalOpen: true,
+      authModalTab: tab,
+      authError: null,
+      isPasswordRevealed: tab === 'signup',
+    });
 
     if (tab === 'signup') {
       this.maybeGeneratePassword();
@@ -1080,18 +1073,11 @@ class Home extends React.Component {
   };
 
   switchAuthTab = tab => {
-    this.setState(
-      {
-        authModalTab: tab,
-        authError: null,
-        isPasswordRevealed: tab === 'signup',
-      },
-      () => {
-        const emailId = tab === 'signup' ? 'auth-signup-email' : 'auth-email';
-        const el = document.getElementById(emailId);
-        if (el) el.focus();
-      },
-    );
+    this.setState({
+      authModalTab: tab,
+      authError: null,
+      isPasswordRevealed: tab === 'signup',
+    });
 
     if (tab === 'signup') {
       this.maybeGeneratePassword();

@@ -258,42 +258,33 @@ app.use('/api/geosearch', (req, res) => {
 });
 
 async function getSubmissions(req) {
-  console.info('[SSR] getSubmissions: attempting logIn');
-  return logIn(req.body)
-    .then(user => {
-      console.info('[SSR] getSubmissions: logIn succeeded, querying Parse');
-      const Submission = Parse.Object.extend('submission');
+  return logIn(req.body).then(user => {
+    const Submission = Parse.Object.extend('submission');
 
-      const usernameQuery = new Parse.Query(Submission);
-      // Search by "Username" (email address) to show submissions made by all
-      // users with the same email, since the web and mobile clients create
-      // separate users
-      usernameQuery.equalTo('Username', user.get('username'));
-      usernameQuery.descending('timeofreport');
-      usernameQuery.limit(Number.MAX_SAFE_INTEGER);
+    const usernameQuery = new Parse.Query(Submission);
+    // Search by "Username" (email address) to show submissions made by all
+    // users with the same email, since the web and mobile clients create
+    // separate users
+    usernameQuery.equalTo('Username', user.get('username'));
+    usernameQuery.descending('timeofreport');
+    usernameQuery.limit(Number.MAX_SAFE_INTEGER);
 
-      // Also search by "email" since submissions from iOS clients don't always have this set
-      const emailQuery = new Parse.Query(Submission);
-      emailQuery.equalTo('email', user.get('username'));
-      emailQuery.descending('timeofreport');
-      emailQuery.limit(Number.MAX_SAFE_INTEGER);
+    // Also search by "email" since submissions from iOS clients don't always have this set
+    const emailQuery = new Parse.Query(Submission);
+    emailQuery.equalTo('email', user.get('username'));
+    emailQuery.descending('timeofreport');
+    emailQuery.limit(Number.MAX_SAFE_INTEGER);
 
-      const query = Parse.Query.or(usernameQuery, emailQuery);
-      query.descending('timeofreport');
-      query.limit(Number.MAX_SAFE_INTEGER);
-      return query.find();
-    })
-    .catch(err => {
-      console.error('[SSR] getSubmissions error:', err.message || err);
-      throw err;
-    });
+    const query = Parse.Query.or(usernameQuery, emailQuery);
+    query.descending('timeofreport');
+    query.limit(Number.MAX_SAFE_INTEGER);
+    return query.find();
+  });
 }
 
 app.use('/submissions', (req, res) => {
-  console.info('[SSR] /submissions handler started');
   getSubmissions(req)
     .then(async results => {
-      console.info('[SSR] /submissions got results:', results.length);
       const Task = Parse.Object.extend('tasks');
       const Submission = Parse.Object.extend('submission');
       const submissionPointers = results.map(({ id }) =>
@@ -303,9 +294,7 @@ app.use('/submissions', (req, res) => {
       const taskQuery = new Parse.Query(Task);
       taskQuery.containedIn('submission', submissionPointers);
       taskQuery.limit(Number.MAX_SAFE_INTEGER);
-      console.info('[SSR] /submissions querying tasks...');
       const allTasks = await taskQuery.find();
-      console.info('[SSR] /submissions tasks found:', allTasks.length);
 
       const tasksBySubmissionId = {};
       allTasks.forEach(task => {
@@ -326,13 +315,9 @@ app.use('/submissions', (req, res) => {
       }));
     })
     .then(submissions => {
-      console.info('[SSR] /submissions sending:', submissions.length);
       res.json({ submissions });
     })
-    .catch(err => {
-      console.error('[SSR] /submissions handler error:', err.message || err);
-      handlePromiseRejection(res)(err);
-    });
+    .catch(handlePromiseRejection(res));
 });
 
 app.use('/api/deleteSubmission', (req, res) => {
@@ -695,7 +680,6 @@ app.get('*', async (req, res, next) => {
 
     // Parse cookies from the request header into a plain object
     const cookies = cookie.parse(req.headers.cookie || '');
-    console.info('[SSR] cookie keys:', Object.keys(cookies));
 
     // Global (context) variables that can be easily accessed from any React component
     // https://facebook.github.io/react/docs/context.html

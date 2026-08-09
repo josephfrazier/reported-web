@@ -85,12 +85,6 @@ const debouncedSaveStateToLocalStorage = debounce(self => {
   self.saveStateToLocalStorage();
 }, 500);
 
-function focusAuthEmail(tab) {
-  const emailId = tab === 'signup' ? 'auth-signup-email' : 'auth-email';
-  const el = document.getElementById(emailId);
-  if (el) el.focus();
-}
-
 const defaultLatitude = 40.7128;
 const defaultLongitude = -74.006;
 
@@ -473,6 +467,8 @@ class Home extends React.Component {
     this.initialStatePerSubmission = initialStatePerSubmission;
     this.initialStatePersistent = initialStatePersistent;
     this.plateRef = React.createRef();
+    this.loginEmailRef = React.createRef();
+    this.signupEmailRef = React.createRef();
   }
 
   componentDidMount() {
@@ -570,6 +566,20 @@ class Home extends React.Component {
 
     if (this.state.isLoadPreviousSubmissionsEnabled) {
       this.loadPreviousSubmissions();
+    }
+  }
+
+  componentDidUpdate(prevProps, prevState) {
+    if (
+      this.state.isAuthModalOpen &&
+      (this.state.authModalTab !== prevState.authModalTab ||
+        !prevState.isAuthModalOpen)
+    ) {
+      const ref =
+        this.state.authModalTab === 'signup'
+          ? this.signupEmailRef
+          : this.loginEmailRef;
+      if (ref.current) ref.current.focus();
     }
   }
 
@@ -1062,15 +1072,12 @@ class Home extends React.Component {
   };
 
   openAuthModal = (tab = 'login') => {
-    this.setState(
-      {
-        isAuthModalOpen: true,
-        authModalTab: tab,
-        authError: null,
-        isPasswordRevealed: tab === 'signup',
-      },
-      () => requestAnimationFrame(() => focusAuthEmail(tab)),
-    );
+    this.setState({
+      isAuthModalOpen: true,
+      authModalTab: tab,
+      authError: null,
+      isPasswordRevealed: tab === 'signup',
+    });
 
     if (tab === 'signup') {
       this.maybeGeneratePassword();
@@ -1082,14 +1089,11 @@ class Home extends React.Component {
   };
 
   switchAuthTab = tab => {
-    this.setState(
-      {
-        authModalTab: tab,
-        authError: null,
-        isPasswordRevealed: tab === 'signup',
-      },
-      () => requestAnimationFrame(() => focusAuthEmail(tab)),
-    );
+    this.setState({
+      authModalTab: tab,
+      authError: null,
+      isPasswordRevealed: tab === 'signup',
+    });
 
     if (tab === 'signup') {
       this.maybeGeneratePassword();
@@ -1490,6 +1494,7 @@ class Home extends React.Component {
                   <label htmlFor="auth-email">
                     Email:
                     <input
+                      ref={this.loginEmailRef}
                       required
                       id="auth-email"
                       type="email"
@@ -1579,6 +1584,7 @@ class Home extends React.Component {
                   <label htmlFor="auth-signup-email">
                     Email:
                     <input
+                      ref={this.signupEmailRef}
                       required
                       id="auth-signup-email"
                       type="email"

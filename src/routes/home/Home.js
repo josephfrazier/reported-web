@@ -467,6 +467,8 @@ class Home extends React.Component {
     this.initialStatePerSubmission = initialStatePerSubmission;
     this.initialStatePersistent = initialStatePersistent;
     this.plateRef = React.createRef();
+    this.loginEmailRef = React.createRef();
+    this.signupEmailRef = React.createRef();
   }
 
   componentDidMount() {
@@ -564,6 +566,22 @@ class Home extends React.Component {
 
     if (this.state.isLoadPreviousSubmissionsEnabled) {
       this.loadPreviousSubmissions();
+    }
+  }
+
+  componentDidUpdate(prevProps, prevState) {
+    if (
+      this.state.isAuthModalOpen &&
+      (this.state.authModalTab !== prevState.authModalTab ||
+        !prevState.isAuthModalOpen)
+    ) {
+      const ref =
+        this.state.authModalTab === 'signup'
+          ? this.signupEmailRef
+          : this.loginEmailRef;
+      requestAnimationFrame(() => {
+        if (ref.current) ref.current.focus();
+      });
     }
   }
 
@@ -1478,6 +1496,7 @@ class Home extends React.Component {
                   <label htmlFor="auth-email">
                     Email:
                     <input
+                      ref={this.loginEmailRef}
                       required
                       id="auth-email"
                       type="email"
@@ -1567,6 +1586,7 @@ class Home extends React.Component {
                   <label htmlFor="auth-signup-email">
                     Email:
                     <input
+                      ref={this.signupEmailRef}
                       required
                       id="auth-signup-email"
                       type="email"

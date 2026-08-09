@@ -78,9 +78,11 @@ async function action({ fetch, commitHash, cookies }) {
         console.info('[SSR] submissions count:', submissions.length);
         initialSubmissions = submissions;
       } else {
+        const errorBody = await submissionsResp.text();
         console.error(
           '[SSR] submissions fetch not ok:',
           submissionsResp.status,
+          errorBody,
         );
       }
     } catch (err) {

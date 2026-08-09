@@ -37,8 +37,7 @@ export async function loadModel() {
     // Configure ONNX Runtime Web WASM paths.
     // Webpack copies .wasm files under node_modules/onnxruntime-web/dist/ in
     // the build output, so point ORT there.
-    ort.env.wasm.wasmPaths =
-      '/assets/node_modules/onnxruntime-web/dist/';
+    ort.env.wasm.wasmPaths = '/assets/node_modules/onnxruntime-web/dist/';
 
     console.time('loadModel'); // eslint-disable-line no-console
     modelSession = await ort.InferenceSession.create(

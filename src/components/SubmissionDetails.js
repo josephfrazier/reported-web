@@ -168,7 +168,7 @@ class SubmissionDetails extends React.Component {
           {tlcCaseId && (
             <React.Fragment>
               <br />
-              TLC SR #:{' '}
+              TLC Service Request Number:{' '}
               <a
                 href={`https://portal.311.nyc.gov/sr-details/?srnum=${tlcCaseId}`}
                 target="_blank"

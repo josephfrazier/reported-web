@@ -20,6 +20,24 @@ import history from './history.js';
 import { updateMeta } from './DOMUtils.js';
 import router from './router.js';
 
+// Parse cookies from document.cookie into a plain object, mirroring the
+// server-side cookie parsing in server.js. This must be in the client
+// context so that route actions receive the same cookie data during
+// client-side hydration as they did during SSR — otherwise React
+// hydration will replace the logged-in SSR UI with a logged-out one.
+const cookies = {};
+document.cookie.split(';').forEach(pair => {
+  const eqIdx = pair.indexOf('=');
+  if (eqIdx < 0) return;
+  const key = pair.slice(0, eqIdx).trim();
+  const val = pair.slice(eqIdx + 1).trim();
+  try {
+    cookies[key] = decodeURIComponent(val);
+  } catch {
+    cookies[key] = val;
+  }
+});
+
 // Global (context) variables that can be easily accessed from any React component
 // https://facebook.github.io/react/docs/context.html
 const context = {
@@ -28,6 +46,7 @@ const context = {
     baseUrl: window.App.apiUrl,
   }),
   commitHash: window.App.commitHash,
+  cookies,
 };
 
 // insertCss function for client-side rendering

@@ -33,6 +33,7 @@ import omit from 'object.omit';
 import bufferToArrayBuffer from 'buffer-to-arraybuffer';
 import { serialize } from 'object-to-formdata';
 import usStateNames from 'datasets-us-states-abbr-names';
+import cookie from 'cookie';
 import fileExtension from 'file-extension';
 import diceware from 'diceware-generator';
 import wordlist from 'diceware-wordlist-en-eff';
@@ -62,9 +63,14 @@ const GOOGLE_MAPS_API_KEY = 'AIzaSyDlwm2ykA0ohTXeVepQYvkcmdjz2M2CKEI';
 const COOKIE_KEY = 'reportedWebHomeState';
 const COOKIE_MAX_AGE = 365 * 24 * 60 * 60; // 1 year in seconds
 
-// Only set Secure flag when served over HTTPS so local dev (HTTP) still works.
-const cookieSecureFlag = () =>
-  window.location.protocol === 'https:' ? '; Secure' : '';
+const setHomeStateCookie = (value, maxAge) => {
+  document.cookie = cookie.serialize(COOKIE_KEY, value, {
+    maxAge,
+    path: '/',
+    sameSite: 'lax',
+    secure: window.location.protocol === 'https:',
+  });
+};
 
 const debouncedGeosearch = debounce(async ({ latitude, longitude }) => {
   const { data } = await axios.post('/api/geosearch', {
@@ -504,7 +510,7 @@ class Home extends React.Component {
             Object.keys(this.initialStatePersistent).forEach(k => {
               if (k in parsed) persistentData[k] = parsed[k];
             });
-            document.cookie = `${COOKIE_KEY}=${encodeURIComponent(JSON.stringify(persistentData))}; max-age=${COOKIE_MAX_AGE}; path=/; SameSite=Lax${cookieSecureFlag()}`;
+            setHomeStateCookie(JSON.stringify(persistentData), COOKIE_MAX_AGE);
             this.setState(persistentData);
             break;
           } catch {
@@ -1201,7 +1207,7 @@ class Home extends React.Component {
         loginSuccessful: false,
       },
       () => {
-        document.cookie = `${COOKIE_KEY}=; max-age=0; path=/; SameSite=Lax${cookieSecureFlag()}`;
+        setHomeStateCookie('', 0);
       },
     );
   };
@@ -1268,7 +1274,7 @@ class Home extends React.Component {
     Object.keys(this.initialStatePersistent).forEach(key => {
       persistentState[key] = this.state[key];
     });
-    document.cookie = `${COOKIE_KEY}=${encodeURIComponent(JSON.stringify(persistentState))}; max-age=${COOKIE_MAX_AGE}; path=/; SameSite=Lax${cookieSecureFlag()}`;
+    setHomeStateCookie(JSON.stringify(persistentState), COOKIE_MAX_AGE);
   };
 
   maybeGeneratePassword() {

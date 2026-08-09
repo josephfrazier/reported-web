@@ -1069,7 +1069,7 @@ class Home extends React.Component {
         authError: null,
         isPasswordRevealed: tab === 'signup',
       },
-      () => this.focusAuthEmail(tab),
+      () => requestAnimationFrame(() => this.focusAuthEmail(tab)),
     );
 
     if (tab === 'signup') {
@@ -1088,7 +1088,7 @@ class Home extends React.Component {
         authError: null,
         isPasswordRevealed: tab === 'signup',
       },
-      () => this.focusAuthEmail(tab),
+      () => requestAnimationFrame(() => this.focusAuthEmail(tab)),
     );
 
     if (tab === 'signup') {

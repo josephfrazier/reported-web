@@ -2330,7 +2330,7 @@ class Home extends React.Component {
 
             <div style={{ float: 'right' }}>
               <a
-                href="/electricitibikes"
+                href="/submissions-map"
                 style={{
                   background: 'black',
                   border: '1em solid black',
@@ -2338,8 +2338,8 @@ class Home extends React.Component {
                   textDecoration: 'none',
                 }}
               >
-                <span role="img" aria-label="high voltage">
-                  ⚡
+                <span role="img" aria-label="world map">
+                  🗺️
                 </span>
               </a>
             </div>

@@ -35,8 +35,8 @@ jobs:
             echo "No lint fixes to commit"
             echo "pushed=false" >> "$GITHUB_OUTPUT"
           else
-            git config user.name "$(git log -1 --format='%an')"
-            git config user.email "$(git log -1 --format='%ae')"
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
             git add -A
             git commit -m 'Apply `yarn fix` lint auto-fixes'
             git push
@@ -53,8 +53,8 @@ jobs:
           if git diff --exit-code --quiet; then
             echo "No snapshot updates to commit"
           else
-            git config user.name "$(git log -1 --format='%an')"
-            git config user.email "$(git log -1 --format='%ae')"
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
             git add -A
             git commit -m 'Update test snapshots with `yarn test:no-flaky -u`'
             git push

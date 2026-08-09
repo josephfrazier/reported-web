@@ -291,8 +291,9 @@ exports[`Home renders Log In modal UI 1`] = `
           Sign Up
         </button>
       </div>
-      <div
+      <form
         className="auth-modal-body"
+        onSubmit={[Function]}
       >
         <label
           htmlFor="auth-email"
@@ -335,8 +336,7 @@ exports[`Home renders Log In modal UI 1`] = `
         <button
           className="auth-submit-btn"
           disabled={false}
-          onClick={[Function]}
-          type="button"
+          type="submit"
         >
           Log In
         </button>
@@ -375,7 +375,7 @@ exports[`Home renders Log In modal UI 1`] = `
             Sign Up
           </button>
         </div>
-      </div>
+      </form>
       <div
         className="auth-prompt"
       >
@@ -536,8 +536,9 @@ exports[`Home renders Sign Up modal UI 1`] = `
           Sign Up
         </button>
       </div>
-      <div
+      <form
         className="auth-modal-body"
+        onSubmit={[Function]}
       >
         <label
           htmlFor="auth-signup-email"
@@ -635,8 +636,7 @@ exports[`Home renders Sign Up modal UI 1`] = `
         <button
           className="auth-submit-btn"
           disabled={false}
-          onClick={[Function]}
-          type="button"
+          type="submit"
         >
           Sign Up
         </button>
@@ -652,7 +652,7 @@ exports[`Home renders Sign Up modal UI 1`] = `
             Log In
           </button>
         </div>
-      </div>
+      </form>
       <div
         className="auth-prompt"
       >

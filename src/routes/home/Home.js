@@ -1084,7 +1084,8 @@ class Home extends React.Component {
     }
   };
 
-  handleLogIn = async () => {
+  handleLogIn = async e => {
+    if (e) e.preventDefault();
     this.setState({ isUserInfoSaving: true, authError: null });
     try {
       const { data } = await axios.post('/api/logIn', {
@@ -1113,7 +1114,8 @@ class Home extends React.Component {
     }
   };
 
-  handleSignUp = async () => {
+  handleSignUp = async e => {
+    e.preventDefault();
     this.setState({ isUserInfoSaving: true, authError: null });
     try {
       const { data } = await axios.post('/api/logIn', {
@@ -1469,7 +1471,10 @@ class Home extends React.Component {
 
               {/* Log In form */}
               {this.state.authModalTab === 'login' && (
-                <div className={homeStyles['auth-modal-body']}>
+                <form
+                  className={homeStyles['auth-modal-body']}
+                  onSubmit={this.handleLogIn}
+                >
                   <label htmlFor="auth-email">
                     Email:
                     <input
@@ -1518,10 +1523,9 @@ class Home extends React.Component {
                     </div>
                   </label>
                   <button
-                    type="button"
+                    type="submit"
                     className={homeStyles['auth-submit-btn']}
                     disabled={this.state.isUserInfoSaving}
-                    onClick={this.handleLogIn}
                   >
                     {this.state.isUserInfoSaving ? 'Logging in...' : 'Log In'}
                   </button>
@@ -1551,12 +1555,15 @@ class Home extends React.Component {
                       Sign Up
                     </button>
                   </div>
-                </div>
+                </form>
               )}
 
               {/* Sign Up form */}
               {this.state.authModalTab === 'signup' && (
-                <div className={homeStyles['auth-modal-body']}>
+                <form
+                  className={homeStyles['auth-modal-body']}
+                  onSubmit={this.handleSignUp}
+                >
                   <label htmlFor="auth-signup-email">
                     Email:
                     <input
@@ -1653,10 +1660,9 @@ class Home extends React.Component {
                     by phone.
                   </label>
                   <button
-                    type="button"
+                    type="submit"
                     className={homeStyles['auth-submit-btn']}
                     disabled={this.state.isUserInfoSaving}
-                    onClick={this.handleSignUp}
                   >
                     {this.state.isUserInfoSaving
                       ? 'Creating account...'
@@ -1671,7 +1677,7 @@ class Home extends React.Component {
                       Log In
                     </button>
                   </div>
-                </div>
+                </form>
               )}
             </Modal>
 

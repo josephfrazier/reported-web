@@ -476,13 +476,6 @@ class Home extends React.Component {
       // Apply server-provided initial state (from cookie via SSR) over the defaults.
       // This ensures logged-in users see the correct UI immediately on first render.
       ...(props.initialState || {}),
-      // If the server pre-loaded previous submissions, use them right away.
-      ...(props.initialSubmissions
-        ? {
-            submissions: props.initialSubmissions,
-            hasLoadedPreviousSubmissions: true,
-          }
-        : {}),
     };
 
     this.state = initialState;
@@ -2399,13 +2392,11 @@ Home.propTypes = {
   boroughBoundariesFeatureCollection: PropTypes.object.isRequired,
   commitHash: PropTypes.string,
   initialState: PropTypes.object,
-  initialSubmissions: PropTypes.array,
 };
 
 Home.defaultProps = {
   commitHash: undefined,
   initialState: null,
-  initialSubmissions: null,
 };
 
 const MyMapComponentPure = props => {

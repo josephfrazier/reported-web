@@ -258,7 +258,7 @@ app.use('/api/geosearch', (req, res) => {
 });
 
 async function getSubmissions(req) {
-  return saveUser(req.body).then(user => {
+  return logIn(req.body).then(user => {
     const Submission = Parse.Object.extend('submission');
 
     const usernameQuery = new Parse.Query(Submission);

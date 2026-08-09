@@ -584,11 +584,7 @@ class Home extends React.Component {
 
     this.forceUpdate(); // force "Create/Edit User" fields to render persisted value after load
 
-    // Only fetch previous submissions if they weren't already loaded server-side.
-    if (
-      this.state.isLoadPreviousSubmissionsEnabled &&
-      !this.state.hasLoadedPreviousSubmissions
-    ) {
+    if (this.state.isLoadPreviousSubmissionsEnabled) {
       this.loadPreviousSubmissions();
     }
   }

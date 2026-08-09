@@ -505,6 +505,18 @@ class Home extends React.Component {
             });
             setHomeStateCookie(JSON.stringify(persistentData), COOKIE_MAX_AGE);
             this.setState(persistentData);
+
+            // The auto-login check below reads this.state, which may not
+            // reflect setState yet in React 16.  Check the parsed data
+            // directly so users with old localStorage entries that lack
+            // loginSuccessful don't need a second page load.
+            if (
+              persistentData.email &&
+              persistentData.password &&
+              !persistentData.loginSuccessful
+            ) {
+              this.handleLogIn();
+            }
             break;
           } catch {
             // Ignore parse errors from corrupted data.
@@ -513,9 +525,8 @@ class Home extends React.Component {
       }
     }
 
-    // Existing users who saved email & password before loginSuccessful
-    // was introduced won't have it set. Try to log them in so the
-    // server can validate the credentials and set the flag properly.
+    // If the cookie already existed at mount time (i.e. a subsequent
+    // page load), check whether loginSuccessful is missing and retry.
     if (
       this.state.email &&
       this.state.password &&

@@ -37,33 +37,10 @@ async function action({ fetch, commitHash, cookies }) {
     }
   }
 
-  // If the user has opted in to loading previous submissions, fetch them server-side
-  // so they are available on the very first render (no flash / extra round-trip).
-  let initialSubmissions = null;
-  if (
-    initialState &&
-    initialState.isLoadPreviousSubmissionsEnabled &&
-    initialState.loginSuccessful &&
-    initialState.email &&
-    initialState.password
-  ) {
-    try {
-      const submissionsResp = await fetch('/submissions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: initialState.email,
-          password: initialState.password,
-        }),
-      });
-      if (submissionsResp.ok) {
-        const { submissions } = await submissionsResp.json();
-        initialSubmissions = submissions;
-      }
-    } catch (err) {
-      console.warn('[SSR] Failed to preload submissions:', err.message);
-    }
-  }
+  // Submissions are loaded client-side when the user expands the
+  // "Previous Submissions" section or has opted into auto-loading.
+  // We don't pre-fetch them during SSR because it can be slow for
+  // users with thousands of submissions.
 
   return {
     title: 'Reported',
@@ -77,7 +54,6 @@ async function action({ fetch, commitHash, cookies }) {
           }
           commitHash={commitHash}
           initialState={initialState}
-          initialSubmissions={initialSubmissions}
         />
       </Layout>
     ),

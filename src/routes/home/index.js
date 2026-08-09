@@ -46,7 +46,10 @@ async function action({ fetch, commitHash, cookies }) {
       const submissionsResp = await fetch('/submissions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(initialState),
+        body: JSON.stringify({
+          email: initialState.email,
+          password: initialState.password,
+        }),
       });
       if (submissionsResp.ok) {
         const { submissions } = await submissionsResp.json();

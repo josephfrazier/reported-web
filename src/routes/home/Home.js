@@ -504,19 +504,18 @@ class Home extends React.Component {
               if (k in parsed) persistentData[k] = parsed[k];
             });
             setHomeStateCookie(JSON.stringify(persistentData), COOKIE_MAX_AGE);
-            this.setState(persistentData);
 
-            // The auto-login check below reads this.state, which may not
-            // reflect setState yet in React 16.  Check the parsed data
-            // directly so users with old localStorage entries that lack
-            // loginSuccessful don't need a second page load.
-            if (
-              persistentData.email &&
-              persistentData.password &&
-              !persistentData.loginSuccessful
-            ) {
-              this.handleLogIn();
-            }
+            // Use the setState callback so handleLogIn sees the migrated
+            // email/password in this.state, not the constructor defaults.
+            this.setState(persistentData, () => {
+              if (
+                persistentData.email &&
+                persistentData.password &&
+                !persistentData.loginSuccessful
+              ) {
+                this.handleLogIn();
+              }
+            });
             break;
           } catch {
             // Ignore parse errors from corrupted data.

@@ -22,7 +22,7 @@ jobs:
           node-version: 24.12.0
 
       - run: curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.22.19
-      - run: export PATH=$HOME/.yarn/bin:$PATH
+      - run: echo "$HOME/.yarn/bin" >> "$GITHUB_PATH"
       - run: yarn
 
       - name: Run yarn fix

@@ -290,8 +290,10 @@ async function getSubmissions(req) {
 }
 
 app.use('/submissions', (req, res) => {
+  console.info('[SSR] /submissions handler started');
   getSubmissions(req)
     .then(async results => {
+      console.info('[SSR] /submissions got results:', results.length);
       const Task = Parse.Object.extend('tasks');
       const Submission = Parse.Object.extend('submission');
       const submissionPointers = results.map(({ id }) =>
@@ -301,7 +303,9 @@ app.use('/submissions', (req, res) => {
       const taskQuery = new Parse.Query(Task);
       taskQuery.containedIn('submission', submissionPointers);
       taskQuery.limit(Number.MAX_SAFE_INTEGER);
+      console.info('[SSR] /submissions querying tasks...');
       const allTasks = await taskQuery.find();
+      console.info('[SSR] /submissions tasks found:', allTasks.length);
 
       const tasksBySubmissionId = {};
       allTasks.forEach(task => {
@@ -322,9 +326,13 @@ app.use('/submissions', (req, res) => {
       }));
     })
     .then(submissions => {
+      console.info('[SSR] /submissions sending:', submissions.length);
       res.json({ submissions });
     })
-    .catch(handlePromiseRejection(res));
+    .catch(err => {
+      console.error('[SSR] /submissions handler error:', err.message || err);
+      handlePromiseRejection(res)(err);
+    });
 });
 
 app.use('/api/deleteSubmission', (req, res) => {

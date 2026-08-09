@@ -677,12 +677,27 @@ app.get('*', async (req, res, next) => {
       cookie: req.headers.cookie,
     });
 
+    // Parse cookies from the request header into a plain object
+    const cookies = {};
+    (req.headers.cookie || '').split(';').forEach(pair => {
+      const eqIdx = pair.indexOf('=');
+      if (eqIdx < 0) return;
+      const key = pair.slice(0, eqIdx).trim();
+      const val = pair.slice(eqIdx + 1).trim();
+      try {
+        cookies[key] = decodeURIComponent(val);
+      } catch {
+        cookies[key] = val;
+      }
+    });
+
     // Global (context) variables that can be easily accessed from any React component
     // https://facebook.github.io/react/docs/context.html
     const context = {
       insertCss,
       fetch,
       commitHash,
+      cookies,
       // The twins below are wild, be careful!
       pathname: req.path,
       query: req.query,

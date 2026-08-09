@@ -29,11 +29,23 @@ async function action({ fetch, commitHash, cookies }) {
   // Parse persistent state from cookie set by the client
   let initialState = null;
   const cookieValue = cookies && cookies.reportedWebHomeState;
+  console.info('[SSR] reportedWebHomeState cookie present:', !!cookieValue);
   if (cookieValue) {
     try {
       initialState = JSON.parse(cookieValue);
-    } catch {
-      // ignore corrupted cookie
+      console.info(
+        '[SSR] parsed initialState keys:',
+        Object.keys(initialState),
+      );
+      console.info(
+        '[SSR] isLoadPreviousSubmissionsEnabled:',
+        initialState.isLoadPreviousSubmissionsEnabled,
+      );
+      console.info('[SSR] loginSuccessful:', initialState.loginSuccessful);
+      console.info('[SSR] has email:', !!initialState.email);
+      console.info('[SSR] has password:', !!initialState.password);
+    } catch (err) {
+      console.error('[SSR] failed to parse cookie:', err.message);
     }
   }
 
@@ -47,6 +59,7 @@ async function action({ fetch, commitHash, cookies }) {
     initialState.email &&
     initialState.password
   ) {
+    console.info('[SSR] conditions met, fetching submissions...');
     try {
       const submissionsResp = await fetch('/submissions', {
         method: 'POST',
@@ -56,14 +69,28 @@ async function action({ fetch, commitHash, cookies }) {
           password: initialState.password,
         }),
       });
+      console.info(
+        '[SSR] submissions response status:',
+        submissionsResp.status,
+      );
       if (submissionsResp.ok) {
         const { submissions } = await submissionsResp.json();
+        console.info('[SSR] submissions count:', submissions.length);
         initialSubmissions = submissions;
+      } else {
+        console.error(
+          '[SSR] submissions fetch not ok:',
+          submissionsResp.status,
+        );
       }
-    } catch {
-      // fall back to client-side loading
+    } catch (err) {
+      console.error('[SSR] submissions fetch error:', err.message);
     }
+  } else {
+    console.info('[SSR] conditions not met for preloading submissions');
   }
+
+  console.info('[SSR] initialSubmissions present:', !!initialSubmissions);
 
   return {
     title: 'Reported',

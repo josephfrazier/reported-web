@@ -680,6 +680,7 @@ app.get('*', async (req, res, next) => {
 
     // Parse cookies from the request header into a plain object
     const cookies = cookie.parse(req.headers.cookie || '');
+    console.info('[SSR] cookie keys:', Object.keys(cookies));
 
     // Global (context) variables that can be easily accessed from any React component
     // https://facebook.github.io/react/docs/context.html

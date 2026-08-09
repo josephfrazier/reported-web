@@ -579,7 +579,9 @@ class Home extends React.Component {
         this.state.authModalTab === 'signup'
           ? this.signupEmailRef
           : this.loginEmailRef;
-      if (ref.current) ref.current.focus();
+      requestAnimationFrame(() => {
+        if (ref.current) ref.current.focus();
+      });
     }
   }
 

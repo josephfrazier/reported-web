@@ -85,6 +85,12 @@ const debouncedSaveStateToLocalStorage = debounce(self => {
   self.saveStateToLocalStorage();
 }, 500);
 
+function focusAuthEmail(tab) {
+  const emailId = tab === 'signup' ? 'auth-signup-email' : 'auth-email';
+  const el = document.getElementById(emailId);
+  if (el) el.focus();
+}
+
 const defaultLatitude = 40.7128;
 const defaultLongitude = -74.006;
 
@@ -1055,12 +1061,6 @@ class Home extends React.Component {
       });
   };
 
-  focusAuthEmail = tab => {
-    const emailId = tab === 'signup' ? 'auth-signup-email' : 'auth-email';
-    const el = document.getElementById(emailId);
-    if (el) el.focus();
-  };
-
   openAuthModal = (tab = 'login') => {
     this.setState(
       {
@@ -1069,7 +1069,7 @@ class Home extends React.Component {
         authError: null,
         isPasswordRevealed: tab === 'signup',
       },
-      () => requestAnimationFrame(() => this.focusAuthEmail(tab)),
+      () => requestAnimationFrame(() => focusAuthEmail(tab)),
     );
 
     if (tab === 'signup') {
@@ -1088,7 +1088,7 @@ class Home extends React.Component {
         authError: null,
         isPasswordRevealed: tab === 'signup',
       },
-      () => requestAnimationFrame(() => this.focusAuthEmail(tab)),
+      () => requestAnimationFrame(() => focusAuthEmail(tab)),
     );
 
     if (tab === 'signup') {

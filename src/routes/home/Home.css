@@ -45,14 +45,14 @@ input[type='search']::-webkit-search-cancel-button {
 .plate-overlay {
   position: absolute;
   padding: 0;
-  border: 2px solid rgb(255 193 7 / 90%);
-  background: rgb(255 193 7 / 25%);
+  border: 2px solid rgb(0 200 255 / 90%);
+  background: rgb(0 200 255 / 20%);
   cursor: pointer;
 }
 
 .plate-overlay:hover,
 .plate-overlay:focus-visible {
-  background: rgb(255 193 7 / 50%);
+  background: rgb(0 200 255 / 40%);
 }
 
 .plate-overlay-tooltip {

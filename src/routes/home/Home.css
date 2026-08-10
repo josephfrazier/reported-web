@@ -26,11 +26,49 @@
 
 summary {
   outline: none;
+  font-weight: inherit;
+}
+
+/*
+ * marx v5 sets explicit font-weight on dt (bold) and summary (500).
+ * Layout.css sets html { font-weight: 100 }, so the v3 computed
+ * weight was 100 (inherited) for both.  Explicit declarations beat
+ * inheritance even when layered, so use inherit to restore v3 behavior.
+ */
+dt {
+  font-weight: inherit;
 }
 
 label {
   display: block;
   margin: 1em 0;
+}
+
+/*
+ * Restore marx-css v3-style font properties on form elements.
+ * marx v5's `font: inherit` shorthand (layered) inherits all font
+ * sub-properties from body, and normalize.css (unlayered) overrides
+ * font-family/font-size/line-height.  Explicitly set everything here
+ * so text inside inputs/selects/textarea matches the v3 look.
+ */
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: var(--marx-leading, 1.5);
+}
+
+/*
+ * marx v5 bumps button font-weight from 400 to 500; dial it back so
+ * button text doesn't look heavier than it did under v3.
+ */
+button,
+input[type='submit'],
+input[type='reset'],
+input[type='button'] {
+  font-weight: 400;
 }
 
 input[type='search'] {
@@ -39,6 +77,57 @@ input[type='search'] {
 
 input[type='search']::-webkit-search-cancel-button {
   appearance: searchfield-cancel-button;
+}
+
+/*
+ * marx v5 adds several rules that break Google Maps controls:
+ *   - display: block + vertical-align: middle on img/svg/video/iframe
+ *   - margin-block-start on img/video/iframe
+ *   - border-radius on img/video
+ *   - padding, font, background, border, border-radius on buttons
+ *   - margin/padding/border zeroed on every element via universal reset
+ * Google Maps relies on browser defaults and its own unlayered styles
+ * for its controls.  Explicitly reset these inside the map container.
+ * Wrapped in :global() so CSS Modules does not rename .gm-style.
+ */
+:global(.gm-style) img,
+:global(.gm-style) svg,
+:global(.gm-style) video,
+:global(.gm-style) canvas,
+:global(.gm-style) iframe,
+:global(.gm-style) embed,
+:global(.gm-style) object {
+  display: revert;
+  vertical-align: revert;
+  margin-block-start: 0;
+  margin-top: 0;
+}
+
+:global(.gm-style) img,
+:global(.gm-style) video {
+  border-radius: 0;
+  max-inline-size: revert;
+  block-size: revert;
+}
+
+:global(.gm-style) button {
+  all: revert-layer;
+}
+
+/*
+ * Use flexbox so the map fills available space and the buttons sit at
+ * the bottom without hardcoding their height into a calc().
+ */
+/* stylelint-disable-next-line selector-class-pattern */
+:global(.ReactModal__Content) {
+  display: flex;
+  flex-direction: column;
+}
+
+/* stylelint-disable-next-line selector-class-pattern */
+:global(.ReactModal__Content) > :first-child {
+  flex: 1;
+  min-height: 0;
 }
 
 /* User Status Bar */
@@ -88,14 +177,14 @@ input[type='search']::-webkit-search-cancel-button {
 
 .status-bar-btn-primary {
   composes: status-bar-btn;
-  background: #007bff;
-  color: #fff;
-  border-color: #007bff;
+  background: var(--marx-primary);
+  color: var(--marx-on-primary);
+  border-color: var(--marx-primary);
 }
 
 .status-bar-btn-primary:hover {
-  background: #0069d9;
-  border-color: #0069d9;
+  background: var(--marx-primary-strong);
+  border-color: var(--marx-primary-strong);
 }
 
 /* Auth Modal */
@@ -126,8 +215,8 @@ input[type='search']::-webkit-search-cancel-button {
 
 .auth-modal-tab-active {
   composes: auth-modal-tab;
-  color: #007bff;
-  border-bottom-color: #007bff;
+  color: var(--marx-primary);
+  border-bottom-color: var(--marx-primary);
   font-weight: 600;
 }
 
@@ -172,8 +261,8 @@ input[type='search']::-webkit-search-cancel-button {
   width: 100%;
   padding: 0.6rem 1rem;
   margin-top: 0.75rem;
-  background: #007bff;
-  color: #fff;
+  background: var(--marx-primary);
+  color: var(--marx-on-primary);
   border: none;
   border-radius: 4px;
   font-size: 1rem;
@@ -183,7 +272,7 @@ input[type='search']::-webkit-search-cancel-button {
 }
 
 .auth-submit-btn:hover {
-  background: #0069d9;
+  background: var(--marx-primary-strong);
 }
 
 .auth-submit-btn:disabled {
@@ -218,7 +307,7 @@ input[type='search']::-webkit-search-cancel-button {
 .auth-switch-link button {
   background: none;
   border: none;
-  color: #007bff;
+  color: var(--marx-link);
   cursor: pointer;
   font-size: inherit;
   font-family: inherit;
@@ -227,7 +316,7 @@ input[type='search']::-webkit-search-cancel-button {
 }
 
 .auth-switch-link button:hover {
-  color: #0069d9;
+  color: var(--marx-link-hover);
 }
 
 .auth-error {

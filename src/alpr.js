@@ -53,8 +53,8 @@ const downscaleForPlateRecognizer = ({ buffer, targetWidth }) => {
     });
 };
 
-function platerecognizer({ imageBuffer, PLATERECOGNIZER_TOKEN }) {
-  const blob = new Blob([imageBuffer], { type: 'image/jpeg' });
+function platerecognizer({ attachmentBufferRotated, PLATERECOGNIZER_TOKEN }) {
+  const blob = new Blob([attachmentBufferRotated], { type: 'image/jpeg' });
   const body = new FormData();
   body.append('upload', blob, 'image.jpg');
 
@@ -78,12 +78,12 @@ export default function readLicenseViaALPR({
   return orientImageBuffer({ attachmentBuffer })
     .then(buffer => downscaleForPlateRecognizer({ buffer, targetWidth: 4096 }))
     .then(buffer => downscaleForPlateRecognizer({ buffer, targetWidth: 2048 }))
-    .then(processedBuffer => {
+    .then(attachmentBufferRotated => {
       console.log('STARTING platerecognizer'); // eslint-disable-line no-console
       console.time(`/platerecognizer plate-reader`); // eslint-disable-line no-console
 
       return platerecognizer({
-        imageBuffer: processedBuffer,
+        attachmentBufferRotated,
         PLATERECOGNIZER_TOKEN,
       })
         .then(platerecognizerRes => {
@@ -96,7 +96,7 @@ export default function readLicenseViaALPR({
           );
 
           return platerecognizer({
-            imageBuffer: processedBuffer,
+            attachmentBufferRotated,
             PLATERECOGNIZER_TOKEN: PLATERECOGNIZER_TOKEN_TWO,
           });
         })
@@ -125,7 +125,7 @@ export default function readLicenseViaALPR({
             const width = xmax - xmin;
             const height = ymax - ymin;
             if (width <= 0 || height <= 0) return null;
-            const cropBuffer = await sharp(processedBuffer)
+            const cropBuffer = await sharp(attachmentBufferRotated)
               .extract({ left: xmin, top: ymin, width, height })
               .jpeg()
               .toBuffer();

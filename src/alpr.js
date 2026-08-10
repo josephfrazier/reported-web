@@ -10,16 +10,22 @@ async function orientImageBuffer({ attachmentBuffer }) {
   console.log(
     `image buffer length BEFORE sharp: ${attachmentBuffer.length} bytes`,
   );
-  return sharp(attachmentBuffer)
-    .rotate()
-    .toBuffer()
-    .catch(() => attachmentBuffer)
-    .then(buffer => Buffer.from(buffer))
-    .then(async buffer => {
-      console.log(`image buffer length AFTER sharp: ${buffer.length} bytes`); // eslint-disable-line no-console
-      console.timeEnd(`orientImageBuffer`); // eslint-disable-line no-console
-      return buffer;
-    });
+  return (
+    sharp(attachmentBuffer)
+      .rotate()
+      .toBuffer()
+      .catch(() => attachmentBuffer)
+      // sharp v0.35+ always returns a Buffer from toBuffer(), but older
+      // versions had a bug where it could return a Uint8Array instead
+      // (https://github.com/lovell/sharp/issues/1219). Guard against that
+      // without doing an unnecessary copy in the common case.
+      .then(buffer => (Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer)))
+      .then(async buffer => {
+        console.log(`image buffer length AFTER sharp: ${buffer.length} bytes`); // eslint-disable-line no-console
+        console.timeEnd(`orientImageBuffer`); // eslint-disable-line no-console
+        return buffer;
+      })
+  );
 }
 
 // https://app.platerecognizer.com/upload-limit/
@@ -36,22 +42,30 @@ const downscaleForPlateRecognizer = ({ buffer, targetWidth }) => {
     `file size is greater than maximum of ${maxFilesize} bytes, attempting to scale down to width of ${targetWidth}`,
   );
 
-  return sharp(buffer)
-    .resize({ width: targetWidth })
-    .toBuffer()
-    .catch(error => {
-      console.error('could not scale down, using unscaled image', { error });
-      return buffer;
-    })
-    .then(resizedBufferish => {
-      const resizedBuffer = Buffer.from(resizedBufferish);
-      // eslint-disable-next-line no-console
-      console.log(
-        `file size after scaling down: ${resizedBuffer.length} bytes`,
-      );
-      return resizedBuffer;
-    });
+  return (
+    sharp(buffer)
+      .resize({ width: targetWidth })
+      .toBuffer()
+      .catch(error => {
+        console.error('could not scale down, using unscaled image', { error });
+        return buffer;
+      })
+      // sharp v0.35+ always returns a Buffer from toBuffer(), but guard
+      // against the old Uint8Array bug without an unnecessary copy.
+      .then(resizedBuffer => {
+        const safe = Buffer.isBuffer(resizedBuffer)
+          ? resizedBuffer
+          : Buffer.from(resizedBuffer);
+        // eslint-disable-next-line no-console
+        console.log(`file size after scaling down: ${safe.length} bytes`);
+        return safe;
+      })
+  );
 };
+
+// 30-second timeout for Plate Recognizer API calls to prevent hung requests
+// from holding image buffers indefinitely
+const PLATERECOGNIZER_TIMEOUT_MS = 30_000;
 
 function platerecognizer({ attachmentBufferRotated, PLATERECOGNIZER_TOKEN }) {
   const blob = new Blob([attachmentBufferRotated], { type: 'image/jpeg' });
@@ -61,13 +75,20 @@ function platerecognizer({ attachmentBufferRotated, PLATERECOGNIZER_TOKEN }) {
   // body.append("regions", "us-ny"); // Change to your country
   body.append('regions', 'us'); // Change to your country
 
+  const controller = new AbortController();
+  const timer = setTimeout(
+    () => controller.abort(),
+    PLATERECOGNIZER_TIMEOUT_MS,
+  );
+
   return fetch('https://api.platerecognizer.com/v1/plate-reader/', {
     method: 'POST',
     headers: {
       Authorization: `Token ${PLATERECOGNIZER_TOKEN}`,
     },
     body,
-  });
+    signal: controller.signal,
+  }).finally(() => clearTimeout(timer));
 }
 
 export default function readLicenseViaALPR({
@@ -86,10 +107,14 @@ export default function readLicenseViaALPR({
         attachmentBufferRotated,
         PLATERECOGNIZER_TOKEN,
       })
-        .then(platerecognizerRes => {
+        .then(async platerecognizerRes => {
           if (platerecognizerRes.ok) {
             return platerecognizerRes;
           }
+
+          // Consume the failed response body so the underlying socket is
+          // released back to the pool rather than held until GC.
+          await platerecognizerRes.body?.cancel().catch(() => {});
 
           console.info(
             '/platerecognizer plate-reader got an error with first token, trying second',

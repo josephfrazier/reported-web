@@ -1360,20 +1360,22 @@ class Home extends React.Component {
     }
   }
 
-  render() {
-    const matchingPlateThumbnail = (() => {
-      for (const data of Object.values(this.state.plateDataByAttachmentName)) {
-        for (const result of data.results || []) {
-          if (
-            result.plate?.toUpperCase() === this.state.plate?.toUpperCase() &&
-            result.plateCropDataUrl
-          ) {
-            return result.plateCropDataUrl;
-          }
+  getMatchingPlateThumbnail() {
+    for (const data of Object.values(this.state.plateDataByAttachmentName)) {
+      for (const result of data.results || []) {
+        if (
+          result.plate?.toUpperCase() === this.state.plate?.toUpperCase() &&
+          result.plateCropDataUrl
+        ) {
+          return result.plateCropDataUrl;
         }
       }
-      return null;
-    })();
+    }
+    return null;
+  }
+
+  render() {
+    const matchingPlateThumbnail = this.getMatchingPlateThumbnail();
     const previousSubmissionsSummary = this.getPreviousSubmissionsSummary();
 
     return (

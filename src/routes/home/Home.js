@@ -567,22 +567,13 @@ class Home extends React.Component {
       longitude: defaultLongitude,
     });
 
-    geolocate().then(
-      ({ coords: { latitude, longitude }, ipProvenance = 'device' }) => {
-        // if there's no attachments or a location couldn't be extracted, just use here
-        if (
-          this.state.attachmentData.length === 0 ||
-          (this.state.latitude === defaultLatitude &&
-            this.state.longitude === defaultLongitude)
-        ) {
-          this.setCoords({
-            latitude,
-            longitude,
-            addressProvenance: `(from ${ipProvenance}: ${latitude}, ${longitude})`,
-          });
-        }
-      },
-    );
+    // Only request geolocation if the user is already logged in (cookie
+    // restores loginSuccessful on page load). For new sessions, defer the
+    // browser permission prompt until after the user has logged in, so the
+    // prompt appears in a trusted context rather than on first visit.
+    if (this.state.loginSuccessful) {
+      this.geolocateAndSetCoords();
+    }
 
     // Allow users to paste image data
     // adapted from https://github.com/charliewilco/react-gluejar/blob/b69d7cfa9d08bfb34d8eb6815e4b548528218883/src/index.js#L85
@@ -669,6 +660,28 @@ class Home extends React.Component {
       Object.keys(this.initialStatePerSubmission).includes(key),
     );
   }
+
+  // Request the browser's geolocation permission and update coordinates.
+  // Deferred until after login so the permission prompt appears in a trusted
+  // context rather than on the first page visit.
+  geolocateAndSetCoords = () => {
+    geolocate().then(
+      ({ coords: { latitude, longitude }, ipProvenance = 'device' }) => {
+        // if there's no attachments or a location couldn't be extracted, just use here
+        if (
+          this.state.attachmentData.length === 0 ||
+          (this.state.latitude === defaultLatitude &&
+            this.state.longitude === defaultLongitude)
+        ) {
+          this.setCoords({
+            latitude,
+            longitude,
+            addressProvenance: `(from ${ipProvenance}: ${latitude}, ${longitude})`,
+          });
+        }
+      },
+    );
+  };
 
   setCoords = (
     { latitude, longitude, addressProvenance } = { addressProvenance: '' },
@@ -1164,6 +1177,9 @@ class Home extends React.Component {
         () => {
           this.savePersistentStateToCookie();
           this.loadPreviousSubmissions();
+          // Now that the user has logged in, request geolocation
+          // permission in a trusted context.
+          this.geolocateAndSetCoords();
         },
       );
     } catch (err) {
@@ -1195,6 +1211,9 @@ class Home extends React.Component {
             this.setState({ isUserInfoSaving: false, isAuthModalOpen: false });
             this.savePersistentStateToCookie();
             this.loadPreviousSubmissions();
+            // Now that the user has signed up (and is logged in),
+            // request geolocation permission in a trusted context.
+            this.geolocateAndSetCoords();
           } catch (saveErr) {
             this.setState({
               isUserInfoSaving: false,

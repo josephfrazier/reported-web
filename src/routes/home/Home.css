@@ -66,6 +66,7 @@ input[type='search']::-webkit-search-cancel-button {
   color: #fff;
   border-radius: 4px;
   font-size: 0.8rem;
+  line-height: normal;
   white-space: nowrap;
   pointer-events: none;
 }

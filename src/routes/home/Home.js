@@ -506,6 +506,7 @@ class Home extends React.Component {
     this.plateRef = React.createRef();
     this.loginEmailRef = React.createRef();
     this.signupEmailRef = React.createRef();
+    this.imageNaturalSizes = {};
   }
 
   componentDidMount() {
@@ -1970,9 +1971,21 @@ class Home extends React.Component {
                               href={src}
                               target="_blank"
                               rel="noopener noreferrer"
+                              style={{ display: 'block' }}
                             >
                               {isImg ? (
-                                <img src={src} alt={name} />
+                                <img
+                                  src={src}
+                                  alt={name}
+                                  style={{ display: 'block' }}
+                                  onLoad={e => {
+                                    const img = e.target;
+                                    this.imageNaturalSizes[name] = {
+                                      width: img.naturalWidth,
+                                      height: img.naturalHeight,
+                                    };
+                                  }}
+                                />
                               ) : (
                                 /* eslint-disable-next-line jsx-a11y/media-has-caption */
                                 <video src={src} alt={name} />
@@ -1997,20 +2010,29 @@ class Home extends React.Component {
                                 const licenseState =
                                   getLicenseStateFromPlateResult(result);
 
+                                const naturalSize =
+                                  this.imageNaturalSizes[name];
+                                const effectiveWidth =
+                                  naturalSize?.width || imageWidth;
+                                const effectiveHeight =
+                                  naturalSize?.height || imageHeight;
+
                                 return (
                                   <button
                                     type="button"
                                     key={`${plate}-${box.xmin}-${box.ymin}`}
                                     className={homeStyles['plate-overlay']}
                                     style={{
-                                      left: `${(box.xmin / imageWidth) * 100}%`,
-                                      top: `${(box.ymin / imageHeight) * 100}%`,
+                                      left: `${(box.xmin / effectiveWidth) * 100}%`,
+                                      top: `${(box.ymin / effectiveHeight) * 100}%`,
                                       width: `${
-                                        ((box.xmax - box.xmin) / imageWidth) *
+                                        ((box.xmax - box.xmin) /
+                                          effectiveWidth) *
                                         100
                                       }%`,
                                       height: `${
-                                        ((box.ymax - box.ymin) / imageHeight) *
+                                        ((box.ymax - box.ymin) /
+                                          effectiveHeight) *
                                         100
                                       }%`,
                                     }}

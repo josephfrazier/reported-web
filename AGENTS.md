@@ -56,6 +56,10 @@
 - Before committing changes, run `yarn fix` to auto-fix lint issues.
 - When asked to update AGENTS.md in the middle of other work: find an unmerged branch that only touches AGENTS.md (or create one if it doesn't exist), switch to it, make the changes there, commit, run `git show` so the diff is visible, then switch back to the previous branch.
 
+## Git push
+
+- **Do not try to `git push` to GitHub from the sandbox** — authentication is not configured and attempts will fail with "Invalid username or token." Instead, commit changes here and ask the user to push from their host.
+
 ## Validation and CI gotchas
 
 - CI runs Node `24.12.0`; local sandboxes may not. In this sandbox, Yarn initially refused to run because the repo expects exactly `24.12.0` and the installed version was `24.14.1`. Workaround: use `nvm install` and `nvm use` (the checked-in `.nvmrc` points to `24.12.0`) before running Yarn commands.

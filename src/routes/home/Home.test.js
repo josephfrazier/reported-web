@@ -35,13 +35,13 @@ const typeofcomplaintValues = [
 
 const insertCss = () => {};
 
-function renderHome({ localStorageKey, homeRef } = {}) {
+function renderHome({ initialState, homeRef } = {}) {
   return renderer.create(
     <StyleContext.Provider value={{ insertCss }}>
       <App context={{ fetch: () => {}, pathname: '' }}>
         <Home
           ref={homeRef}
-          localStorageKey={localStorageKey}
+          initialState={initialState}
           typeofcomplaintValues={typeofcomplaintValues}
           boroughBoundariesFeatureCollection={
             boroughBoundariesFeatureCollection
@@ -54,24 +54,19 @@ function renderHome({ localStorageKey, homeRef } = {}) {
 
 describe('Home', () => {
   test('renders submission form and Previous Submissions when logged in', () => {
-    const storageKey = 'reportedWebHomeState';
-    localStorage.setItem(
-      storageKey,
-      JSON.stringify({
-        email: 'test@example.com',
-        loginSuccessful: true,
-      }),
-    );
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+    };
 
     let tree;
     renderer.act(() => {
-      tree = renderHome({ localStorageKey: storageKey });
+      tree = renderHome({ initialState });
     });
 
     expect(tree.toJSON()).toMatchSnapshot();
 
     tree.unmount();
-    localStorage.removeItem(storageKey);
   });
 
   test('renders auth prompt and hides form when logged out', () => {
@@ -119,57 +114,45 @@ describe('Home', () => {
     tree.unmount();
   });
 
-  test('renders with undefined allPlateData', () => {
-    const storageKey = 'reportedWebHomeState';
-    localStorage.setItem(
-      storageKey,
-      JSON.stringify({
-        email: 'test@example.com',
-        loginSuccessful: true,
-      }),
-    );
+  test('renders with undefined allPlateResults', () => {
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+    };
 
     let tree;
     const homeRef = React.createRef();
     renderer.act(() => {
-      tree = renderHome({ localStorageKey: storageKey, homeRef });
+      tree = renderHome({ initialState, homeRef });
     });
     renderer.act(() => {
-      homeRef.current.setState({ allPlateData: undefined });
+      homeRef.current.setState({ allPlateResults: undefined });
     });
 
     expect(tree.toJSON()).toMatchSnapshot();
 
     tree.unmount();
-    localStorage.removeItem(storageKey);
   });
 
-  test('renders with allPlateData entry missing plate', () => {
-    const storageKey = 'reportedWebHomeState';
-    localStorage.setItem(
-      storageKey,
-      JSON.stringify({
-        email: 'test@example.com',
-        loginSuccessful: true,
-      }),
-    );
+  test('renders with allPlateResults entry missing plate', () => {
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+    };
 
     let tree;
     const homeRef = React.createRef();
     renderer.act(() => {
-      tree = renderHome({ localStorageKey: storageKey, homeRef });
+      tree = renderHome({ initialState, homeRef });
     });
     // Entry exists but has no .plate — .toUpperCase() on undefined throws
     renderer.act(() => {
-      homeRef.current.setState({
-        allPlateData: { results: [{ region: {} }] },
-      });
+      homeRef.current.setState({ allPlateResults: [{ region: {} }] });
     });
 
     expect(tree.toJSON()).toMatchSnapshot();
 
     tree.unmount();
-    localStorage.removeItem(storageKey);
   });
 
   test('renders plate overlays on uploaded images and selects plate on click', () => {
@@ -238,19 +221,15 @@ describe('Home', () => {
   });
 
   test('renders Edit Profile UI', () => {
-    const storageKey = 'reportedWebHomeState';
-    localStorage.setItem(
-      storageKey,
-      JSON.stringify({
-        email: 'test@example.com',
-        loginSuccessful: true,
-      }),
-    );
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+    };
 
     let tree;
     const homeRef = React.createRef();
     renderer.act(() => {
-      tree = renderHome({ localStorageKey: storageKey, homeRef });
+      tree = renderHome({ initialState, homeRef });
     });
     renderer.act(() => {
       homeRef.current.setState({ isEditProfileOpen: true });
@@ -259,6 +238,5 @@ describe('Home', () => {
     expect(tree.toJSON()).toMatchSnapshot();
 
     tree.unmount();
-    localStorage.removeItem(storageKey);
   });
 });

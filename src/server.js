@@ -13,18 +13,18 @@ import { execSync } from 'child_process';
 import express from 'express';
 import forceSsl from 'force-ssl-heroku';
 import compression from 'compression';
-import nodeFetch from 'node-fetch';
 import React from 'react';
 import ReactDOM from 'react-dom/server';
 import PrettyError from 'pretty-error';
 import Parse from 'parse/node';
 import FileType from 'file-type/browser';
+import cookie from 'cookie';
 import multer from 'multer';
 import stringify from 'json-stringify-safe';
 import StyleContext from 'isomorphic-style-loader/StyleContext';
 
 import { isImage, isVideo } from './isImage.js';
-import { validateLocation, processValidation } from './geoclient.js';
+import { geosearch } from './geoclient.js';
 import getVehicleType from './getVehicleType.js';
 import srlookup from './srlookup.js';
 
@@ -79,7 +79,7 @@ if (isHeroku) {
   const herokuSelfPingInterval = 20 * 60 * 1000; // 20 minutes
   const herokuSelfPing = () => {
     console.info(`Pinging ${herokuSelfPingUrl}...`);
-    nodeFetch(herokuSelfPingUrl)
+    fetch(herokuSelfPingUrl)
       .then(res => {
         if (res.ok) {
           console.info('herokuSelfPing successful');
@@ -250,16 +250,9 @@ app.use('/api/categories', (req, res) => {
     .catch(handlePromiseRejection(res));
 });
 
-app.use('/api/validate_location', (req, res) => {
+app.use('/api/geosearch', (req, res) => {
   const { lat, long } = req.body;
-  validateLocation({ lat, long })
-    .then(body => res.json(body))
-    .catch(handlePromiseRejection(res));
-});
-
-app.use('/api/process_validation', (req, res) => {
-  const { lat, long } = req.body;
-  processValidation({ lat, long })
+  geosearch({ lat, long })
     .then(body => res.json(body))
     .catch(handlePromiseRejection(res));
 });
@@ -643,6 +636,7 @@ app.get('/api/submissions-in-polygon', (req, res) => {
   const query = new Parse.Query(Submission);
   query.withinPolygon('location', polygonCoords);
   query.equalTo('can_be_shared_publicly', true);
+  query.notEqualTo('license', 'TEST');
   query.limit(POLYGON_RESULT_LIMIT);
   query.select(POLYGON_FIELDS);
 
@@ -679,10 +673,13 @@ app.get('*', async (req, res, next) => {
     };
 
     // Universal HTTP client
-    const fetch = createFetch(nodeFetch, {
+    const fetch = createFetch(globalThis.fetch, {
       baseUrl: config.api.serverUrl,
       cookie: req.headers.cookie,
     });
+
+    // Parse cookies from the request header into a plain object
+    const cookies = cookie.parse(req.headers.cookie || '');
 
     // Global (context) variables that can be easily accessed from any React component
     // https://facebook.github.io/react/docs/context.html
@@ -690,6 +687,7 @@ app.get('*', async (req, res, next) => {
       insertCss,
       fetch,
       commitHash,
+      cookies,
       // The twins below are wild, be careful!
       pathname: req.path,
       query: req.query,

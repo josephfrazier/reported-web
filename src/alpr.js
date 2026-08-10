@@ -1,6 +1,4 @@
 import sharp from 'sharp';
-import nodeFetch from 'node-fetch';
-import FormData from 'form-data';
 
 // Disable sharp's internal LRU cache so processed image data is released
 // immediately instead of being held in memory across requests.
@@ -55,15 +53,15 @@ const downscaleForPlateRecognizer = ({ buffer, targetWidth }) => {
     });
 };
 
-function platerecognizer({ attachmentBytesRotated, PLATERECOGNIZER_TOKEN }) {
+function platerecognizer({ attachmentBufferRotated, PLATERECOGNIZER_TOKEN }) {
+  const blob = new Blob([attachmentBufferRotated], { type: 'image/jpeg' });
   const body = new FormData();
-
-  body.append('upload', attachmentBytesRotated);
+  body.append('upload', blob, 'image.jpg');
 
   // body.append("regions", "us-ny"); // Change to your country
   body.append('regions', 'us'); // Change to your country
 
-  return nodeFetch('https://api.platerecognizer.com/v1/plate-reader/', {
+  return fetch('https://api.platerecognizer.com/v1/plate-reader/', {
     method: 'POST',
     headers: {
       Authorization: `Token ${PLATERECOGNIZER_TOKEN}`,
@@ -80,12 +78,14 @@ export default function readLicenseViaALPR({
   return orientImageBuffer({ attachmentBuffer })
     .then(buffer => downscaleForPlateRecognizer({ buffer, targetWidth: 4096 }))
     .then(buffer => downscaleForPlateRecognizer({ buffer, targetWidth: 2048 }))
-    .then(processedBuffer => {
-      const attachmentBytesRotated = processedBuffer.toString('base64');
+    .then(attachmentBufferRotated => {
       console.log('STARTING platerecognizer'); // eslint-disable-line no-console
       console.time(`/platerecognizer plate-reader`); // eslint-disable-line no-console
 
-      return platerecognizer({ attachmentBytesRotated, PLATERECOGNIZER_TOKEN })
+      return platerecognizer({
+        attachmentBufferRotated,
+        PLATERECOGNIZER_TOKEN,
+      })
         .then(platerecognizerRes => {
           if (platerecognizerRes.ok) {
             return platerecognizerRes;
@@ -96,7 +96,7 @@ export default function readLicenseViaALPR({
           );
 
           return platerecognizer({
-            attachmentBytesRotated,
+            attachmentBufferRotated,
             PLATERECOGNIZER_TOKEN: PLATERECOGNIZER_TOKEN_TWO,
           });
         })
@@ -106,7 +106,18 @@ export default function readLicenseViaALPR({
           });
           return platerecognizerRes;
         })
-        .then(platerecognizerRes => platerecognizerRes.json())
+        .then(platerecognizerRes => {
+          if (!platerecognizerRes.ok) {
+            return platerecognizerRes.json().then(errData => {
+              const err = new Error(
+                `Plate Recognizer API error: ${platerecognizerRes.status} - ${JSON.stringify(errData)}`,
+              );
+              err.status = platerecognizerRes.status;
+              throw err;
+            });
+          }
+          return platerecognizerRes.json();
+        })
         .then(async data => {
           async function cropBox(box) {
             if (!box) return null;
@@ -114,7 +125,7 @@ export default function readLicenseViaALPR({
             const width = xmax - xmin;
             const height = ymax - ymin;
             if (width <= 0 || height <= 0) return null;
-            const cropBuffer = await sharp(processedBuffer)
+            const cropBuffer = await sharp(attachmentBufferRotated)
               .extract({ left: xmin, top: ymin, width, height })
               .jpeg()
               .toBuffer();

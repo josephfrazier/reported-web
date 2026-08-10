@@ -23,7 +23,6 @@ import {
   Marker,
 } from 'react-google-maps';
 import { SearchBox } from 'react-google-maps/lib/components/places/SearchBox';
-import withLocalStorage from 'react-localstorage';
 import debounce from 'debounce-promise';
 import FileType from 'file-type/browser';
 import MP4Box from 'mp4box';
@@ -34,6 +33,7 @@ import omit from 'object.omit';
 import bufferToArrayBuffer from 'buffer-to-arraybuffer';
 import { serialize } from 'object-to-formdata';
 import usStateNames from 'datasets-us-states-abbr-names';
+import cookie from 'cookie';
 import fileExtension from 'file-extension';
 import diceware from 'diceware-generator';
 import wordlist from 'diceware-wordlist-en-eff';
@@ -60,8 +60,20 @@ usStateNames.DC = 'District of Columbia';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyDlwm2ykA0ohTXeVepQYvkcmdjz2M2CKEI';
 
-const debouncedProcessValidation = debounce(async ({ latitude, longitude }) => {
-  const { data } = await axios.post('/api/process_validation', {
+const COOKIE_KEY = 'reportedWebHomeState';
+const COOKIE_MAX_AGE = 365 * 24 * 60 * 60; // 1 year in seconds
+
+const setHomeStateCookie = (value, maxAge) => {
+  document.cookie = cookie.serialize(COOKIE_KEY, value, {
+    maxAge,
+    path: '/',
+    sameSite: 'lax',
+    secure: window.location.protocol === 'https:',
+  });
+};
+
+const debouncedGeosearch = debounce(async ({ latitude, longitude }) => {
+  const { data } = await axios.post('/api/geosearch', {
     lat: latitude,
     long: longitude,
   });
@@ -81,8 +93,8 @@ const debouncedGetViolations = debounce(async ({ plate, licenseState }) => {
   return { apiUrl, response };
 }, 1000);
 
-const debouncedSaveStateToLocalStorage = debounce(self => {
-  self.saveStateToLocalStorage();
+const debouncedSavePersistentStateToCookie = debounce(self => {
+  self.savePersistentStateToCookie();
 }, 500);
 
 const defaultLatitude = 40.7128;
@@ -198,6 +210,26 @@ function getPlateThumbnailsByKey(results = []) {
     acc[key] = result.plateCropDataUrl;
     return acc;
   }, {});
+}
+
+const urlRegex = /(https?:\/\/\S+)/;
+
+// Turn bare URLs in a string into clickable React <a> elements.
+// Returns a plain string when there are no URLs, or an array of mixed
+// strings and <a> elements otherwise — both valid as JSX children.
+function linkifyText(text) {
+  if (typeof text !== 'string') return text;
+  const parts = text.split(urlRegex);
+  if (parts.length === 1) return text;
+  return parts.map((part, i) =>
+    i % 2 === 1 ? (
+      <a key={part} href={part} target="_blank" rel="noopener noreferrer">
+        {part}
+      </a>
+    ) : (
+      part
+    ),
+  );
 }
 
 async function fetchPlateResults({
@@ -463,39 +495,59 @@ class Home extends React.Component {
     const initialState = {
       ...initialStatePersistent,
       ...initialStatePerSession,
+      // Apply server-provided initial state (from cookie via SSR) over the defaults.
+      // This ensures logged-in users see the correct UI immediately on first render.
+      ...(props.initialState || {}),
     };
 
     this.state = initialState;
     this.initialStatePerSubmission = initialStatePerSubmission;
     this.initialStatePersistent = initialStatePersistent;
     this.plateRef = React.createRef();
+    this.loginEmailRef = React.createRef();
+    this.signupEmailRef = React.createRef();
   }
 
   componentDidMount() {
-    // Copy from old localStorage key to new explicit key.
-    // The old key came from getDisplayName() which resolved to 'Function'
-    // for class components (Component.constructor.name === 'Function').
-    // This can be removed once all users have been migrated.
-    const oldKey = 'Function';
-    const newKey = this.getLocalStorageKey();
-    if (newKey !== oldKey) {
-      const oldData = localStorage.getItem(oldKey);
-      if (oldData && !localStorage.getItem(newKey)) {
-        try {
-          const parsedOldData = JSON.parse(oldData);
-          localStorage.setItem(newKey, JSON.stringify(parsedOldData));
-          // TODO: uncomment this line once this migration has been live for a bit without revert-worthy bug reports
-          // localStorage.removeItem(oldKey);
-          this.setState(parsedOldData);
-        } catch {
-          // Ignore parse errors from corrupted data.
+    // Migrate from old localStorage key ('Function') to cookie.
+    // The old localStorage key came from getDisplayName() which resolved to
+    // 'Function' for class components. The newer key was 'reportedWebHomeState'.
+    // Migrate both old localStorage keys to the cookie if no cookie exists yet.
+    if (!document.cookie.includes(`${COOKIE_KEY}=`)) {
+      const migrateKeys = ['Function', 'reportedWebHomeState'];
+      for (const key of migrateKeys) {
+        const oldData = localStorage.getItem(key);
+        if (oldData) {
+          try {
+            const parsed = JSON.parse(oldData);
+            // Filter to only persistent keys before storing in cookie
+            const persistentData = {};
+            Object.keys(this.initialStatePersistent).forEach(k => {
+              if (k in parsed) persistentData[k] = parsed[k];
+            });
+            setHomeStateCookie(JSON.stringify(persistentData), COOKIE_MAX_AGE);
+
+            // Use the setState callback so handleLogIn sees the migrated
+            // email/password in this.state, not the constructor defaults.
+            this.setState(persistentData, () => {
+              if (
+                persistentData.email &&
+                persistentData.password &&
+                !persistentData.loginSuccessful
+              ) {
+                this.handleLogIn();
+              }
+            });
+            break;
+          } catch {
+            // Ignore parse errors from corrupted data.
+          }
         }
       }
     }
 
-    // Existing users who saved email & password before loginSuccessful
-    // was introduced won't have it set. Try to log them in so the
-    // server can validate the credentials and set the flag properly.
+    // If the cookie already existed at mount time (i.e. a subsequent
+    // page load), check whether loginSuccessful is missing and retry.
     if (
       this.state.email &&
       this.state.password &&
@@ -569,6 +621,22 @@ class Home extends React.Component {
     }
   }
 
+  componentDidUpdate(prevProps, prevState) {
+    if (
+      this.state.isAuthModalOpen &&
+      (this.state.authModalTab !== prevState.authModalTab ||
+        !prevState.isAuthModalOpen)
+    ) {
+      const ref =
+        this.state.authModalTab === 'signup'
+          ? this.signupEmailRef
+          : this.loginEmailRef;
+      requestAnimationFrame(() => {
+        if (ref.current) ref.current.focus();
+      });
+    }
+  }
+
   onDeleteSubmission = ({ objectId }) => {
     if (!objectId) {
       Home.notifyError(
@@ -602,15 +670,6 @@ class Home extends React.Component {
     return omit(this.state, (val, key) =>
       Object.keys(this.initialStatePerSubmission).includes(key),
     );
-  }
-
-  getLocalStorageKey() {
-    return this.props.localStorageKey || 'reportedWebHomeState';
-  }
-
-  getStateFilterKeys() {
-    // used by react-localstorage to determine which `state` keys to save, see https://github.com/josephfrazier/react-localstorage/tree/75f0303aa775e1625ef9cb0d936b6aa0bcdbaffc#filtering
-    return Object.keys(this.initialStatePersistent);
   }
 
   setCoords = (
@@ -649,10 +708,12 @@ class Home extends React.Component {
       coordsAreInNyc: true,
     });
 
-    debouncedProcessValidation({ latitude, longitude }).then(data => {
+    debouncedGeosearch({ latitude, longitude }).then(data => {
+      const { properties } = data.features[0];
+
       this.setState({
         formatted_address: capitalize.words(
-          `${data.geoclient_response.address.houseNumber} ${data.geoclient_response.address.streetName1In}, ${data.geoclient_response.address.firstBoroughName}`,
+          `${properties.housenumber} ${properties.street}, ${properties.borough}`,
         ),
       });
     });
@@ -942,7 +1003,7 @@ class Home extends React.Component {
                 isReverseGeocodingEnabled: this.state.isReverseGeocodingEnabled,
               }).then(({ latitude, longitude }) => {
                 if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
-                  throw 'location (may have been stripped by Android, see <a href="https://github.com/josephfrazier/reported-web/issues/751">details</a>)'; // eslint-disable-line no-throw-literal
+                  throw 'location (may have been stripped by Android, see https://github.com/josephfrazier/reported-web/issues/751 for details)'; // eslint-disable-line no-throw-literal
                 }
 
                 this.setCoords({
@@ -968,16 +1029,15 @@ class Home extends React.Component {
           return;
         }
 
-        const missingValuesHtml = rejected.map(v => v.reason).join(', ');
+        const missingValuesString = rejected.map(v => v.reason).join(', ');
         const hasMultipleAttachments = this.state.attachmentData.length > 1;
         const fileCopy = hasMultipleAttachments ? 'the files.' : 'the file.';
 
         Home.notifyWarning(
           <React.Fragment>
             <p>
-              Could not extract the{' '}
-              <span dangerouslySetInnerHTML={{ __html: missingValuesHtml }} />{' '}
-              from {fileCopy} Please enter/confirm any missing values manually.
+              Could not extract the {linkifyText(missingValuesString)} from{' '}
+              {fileCopy} Please enter/confirm any missing values manually.
             </p>
           </React.Fragment>,
         );
@@ -1035,7 +1095,7 @@ class Home extends React.Component {
       {
         [name]: value,
       },
-      () => debouncedSaveStateToLocalStorage(this),
+      () => debouncedSavePersistentStateToCookie(this),
     );
   };
 
@@ -1095,7 +1155,8 @@ class Home extends React.Component {
     }
   };
 
-  handleLogIn = async () => {
+  handleLogIn = async e => {
+    if (e) e.preventDefault();
     this.setState({ isUserInfoSaving: true, authError: null });
     try {
       const { data } = await axios.post('/api/logIn', {
@@ -1114,7 +1175,7 @@ class Home extends React.Component {
           loginSuccessful: true,
         }),
         () => {
-          this.saveStateToLocalStorage();
+          this.savePersistentStateToCookie();
           this.loadPreviousSubmissions();
         },
       );
@@ -1124,7 +1185,8 @@ class Home extends React.Component {
     }
   };
 
-  handleSignUp = async () => {
+  handleSignUp = async e => {
+    e.preventDefault();
     this.setState({ isUserInfoSaving: true, authError: null });
     try {
       const { data } = await axios.post('/api/logIn', {
@@ -1144,7 +1206,7 @@ class Home extends React.Component {
           try {
             await axios.post('/saveUser', this.state);
             this.setState({ isUserInfoSaving: false, isAuthModalOpen: false });
-            this.saveStateToLocalStorage();
+            this.savePersistentStateToCookie();
             this.loadPreviousSubmissions();
           } catch (saveErr) {
             this.setState({
@@ -1176,7 +1238,11 @@ class Home extends React.Component {
         loginSuccessful: false,
       },
       () => {
-        localStorage.removeItem(this.getLocalStorageKey());
+        setHomeStateCookie('', 0);
+        // Remove old localStorage keys so they aren't re-migrated
+        // if the user logs back in later.
+        localStorage.removeItem('Function');
+        localStorage.removeItem('reportedWebHomeState');
       },
     );
   };
@@ -1236,6 +1302,14 @@ class Home extends React.Component {
       return 'loading...';
     }
     return isLoadPreviousSubmissionsEnabled ? 'loading...' : 'expand to load';
+  };
+
+  savePersistentStateToCookie = () => {
+    const persistentState = {};
+    Object.keys(this.initialStatePersistent).forEach(key => {
+      persistentState[key] = this.state[key];
+    });
+    setHomeStateCookie(JSON.stringify(persistentState), COOKIE_MAX_AGE);
   };
 
   maybeGeneratePassword() {
@@ -1480,10 +1554,14 @@ class Home extends React.Component {
 
               {/* Log In form */}
               {this.state.authModalTab === 'login' && (
-                <div className={homeStyles['auth-modal-body']}>
+                <form
+                  className={homeStyles['auth-modal-body']}
+                  onSubmit={this.handleLogIn}
+                >
                   <label htmlFor="auth-email">
                     Email:
                     <input
+                      ref={this.loginEmailRef}
                       required
                       id="auth-email"
                       type="email"
@@ -1529,10 +1607,9 @@ class Home extends React.Component {
                     </div>
                   </label>
                   <button
-                    type="button"
+                    type="submit"
                     className={homeStyles['auth-submit-btn']}
                     disabled={this.state.isUserInfoSaving}
-                    onClick={this.handleLogIn}
                   >
                     {this.state.isUserInfoSaving ? 'Logging in...' : 'Log In'}
                   </button>
@@ -1562,15 +1639,19 @@ class Home extends React.Component {
                       Sign Up
                     </button>
                   </div>
-                </div>
+                </form>
               )}
 
               {/* Sign Up form */}
               {this.state.authModalTab === 'signup' && (
-                <div className={homeStyles['auth-modal-body']}>
+                <form
+                  className={homeStyles['auth-modal-body']}
+                  onSubmit={this.handleSignUp}
+                >
                   <label htmlFor="auth-signup-email">
                     Email:
                     <input
+                      ref={this.signupEmailRef}
                       required
                       id="auth-signup-email"
                       type="email"
@@ -1664,10 +1745,9 @@ class Home extends React.Component {
                     by phone.
                   </label>
                   <button
-                    type="button"
+                    type="submit"
                     className={homeStyles['auth-submit-btn']}
                     disabled={this.state.isUserInfoSaving}
-                    onClick={this.handleSignUp}
                   >
                     {this.state.isUserInfoSaving
                       ? 'Creating account...'
@@ -1682,7 +1762,7 @@ class Home extends React.Component {
                       Log In
                     </button>
                   </div>
-                </div>
+                </form>
               )}
             </Modal>
 
@@ -1816,7 +1896,7 @@ class Home extends React.Component {
                       });
                     })
                     .then(() => {
-                      this.saveStateToLocalStorage();
+                      this.savePersistentStateToCookie();
                     });
                 }}
               >
@@ -2388,7 +2468,7 @@ class Home extends React.Component {
 
             <div style={{ float: 'right' }}>
               <a
-                href="/electricitibikes"
+                href="/submissions-map"
                 style={{
                   background: 'black',
                   border: '1em solid black',
@@ -2396,8 +2476,8 @@ class Home extends React.Component {
                   textDecoration: 'none',
                 }}
               >
-                <span role="img" aria-label="high voltage">
-                  ⚡
+                <span role="img" aria-label="world map">
+                  🗺️
                 </span>
               </a>
             </div>
@@ -2425,13 +2505,13 @@ class Home extends React.Component {
 Home.propTypes = {
   typeofcomplaintValues: PropTypes.arrayOf(PropTypes.string).isRequired,
   boroughBoundariesFeatureCollection: PropTypes.object.isRequired,
-  localStorageKey: PropTypes.string,
   commitHash: PropTypes.string,
+  initialState: PropTypes.object,
 };
 
 Home.defaultProps = {
-  localStorageKey: undefined,
   commitHash: undefined,
+  initialState: null,
 };
 
 const MyMapComponentPure = props => {
@@ -2510,8 +2590,4 @@ const MyMapComponent = compose(
   withGoogleMap,
 )(MyMapComponentPure);
 
-export default withStyles(
-  marx,
-  homeStyles,
-  toastifyStyles,
-)(withLocalStorage(Home));
+export default withStyles(marx, homeStyles, toastifyStyles)(Home);

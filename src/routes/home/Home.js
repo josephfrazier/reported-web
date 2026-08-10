@@ -193,25 +193,6 @@ function getLicenseStateFromPlateResult(result) {
   }
 }
 
-function getPlateThumbnailKey(plate) {
-  return (plate || '').toUpperCase();
-}
-
-function getPlateThumbnailsByKey(results = []) {
-  return results.reduce((acc, result) => {
-    const plate = (result.plate || '').toUpperCase();
-
-    if (!result.plateCropDataUrl || !plate) {
-      return acc;
-    }
-
-    const key = getPlateThumbnailKey(plate);
-
-    acc[key] = result.plateCropDataUrl;
-    return acc;
-  }, {});
-}
-
 const urlRegex = /(https?:\/\/\S+)/;
 
 // Turn bare URLs in a string into clickable React <a> elements.
@@ -264,8 +245,8 @@ async function fetchPlateResults({
   });
   const { data } = await axios.post('/platerecognizer', formData);
 
-  attachmentPlateCache.set(attachmentFile, data.results);
-  return data.results;
+  attachmentPlateCache.set(attachmentFile, data);
+  return data;
 }
 
 async function extractPlate({
@@ -284,13 +265,14 @@ async function extractPlate({
       return { plate: '', licenseState: '' };
     }
 
-    const results = await fetchPlateResults({
+    const data = await fetchPlateResults({
       attachmentFile,
       attachmentBuffer,
       ext,
       email,
       password,
     });
+    const { results } = data;
 
     // Choose first result with T######C plate if it exists, see https://github.com/josephfrazier/reported-web/issues/584
     let result = results.filter(r =>
@@ -306,7 +288,7 @@ async function extractPlate({
       result.licenseState = null;
     }
     result.plate = result.plate?.toUpperCase();
-    result.allPlateResults = results;
+    result.allPlateData = data;
 
     return result;
   } catch (err) {
@@ -473,7 +455,7 @@ class Home extends React.Component {
       isSubmitting: false,
       isPreviousSubmissionsLoading: false,
       hasLoadedPreviousSubmissions: false,
-      allPlateResults: [],
+      allPlateData: null,
       vehicleInfoComponent: null,
       violationSummaryComponent: null,
       submissions: [],
@@ -482,7 +464,7 @@ class Home extends React.Component {
       platePickerModalOpen: false,
       platePickerResults: [],
       platePickerLoading: false,
-      plateThumbnailsByKey: {},
+      plateDataByAttachmentName: {},
 
       isAuthModalOpen: false,
       authModalTab: 'login',
@@ -504,6 +486,7 @@ class Home extends React.Component {
     this.plateRef = React.createRef();
     this.loginEmailRef = React.createRef();
     this.signupEmailRef = React.createRef();
+    this.imageNaturalSizes = {};
   }
 
   componentDidMount() {
@@ -746,6 +729,45 @@ class Home extends React.Component {
     });
   };
 
+  renderPlateOverlays = ({ attachmentName, attachmentPlateData }) =>
+    attachmentPlateData?.results?.map(result => {
+      const { box } = result;
+      const plate = result.plate?.toUpperCase();
+      const { image_width: imageWidth, image_height: imageHeight } =
+        attachmentPlateData;
+      if (!box || !plate || !imageWidth || !imageHeight) {
+        return null;
+      }
+      const licenseState = getLicenseStateFromPlateResult(result);
+
+      const naturalSize = this.imageNaturalSizes[attachmentName];
+      const effectiveWidth = naturalSize?.width || imageWidth;
+      const effectiveHeight = naturalSize?.height || imageHeight;
+
+      return (
+        <button
+          type="button"
+          key={`${plate}-${box.xmin}-${box.ymin}`}
+          className={homeStyles['plate-overlay']}
+          style={{
+            left: `${(box.xmin / effectiveWidth) * 100}%`,
+            top: `${(box.ymin / effectiveHeight) * 100}%`,
+            width: `${((box.xmax - box.xmin) / effectiveWidth) * 100}%`,
+            height: `${((box.ymax - box.ymin) / effectiveHeight) * 100}%`,
+          }}
+          aria-label={`Select license plate ${plate}`}
+          onClick={() => {
+            this.setLicensePlate({ plate, licenseState });
+          }}
+        >
+          <span className={homeStyles['plate-overlay-tooltip']}>
+            {plate}
+            {licenseState && ` (${licenseState})`}
+          </span>
+        </button>
+      );
+    });
+
   setLicensePlate = ({ plate, licenseState }) => {
     licenseState = licenseState || this.state.licenseState; // eslint-disable-line no-param-reassign
     this.setState({
@@ -986,11 +1008,13 @@ class Home extends React.Component {
                     this.setLicensePlate(result);
                   }
                   this.setState(state => ({
-                    allPlateResults: result.allPlateResults,
-                    plateThumbnailsByKey: {
-                      ...state.plateThumbnailsByKey,
-                      ...getPlateThumbnailsByKey(result.allPlateResults),
-                    },
+                    allPlateData: result.allPlateData,
+                    plateDataByAttachmentName: result.allPlateData
+                      ? {
+                          ...state.plateDataByAttachmentName,
+                          [attachmentFile.name]: result.allPlateData,
+                        }
+                      : state.plateDataByAttachmentName,
                   }));
                 })
                 .finally(() => {
@@ -1057,21 +1081,22 @@ class Home extends React.Component {
       const { email, password } = this.state;
       const { attachmentBuffer } = await blobToBuffer({ attachmentFile });
       const ext = fileExtension(attachmentFile.name);
-      const results = await fetchPlateResults({
+      const data = await fetchPlateResults({
         attachmentFile,
         attachmentBuffer,
         ext,
         email,
         password,
       });
+      const { results } = data;
 
       this.setState(state => ({
         platePickerResults: results,
         platePickerModalOpen: true,
         platePickerLoading: false,
-        plateThumbnailsByKey: {
-          ...state.plateThumbnailsByKey,
-          ...getPlateThumbnailsByKey(results),
+        plateDataByAttachmentName: {
+          ...state.plateDataByAttachmentName,
+          [attachmentFile.name]: data,
         },
       }));
     } catch (err) {
@@ -1318,6 +1343,20 @@ class Home extends React.Component {
     setHomeStateCookie(JSON.stringify(persistentState), COOKIE_MAX_AGE);
   };
 
+  findMatchingPlateThumbnail() {
+    for (const data of Object.values(this.state.plateDataByAttachmentName)) {
+      for (const result of data.results || []) {
+        if (
+          result.plate?.toUpperCase() === this.state.plate?.toUpperCase() &&
+          result.plateCropDataUrl
+        ) {
+          return result.plateCropDataUrl;
+        }
+      }
+    }
+    return null;
+  }
+
   maybeGeneratePassword() {
     if (!this.state.password) {
       // setTimeout so that test snapshots don't depend on RNG.
@@ -1336,8 +1375,7 @@ class Home extends React.Component {
   }
 
   render() {
-    const matchingPlateThumbnail =
-      this.state.plateThumbnailsByKey[getPlateThumbnailKey(this.state.plate)];
+    const matchingPlateThumbnail = this.findMatchingPlateThumbnail();
     const previousSubmissionsSummary = this.getPreviousSubmissionsSummary();
 
     return (
@@ -1867,8 +1905,8 @@ class Home extends React.Component {
                       this.setState(state => ({
                         attachmentData: [],
                         submissions: [submission].concat(state.submissions),
-                        allPlateResults: [],
-                        plateThumbnailsByKey: {},
+                        allPlateData: null,
+                        plateDataByAttachmentName: {},
                         vehicleInfoComponent: null,
                         violationSummaryComponent: null,
                         reportDescription: '',
@@ -1932,6 +1970,8 @@ class Home extends React.Component {
                       const ext = fileExtension(name);
                       const isImg = isImage({ ext });
                       const src = getBlobUrl(attachmentFile);
+                      const attachmentPlateData =
+                        this.state.plateDataByAttachmentName[name];
 
                       return (
                         <div
@@ -1943,18 +1983,43 @@ class Home extends React.Component {
                             position: 'relative',
                           }}
                         >
-                          <a
-                            href={src}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <div
+                            style={{
+                              position: 'relative',
+                              display: 'inline-block',
+                              maxWidth: '100%',
+                            }}
                           >
-                            {isImg ? (
-                              <img src={src} alt={name} />
-                            ) : (
-                              /* eslint-disable-next-line jsx-a11y/media-has-caption */
-                              <video src={src} alt={name} />
-                            )}
-                          </a>
+                            <a
+                              href={src}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ display: 'block' }}
+                            >
+                              {isImg ? (
+                                <img
+                                  src={src}
+                                  alt={name}
+                                  style={{ display: 'block' }}
+                                  onLoad={e => {
+                                    const img = e.target;
+                                    this.imageNaturalSizes[name] = {
+                                      width: img.naturalWidth,
+                                      height: img.naturalHeight,
+                                    };
+                                  }}
+                                />
+                              ) : (
+                                /* eslint-disable-next-line jsx-a11y/media-has-caption */
+                                <video src={src} alt={name} />
+                              )}
+                            </a>
+                            {isImg &&
+                              this.renderPlateOverlays({
+                                attachmentName: name,
+                                attachmentPlateData,
+                              })}
+                          </div>
 
                           <button
                             type="button"
@@ -1985,13 +2050,19 @@ class Home extends React.Component {
                                     attachmentData,
                                     plate: '',
                                     licenseState: 'NY',
-                                    allPlateResults: [],
-                                    plateThumbnailsByKey: {},
+                                    allPlateData: null,
+                                    plateDataByAttachmentName: {},
                                     vehicleInfoComponent: null,
                                     violationSummaryComponent: null,
                                   };
                                 }
-                                return { attachmentData };
+                                return {
+                                  attachmentData,
+                                  plateDataByAttachmentName: omit(
+                                    state.plateDataByAttachmentName,
+                                    name,
+                                  ),
+                                };
                               });
                             }}
                           >
@@ -2077,11 +2148,11 @@ class Home extends React.Component {
                           list="plateSuggestions"
                           autoComplete="off"
                           ref={this.plateRef}
-                          placeholder={this.state.allPlateResults?.[0]?.plate?.toUpperCase()}
+                          placeholder={this.state.allPlateData?.results?.[0]?.plate?.toUpperCase()}
                           onChange={event => {
                             const plate = event.target.value.toUpperCase();
                             const matchedResult =
-                              this.state.allPlateResults.find(
+                              this.state.allPlateData?.results?.find(
                                 r => r.plate?.toUpperCase() === plate,
                               );
                             const licenseState = matchedResult
@@ -2091,7 +2162,7 @@ class Home extends React.Component {
                           }}
                         />
                         <datalist id="plateSuggestions">
-                          {this.state.allPlateResults?.map(result => (
+                          {this.state.allPlateData?.results?.map(result => (
                             <option value={result.plate?.toUpperCase()} />
                           ))}
                         </datalist>

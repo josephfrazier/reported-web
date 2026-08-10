@@ -1669,9 +1669,7 @@ exports[`Home renders with allPlateResults entry missing plate 1`] = `
                 />
                 <datalist
                   id="plateSuggestions"
-                >
-                  <option />
-                </datalist>
+                />
                 <select
                   name="licenseState"
                   onChange={[Function]}

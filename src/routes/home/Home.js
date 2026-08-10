@@ -749,6 +749,45 @@ class Home extends React.Component {
     });
   };
 
+  renderPlateOverlays = ({ attachmentName, attachmentPlateData }) =>
+    attachmentPlateData?.results?.map(result => {
+      const { box } = result;
+      const plate = result.plate?.toUpperCase();
+      const { image_width: imageWidth, image_height: imageHeight } =
+        attachmentPlateData;
+      if (!box || !plate || !imageWidth || !imageHeight) {
+        return null;
+      }
+      const licenseState = getLicenseStateFromPlateResult(result);
+
+      const naturalSize = this.imageNaturalSizes[attachmentName];
+      const effectiveWidth = naturalSize?.width || imageWidth;
+      const effectiveHeight = naturalSize?.height || imageHeight;
+
+      return (
+        <button
+          type="button"
+          key={`${plate}-${box.xmin}-${box.ymin}`}
+          className={homeStyles['plate-overlay']}
+          style={{
+            left: `${(box.xmin / effectiveWidth) * 100}%`,
+            top: `${(box.ymin / effectiveHeight) * 100}%`,
+            width: `${((box.xmax - box.xmin) / effectiveWidth) * 100}%`,
+            height: `${((box.ymax - box.ymin) / effectiveHeight) * 100}%`,
+          }}
+          aria-label={`Select license plate ${plate}`}
+          onClick={() => {
+            this.setLicensePlate({ plate, licenseState });
+          }}
+        >
+          <span className={homeStyles['plate-overlay-tooltip']}>
+            {plate}
+            {licenseState && ` (${licenseState})`}
+          </span>
+        </button>
+      );
+    });
+
   setLicensePlate = ({ plate, licenseState }) => {
     licenseState = licenseState || this.state.licenseState; // eslint-disable-line no-param-reassign
     this.setState({
@@ -1992,68 +2031,9 @@ class Home extends React.Component {
                               )}
                             </a>
                             {isImg &&
-                              attachmentPlateData?.results?.map(result => {
-                                const { box } = result;
-                                const plate = result.plate?.toUpperCase();
-                                const {
-                                  image_width: imageWidth,
-                                  image_height: imageHeight,
-                                } = attachmentPlateData;
-                                if (
-                                  !box ||
-                                  !plate ||
-                                  !imageWidth ||
-                                  !imageHeight
-                                ) {
-                                  return null;
-                                }
-                                const licenseState =
-                                  getLicenseStateFromPlateResult(result);
-
-                                const naturalSize =
-                                  this.imageNaturalSizes[name];
-                                const effectiveWidth =
-                                  naturalSize?.width || imageWidth;
-                                const effectiveHeight =
-                                  naturalSize?.height || imageHeight;
-
-                                return (
-                                  <button
-                                    type="button"
-                                    key={`${plate}-${box.xmin}-${box.ymin}`}
-                                    className={homeStyles['plate-overlay']}
-                                    style={{
-                                      left: `${(box.xmin / effectiveWidth) * 100}%`,
-                                      top: `${(box.ymin / effectiveHeight) * 100}%`,
-                                      width: `${
-                                        ((box.xmax - box.xmin) /
-                                          effectiveWidth) *
-                                        100
-                                      }%`,
-                                      height: `${
-                                        ((box.ymax - box.ymin) /
-                                          effectiveHeight) *
-                                        100
-                                      }%`,
-                                    }}
-                                    aria-label={`Select license plate ${plate}`}
-                                    onClick={() => {
-                                      this.setLicensePlate({
-                                        plate,
-                                        licenseState,
-                                      });
-                                    }}
-                                  >
-                                    <span
-                                      className={
-                                        homeStyles['plate-overlay-tooltip']
-                                      }
-                                    >
-                                      {plate}
-                                      {licenseState && ` (${licenseState})`}
-                                    </span>
-                                  </button>
-                                );
+                              this.renderPlateOverlays({
+                                attachmentName: name,
+                                attachmentPlateData,
                               })}
                           </div>
 

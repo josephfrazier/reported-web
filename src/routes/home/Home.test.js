@@ -156,14 +156,10 @@ describe('Home', () => {
   });
 
   test('renders plate overlays on uploaded images and selects plate on click', () => {
-    const storageKey = 'reportedWebHomeState';
-    localStorage.setItem(
-      storageKey,
-      JSON.stringify({
-        email: 'test@example.com',
-        loginSuccessful: true,
-      }),
-    );
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+    };
 
     const originalCreateObjectURL = global.URL.createObjectURL;
     global.URL.createObjectURL = jest.fn(() => 'blob:mock');
@@ -171,7 +167,7 @@ describe('Home', () => {
     let tree;
     const homeRef = React.createRef();
     renderer.act(() => {
-      tree = renderHome({ localStorageKey: storageKey, homeRef });
+      tree = renderHome({ initialState, homeRef });
     });
     renderer.act(() => {
       homeRef.current.setState({
@@ -216,7 +212,6 @@ describe('Home', () => {
     expect(homeRef.current.state.licenseState).toBe('NY');
 
     tree.unmount();
-    localStorage.removeItem(storageKey);
     global.URL.createObjectURL = originalCreateObjectURL;
   });
 

@@ -53,6 +53,10 @@ const downscaleForPlateRecognizer = ({ buffer, targetWidth }) => {
     });
 };
 
+// 30-second timeout for Plate Recognizer API calls to prevent hung requests
+// from holding image buffers indefinitely
+const PLATERECOGNIZER_TIMEOUT_MS = 30_000;
+
 function platerecognizer({ attachmentBufferRotated, PLATERECOGNIZER_TOKEN }) {
   const blob = new Blob([attachmentBufferRotated], { type: 'image/jpeg' });
   const body = new FormData();
@@ -61,13 +65,20 @@ function platerecognizer({ attachmentBufferRotated, PLATERECOGNIZER_TOKEN }) {
   // body.append("regions", "us-ny"); // Change to your country
   body.append('regions', 'us'); // Change to your country
 
+  const controller = new AbortController();
+  const timer = setTimeout(
+    () => controller.abort(),
+    PLATERECOGNIZER_TIMEOUT_MS,
+  );
+
   return fetch('https://api.platerecognizer.com/v1/plate-reader/', {
     method: 'POST',
     headers: {
       Authorization: `Token ${PLATERECOGNIZER_TOKEN}`,
     },
     body,
-  });
+    signal: controller.signal,
+  }).finally(() => clearTimeout(timer));
 }
 
 export default function readLicenseViaALPR({

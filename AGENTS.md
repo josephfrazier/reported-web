@@ -71,3 +71,7 @@
 ## Commit message style
 
 - Use markdown backtick code snippets for identifiers in commit message titles and bodies: `handleLogIn`, `type="submit"`, `<form>`, `src/routes/home/Home.js`.
+- Write detailed commit bodies that explain **why** the change matters, how the problem manifests, and how the fix works — not just what changed.
+- Include before/after code blocks (fenced with `\`\`\`js`) when the mechanism isn't obvious from the diff alone.
+- Link to relevant docs (MDN, Node.js, library docs) using markdown reference-style links at the bottom of the message, e.g. `[AbortController]: https://...`.
+- For memory, timeout, or leak fixes: describe the closure/retention chain, what held what, and how the fix breaks the chain.

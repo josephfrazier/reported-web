@@ -1343,6 +1343,20 @@ class Home extends React.Component {
     setHomeStateCookie(JSON.stringify(persistentState), COOKIE_MAX_AGE);
   };
 
+  findMatchingPlateThumbnail() {
+    for (const data of Object.values(this.state.plateDataByAttachmentName)) {
+      for (const result of data.results || []) {
+        if (
+          result.plate?.toUpperCase() === this.state.plate?.toUpperCase() &&
+          result.plateCropDataUrl
+        ) {
+          return result.plateCropDataUrl;
+        }
+      }
+    }
+    return null;
+  }
+
   maybeGeneratePassword() {
     if (!this.state.password) {
       // setTimeout so that test snapshots don't depend on RNG.
@@ -1360,22 +1374,8 @@ class Home extends React.Component {
     }
   }
 
-  getMatchingPlateThumbnail() {
-    for (const data of Object.values(this.state.plateDataByAttachmentName)) {
-      for (const result of data.results || []) {
-        if (
-          result.plate?.toUpperCase() === this.state.plate?.toUpperCase() &&
-          result.plateCropDataUrl
-        ) {
-          return result.plateCropDataUrl;
-        }
-      }
-    }
-    return null;
-  }
-
   render() {
-    const matchingPlateThumbnail = this.getMatchingPlateThumbnail();
+    const matchingPlateThumbnail = this.findMatchingPlateThumbnail();
     const previousSubmissionsSummary = this.getPreviousSubmissionsSummary();
 
     return (

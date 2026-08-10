@@ -97,10 +97,14 @@ export default function readLicenseViaALPR({
         attachmentBufferRotated,
         PLATERECOGNIZER_TOKEN,
       })
-        .then(platerecognizerRes => {
+        .then(async platerecognizerRes => {
           if (platerecognizerRes.ok) {
             return platerecognizerRes;
           }
+
+          // Consume the failed response body so the underlying socket is
+          // released back to the pool rather than held until GC.
+          await platerecognizerRes.body?.cancel().catch(() => {});
 
           console.info(
             '/platerecognizer plate-reader got an error with first token, trying second',

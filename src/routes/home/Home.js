@@ -193,25 +193,6 @@ function getLicenseStateFromPlateResult(result) {
   }
 }
 
-function getPlateThumbnailKey(plate) {
-  return (plate || '').toUpperCase();
-}
-
-function getPlateThumbnailsByKey(results = []) {
-  return results.reduce((acc, result) => {
-    const plate = (result.plate || '').toUpperCase();
-
-    if (!result.plateCropDataUrl || !plate) {
-      return acc;
-    }
-
-    const key = getPlateThumbnailKey(plate);
-
-    acc[key] = result.plateCropDataUrl;
-    return acc;
-  }, {});
-}
-
 const urlRegex = /(https?:\/\/\S+)/;
 
 // Turn bare URLs in a string into clickable React <a> elements.
@@ -483,7 +464,6 @@ class Home extends React.Component {
       platePickerModalOpen: false,
       platePickerResults: [],
       platePickerLoading: false,
-      plateThumbnailsByKey: {},
       plateDataByAttachmentName: {},
 
       isAuthModalOpen: false,
@@ -1029,10 +1009,6 @@ class Home extends React.Component {
                   }
                   this.setState(state => ({
                     allPlateData: result.allPlateData,
-                    plateThumbnailsByKey: {
-                      ...state.plateThumbnailsByKey,
-                      ...getPlateThumbnailsByKey(result.allPlateData?.results),
-                    },
                     plateDataByAttachmentName: result.allPlateData
                       ? {
                           ...state.plateDataByAttachmentName,
@@ -1118,10 +1094,6 @@ class Home extends React.Component {
         platePickerResults: results,
         platePickerModalOpen: true,
         platePickerLoading: false,
-        plateThumbnailsByKey: {
-          ...state.plateThumbnailsByKey,
-          ...getPlateThumbnailsByKey(results),
-        },
         plateDataByAttachmentName: {
           ...state.plateDataByAttachmentName,
           [attachmentFile.name]: data,
@@ -1389,8 +1361,19 @@ class Home extends React.Component {
   }
 
   render() {
-    const matchingPlateThumbnail =
-      this.state.plateThumbnailsByKey[getPlateThumbnailKey(this.state.plate)];
+    const matchingPlateThumbnail = (() => {
+      for (const data of Object.values(this.state.plateDataByAttachmentName)) {
+        for (const result of data.results || []) {
+          if (
+            result.plate?.toUpperCase() === this.state.plate?.toUpperCase() &&
+            result.plateCropDataUrl
+          ) {
+            return result.plateCropDataUrl;
+          }
+        }
+      }
+      return null;
+    })();
     const previousSubmissionsSummary = this.getPreviousSubmissionsSummary();
 
     return (
@@ -1921,7 +1904,6 @@ class Home extends React.Component {
                         attachmentData: [],
                         submissions: [submission].concat(state.submissions),
                         allPlateData: null,
-                        plateThumbnailsByKey: {},
                         plateDataByAttachmentName: {},
                         vehicleInfoComponent: null,
                         violationSummaryComponent: null,
@@ -2067,7 +2049,6 @@ class Home extends React.Component {
                                     plate: '',
                                     licenseState: 'NY',
                                     allPlateData: null,
-                                    plateThumbnailsByKey: {},
                                     plateDataByAttachmentName: {},
                                     vehicleInfoComponent: null,
                                     violationSummaryComponent: null,

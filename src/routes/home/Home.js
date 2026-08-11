@@ -1961,151 +1961,7 @@ class Home extends React.Component {
                     </button>
                   </FileReaderInput>
 
-                  <div
-                    style={{
-                      clear: 'both',
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                    }}
-                  >
-                    {this.state.attachmentData.map(attachmentFile => {
-                      const { name } = attachmentFile;
-                      const ext = fileExtension(name);
-                      const isImg = isImage({ ext });
-                      const src = getBlobUrl(attachmentFile);
-                      const attachmentPlateData =
-                        this.state.plateDataByAttachmentName[name];
-
-                      return (
-                        <div
-                          key={name}
-                          style={{
-                            width: '33%',
-                            margin: '0.1%',
-                            flexGrow: 1,
-                            position: 'relative',
-                          }}
-                        >
-                          <div
-                            style={{
-                              position: 'relative',
-                              display: 'inline-block',
-                              maxWidth: '100%',
-                            }}
-                          >
-                            <a
-                              href={src}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              style={{ display: 'block' }}
-                            >
-                              {isImg ? (
-                                <img
-                                  src={src}
-                                  alt={name}
-                                  style={{ display: 'block' }}
-                                  onLoad={e => {
-                                    const img = e.target;
-                                    this.imageNaturalSizes[name] = {
-                                      width: img.naturalWidth,
-                                      height: img.naturalHeight,
-                                    };
-                                  }}
-                                />
-                              ) : (
-                                /* eslint-disable-next-line jsx-a11y/media-has-caption */
-                                <video src={src} alt={name} />
-                              )}
-                            </a>
-                            {isImg &&
-                              this.renderPlateOverlays({
-                                attachmentName: name,
-                                attachmentPlateData,
-                              })}
-                          </div>
-
-                          <button
-                            type="button"
-                            style={{
-                              position: 'absolute',
-                              top: 0,
-                              right: 0,
-                              padding: 0,
-                              margin: '1px',
-                              color: 'red', // Ubuntu Chrome shows black otherwise
-                              background: 'white',
-                            }}
-                            onClick={() => {
-                              this.setState(state => {
-                                const attachmentData =
-                                  state.attachmentData.filter(
-                                    file => file.name !== name,
-                                  );
-                                if (attachmentData.length === 0) {
-                                  this.setCoords({
-                                    latitude: defaultLatitude,
-                                    longitude: defaultLongitude,
-                                  });
-                                  this.setCreateDate({
-                                    millisecondsSinceEpoch: Date.now(),
-                                  });
-                                  return {
-                                    attachmentData,
-                                    plate: '',
-                                    licenseState: 'NY',
-                                    allPlateData: null,
-                                    plateDataByAttachmentName: {},
-                                    vehicleInfoComponent: null,
-                                    violationSummaryComponent: null,
-                                  };
-                                }
-                                return {
-                                  attachmentData,
-                                  plateDataByAttachmentName: omit(
-                                    state.plateDataByAttachmentName,
-                                    name,
-                                  ),
-                                };
-                              });
-                            }}
-                          >
-                            <span role="img" aria-label="Delete photo/video">
-                              ❌
-                            </span>
-                          </button>
-
-                          {isImg && (
-                            <button
-                              type="button"
-                              style={{
-                                position: 'absolute',
-                                top: 0,
-                                left: 0,
-                                padding: 0,
-                                margin: '1px',
-                                background: 'white',
-                              }}
-                              onClick={() =>
-                                this.handlePlatePickerClick(attachmentFile)
-                              }
-                              disabled={this.state.platePickerLoading}
-                            >
-                              {this.state.platePickerLoading ? (
-                                <CircularProgress size="1em" />
-                              ) : (
-                                <span
-                                  role="img"
-                                  aria-label="Pick license plate from photo"
-                                >
-                                  🔍
-                                </span>
-                              )}
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <div style={{ clear: 'both' }} />
 
                   <label htmlFor="isAlprEnabled">
                     <input
@@ -2129,290 +1985,452 @@ class Home extends React.Component {
                     Automatically read addresses from pictures/videos
                   </label>
 
-                  <label htmlFor="plate">
-                    License/Medallion:
-                    {this.state.isAlprLoading && (
-                      <CircularProgress size="1em" />
-                    )}
-                    <div
-                      style={{
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        alignItems: 'flex-start',
-                        gap: '0.5rem',
-                      }}
-                    >
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <input
-                          required
-                          type="search"
-                          value={this.state.plate}
-                          name="plate"
-                          list="plateSuggestions"
-                          autoComplete="off"
-                          ref={this.plateRef}
-                          placeholder={this.state.allPlateData?.results?.[0]?.plate?.toUpperCase()}
-                          onChange={event => {
-                            const plate = event.target.value.toUpperCase();
-                            const matchedResult =
-                              this.state.allPlateData?.results?.find(
-                                r => r.plate?.toUpperCase() === plate,
-                              );
-                            const licenseState = matchedResult
-                              ? getLicenseStateFromPlateResult(matchedResult)
-                              : null;
-                            this.setLicensePlate({ plate, licenseState });
-                          }}
-                        />
-                        <datalist id="plateSuggestions">
-                          {this.state.allPlateData?.results?.map(result => (
-                            <option value={result.plate?.toUpperCase()} />
-                          ))}
-                        </datalist>
-                        <select
+                  {this.state.attachmentData.length > 0 && (
+                    <React.Fragment>
+                      <div
+                        style={{
+                          display: 'flex',
+                          flexWrap: 'wrap',
+                        }}
+                      >
+                        {this.state.attachmentData.map(attachmentFile => {
+                          const { name } = attachmentFile;
+                          const ext = fileExtension(name);
+                          const isImg = isImage({ ext });
+                          const src = getBlobUrl(attachmentFile);
+                          const attachmentPlateData =
+                            this.state.plateDataByAttachmentName[name];
+
+                          return (
+                            <div
+                              key={name}
+                              style={{
+                                width: '33%',
+                                margin: '0.1%',
+                                flexGrow: 1,
+                                position: 'relative',
+                              }}
+                            >
+                              <div
+                                style={{
+                                  position: 'relative',
+                                  display: 'inline-block',
+                                  maxWidth: '100%',
+                                }}
+                              >
+                                <a
+                                  href={src}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{ display: 'block' }}
+                                >
+                                  {isImg ? (
+                                    <img
+                                      src={src}
+                                      alt={name}
+                                      style={{ display: 'block' }}
+                                      onLoad={e => {
+                                        const img = e.target;
+                                        this.imageNaturalSizes[name] = {
+                                          width: img.naturalWidth,
+                                          height: img.naturalHeight,
+                                        };
+                                      }}
+                                    />
+                                  ) : (
+                                    /* eslint-disable-next-line jsx-a11y/media-has-caption */
+                                    <video src={src} alt={name} />
+                                  )}
+                                </a>
+                                {isImg &&
+                                  this.renderPlateOverlays({
+                                    attachmentName: name,
+                                    attachmentPlateData,
+                                  })}
+                              </div>
+
+                              <button
+                                type="button"
+                                style={{
+                                  position: 'absolute',
+                                  top: 0,
+                                  right: 0,
+                                  padding: 0,
+                                  margin: '1px',
+                                  color: 'red', // Ubuntu Chrome shows black otherwise
+                                  background: 'white',
+                                }}
+                                onClick={() => {
+                                  this.setState(state => {
+                                    const attachmentData =
+                                      state.attachmentData.filter(
+                                        file => file.name !== name,
+                                      );
+                                    if (attachmentData.length === 0) {
+                                      this.setCoords({
+                                        latitude: defaultLatitude,
+                                        longitude: defaultLongitude,
+                                      });
+                                      this.setCreateDate({
+                                        millisecondsSinceEpoch: Date.now(),
+                                      });
+                                      return {
+                                        attachmentData,
+                                        plate: '',
+                                        licenseState: 'NY',
+                                        allPlateData: null,
+                                        plateDataByAttachmentName: {},
+                                        vehicleInfoComponent: null,
+                                        violationSummaryComponent: null,
+                                      };
+                                    }
+                                    return {
+                                      attachmentData,
+                                      plateDataByAttachmentName: omit(
+                                        state.plateDataByAttachmentName,
+                                        name,
+                                      ),
+                                    };
+                                  });
+                                }}
+                              >
+                                <span
+                                  role="img"
+                                  aria-label="Delete photo/video"
+                                >
+                                  ❌
+                                </span>
+                              </button>
+
+                              {isImg && (
+                                <button
+                                  type="button"
+                                  style={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    padding: 0,
+                                    margin: '1px',
+                                    background: 'white',
+                                  }}
+                                  onClick={() =>
+                                    this.handlePlatePickerClick(attachmentFile)
+                                  }
+                                  disabled={this.state.platePickerLoading}
+                                >
+                                  {this.state.platePickerLoading ? (
+                                    <CircularProgress size="1em" />
+                                  ) : (
+                                    <span
+                                      role="img"
+                                      aria-label="Pick license plate from photo"
+                                    >
+                                      🔍
+                                    </span>
+                                  )}
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <label htmlFor="plate">
+                        License/Medallion:
+                        {this.state.isAlprLoading && (
+                          <CircularProgress size="1em" />
+                        )}
+                        <div
                           style={{
-                            marginTop: '0.5rem',
-                          }}
-                          value={this.state.licenseState}
-                          name="licenseState"
-                          onChange={event => {
-                            this.setLicensePlate({
-                              plate: this.state.plate,
-                              licenseState: event.target.value,
-                            });
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            alignItems: 'flex-start',
+                            gap: '0.5rem',
                           }}
                         >
-                          {Object.entries(usStateNames)
-                            .sort(([, name1], [, name2]) =>
-                              name1
-                                .toUpperCase()
-                                .localeCompare(name2.toUpperCase()),
-                            )
-                            .map(([abbr, name]) => (
-                              <option key={abbr} value={abbr}>
-                                {name}
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <input
+                              required
+                              type="search"
+                              value={this.state.plate}
+                              name="plate"
+                              list="plateSuggestions"
+                              autoComplete="off"
+                              ref={this.plateRef}
+                              placeholder={this.state.allPlateData?.results?.[0]?.plate?.toUpperCase()}
+                              onChange={event => {
+                                const plate = event.target.value.toUpperCase();
+                                const matchedResult =
+                                  this.state.allPlateData?.results?.find(
+                                    r => r.plate?.toUpperCase() === plate,
+                                  );
+                                const licenseState = matchedResult
+                                  ? getLicenseStateFromPlateResult(
+                                      matchedResult,
+                                    )
+                                  : null;
+                                this.setLicensePlate({ plate, licenseState });
+                              }}
+                            />
+                            <datalist id="plateSuggestions">
+                              {this.state.allPlateData?.results?.map(result => (
+                                <option value={result.plate?.toUpperCase()} />
+                              ))}
+                            </datalist>
+                            <select
+                              style={{
+                                marginTop: '0.5rem',
+                              }}
+                              value={this.state.licenseState}
+                              name="licenseState"
+                              onChange={event => {
+                                this.setLicensePlate({
+                                  plate: this.state.plate,
+                                  licenseState: event.target.value,
+                                });
+                              }}
+                            >
+                              {Object.entries(usStateNames)
+                                .sort(([, name1], [, name2]) =>
+                                  name1
+                                    .toUpperCase()
+                                    .localeCompare(name2.toUpperCase()),
+                                )
+                                .map(([abbr, name]) => (
+                                  <option key={abbr} value={abbr}>
+                                    {name}
+                                  </option>
+                                ))}
+                            </select>
+                          </div>
+                          {matchingPlateThumbnail && (
+                            <img
+                              src={matchingPlateThumbnail}
+                              alt="Detected license plate"
+                              style={{
+                                maxHeight: '5rem',
+                                maxWidth: '12rem',
+                                objectFit: 'contain',
+                              }}
+                            />
+                          )}
+                        </div>
+                        <div>{this.state.violationSummaryComponent}</div>
+                        <div>{this.state.vehicleInfoComponent}</div>
+                      </label>
+
+                      <label htmlFor="typeofcomplaint">
+                        Type:{' '}
+                        <select
+                          value={this.state.typeofcomplaint}
+                          name="typeofcomplaint"
+                          onChange={this.handleInputChange}
+                        >
+                          {this.props.typeofcomplaintValues.map(
+                            typeofcomplaint => (
+                              <option
+                                key={typeofcomplaint}
+                                value={typeofcomplaint}
+                              >
+                                {typeofcomplaint}
                               </option>
-                            ))}
+                            ),
+                          )}
                         </select>
-                      </div>
-                      {matchingPlateThumbnail && (
-                        <img
-                          src={matchingPlateThumbnail}
-                          alt="Detected license plate"
+                      </label>
+
+                      <label htmlFor="where">
+                        Where: {this.state.addressProvenance}
+                        <br />
+                        <button
+                          type="button"
+                          name="where"
+                          onClick={() => this.setState({ isMapOpen: true })}
                           style={{
-                            maxHeight: '5rem',
-                            maxWidth: '12rem',
-                            objectFit: 'contain',
+                            width: '100%',
+                          }}
+                        >
+                          {this.state.formatted_address
+                            .split(', ')
+                            .slice(0, 2)
+                            .join(', ')}
+                        </button>
+                      </label>
+
+                      <Modal
+                        parentSelector={() =>
+                          document.querySelector(`.${homeStyles.root}`) ||
+                          document.body
+                        }
+                        isOpen={this.state.isMapOpen}
+                        onRequestClose={() =>
+                          this.setState({ isMapOpen: false })
+                        }
+                        style={{
+                          content: {
+                            padding: 0,
+                          },
+                        }}
+                      >
+                        <MyMapComponent
+                          key="map"
+                          position={{
+                            lat: this.state.latitude,
+                            lng: this.state.longitude,
+                          }}
+                          onRef={mapRef => {
+                            this.mapRef = mapRef;
+                          }}
+                          onCenterChanged={() => {
+                            const latitude = this.mapRef.getCenter().lat();
+                            const longitude = this.mapRef.getCenter().lng();
+                            this.setCoords({
+                              latitude,
+                              longitude,
+                              addressProvenance: '(manually set)',
+                            });
+                          }}
+                          onDragStart={() => {
+                            this.isDragging = true;
+                          }}
+                          onDragEnd={() => {
+                            this.isDragging = false;
+                          }}
+                          onSearchBoxMounted={ref => {
+                            this.searchBox = ref;
+                          }}
+                          onPlacesChanged={() => {
+                            const places = this.searchBox.getPlaces();
+
+                            const nextMarkers = places.map(place => ({
+                              position: place.geometry.location,
+                            }));
+                            const { latitude, longitude } =
+                              nextMarkers.length > 0
+                                ? {
+                                    latitude: nextMarkers[0].position.lat(),
+                                    longitude: nextMarkers[0].position.lng(),
+                                  }
+                                : this.state;
+
+                            this.setCoords({
+                              latitude,
+                              longitude,
+                              addressProvenance: '(manually set)',
+                            });
                           }}
                         />
-                      )}
-                    </div>
-                    <div>{this.state.violationSummaryComponent}</div>
-                    <div>{this.state.vehicleInfoComponent}</div>
-                  </label>
 
-                  <label htmlFor="typeofcomplaint">
-                    Type:{' '}
-                    <select
-                      value={this.state.typeofcomplaint}
-                      name="typeofcomplaint"
-                      onChange={this.handleInputChange}
-                    >
-                      {this.props.typeofcomplaintValues.map(typeofcomplaint => (
-                        <option key={typeofcomplaint} value={typeofcomplaint}>
-                          {typeofcomplaint}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label htmlFor="where">
-                    Where: {this.state.addressProvenance}
-                    <br />
-                    <button
-                      type="button"
-                      name="where"
-                      onClick={() => this.setState({ isMapOpen: true })}
-                      style={{
-                        width: '100%',
-                      }}
-                    >
-                      {this.state.formatted_address
-                        .split(', ')
-                        .slice(0, 2)
-                        .join(', ')}
-                    </button>
-                  </label>
-
-                  <Modal
-                    parentSelector={() =>
-                      document.querySelector(`.${homeStyles.root}`) ||
-                      document.body
-                    }
-                    isOpen={this.state.isMapOpen}
-                    onRequestClose={() => this.setState({ isMapOpen: false })}
-                    style={{
-                      content: {
-                        padding: 0,
-                      },
-                    }}
-                  >
-                    <MyMapComponent
-                      key="map"
-                      position={{
-                        lat: this.state.latitude,
-                        lng: this.state.longitude,
-                      }}
-                      onRef={mapRef => {
-                        this.mapRef = mapRef;
-                      }}
-                      onCenterChanged={() => {
-                        const latitude = this.mapRef.getCenter().lat();
-                        const longitude = this.mapRef.getCenter().lng();
-                        this.setCoords({
-                          latitude,
-                          longitude,
-                          addressProvenance: '(manually set)',
-                        });
-                      }}
-                      onDragStart={() => {
-                        this.isDragging = true;
-                      }}
-                      onDragEnd={() => {
-                        this.isDragging = false;
-                      }}
-                      onSearchBoxMounted={ref => {
-                        this.searchBox = ref;
-                      }}
-                      onPlacesChanged={() => {
-                        const places = this.searchBox.getPlaces();
-
-                        const nextMarkers = places.map(place => ({
-                          position: place.geometry.location,
-                        }));
-                        const { latitude, longitude } =
-                          nextMarkers.length > 0
-                            ? {
-                                latitude: nextMarkers[0].position.lat(),
-                                longitude: nextMarkers[0].position.lng(),
-                              }
-                            : this.state;
-
-                        this.setCoords({
-                          latitude,
-                          longitude,
-                          addressProvenance: '(manually set)',
-                        });
-                      }}
-                    />
-
-                    <button
-                      type="button"
-                      style={{
-                        float: 'left',
-                      }}
-                      onClick={() => {
-                        geolocate()
-                          .then(
-                            ({
-                              coords: { latitude, longitude },
-                              ipProvenance = 'device',
-                            }) => {
-                              this.setCoords({
-                                latitude,
-                                longitude,
-                                addressProvenance: `(from ${ipProvenance}: ${latitude}, ${longitude})`,
+                        <button
+                          type="button"
+                          style={{
+                            float: 'left',
+                          }}
+                          onClick={() => {
+                            geolocate()
+                              .then(
+                                ({
+                                  coords: { latitude, longitude },
+                                  ipProvenance = 'device',
+                                }) => {
+                                  this.setCoords({
+                                    latitude,
+                                    longitude,
+                                    addressProvenance: `(from ${ipProvenance}: ${latitude}, ${longitude})`,
+                                  });
+                                },
+                              )
+                              .catch(err => {
+                                Home.notifyError(err.message);
+                                console.error(err);
                               });
-                            },
-                          )
-                          .catch(err => {
-                            Home.notifyError(err.message);
-                            console.error(err);
-                          });
-                      }}
-                    >
-                      Use current location
-                    </button>
+                          }}
+                        >
+                          Use current location
+                        </button>
 
-                    <button
-                      type="button"
-                      onClick={() => this.setState({ isMapOpen: false })}
-                      style={{
-                        float: 'right',
-                      }}
-                    >
-                      Close
-                    </button>
-                  </Modal>
+                        <button
+                          type="button"
+                          onClick={() => this.setState({ isMapOpen: false })}
+                          style={{
+                            float: 'right',
+                          }}
+                        >
+                          Close
+                        </button>
+                      </Modal>
 
-                  <PlatePickerModal
-                    isOpen={this.state.platePickerModalOpen}
-                    results={this.state.platePickerResults}
-                    onSelectPlate={({ plate, licenseState }) => {
-                      this.setLicensePlate({ plate, licenseState });
-                      this.setState({ platePickerModalOpen: false });
-                    }}
-                    onClose={() =>
-                      this.setState({ platePickerModalOpen: false })
-                    }
-                  />
+                      <PlatePickerModal
+                        isOpen={this.state.platePickerModalOpen}
+                        results={this.state.platePickerResults}
+                        onSelectPlate={({ plate, licenseState }) => {
+                          this.setLicensePlate({ plate, licenseState });
+                          this.setState({ platePickerModalOpen: false });
+                        }}
+                        onClose={() =>
+                          this.setState({ platePickerModalOpen: false })
+                        }
+                      />
 
-                  <label htmlFor="CreateDate">
-                    When:{' '}
-                    <input
-                      required
-                      type="datetime-local"
-                      value={this.state.CreateDate}
-                      name="CreateDate"
-                      onChange={this.handleInputChange}
-                    />
-                  </label>
+                      <label htmlFor="CreateDate">
+                        When:{' '}
+                        <input
+                          required
+                          type="datetime-local"
+                          value={this.state.CreateDate}
+                          name="CreateDate"
+                          onChange={this.handleInputChange}
+                        />
+                      </label>
 
-                  <label htmlFor="reportDescription">
-                    Description:{' '}
-                    <textarea
-                      value={this.state.reportDescription}
-                      name="reportDescription"
-                      onChange={this.handleInputChange}
-                      autoComplete="off"
-                    />
-                  </label>
+                      <label htmlFor="reportDescription">
+                        Description:{' '}
+                        <textarea
+                          value={this.state.reportDescription}
+                          name="reportDescription"
+                          onChange={this.handleInputChange}
+                          autoComplete="off"
+                        />
+                      </label>
 
-                  <label htmlFor="can_be_shared_publicly">
-                    <input
-                      id="can_be_shared_publicly"
-                      type="checkbox"
-                      checked={this.state.can_be_shared_publicly}
-                      name="can_be_shared_publicly"
-                      onChange={this.handleInputChange}
-                    />{' '}
-                    Allow the photos/videos, description, category, and location
-                    to be publicly displayed
-                  </label>
+                      <label htmlFor="can_be_shared_publicly">
+                        <input
+                          id="can_be_shared_publicly"
+                          type="checkbox"
+                          checked={this.state.can_be_shared_publicly}
+                          name="can_be_shared_publicly"
+                          onChange={this.handleInputChange}
+                        />{' '}
+                        Allow the photos/videos, description, category, and
+                        location to be publicly displayed
+                      </label>
 
-                  {this.state.isSubmitting ? (
-                    <progress
-                      max={this.state.submitProgressMax}
-                      value={this.state.submitProgressValue}
-                      style={{
-                        width: '100%',
-                      }}
-                    >
-                      {this.state.submitProgressValue}/
-                      {this.state.submitProgressMax}
-                    </progress>
-                  ) : (
-                    <button
-                      type="submit"
-                      disabled={
-                        this.state.isSubmitting || !this.state.coordsAreInNyc
-                      }
-                      style={{
-                        width: '100%',
-                      }}
-                    >
-                      Submit
-                    </button>
+                      {this.state.isSubmitting ? (
+                        <progress
+                          max={this.state.submitProgressMax}
+                          value={this.state.submitProgressValue}
+                          style={{
+                            width: '100%',
+                          }}
+                        >
+                          {this.state.submitProgressValue}/
+                          {this.state.submitProgressMax}
+                        </progress>
+                      ) : (
+                        <button
+                          type="submit"
+                          disabled={
+                            this.state.isSubmitting ||
+                            !this.state.coordsAreInNyc
+                          }
+                          style={{
+                            width: '100%',
+                          }}
+                        >
+                          Submit
+                        </button>
+                      )}
+                    </React.Fragment>
                   )}
                 </fieldset>
               </form>

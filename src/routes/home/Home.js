@@ -2518,55 +2518,15 @@ Home.defaultProps = {
   initialState: null,
 };
 
-// react-google-maps stores the native Google Maps marker under this key
-const REACT_GOOGLE_MAPS_MARKER_KEY =
-  '__SECRET_MARKER_DO_NOT_USE_OR_YOU_WILL_BE_FIRED';
-
-const getNativeMarker = function getNativeMarker(markerRef) {
-  return markerRef && markerRef.state[REACT_GOOGLE_MAPS_MARKER_KEY];
-};
-
 const MyMapComponentPure = props => {
   const { position, onRef, onDragEnd, onSearchBoxMounted, onPlacesChanged } =
     props;
-
-  const mapRef = React.useRef(null);
-  const markerRef = React.useRef(null);
-
-  const handleMapRef = React.useCallback(
-    map => {
-      mapRef.current = map;
-      onRef(map);
-    },
-    [onRef],
-  );
-
-  const handleMarkerRef = React.useCallback(marker => {
-    markerRef.current = marker;
-  }, []);
-
-  const handleDrag = React.useCallback(() => {
-    const nativeMarker = getNativeMarker(markerRef.current);
-    if (nativeMarker) {
-      const center = mapRef.current.getCenter();
-      nativeMarker.setPosition({ lat: center.lat(), lng: center.lng() });
-    }
-  }, []);
-
-  // Keep the marker at the current position prop after the parent updates it
-  React.useEffect(() => {
-    const nativeMarker = getNativeMarker(markerRef.current);
-    if (nativeMarker) {
-      nativeMarker.setPosition(position);
-    }
-  }, [position]);
 
   return (
     <GoogleMap
       defaultZoom={16}
       center={position}
-      ref={handleMapRef}
-      onDrag={handleDrag}
+      ref={onRef}
       onDragEnd={onDragEnd}
       options={{
         mapTypeControl: false,
@@ -2574,7 +2534,7 @@ const MyMapComponentPure = props => {
         gestureHandling: 'greedy',
       }}
     >
-      <Marker ref={handleMarkerRef} position={position} />
+      <Marker position={position} />
       <SearchBox
         ref={onSearchBoxMounted}
         controlPosition={window.google.maps.ControlPosition.TOP_LEFT}

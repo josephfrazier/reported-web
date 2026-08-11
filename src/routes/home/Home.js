@@ -2280,13 +2280,6 @@ class Home extends React.Component {
                       }}
                       onDragEnd={() => {
                         this.isDragging = false;
-                        const latitude = this.mapRef.getCenter().lat();
-                        const longitude = this.mapRef.getCenter().lng();
-                        this.setCoords({
-                          latitude,
-                          longitude,
-                          addressProvenance: '(manually set)',
-                        });
                       }}
                       onSearchBoxMounted={ref => {
                         this.searchBox = ref;

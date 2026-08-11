@@ -483,6 +483,7 @@ class Home extends React.Component {
     this.state = initialState;
     this.initialStatePerSubmission = initialStatePerSubmission;
     this.initialStatePersistent = initialStatePersistent;
+    this.isDragging = false;
     this.plateRef = React.createRef();
     this.loginEmailRef = React.createRef();
     this.signupEmailRef = React.createRef();
@@ -694,7 +695,9 @@ class Home extends React.Component {
         formatted_address: errorMessage,
         coordsAreInNyc: false,
       });
-      Home.notifyError(errorMessage);
+      if (!this.isDragging) {
+        Home.notifyError(errorMessage);
+      }
 
       return;
     }
@@ -2272,6 +2275,12 @@ class Home extends React.Component {
                           addressProvenance: '(manually set)',
                         });
                       }}
+                      onDragStart={() => {
+                        this.isDragging = true;
+                      }}
+                      onDragEnd={() => {
+                        this.isDragging = false;
+                      }}
                       onSearchBoxMounted={ref => {
                         this.searchBox = ref;
                       }}
@@ -2523,6 +2532,8 @@ const MyMapComponentPure = props => {
     position,
     onRef,
     onCenterChanged,
+    onDragStart,
+    onDragEnd,
     onSearchBoxMounted,
     onPlacesChanged,
   } = props;
@@ -2533,6 +2544,8 @@ const MyMapComponentPure = props => {
       center={position}
       ref={onRef}
       onCenterChanged={onCenterChanged}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
       options={{
         mapTypeControl: false,
         zoomControl: true,
@@ -2581,6 +2594,8 @@ MyMapComponentPure.propTypes = {
 
   onRef: PropTypes.func.isRequired,
   onCenterChanged: PropTypes.func.isRequired,
+  onDragStart: PropTypes.func.isRequired,
+  onDragEnd: PropTypes.func.isRequired,
   onSearchBoxMounted: PropTypes.func.isRequired,
   onPlacesChanged: PropTypes.func.isRequired,
 };

@@ -2518,6 +2518,14 @@ Home.defaultProps = {
   initialState: null,
 };
 
+// react-google-maps stores the native Google Maps marker under this key
+const REACT_GOOGLE_MAPS_MARKER_KEY =
+  '__SECRET_MARKER_DO_NOT_USE_OR_YOU_WILL_BE_FIRED';
+
+const getNativeMarker = function getNativeMarker(markerRef) {
+  return markerRef && markerRef.state[REACT_GOOGLE_MAPS_MARKER_KEY];
+};
+
 const MyMapComponentPure = props => {
   const { position, onRef, onDragEnd, onSearchBoxMounted, onPlacesChanged } =
     props;
@@ -2525,9 +2533,11 @@ const MyMapComponentPure = props => {
   const mapRef = React.useRef(null);
   const markerRef = React.useRef(null);
 
+  // Keep the marker at the current position prop after the parent updates it
   React.useEffect(() => {
-    if (markerRef.current) {
-      markerRef.current.setPosition(position);
+    const nativeMarker = getNativeMarker(markerRef.current);
+    if (nativeMarker) {
+      nativeMarker.setPosition(position);
     }
   }, [position]);
 
@@ -2540,12 +2550,10 @@ const MyMapComponentPure = props => {
         onRef(map);
       }}
       onDrag={() => {
-        if (markerRef.current) {
+        const nativeMarker = getNativeMarker(markerRef.current);
+        if (nativeMarker) {
           const center = mapRef.current.getCenter();
-          markerRef.current.setPosition({
-            lat: center.lat(),
-            lng: center.lng(),
-          });
+          nativeMarker.setPosition({ lat: center.lat(), lng: center.lng() });
         }
       }}
       onDragEnd={onDragEnd}

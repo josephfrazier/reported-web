@@ -2533,6 +2533,26 @@ const MyMapComponentPure = props => {
   const mapRef = React.useRef(null);
   const markerRef = React.useRef(null);
 
+  const handleMapRef = React.useCallback(
+    map => {
+      mapRef.current = map;
+      onRef(map);
+    },
+    [onRef],
+  );
+
+  const handleMarkerRef = React.useCallback(marker => {
+    markerRef.current = marker;
+  }, []);
+
+  const handleDrag = React.useCallback(() => {
+    const nativeMarker = getNativeMarker(markerRef.current);
+    if (nativeMarker) {
+      const center = mapRef.current.getCenter();
+      nativeMarker.setPosition({ lat: center.lat(), lng: center.lng() });
+    }
+  }, []);
+
   // Keep the marker at the current position prop after the parent updates it
   React.useEffect(() => {
     const nativeMarker = getNativeMarker(markerRef.current);
@@ -2545,17 +2565,8 @@ const MyMapComponentPure = props => {
     <GoogleMap
       defaultZoom={16}
       center={position}
-      ref={map => {
-        mapRef.current = map;
-        onRef(map);
-      }}
-      onDrag={() => {
-        const nativeMarker = getNativeMarker(markerRef.current);
-        if (nativeMarker) {
-          const center = mapRef.current.getCenter();
-          nativeMarker.setPosition({ lat: center.lat(), lng: center.lng() });
-        }
-      }}
+      ref={handleMapRef}
+      onDrag={handleDrag}
       onDragEnd={onDragEnd}
       options={{
         mapTypeControl: false,
@@ -2563,12 +2574,7 @@ const MyMapComponentPure = props => {
         gestureHandling: 'greedy',
       }}
     >
-      <Marker
-        ref={marker => {
-          markerRef.current = marker;
-        }}
-        position={position}
-      />
+      <Marker ref={handleMarkerRef} position={position} />
       <SearchBox
         ref={onSearchBoxMounted}
         controlPosition={window.google.maps.ControlPosition.TOP_LEFT}

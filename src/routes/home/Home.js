@@ -2533,7 +2533,11 @@ const MyMapComponentPure = props => {
       center={position}
       ref={onRef}
       onCenterChanged={onCenterChanged}
-      options={{ mapTypeControl: false, gestureHandling: 'greedy' }}
+      options={{
+        mapTypeControl: false,
+        zoomControl: true,
+        gestureHandling: 'greedy',
+      }}
     >
       <Marker position={position} />
       <SearchBox

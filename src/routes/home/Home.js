@@ -2522,11 +2522,28 @@ const MyMapComponentPure = props => {
   const { position, onRef, onDragEnd, onSearchBoxMounted, onPlacesChanged } =
     props;
 
+  const [markerPosition, setMarkerPosition] = React.useState(null);
+
+  React.useEffect(() => {
+    setMarkerPosition(null);
+  }, [position]);
+
+  let mapRef;
+
   return (
     <GoogleMap
       defaultZoom={16}
       center={position}
-      ref={onRef}
+      ref={map => {
+        mapRef = map;
+        onRef(map);
+      }}
+      onDrag={() => {
+        setMarkerPosition({
+          lat: mapRef.getCenter().lat(),
+          lng: mapRef.getCenter().lng(),
+        });
+      }}
       onDragEnd={onDragEnd}
       options={{
         mapTypeControl: false,
@@ -2534,7 +2551,7 @@ const MyMapComponentPure = props => {
         gestureHandling: 'greedy',
       }}
     >
-      <Marker position={position} />
+      <Marker position={markerPosition || position} />
       <SearchBox
         ref={onSearchBoxMounted}
         controlPosition={window.google.maps.ControlPosition.TOP_LEFT}

@@ -682,25 +682,24 @@ class Home extends React.Component {
     });
 
     // show error message if location is outside NYC
-    // (skip this check while the user is dragging the map)
-    if (!this.isDragging) {
-      console.time('new PolygonLookup'); // eslint-disable-line no-console
-      const lookup = new PolygonLookup(
-        this.props.boroughBoundariesFeatureCollection,
-      );
-      console.timeEnd('new PolygonLookup'); // eslint-disable-line no-console
-      const end = { latitude, longitude };
-      const BoroName = getBoroNameMemoized({ lookup, end });
-      if (BoroName === '(unknown borough)') {
-        const errorMessage = `latitude/longitude (${latitude}, ${longitude}) is outside NYC. Please select a location within NYC.`;
-        this.setState({
-          formatted_address: errorMessage,
-          coordsAreInNyc: false,
-        });
+    console.time('new PolygonLookup'); // eslint-disable-line no-console
+    const lookup = new PolygonLookup(
+      this.props.boroughBoundariesFeatureCollection,
+    );
+    console.timeEnd('new PolygonLookup'); // eslint-disable-line no-console
+    const end = { latitude, longitude };
+    const BoroName = getBoroNameMemoized({ lookup, end });
+    if (BoroName === '(unknown borough)') {
+      const errorMessage = `latitude/longitude (${latitude}, ${longitude}) is outside NYC. Please select a location within NYC.`;
+      this.setState({
+        formatted_address: errorMessage,
+        coordsAreInNyc: false,
+      });
+      if (!this.isDragging) {
         Home.notifyError(errorMessage);
-
-        return;
       }
+
+      return;
     }
     this.setState({
       coordsAreInNyc: true,

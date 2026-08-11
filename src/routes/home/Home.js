@@ -2527,11 +2527,16 @@ const MyMapComponentPure = props => {
     onPlacesChanged,
   } = props;
 
+  let mapRef;
+
   return (
     <GoogleMap
       defaultZoom={16}
       center={position}
-      ref={onRef}
+      ref={map => {
+        mapRef = map;
+        onRef(map);
+      }}
       onCenterChanged={onCenterChanged}
       options={{ mapTypeControl: false, gestureHandling: 'greedy' }}
     >
@@ -2565,6 +2570,59 @@ const MyMapComponentPure = props => {
           }}
         />
       </SearchBox>
+      <div
+        style={{
+          position: 'absolute',
+          top: '10px',
+          right: '10px',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => mapRef && mapRef.setZoom(mapRef.getZoom() + 1)}
+          style={{
+            width: '40px',
+            height: '40px',
+            background: 'white',
+            border: 'none',
+            borderRadius: '2px 2px 0 0',
+            boxShadow: '0 2px 6px rgba(0, 0, 0, 0.3)',
+            fontSize: '22px',
+            lineHeight: '40px',
+            textAlign: 'center',
+            cursor: 'pointer',
+            color: '#666',
+            padding: 0,
+            margin: 0,
+          }}
+        >
+          +
+        </button>
+        <button
+          type="button"
+          onClick={() => mapRef && mapRef.setZoom(mapRef.getZoom() - 1)}
+          style={{
+            width: '40px',
+            height: '40px',
+            background: 'white',
+            border: 'none',
+            borderTop: '1px solid #e6e6e6',
+            borderRadius: '0 0 2px 2px',
+            boxShadow: '0 2px 6px rgba(0, 0, 0, 0.3)',
+            fontSize: '22px',
+            lineHeight: '40px',
+            textAlign: 'center',
+            cursor: 'pointer',
+            color: '#666',
+            padding: 0,
+            margin: 0,
+          }}
+        >
+          –
+        </button>
+      </div>
     </GoogleMap>
   );
 };

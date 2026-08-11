@@ -483,6 +483,7 @@ class Home extends React.Component {
     this.state = initialState;
     this.initialStatePerSubmission = initialStatePerSubmission;
     this.initialStatePersistent = initialStatePersistent;
+    this.isDragging = false;
     this.plateRef = React.createRef();
     this.loginEmailRef = React.createRef();
     this.signupEmailRef = React.createRef();
@@ -681,22 +682,25 @@ class Home extends React.Component {
     });
 
     // show error message if location is outside NYC
-    console.time('new PolygonLookup'); // eslint-disable-line no-console
-    const lookup = new PolygonLookup(
-      this.props.boroughBoundariesFeatureCollection,
-    );
-    console.timeEnd('new PolygonLookup'); // eslint-disable-line no-console
-    const end = { latitude, longitude };
-    const BoroName = getBoroNameMemoized({ lookup, end });
-    if (BoroName === '(unknown borough)') {
-      const errorMessage = `latitude/longitude (${latitude}, ${longitude}) is outside NYC. Please select a location within NYC.`;
-      this.setState({
-        formatted_address: errorMessage,
-        coordsAreInNyc: false,
-      });
-      Home.notifyError(errorMessage);
+    // (skip this check while the user is dragging the map)
+    if (!this.isDragging) {
+      console.time('new PolygonLookup'); // eslint-disable-line no-console
+      const lookup = new PolygonLookup(
+        this.props.boroughBoundariesFeatureCollection,
+      );
+      console.timeEnd('new PolygonLookup'); // eslint-disable-line no-console
+      const end = { latitude, longitude };
+      const BoroName = getBoroNameMemoized({ lookup, end });
+      if (BoroName === '(unknown borough)') {
+        const errorMessage = `latitude/longitude (${latitude}, ${longitude}) is outside NYC. Please select a location within NYC.`;
+        this.setState({
+          formatted_address: errorMessage,
+          coordsAreInNyc: false,
+        });
+        Home.notifyError(errorMessage);
 
-      return;
+        return;
+      }
     }
     this.setState({
       coordsAreInNyc: true,
@@ -2263,7 +2267,20 @@ class Home extends React.Component {
                       onRef={mapRef => {
                         this.mapRef = mapRef;
                       }}
+                      onCenterChanged={() => {
+                        const latitude = this.mapRef.getCenter().lat();
+                        const longitude = this.mapRef.getCenter().lng();
+                        this.setCoords({
+                          latitude,
+                          longitude,
+                          addressProvenance: '(manually set)',
+                        });
+                      }}
+                      onDragStart={() => {
+                        this.isDragging = true;
+                      }}
                       onDragEnd={() => {
+                        this.isDragging = false;
                         const latitude = this.mapRef.getCenter().lat();
                         const longitude = this.mapRef.getCenter().lng();
                         this.setCoords({
@@ -2519,14 +2536,23 @@ Home.defaultProps = {
 };
 
 const MyMapComponentPure = props => {
-  const { position, onRef, onDragEnd, onSearchBoxMounted, onPlacesChanged } =
-    props;
+  const {
+    position,
+    onRef,
+    onCenterChanged,
+    onDragStart,
+    onDragEnd,
+    onSearchBoxMounted,
+    onPlacesChanged,
+  } = props;
 
   return (
     <GoogleMap
       defaultZoom={16}
       center={position}
       ref={onRef}
+      onCenterChanged={onCenterChanged}
+      onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       options={{
         mapTypeControl: false,
@@ -2575,6 +2601,8 @@ MyMapComponentPure.propTypes = {
   }).isRequired,
 
   onRef: PropTypes.func.isRequired,
+  onCenterChanged: PropTypes.func.isRequired,
+  onDragStart: PropTypes.func.isRequired,
   onDragEnd: PropTypes.func.isRequired,
   onSearchBoxMounted: PropTypes.func.isRequired,
   onPlacesChanged: PropTypes.func.isRequired,

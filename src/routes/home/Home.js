@@ -2263,7 +2263,7 @@ class Home extends React.Component {
                       onRef={mapRef => {
                         this.mapRef = mapRef;
                       }}
-                      onCenterChanged={() => {
+                      onDragEnd={() => {
                         const latitude = this.mapRef.getCenter().lat();
                         const longitude = this.mapRef.getCenter().lng();
                         this.setCoords({
@@ -2519,20 +2519,15 @@ Home.defaultProps = {
 };
 
 const MyMapComponentPure = props => {
-  const {
-    position,
-    onRef,
-    onCenterChanged,
-    onSearchBoxMounted,
-    onPlacesChanged,
-  } = props;
+  const { position, onRef, onDragEnd, onSearchBoxMounted, onPlacesChanged } =
+    props;
 
   return (
     <GoogleMap
       defaultZoom={16}
       center={position}
       ref={onRef}
-      onCenterChanged={onCenterChanged}
+      onDragEnd={onDragEnd}
       options={{
         mapTypeControl: false,
         zoomControl: true,
@@ -2580,7 +2575,7 @@ MyMapComponentPure.propTypes = {
   }).isRequired,
 
   onRef: PropTypes.func.isRequired,
-  onCenterChanged: PropTypes.func.isRequired,
+  onDragEnd: PropTypes.func.isRequired,
   onSearchBoxMounted: PropTypes.func.isRequired,
   onPlacesChanged: PropTypes.func.isRequired,
 };

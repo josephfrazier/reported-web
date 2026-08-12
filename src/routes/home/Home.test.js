@@ -53,16 +53,41 @@ function renderHome({ initialState, homeRef } = {}) {
 }
 
 describe('Home', () => {
-  test('renders submission form and Previous Submissions when logged in', () => {
+  test('renders submission form and Previous Submissions when logged in with photos', () => {
     const initialState = {
       email: 'test@example.com',
       loginSuccessful: true,
     };
 
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
     let tree;
+    const homeRef = React.createRef();
     renderer.act(() => {
-      tree = renderHome({ initialState });
+      tree = renderHome({ initialState, homeRef });
     });
+    renderer.act(() => {
+      homeRef.current.setState({
+        attachmentData: [
+          new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }),
+        ],
+      });
+    });
+
+    expect(tree.toJSON()).toMatchSnapshot();
+
+    tree.unmount();
+    global.URL.createObjectURL = originalCreateObjectURL;
+  });
+
+  test('hides form fields when logged in with no photos uploaded', () => {
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+    };
+
+    const tree = renderHome({ initialState });
 
     expect(tree.toJSON()).toMatchSnapshot();
 
@@ -114,11 +139,14 @@ describe('Home', () => {
     tree.unmount();
   });
 
-  test('renders with undefined allPlateResults', () => {
+  test('renders with undefined allPlateResults and photos', () => {
     const initialState = {
       email: 'test@example.com',
       loginSuccessful: true,
     };
+
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
 
     let tree;
     const homeRef = React.createRef();
@@ -126,19 +154,28 @@ describe('Home', () => {
       tree = renderHome({ initialState, homeRef });
     });
     renderer.act(() => {
-      homeRef.current.setState({ allPlateResults: undefined });
+      homeRef.current.setState({
+        allPlateResults: undefined,
+        attachmentData: [
+          new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }),
+        ],
+      });
     });
 
     expect(tree.toJSON()).toMatchSnapshot();
 
     tree.unmount();
+    global.URL.createObjectURL = originalCreateObjectURL;
   });
 
-  test('renders with allPlateResults entry missing plate', () => {
+  test('renders with allPlateResults entry missing plate and photos', () => {
     const initialState = {
       email: 'test@example.com',
       loginSuccessful: true,
     };
+
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
 
     let tree;
     const homeRef = React.createRef();
@@ -147,12 +184,18 @@ describe('Home', () => {
     });
     // Entry exists but has no .plate — .toUpperCase() on undefined throws
     renderer.act(() => {
-      homeRef.current.setState({ allPlateResults: [{ region: {} }] });
+      homeRef.current.setState({
+        allPlateResults: [{ region: {} }],
+        attachmentData: [
+          new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }),
+        ],
+      });
     });
 
     expect(tree.toJSON()).toMatchSnapshot();
 
     tree.unmount();
+    global.URL.createObjectURL = originalCreateObjectURL;
   });
 
   test('renders plate overlays on uploaded images and selects plate on click', () => {

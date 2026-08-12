@@ -1,5 +1,212 @@
 // Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
 
+exports[`Home hides form fields when logged in with no photos uploaded 1`] = `
+<div
+  aria-disabled={false}
+  className="root"
+  onClick={[Function]}
+  onDragEnter={[Function]}
+  onDragLeave={[Function]}
+  onDragOver={[Function]}
+  onDragStart={[Function]}
+  onDrop={[Function]}
+  style={
+    {
+      "bottom": 0,
+      "left": 0,
+      "overflowY": "scroll",
+      "position": "fixed",
+      "right": 0,
+      "top": 0,
+    }
+  }
+>
+  <div
+    className="container"
+  >
+    <main>
+      <h1>
+        <a
+          href="https://reportedly.weebly.com/"
+          style={
+            {
+              "textDecoration": "underline",
+            }
+          }
+        >
+          Reported
+        </a>
+      </h1>
+      <div
+        className="Toastify"
+      />
+      <div
+        className="user-status-bar"
+      >
+        <div
+          className="user-greeting"
+        >
+          <span
+            aria-label="user"
+            role="img"
+          >
+            👤
+          </span>
+           
+          test@example.com
+        </div>
+        <div
+          className="user-actions"
+        >
+          <button
+            className="status-bar-btn-primary"
+            onClick={[Function]}
+            type="button"
+          >
+            Edit Profile
+          </button>
+          <button
+            className="status-bar-btn"
+            onClick={[Function]}
+            type="button"
+          >
+            Log Out
+          </button>
+        </div>
+      </div>
+      <form
+        onSubmit={[Function]}
+      >
+        <fieldset
+          disabled={false}
+        >
+          <div
+            className="_react-file-reader-input"
+            onClick={[Function]}
+            style={
+              {
+                "float": "left",
+                "margin": "1px",
+              }
+            }
+          >
+            <input
+              multiple={true}
+              onChange={[Function]}
+              onClick={[Function]}
+              style={
+                {
+                  "position": "absolute",
+                  "top": "-9999px",
+                }
+              }
+              type="file"
+            />
+            <button
+              style={
+                {
+                  "whiteSpace": "wrap",
+                }
+              }
+              type="button"
+            >
+              Add pictures/videos (up to 3 each, 20MB max each)
+            </button>
+          </div>
+          <div
+            style={
+              {
+                "clear": "both",
+              }
+            }
+          />
+          <label
+            htmlFor="isAlprEnabled"
+          >
+            <input
+              checked={true}
+              id="isAlprEnabled"
+              name="isAlprEnabled"
+              onChange={[Function]}
+              type="checkbox"
+            />
+             
+            Automatically read license plates from pictures/videos
+          </label>
+          <label
+            htmlFor="isReverseGeocodingEnabled"
+          >
+            <input
+              checked={true}
+              id="isReverseGeocodingEnabled"
+              name="isReverseGeocodingEnabled"
+              onChange={[Function]}
+              type="checkbox"
+            />
+             
+            Automatically read addresses from pictures/videos
+          </label>
+        </fieldset>
+      </form>
+      <br />
+      <details
+        onToggle={[Function]}
+      >
+        <summary>
+          Previous Submissions (
+          expand to load
+          )
+        </summary>
+      </details>
+      <div
+        style={
+          {
+            "float": "right",
+          }
+        }
+      >
+        <a
+          href="/submissions-map"
+          style={
+            {
+              "background": "black",
+              "border": "1em solid black",
+              "borderRadius": "2em",
+              "textDecoration": "none",
+            }
+          }
+        >
+          <span
+            aria-label="world map"
+            role="img"
+          >
+            🗺️
+          </span>
+        </a>
+      </div>
+    </main>
+  </div>
+  <input
+    autoComplete="off"
+    disabled={false}
+    multiple={true}
+    onChange={[Function]}
+    style={
+      {
+        "bottom": 0,
+        "left": 0,
+        "opacity": 0.00001,
+        "pointerEvents": "none",
+        "position": "absolute",
+        "right": 0,
+        "top": 0,
+      }
+    }
+    type="file"
+  />
+</div>
+`;
+
 exports[`Home renders Edit Profile UI 1`] = `
 <div
   aria-disabled={false}
@@ -870,7 +1077,7 @@ exports[`Home renders auth prompt and hides form when logged out 1`] = `
 </div>
 `;
 
-exports[`Home renders submission form and Previous Submissions when logged in 1`] = `
+exports[`Home renders submission form and Previous Submissions when logged in with photos 1`] = `
 <div
   aria-disabled={false}
   className="root"
@@ -987,8 +1194,6 @@ exports[`Home renders submission form and Previous Submissions when logged in 1`
             style={
               {
                 "clear": "both",
-                "display": "flex",
-                "flexWrap": "wrap",
               }
             }
           />
@@ -1018,6 +1223,101 @@ exports[`Home renders submission form and Previous Submissions when logged in 1`
              
             Automatically read addresses from pictures/videos
           </label>
+          <div
+            style={
+              {
+                "display": "flex",
+                "flexWrap": "wrap",
+              }
+            }
+          >
+            <div
+              style={
+                {
+                  "flexGrow": 1,
+                  "margin": "0.1%",
+                  "position": "relative",
+                  "width": "33%",
+                }
+              }
+            >
+              <div
+                style={
+                  {
+                    "display": "inline-block",
+                    "maxWidth": "100%",
+                    "position": "relative",
+                  }
+                }
+              >
+                <a
+                  href="blob:mock"
+                  rel="noopener noreferrer"
+                  style={
+                    {
+                      "display": "block",
+                    }
+                  }
+                  target="_blank"
+                >
+                  <img
+                    alt="photo.jpg"
+                    onLoad={[Function]}
+                    src="blob:mock"
+                    style={
+                      {
+                        "display": "block",
+                      }
+                    }
+                  />
+                </a>
+              </div>
+              <button
+                onClick={[Function]}
+                style={
+                  {
+                    "background": "white",
+                    "color": "red",
+                    "margin": "1px",
+                    "padding": 0,
+                    "position": "absolute",
+                    "right": 0,
+                    "top": 0,
+                  }
+                }
+                type="button"
+              >
+                <span
+                  aria-label="Delete photo/video"
+                  role="img"
+                >
+                  ❌
+                </span>
+              </button>
+              <button
+                disabled={false}
+                onClick={[Function]}
+                style={
+                  {
+                    "background": "white",
+                    "left": 0,
+                    "margin": "1px",
+                    "padding": 0,
+                    "position": "absolute",
+                    "top": 0,
+                  }
+                }
+                type="button"
+              >
+                <span
+                  aria-label="Pick license plate from photo"
+                  role="img"
+                >
+                  🔍
+                </span>
+              </button>
+            </div>
+          </div>
           <label
             htmlFor="plate"
           >
@@ -1488,7 +1788,7 @@ exports[`Home renders submission form and Previous Submissions when logged in 1`
 </div>
 `;
 
-exports[`Home renders with allPlateResults entry missing plate 1`] = `
+exports[`Home renders with allPlateResults entry missing plate and photos 1`] = `
 <div
   aria-disabled={false}
   className="root"
@@ -1605,8 +1905,6 @@ exports[`Home renders with allPlateResults entry missing plate 1`] = `
             style={
               {
                 "clear": "both",
-                "display": "flex",
-                "flexWrap": "wrap",
               }
             }
           />
@@ -1636,6 +1934,101 @@ exports[`Home renders with allPlateResults entry missing plate 1`] = `
              
             Automatically read addresses from pictures/videos
           </label>
+          <div
+            style={
+              {
+                "display": "flex",
+                "flexWrap": "wrap",
+              }
+            }
+          >
+            <div
+              style={
+                {
+                  "flexGrow": 1,
+                  "margin": "0.1%",
+                  "position": "relative",
+                  "width": "33%",
+                }
+              }
+            >
+              <div
+                style={
+                  {
+                    "display": "inline-block",
+                    "maxWidth": "100%",
+                    "position": "relative",
+                  }
+                }
+              >
+                <a
+                  href="blob:mock"
+                  rel="noopener noreferrer"
+                  style={
+                    {
+                      "display": "block",
+                    }
+                  }
+                  target="_blank"
+                >
+                  <img
+                    alt="photo.jpg"
+                    onLoad={[Function]}
+                    src="blob:mock"
+                    style={
+                      {
+                        "display": "block",
+                      }
+                    }
+                  />
+                </a>
+              </div>
+              <button
+                onClick={[Function]}
+                style={
+                  {
+                    "background": "white",
+                    "color": "red",
+                    "margin": "1px",
+                    "padding": 0,
+                    "position": "absolute",
+                    "right": 0,
+                    "top": 0,
+                  }
+                }
+                type="button"
+              >
+                <span
+                  aria-label="Delete photo/video"
+                  role="img"
+                >
+                  ❌
+                </span>
+              </button>
+              <button
+                disabled={false}
+                onClick={[Function]}
+                style={
+                  {
+                    "background": "white",
+                    "left": 0,
+                    "margin": "1px",
+                    "padding": 0,
+                    "position": "absolute",
+                    "top": 0,
+                  }
+                }
+                type="button"
+              >
+                <span
+                  aria-label="Pick license plate from photo"
+                  role="img"
+                >
+                  🔍
+                </span>
+              </button>
+            </div>
+          </div>
           <label
             htmlFor="plate"
           >
@@ -2106,7 +2499,7 @@ exports[`Home renders with allPlateResults entry missing plate 1`] = `
 </div>
 `;
 
-exports[`Home renders with undefined allPlateResults 1`] = `
+exports[`Home renders with undefined allPlateResults and photos 1`] = `
 <div
   aria-disabled={false}
   className="root"
@@ -2223,8 +2616,6 @@ exports[`Home renders with undefined allPlateResults 1`] = `
             style={
               {
                 "clear": "both",
-                "display": "flex",
-                "flexWrap": "wrap",
               }
             }
           />
@@ -2254,6 +2645,101 @@ exports[`Home renders with undefined allPlateResults 1`] = `
              
             Automatically read addresses from pictures/videos
           </label>
+          <div
+            style={
+              {
+                "display": "flex",
+                "flexWrap": "wrap",
+              }
+            }
+          >
+            <div
+              style={
+                {
+                  "flexGrow": 1,
+                  "margin": "0.1%",
+                  "position": "relative",
+                  "width": "33%",
+                }
+              }
+            >
+              <div
+                style={
+                  {
+                    "display": "inline-block",
+                    "maxWidth": "100%",
+                    "position": "relative",
+                  }
+                }
+              >
+                <a
+                  href="blob:mock"
+                  rel="noopener noreferrer"
+                  style={
+                    {
+                      "display": "block",
+                    }
+                  }
+                  target="_blank"
+                >
+                  <img
+                    alt="photo.jpg"
+                    onLoad={[Function]}
+                    src="blob:mock"
+                    style={
+                      {
+                        "display": "block",
+                      }
+                    }
+                  />
+                </a>
+              </div>
+              <button
+                onClick={[Function]}
+                style={
+                  {
+                    "background": "white",
+                    "color": "red",
+                    "margin": "1px",
+                    "padding": 0,
+                    "position": "absolute",
+                    "right": 0,
+                    "top": 0,
+                  }
+                }
+                type="button"
+              >
+                <span
+                  aria-label="Delete photo/video"
+                  role="img"
+                >
+                  ❌
+                </span>
+              </button>
+              <button
+                disabled={false}
+                onClick={[Function]}
+                style={
+                  {
+                    "background": "white",
+                    "left": 0,
+                    "margin": "1px",
+                    "padding": 0,
+                    "position": "absolute",
+                    "top": 0,
+                  }
+                }
+                type="button"
+              >
+                <span
+                  aria-label="Pick license plate from photo"
+                  role="img"
+                >
+                  🔍
+                </span>
+              </button>
+            </div>
+          </div>
           <label
             htmlFor="plate"
           >

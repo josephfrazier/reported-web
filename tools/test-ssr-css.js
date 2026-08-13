@@ -24,7 +24,10 @@
  *
  * Each check below catches one of those failure modes by rendering the
  * homepage and inspecting the HTML. Run after `yarn build` (the built
- * `build/server.js` is what gets exercised).
+ * `build/server.js` is what gets exercised). The checks are mode-agnostic:
+ * they pass against both debug builds (`[name]-[local]-[hash]` class names)
+ * and release builds (bare base64 hashes, minified CSS), so CI runs the
+ * same script after both `yarn build` and `yarn build --release`.
  */
 
 import runServer from './runServer.js';
@@ -60,12 +63,15 @@ const CHECKS = [
   },
   {
     name: 'CSS-module locals resolve to scoped class names',
-    fn: html => /class="Home-[a-zA-Z][a-zA-Z0-9-]*-[A-Za-z0-9]{5}"/.test(html),
+    fn: html =>
+      /class="(?:Home-[a-zA-Z][a-zA-Z0-9_-]*-)?(?=[A-Za-z0-9_-]*[0-9])[A-Za-z0-9_-]{4,8}"/.test(
+        html,
+      ),
   },
   {
     name: 'CSS-module composes: chains are intact',
     fn: html =>
-      /class="Home-[a-zA-Z][a-zA-Z0-9-]*-[A-Za-z0-9]{5} Home-[a-zA-Z][a-zA-Z0-9-]*-[A-Za-z0-9]{5}"/.test(
+      /class="(?:Home-[a-zA-Z][a-zA-Z0-9_-]*-)?[A-Za-z0-9_-]{4,8} (?:Home-[a-zA-Z][a-zA-Z0-9_-]*-)?[A-Za-z0-9_-]{4,8}"/.test(
         html,
       ),
   },

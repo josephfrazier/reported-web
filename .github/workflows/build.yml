@@ -26,3 +26,9 @@ jobs:
     - run: yarn test:ssr-css
       env:
         CI: true
+    - run: yarn build --release
+      env:
+        CI: true
+    - run: yarn test:ssr-css
+      env:
+        CI: true

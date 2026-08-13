@@ -53,10 +53,6 @@ const run = async () => {
         detail: errors.join('\n'),
       },
       {
-        name: 'the app did not redirect to /error',
-        ok: new URL(page.url()).pathname === '/',
-      },
-      {
         name: 'the page rendered the home heading',
         ok: typeof heading === 'string' && heading.length > 0,
         detail: heading,

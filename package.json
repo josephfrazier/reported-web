@@ -144,6 +144,7 @@
     "react-error-overlay": "^4.0.1",
     "react-test-renderer": "^16.5.2",
     "rimraf": "^2.6.2",
+    "stream-browserify": "^3.0.0",
     "stylelint": "^15.10.1",
     "stylelint-config-standard": "^34.0.0",
     "stylelint-order": "^6.0.3",

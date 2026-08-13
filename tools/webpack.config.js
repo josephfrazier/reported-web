@@ -391,7 +391,7 @@ const clientConfig = {
       fs: false,
       net: false,
       tls: false,
-      stream: false,
+      stream: require.resolve('stream-browserify'),
       buffer: require.resolve('buffer/'),
     },
     alias: {

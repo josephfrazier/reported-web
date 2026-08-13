@@ -106,6 +106,16 @@ const CHECKS = [
       );
     },
   },
+  {
+    name: 'service worker registration matches the build mode',
+    fn: html => {
+      // Debug builds name module classes `Home-<local>-<hash>`, so the
+      // prefixed form identifies the build mode the way checks 5-6 do.
+      const isDebug = /class="Home-[a-zA-Z][a-zA-Z0-9_-]*-/.test(html);
+      const registers = html.includes('serviceWorker');
+      return isDebug ? !registers : registers;
+    },
+  },
 ];
 
 const run = async () => {

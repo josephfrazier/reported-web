@@ -26,3 +26,7 @@ jobs:
     - run: yarn test:ssr-css
       env:
         CI: true
+    - run: npx playwright install --with-deps chromium
+    - run: yarn test:client-smoke
+      env:
+        CI: true

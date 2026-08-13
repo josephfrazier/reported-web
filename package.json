@@ -132,7 +132,7 @@
     "pixrem": "^4.0.1",
     "pleeease-filters": "^4.0.0",
     "postcss": "^8.5.23",
-    "postcss-calc": "^6.0.1",
+    "postcss-calc": "^10.1.1",
     "postcss-flexbugs-fixes": "^4.1.0",
     "postcss-import": "^16.1.1",
     "postcss-loader": "^7.0.0",

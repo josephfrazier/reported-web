@@ -12,6 +12,9 @@
     "Firefox ESR",
     "not ie < 9"
   ],
+  "resolutions": {
+    "parse/ws": "7.5.13"
+  },
   "dependencies": {
     "@babel/polyfill": "^7.0.0",
     "@emotion/react": "^11.14.0",

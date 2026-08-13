@@ -991,7 +991,9 @@ class Home extends React.Component {
                 attachmentFile,
               });
 
-            const { name: ext } = (await detectFromBuffer(attachmentBuffer)) || { name: 'jpg' };
+            const { name: ext } = (await detectFromBuffer(
+              attachmentBuffer,
+            )) || { name: 'jpg' };
 
             this.setState({ isAlprLoading: true });
             return Promise.allSettled([

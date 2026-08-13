@@ -2,8 +2,8 @@
  * Render the built app server-side and assert on the CSS pipeline output.
  *
  * The regular jest suite mocks CSS imports (identity-obj-proxy), so it cannot
- * see the regressions that have historically shipped through the webpack CSS
- * pipeline, e.g.:
+ * see the regressions that would have shipped through the webpack CSS
+ * pipeline in https://github.com/josephfrazier/reported-web/pull/920, e.g.:
  *
  * - css-loader 4+ emitting ES modules by default, which made
  *   isomorphic-style-loader's `'' + css` stringify an ESM namespace object

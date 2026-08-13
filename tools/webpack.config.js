@@ -134,6 +134,10 @@ const config = {
             loader: 'css-loader',
             options: {
               sourceMap: isDebug,
+              // css-loader 4+ emits ES modules by default, but
+              // isomorphic-style-loader's wrapper stringifies the CJS
+              // export; otherwise the SSR style tag gets "[object Module]"
+              esModule: false,
             },
           },
 

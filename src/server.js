@@ -208,21 +208,6 @@ app.use('/saveUser', (req, res) => {
     .catch(handlePromiseRejection(res));
 });
 
-app.use('/api/categories', (req, res) => {
-  const Category = Parse.Object.extend('Category');
-  const query = new Parse.Query(Category);
-  query
-    .find()
-    .then(results => {
-      const categories = results.map(({ id, attributes }) => ({
-        objectId: id,
-        ...attributes,
-      }));
-      res.json({ categories });
-    })
-    .catch(handlePromiseRejection(res));
-});
-
 app.use('/api/geosearch', (req, res) => {
   const { lat, long } = req.body;
   geosearch({ lat, long })

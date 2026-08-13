@@ -12,14 +12,15 @@ import sortBy from 'lodash.sortby';
 import Home from './Home.js';
 import Layout from '../../components/Layout/Layout.js';
 import boroughBoundariesFeatureCollection from '../../../public/borough-boundaries-clipped-to-shoreline.geo.json';
+import categoriesData from './categories.json';
 
-async function action({ fetch, commitHash, cookies }) {
-  // get complaint categories from server
-  const resp = await fetch('/api/categories');
-  const { categories } = await resp.json();
-  const typeofcomplaintValues = sortBy(categories, 'createdAt').map(
-    ({ text }) => text,
-  );
+async function action({ commitHash, cookies }) {
+  // The complaint categories haven't changed in Parse for years, so a
+  // snapshot of them is bundled instead of fetched at render time.
+  const typeofcomplaintValues = sortBy(
+    categoriesData.categories,
+    'createdAt',
+  ).map(({ text }) => text);
 
   // Parse persistent state from cookie set by the client
   let initialState = null;

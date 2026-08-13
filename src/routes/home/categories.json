@@ -1,0 +1,44 @@
+{
+  "categories": [
+    {
+      "objectId": "Z8vjWz8uYr",
+      "createdAt": "2016-10-23T18:14:34.030Z",
+      "updatedAt": "2019-01-09T18:55:27.008Z",
+      "text": "Blocked the bike lane",
+      "typeofreport": "complaint",
+      "typeofuser": "cyclist, walker, pedestrian, passenger"
+    },
+    {
+      "objectId": "GzRxlMN1vl",
+      "createdAt": "2016-10-23T18:16:21.828Z",
+      "updatedAt": "2019-01-09T18:55:35.349Z",
+      "text": "Blocked the crosswalk",
+      "typeofreport": "complaint",
+      "typeofuser": "cyclist, walker, pedestrian, passenger"
+    },
+    {
+      "objectId": "WstZSmJr4t",
+      "createdAt": "2016-10-26T07:20:17.693Z",
+      "updatedAt": "2016-10-29T07:56:06.719Z",
+      "text": "Drove recklessly",
+      "typeofreport": "complaint",
+      "typeofuser": "passenger"
+    },
+    {
+      "objectId": "0iEd9qaziB",
+      "text": "Parked illegally",
+      "createdAt": "2018-03-20T16:19:48.664Z",
+      "updatedAt": "2019-01-09T18:54:56.176Z",
+      "typeofreport": "complaint",
+      "typeofuser": "cyclist, walker, pedestrian, passenger"
+    },
+    {
+      "objectId": "DauBz1MDhJ",
+      "text": "Ran a red light or stop sign",
+      "createdAt": "2018-04-14T18:44:39.024Z",
+      "updatedAt": "2018-04-14T18:47:32.149Z",
+      "typeofreport": "complaint",
+      "typeofuser": "cyclist, walker, pedestrian, passenger"
+    }
+  ]
+}

@@ -1,13 +1,4 @@
 /**
- * React Starter Kit (https://www.reactstarterkit.com/)
- *
- * Copyright © 2014-present Kriasoft, LLC. All rights reserved.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE.txt file in the root directory of this source tree.
- */
-
-/**
  * Render the built app server-side and assert on the CSS pipeline output.
  *
  * The regular jest suite mocks CSS imports (identity-obj-proxy), so it cannot

@@ -33,11 +33,6 @@ const staticAssetName = isDebug
   ? '[path][name].[ext]?[hash:8]'
   : '[hash:8].[ext]';
 
-// CSS Nano options http://cssnano.co/
-const minimizeCssOptions = {
-  discardComments: { removeAll: true },
-};
-
 //
 // Common configuration chunk to be used for both
 // client-side (client.js) and server-side (server.js) bundles
@@ -139,7 +134,10 @@ const config = {
             loader: 'css-loader',
             options: {
               sourceMap: isDebug,
-              minimize: isDebug ? false : minimizeCssOptions,
+              // css-loader 4+ emits ES modules by default, but
+              // isomorphic-style-loader's wrapper stringifies the CJS
+              // export; otherwise the SSR style tag gets "[object Module]"
+              esModule: false,
             },
           },
 
@@ -152,12 +150,17 @@ const config = {
               importLoaders: 1,
               sourceMap: isDebug,
               // CSS Modules https://github.com/css-modules/css-modules
-              modules: true,
-              localIdentName: isDebug
-                ? '[name]-[local]-[hash:base64:5]'
-                : '[hash:base64:5]',
-              // CSS Nano http://cssnano.co/
-              minimize: isDebug ? false : minimizeCssOptions,
+              modules: {
+                localIdentName: isDebug
+                  ? '[name]-[local]-[hash:base64:5]'
+                  : '[hash:base64:5]',
+                // css-loader 4+ camelCases exported locals by default,
+                // which breaks lookups like homeStyles['plate-overlay']
+                exportLocalsConvention: 'asIs',
+              },
+              // css-loader 4+ emits ES modules by default, but
+              // isomorphic-style-loader consumes the CJS export shape
+              esModule: false,
             },
           },
 

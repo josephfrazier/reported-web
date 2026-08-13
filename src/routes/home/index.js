@@ -14,19 +14,12 @@ import Layout from '../../components/Layout/Layout.js';
 import boroughBoundariesFeatureCollection from '../../../public/borough-boundaries-clipped-to-shoreline.geo.json';
 
 async function action({ fetch, commitHash, cookies }) {
-  // get complaint categories from server. The form can render without
-  // them, so a Parse/API failure must not take down SSR — the action
-  // fetches them again on client-side navigation.
-  let typeofcomplaintValues = [];
-  try {
-    const resp = await fetch('/api/categories');
-    const { categories } = await resp.json();
-    typeofcomplaintValues = sortBy(categories, 'createdAt').map(
-      ({ text }) => text,
-    );
-  } catch {
-    // fall back to the empty list above
-  }
+  // get complaint categories from server
+  const resp = await fetch('/api/categories');
+  const { categories } = await resp.json();
+  const typeofcomplaintValues = sortBy(categories, 'createdAt').map(
+    ({ text }) => text,
+  );
 
   // Parse persistent state from cookie set by the client
   let initialState = null;

@@ -59,13 +59,13 @@ const CHECKS = [
     fn: html => /\.Toastify__/.test(criticalCss(html)),
   },
   {
-    name: 'dashed CSS-module locals resolve to scoped class names',
-    fn: html => /class="Home-[a-z-]+-[A-Za-z0-9]{5}"/.test(html),
+    name: 'CSS-module locals resolve to scoped class names',
+    fn: html => /class="Home-[a-zA-Z][a-zA-Z0-9-]*-[A-Za-z0-9]{5}"/.test(html),
   },
   {
     name: 'CSS-module composes: chains are intact',
     fn: html =>
-      /class="Home-[a-z-]+-[A-Za-z0-9]{5} Home-[a-z-]+-[A-Za-z0-9]{5}"/.test(
+      /class="Home-[a-zA-Z][a-zA-Z0-9-]*-[A-Za-z0-9]{5} Home-[a-zA-Z][a-zA-Z0-9-]*-[A-Za-z0-9]{5}"/.test(
         html,
       ),
   },

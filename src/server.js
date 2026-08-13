@@ -13,12 +13,12 @@ import { execSync } from 'child_process';
 import express from 'express';
 import forceSsl from 'force-ssl-heroku';
 import compression from 'compression';
-import nodeFetch from 'node-fetch';
 import React from 'react';
 import ReactDOM from 'react-dom/server';
 import PrettyError from 'pretty-error';
 import Parse from 'parse/node';
 import { detectFromBuffer } from 'mime-bytes/file-type-detector';
+import cookie from 'cookie';
 import multer from 'multer';
 import stringify from 'json-stringify-safe';
 import StyleContext from 'isomorphic-style-loader/StyleContext';
@@ -66,33 +66,6 @@ if (commitHash === 'unknown') {
   } catch (e) {
     console.warn('Could not determine git commit hash:', e.message);
   }
-}
-
-// Ping the app periodically to prevent Heroku eco tier dyno from sleeping
-// Only runs on Heroku (same detection logic as heroku-self-ping)
-const isHeroku =
-  'HEROKU' in process.env ||
-  ('DYNO' in process.env && process.env.HOME === '/app');
-
-if (isHeroku) {
-  const herokuSelfPingUrl = config.api.serverUrl;
-  const herokuSelfPingInterval = 20 * 60 * 1000; // 20 minutes
-  const herokuSelfPing = () => {
-    console.info(`Pinging ${herokuSelfPingUrl}...`);
-    nodeFetch(herokuSelfPingUrl)
-      .then(res => {
-        if (res.ok) {
-          console.info('herokuSelfPing successful');
-        } else {
-          console.warn(`herokuSelfPing failed with status ${res.status}`);
-        }
-      })
-      .catch(err => {
-        console.error('herokuSelfPing failed:', err.message);
-      });
-  };
-  herokuSelfPing(); // ping immediately on startup
-  setInterval(herokuSelfPing, herokuSelfPingInterval);
 }
 
 // http://docs.parseplatform.org/js/guide/#getting-started
@@ -232,21 +205,6 @@ async function saveUser({
 app.use('/saveUser', (req, res) => {
   saveUser(req.body)
     .then(user => res.json(user))
-    .catch(handlePromiseRejection(res));
-});
-
-app.use('/api/categories', (req, res) => {
-  const Category = Parse.Object.extend('Category');
-  const query = new Parse.Query(Category);
-  query
-    .find()
-    .then(results => {
-      const categories = results.map(({ id, attributes }) => ({
-        objectId: id,
-        ...attributes,
-      }));
-      res.json({ categories });
-    })
     .catch(handlePromiseRejection(res));
 });
 
@@ -673,10 +631,13 @@ app.get('*', async (req, res, next) => {
     };
 
     // Universal HTTP client
-    const fetch = createFetch(nodeFetch, {
+    const fetch = createFetch(globalThis.fetch, {
       baseUrl: config.api.serverUrl,
       cookie: req.headers.cookie,
     });
+
+    // Parse cookies from the request header into a plain object
+    const cookies = cookie.parse(req.headers.cookie || '');
 
     // Global (context) variables that can be easily accessed from any React component
     // https://facebook.github.io/react/docs/context.html
@@ -684,6 +645,7 @@ app.get('*', async (req, res, next) => {
       insertCss,
       fetch,
       commitHash,
+      cookies,
       // The twins below are wild, be careful!
       pathname: req.path,
       query: req.query,

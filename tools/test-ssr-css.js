@@ -44,6 +44,43 @@ const criticalCss = html => {
   return match ? match[1] : '';
 };
 
+// A CSS-module scoped class, in either naming scheme: debug builds emit
+// `Home-<local>-<hash>`, release builds bare `<hash>` (5-6 chars of the
+// base64url alphabet).
+const looksScoped = token =>
+  /^(?:Home-[a-zA-Z][a-zA-Z0-9_-]*-)?[A-Za-z0-9_-]{4,8}$/.test(token);
+
+// The single-class guard additionally requires a digit and an uppercase
+// letter, so stable non-module classes (`no-js`, `Toastify`) and utility
+// words (`w-100`) can never satisfy it — scoped hashes virtually always
+// contain both. The doubled-class guard skips those requirements: a
+// two-token attribute whose tokens are both real CSS selectors is already a
+// strong signal, and requiring digits there would reject legitimate hash
+// pairs (e.g. `_19lsC HVlXE`).
+const isScopedClass = token =>
+  looksScoped(token) && /[0-9]/.test(token) && /[A-Z]/.test(token);
+
+// Class selectors found in the critical CSS (`.foo` in `.foo:hover { ... }`,
+// minus a leading dot; decimal values like `.15em` cannot satisfy
+// `isScopedClass`, so they never count).
+const cssClassSelectors = html =>
+  new Set(
+    (criticalCss(html).match(/\.([A-Za-z0-9_-]+)/g) || []).map(s => s.slice(1)),
+  );
+
+// Every class token used by the markup.
+const markupClassTokens = html =>
+  [...html.matchAll(/class="([^"]+)"/g)].flatMap(match => match[1].split(' '));
+
+// A scoped class that is actually *wired up*: emitted as a selector in the
+// critical CSS and used by the markup. This is what the camelCased-exports
+// regression breaks (the class attributes vanish), so shape alone is not
+// enough of a guard.
+const linkedClasses = html =>
+  markupClassTokens(html).filter(
+    token => isScopedClass(token) && cssClassSelectors(html).has(token),
+  );
+
 const CHECKS = [
   {
     name: 'critical CSS contains no "[object Module]"',
@@ -62,18 +99,21 @@ const CHECKS = [
     fn: html => /\.Toastify__/.test(criticalCss(html)),
   },
   {
-    name: 'CSS-module locals resolve to scoped class names',
-    fn: html =>
-      /class="(?:Home-[a-zA-Z][a-zA-Z0-9_-]*-)?(?=[A-Za-z0-9_-]*[0-9])[A-Za-z0-9_-]{4,8}"/.test(
-        html,
-      ),
+    name: 'CSS-module locals resolve (a scoped class appears in CSS and markup)',
+    fn: html => linkedClasses(html).length > 0,
   },
   {
     name: 'CSS-module composes: chains are intact',
-    fn: html =>
-      /class="(?:Home-[a-zA-Z][a-zA-Z0-9_-]*-)?[A-Za-z0-9_-]{4,8} (?:Home-[a-zA-Z][a-zA-Z0-9_-]*-)?[A-Za-z0-9_-]{4,8}"/.test(
-        html,
-      ),
+    fn: html => {
+      const selectors = cssClassSelectors(html);
+      return [...html.matchAll(/class="([^"]+)"/g)].some(
+        match =>
+          match[1]
+            .split(' ')
+            .filter(token => looksScoped(token) && selectors.has(token))
+            .length >= 2,
+      );
+    },
   },
 ];
 

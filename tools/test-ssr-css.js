@@ -65,8 +65,9 @@ const CHECKS = [
   {
     name: 'CSS-module composes: chains are intact',
     fn: html =>
-      html.includes('Home-status-bar-btn-primary') &&
-      html.includes('Home-status-bar-btn'),
+      /class="Home-[a-z-]+-[A-Za-z0-9]{5} Home-[a-z-]+-[A-Za-z0-9]{5}"/.test(
+        html,
+      ),
   },
 ];
 

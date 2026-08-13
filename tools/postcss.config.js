@@ -9,8 +9,6 @@
 
 const pkg = require('../package.json');
 
-const isDebug = !process.argv.includes('--release');
-
 module.exports = () => ({
   // The list of plugins for PostCSS
   // https://github.com/postcss/postcss
@@ -38,15 +36,5 @@ module.exports = () => ({
       browsers: pkg.browserslist,
       autoprefixer: { flexbox: 'no-2009' },
     }),
-    // Minify CSS in release builds. This replaces the `minimize` option
-    // that css-loader 1.x accepted before it was removed in 2.x.
-    // https://cssnano.co/
-    ...(isDebug
-      ? []
-      : [
-          require('cssnano')({
-            preset: ['default', { discardComments: { removeAll: true } }],
-          }),
-        ]),
   ],
 });

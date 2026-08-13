@@ -537,7 +537,7 @@ app.use(
 );
 
 // ported from https://github.com/jeffrono/Reported/blob/19b588171315a3093d53986f9fb995059f5084b4/v2/enrich_functions.rb#L325-L346
-app.use('/getVehicleType/:licensePlate/:licenseState?', (req, res) => {
+app.use('/getVehicleType/:licensePlate{/:licenseState}', (req, res) => {
   const { licensePlate = 'GNS7685', licenseState = 'NY' } = req.params;
   getVehicleType({ licensePlate, licenseState })
     .then(({ result }) => res.json({ result }))
@@ -634,7 +634,7 @@ app.get('/api/submissions-in-polygon', (req, res) => {
 //
 // Register server-side rendering middleware
 // -----------------------------------------------------------------------------
-app.get('*', async (req, res, next) => {
+app.get('/{*splat}', async (req, res, next) => {
   try {
     const css = new Set();
 

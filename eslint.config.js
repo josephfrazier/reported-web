@@ -30,8 +30,8 @@ module.exports = [
     },
   },
 
-  // Build scripts: Node.js 24 globals, and allowed to reference build
-  // output and use dynamic requires
+  // Build scripts: allowed to reference build output and use dynamic requires
+  // and reference Node.js globals
   {
     files: ['tools/**/*.js'],
     languageOptions: {

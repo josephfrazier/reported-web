@@ -55,6 +55,11 @@ import { isImage, isVideo } from '../../isImage.js';
 import getNycTimezoneOffset from '../../timezone.js';
 import { getBoroNameMemoized } from '../../getBoroName.js';
 import vehicleTypeUrl from '../../vehicleTypeUrl.js';
+import {
+  clearCachedSubmissions,
+  readCachedSubmissions,
+  writeCachedSubmissions,
+} from './submissionsCache.js';
 
 usStateNames.DC = 'District of Columbia';
 
@@ -1134,6 +1139,16 @@ class Home extends React.Component {
       return;
     }
 
+    // Show the cached recent submissions (if any) immediately, then replace
+    // them with the fresh list once the fetch completes.
+    const cachedSubmissions = readCachedSubmissions(this.state.email);
+    if (cachedSubmissions) {
+      this.setState({
+        submissions: cachedSubmissions,
+        hasLoadedPreviousSubmissions: true,
+      });
+    }
+
     this.setState({
       isPreviousSubmissionsLoading: true,
     });
@@ -1147,6 +1162,7 @@ class Home extends React.Component {
           isPreviousSubmissionsLoading: false,
           hasLoadedPreviousSubmissions: true,
         });
+        writeCachedSubmissions(this.state.email, submissions);
       })
       .catch(error => {
         this.setState({
@@ -1260,6 +1276,7 @@ class Home extends React.Component {
   };
 
   handleLogOut = () => {
+    const { email } = this.state;
     this.setState(
       {
         email: '',
@@ -1279,6 +1296,8 @@ class Home extends React.Component {
         // if the user logs back in later.
         localStorage.removeItem('Function');
         localStorage.removeItem('reportedWebHomeState');
+        // Don't keep this user's submissions cached after they log out.
+        clearCachedSubmissions(email);
       },
     );
   };

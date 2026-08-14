@@ -25,7 +25,9 @@ class PreviousSubmissionsList extends React.Component {
       hasLoadedPreviousSubmissions,
     } = this.props;
 
-    if (isLoading) {
+    // Keep already-rendered (possibly cached) submissions visible while a
+    // background refresh is in flight.
+    if (isLoading && submissions.length === 0) {
       return 'Loading submissions...';
     }
 

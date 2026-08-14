@@ -15,7 +15,8 @@
   "resolutions": {
     "parse/ws": "7.5.13",
     "parse/@babel/runtime": "7.27.6",
-    "parse/@babel/runtime-corejs3": "7.29.7"
+    "parse/@babel/runtime-corejs3": "7.29.7",
+    "node-fetch": "2.7.0"
   },
   "dependencies": {
     "@babel/polyfill": "^7.0.0",

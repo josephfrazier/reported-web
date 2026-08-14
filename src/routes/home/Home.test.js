@@ -278,7 +278,7 @@ describe('Home', () => {
     tree.unmount();
   });
 
-  test('indicates loading in the submissions summary when showing cached submissions', () => {
+  test('shows loading summary and auto-load checkbox when refreshing cached submissions', () => {
     const initialState = {
       email: 'test@example.com',
       loginSuccessful: true,
@@ -291,12 +291,16 @@ describe('Home', () => {
         submissions: [{ objectId: 'cached-1' }, { objectId: 'cached-2' }],
         isPreviousSubmissionsLoading: true,
         hasLoadedPreviousSubmissions: true,
+        isPreviousSubmissionsOpen: true,
       });
     });
 
     expect(homeRef.current.getPreviousSubmissionsSummary()).toBe(
       '2, loading...',
     );
+    expect(
+      tree.root.findByProps({ id: 'isLoadPreviousSubmissionsEnabled' }),
+    ).toBeTruthy();
 
     renderer.act(() => {
       homeRef.current.setState({ isPreviousSubmissionsLoading: false });

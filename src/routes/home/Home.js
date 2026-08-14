@@ -2490,24 +2490,23 @@ class Home extends React.Component {
 
                 {this.state.isPreviousSubmissionsOpen && (
                   <>
-                    {this.state.hasLoadedPreviousSubmissions &&
-                      !this.state.isPreviousSubmissionsLoading && (
-                        <label
-                          htmlFor="isLoadPreviousSubmissionsEnabled"
-                          style={{ display: 'block', marginBottom: '1rem' }}
-                        >
-                          <input
-                            id="isLoadPreviousSubmissionsEnabled"
-                            type="checkbox"
-                            checked={
-                              this.state.isLoadPreviousSubmissionsEnabled
-                            }
-                            name="isLoadPreviousSubmissionsEnabled"
-                            onChange={this.handleInputChange}
-                          />{' '}
-                          Load previous submissions immediately next time
-                        </label>
-                      )}
+                    {/* Also show this while cached submissions are being
+                        refreshed in the background. */}
+                    {this.state.hasLoadedPreviousSubmissions && (
+                      <label
+                        htmlFor="isLoadPreviousSubmissionsEnabled"
+                        style={{ display: 'block', marginBottom: '1rem' }}
+                      >
+                        <input
+                          id="isLoadPreviousSubmissionsEnabled"
+                          type="checkbox"
+                          checked={this.state.isLoadPreviousSubmissionsEnabled}
+                          name="isLoadPreviousSubmissionsEnabled"
+                          onChange={this.handleInputChange}
+                        />{' '}
+                        Load previous submissions immediately next time
+                      </label>
+                    )}
                     <PreviousSubmissionsList
                       submissions={this.state.submissions}
                       onDeleteSubmission={this.onDeleteSubmission}

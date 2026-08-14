@@ -13,7 +13,9 @@
     "not ie < 9"
   ],
   "resolutions": {
-    "parse/ws": "7.5.13"
+    "parse/ws": "7.5.13",
+    "parse/@babel/runtime": "7.27.6",
+    "parse/@babel/runtime-corejs3": "7.29.7"
   },
   "dependencies": {
     "@babel/polyfill": "^7.0.0",

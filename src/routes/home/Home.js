@@ -1350,7 +1350,7 @@ class Home extends React.Component {
       // Cached submissions may be visible while the fresh list loads in the
       // background, so indicate that a load is in progress.
       return isPreviousSubmissionsLoading
-        ? `${submissions.length}, loading...`
+        ? `at least ${submissions.length}, loading more...`
         : submissions.length;
     }
     if (hasLoadedPreviousSubmissions) {

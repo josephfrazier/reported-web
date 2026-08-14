@@ -296,7 +296,7 @@ describe('Home', () => {
     });
 
     expect(homeRef.current.getPreviousSubmissionsSummary()).toBe(
-      '2, loading...',
+      'at least 2, loading more...',
     );
     expect(
       tree.root.findByProps({ id: 'isLoadPreviousSubmissionsEnabled' }),

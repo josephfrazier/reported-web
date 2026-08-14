@@ -1,5 +1,5 @@
 /**
- * Cache of a user's most recent submissions in localStorage.
+ * Cache of the current user's most recent submissions in localStorage.
  *
  * Submissions are only cached after a successful fetch, and the cache is
  * always overwritten by the next successful fetch, so a stale entry never
@@ -7,17 +7,21 @@
  * be shown instantly while the fresh list loads in the background (see
  * Home.loadPreviousSubmissions).
  *
+ * The cache is not keyed per user: the home-state cookie already stores the
+ * user's credentials in plaintext, so anyone who can read localStorage on
+ * this machine can log in as that user anyway. Logging out clears the cache,
+ * which keeps one account's submissions from appearing for another account
+ * that logs in later on the same machine.
+ *
  * Only a bounded, newest-first prefix is cached: some users have thousands of
  * submissions, whose JSON exceeds localStorage's ~5MB per-origin quota.
  * Keeping the cache small also keeps JSON.parse fast on page load.
  */
 
-const STORAGE_KEY_PREFIX = 'reportedWebSubmissionsCache';
+export const STORAGE_KEY = 'reportedWebSubmissionsCache';
 
 export const MAX_CACHED_SUBMISSIONS = 200;
 export const MAX_CACHE_LENGTH = 2 * 1024 * 1024; // JSON string length
-
-export const getSubmissionsCacheKey = email => `${STORAGE_KEY_PREFIX}:${email}`;
 
 // `submissions` is newest-first (the server sorts by `timeofreport`
 // descending), so keeping the head of the array keeps the most recent ones.
@@ -39,12 +43,9 @@ export const buildCachedSubmissionsJson = submissions => {
   return JSON.stringify({ version: 1, submissions: cached });
 };
 
-export const readCachedSubmissions = email => {
-  if (!email) {
-    return null;
-  }
+export const readCachedSubmissions = () => {
   try {
-    const raw = localStorage.getItem(getSubmissionsCacheKey(email));
+    const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
       return null;
     }
@@ -59,24 +60,18 @@ export const readCachedSubmissions = email => {
   }
 };
 
-export const writeCachedSubmissions = (email, submissions) => {
-  if (!email) {
-    return;
-  }
+export const writeCachedSubmissions = submissions => {
   try {
     const json = buildCachedSubmissionsJson(submissions);
-    localStorage.setItem(getSubmissionsCacheKey(email), json);
+    localStorage.setItem(STORAGE_KEY, json);
   } catch {
     // localStorage can throw when full (QuotaExceededError) or unavailable.
   }
 };
 
-export const clearCachedSubmissions = email => {
-  if (!email) {
-    return;
-  }
+export const clearCachedSubmissions = () => {
   try {
-    localStorage.removeItem(getSubmissionsCacheKey(email));
+    localStorage.removeItem(STORAGE_KEY);
   } catch {
     // localStorage unavailable (e.g. private browsing).
   }

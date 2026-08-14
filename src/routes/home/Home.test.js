@@ -277,4 +277,36 @@ describe('Home', () => {
 
     tree.unmount();
   });
+
+  test('shows loading summary and auto-load checkbox when refreshing cached submissions', () => {
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+    };
+
+    const homeRef = React.createRef();
+    const tree = renderHome({ initialState, homeRef });
+    renderer.act(() => {
+      homeRef.current.setState({
+        submissions: [{ objectId: 'cached-1' }, { objectId: 'cached-2' }],
+        isPreviousSubmissionsLoading: true,
+        hasLoadedPreviousSubmissions: true,
+        isPreviousSubmissionsOpen: true,
+      });
+    });
+
+    expect(homeRef.current.getPreviousSubmissionsSummary()).toBe(
+      'at least 2, loading more...',
+    );
+    expect(
+      tree.root.findByProps({ id: 'isLoadPreviousSubmissionsEnabled' }),
+    ).toBeTruthy();
+
+    renderer.act(() => {
+      homeRef.current.setState({ isPreviousSubmissionsLoading: false });
+    });
+    expect(homeRef.current.getPreviousSubmissionsSummary()).toBe(2);
+
+    tree.unmount();
+  });
 });

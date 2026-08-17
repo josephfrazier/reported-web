@@ -157,7 +157,7 @@
     "stylelint-config-standard": "^34.0.0",
     "stylelint-order": "^6.0.3",
     "svg-url-loader": "^8.0.0",
-    "timezone-mock": "^1.0.0",
+    "timezone-mock": "^1.4.3",
     "url-loader": "^4.1.1",
     "webpack": "^5.107.2",
     "webpack-assets-manifest": "^3.0.2",

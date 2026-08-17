@@ -5791,14 +5791,7 @@ follow-redirects@^1.0.0, follow-redirects@^1.16.0:
   resolved "https://registry.yarnpkg.com/follow-redirects/-/follow-redirects-1.16.0.tgz#28474a159d3b9d11ef62050a14ed60e4df6d61bc"
   integrity sha512-y5rN/uOsadFT/JfYwhxRS5R7Qce+g3zG97+JrtFZlC9klX/W5hD7iiLzScI4nZqUS7DNUdhPgw4xI8W2LuXlUw==
 
-for-each@^0.3.3:
-  version "0.3.3"
-  resolved "https://registry.yarnpkg.com/for-each/-/for-each-0.3.3.tgz#69b447e88a0a5d32c3e7084f3f1710034b21376e"
-  integrity sha512-jqYfLp7mo9vIyQf8ykW2v7A+2N4QjeCeI5+Dz9XraiO1ign81wjiH7Fb9vSOWvQfNtmSa4H2RoQTrrXivdUZmw==
-  dependencies:
-    is-callable "^1.1.3"
-
-for-each@^0.3.5:
+for-each@^0.3.3, for-each@^0.3.5:
   version "0.3.5"
   resolved "https://registry.yarnpkg.com/for-each/-/for-each-0.3.5.tgz#d650688027826920feeb0af747ee7b9421a41d47"
   integrity sha512-dKx12eRCVIzqCxFGplyFKJMPvLEWgmNtUrpTiJIR5u97zEhRG8ySrtboPHZXx7daLxQVrl643cTzbab2tkQjxg==
@@ -5907,7 +5900,7 @@ fsevents@^2.3.3, fsevents@~2.3.2:
   resolved "https://registry.yarnpkg.com/fsevents/-/fsevents-2.3.3.tgz#cac6407785d03675a2a5e1a5305c697b347d90d6"
   integrity sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==
 
-function-bind@^1.1.1, function-bind@^1.1.2:
+function-bind@^1.1.2:
   version "1.1.2"
   resolved "https://registry.yarnpkg.com/function-bind/-/function-bind-1.1.2.tgz#2c02d864d97f3ea6c8830c464cbd11ab6eab7a1c"
   integrity sha512-7XHNxH7qX9xG5mIwxkhumTox/MIRNcOgDrxWsMt2pAr23WHp6MrRlN7FBSFpCpr+oVO0F744iUgR82nJMfG2SA==
@@ -5967,16 +5960,7 @@ get-caller-file@^2.0.5:
   resolved "https://registry.yarnpkg.com/get-caller-file/-/get-caller-file-2.0.5.tgz#4f94412a82db32f36e3b0b9741f8a97feb031f7e"
   integrity sha512-DyFP3BM/3YHTQOCUL/w0OZHR0lpKeGrxotcHWcqNEdnltqFwXVfhEBQ94eIo34AfQpo0rGki4cyIiftY06h2Fg==
 
-get-intrinsic@^1.0.1:
-  version "1.1.1"
-  resolved "https://registry.yarnpkg.com/get-intrinsic/-/get-intrinsic-1.1.1.tgz#15f59f376f855c446963948f0d24cd3637b4abc6"
-  integrity sha512-kWZrnVM42QCiEA2Ig1bG8zjoIMOgxWwYCEeNdwY6Tv/cOSeGpcoX4pXHfKUxNKVoArnrEr2e9srnAxxGIraS9Q==
-  dependencies:
-    function-bind "^1.1.1"
-    has "^1.0.3"
-    has-symbols "^1.0.1"
-
-get-intrinsic@^1.2.4, get-intrinsic@^1.2.5, get-intrinsic@^1.2.6, get-intrinsic@^1.2.7, get-intrinsic@^1.3.0:
+get-intrinsic@^1.0.1, get-intrinsic@^1.2.4, get-intrinsic@^1.2.5, get-intrinsic@^1.2.6, get-intrinsic@^1.2.7, get-intrinsic@^1.3.0:
   version "1.3.0"
   resolved "https://registry.yarnpkg.com/get-intrinsic/-/get-intrinsic-1.3.0.tgz#743f0e3b6964a93a5491ed1bffaae054d7f98d01"
   integrity sha512-9fSjSaos/fRIVIp+xSJlE6lfwhES7LNtKaCBIamHsjr2na1BiABJPo0mOjjz8GJDURarmCPGqaiVg5mfjb98CQ==
@@ -6577,7 +6561,7 @@ is-boolean-object@^1.2.1:
     call-bound "^1.0.3"
     has-tostringtag "^1.0.2"
 
-is-callable@^1.1.3, is-callable@^1.1.5:
+is-callable@^1.1.5:
   version "1.2.3"
   resolved "https://registry.yarnpkg.com/is-callable/-/is-callable-1.2.3.tgz#8b1e0500b73a1d76c70487636f368e519de8db8e"
   integrity sha512-J1DcMe8UYTBSrKezuIUTUwjXsho29693unXM2YhJUTR2txK/eG47bvNa/wipPFmZFgr/N6f1GA66dv0mEyTIyQ==
@@ -8242,7 +8226,7 @@ object.fromentries@^2.0.8:
     es-abstract "^1.23.2"
     es-object-atoms "^1.0.0"
 
-object.getownpropertydescriptors@^2.0.3:
+object.getownpropertydescriptors@^2.0.3, object.getownpropertydescriptors@^2.1.8:
   version "2.1.9"
   resolved "https://registry.yarnpkg.com/object.getownpropertydescriptors/-/object.getownpropertydescriptors-2.1.9.tgz#bf9e7520f14d50de88dee2b9c9eca841166322dc"
   integrity sha512-mt8YM6XwsTTovI+kdZdHSxoyF2DI59up034orlC9NfweclcWOt7CVascNNLp6U+bjFVCVCIh9PwS76tDM/rH8g==
@@ -8254,15 +8238,6 @@ object.getownpropertydescriptors@^2.0.3:
     es-object-atoms "^1.1.1"
     gopd "^1.2.0"
     safe-array-concat "^1.1.3"
-
-object.getownpropertydescriptors@^2.1.1:
-  version "2.1.1"
-  resolved "https://registry.yarnpkg.com/object.getownpropertydescriptors/-/object.getownpropertydescriptors-2.1.1.tgz#0dfda8d108074d9c563e80490c883b6661091544"
-  integrity sha512-6DtXgZ/lIZ9hqx4GtZETobXLR/ZLaa0aqV0kzbn80Rf8Z2e/XFnhA0I7p07N2wH8bBBltr2xQPi6sbKWAY2Eng==
-  dependencies:
-    call-bind "^1.0.0"
-    define-properties "^1.1.3"
-    es-abstract "^1.18.0-next.1"
 
 object.groupby@^1.0.3:
   version "1.0.3"
@@ -11150,16 +11125,23 @@ util-deprecate@^1.0.1, util-deprecate@^1.0.2:
   resolved "https://registry.yarnpkg.com/util-deprecate/-/util-deprecate-1.0.2.tgz#450d4dc9fa70de732762fbd2d4a28981419a0ccf"
   integrity sha1-RQ1Nyfpw3nMnYvvS1KKJgUGaDM8=
 
-util.promisify@^1.0.0:
-  version "1.1.1"
-  resolved "https://registry.yarnpkg.com/util.promisify/-/util.promisify-1.1.1.tgz#77832f57ced2c9478174149cae9b96e9918cd54b"
-  integrity sha512-/s3UsZUrIfa6xDhr7zZhnE9SLQ5RIXyYfiVnMMyMDzOc8WhWN4Nbh36H842OyurKbCDAesZOJaVyvmSl6fhGQw==
+util.promisify@^1.1.3:
+  version "1.1.3"
+  resolved "https://registry.yarnpkg.com/util.promisify/-/util.promisify-1.1.3.tgz#3d77cf56628b4aad743e5acde8e5c44cea7dbf1c"
+  integrity sha512-GIEaZ6o86fj09Wtf0VfZ5XP7tmd4t3jM5aZCgmBi231D0DB1AEBa3Aa6MP48DMsAIi96WkpWLimIWVwOjbDMOw==
   dependencies:
-    call-bind "^1.0.0"
-    define-properties "^1.1.3"
+    call-bind "^1.0.8"
+    call-bound "^1.0.3"
+    define-data-property "^1.1.4"
+    define-properties "^1.2.1"
+    es-errors "^1.3.0"
+    es-object-atoms "^1.0.0"
     for-each "^0.3.3"
-    has-symbols "^1.0.1"
-    object.getownpropertydescriptors "^2.1.1"
+    get-intrinsic "^1.2.6"
+    has-proto "^1.2.0"
+    has-symbols "^1.1.0"
+    object.getownpropertydescriptors "^2.1.8"
+    safe-array-concat "^1.1.3"
 
 utila@~0.4:
   version "0.4.0"

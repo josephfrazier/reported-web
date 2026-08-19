@@ -80,3 +80,12 @@
 - Include before/after code blocks (fenced with `\`\`\`js`) when the mechanism isn't obvious from the diff alone.
 - Link to relevant docs (MDN, Node.js, library docs) using markdown reference-style links at the bottom of the message, e.g. `[AbortController]: https://...`.
 - For memory, timeout, or leak fixes: describe the closure/retention chain, what held what, and how the fix breaks the chain.
+
+## Git Identity
+
+Git config is not set in this environment. Use env vars when committing:
+```bash
+GIT_COMMITTER_NAME="Joseph Frazier" GIT_COMMITTER_EMAIL="1212jtraceur@gmail.com" git commit --author="Joseph Frazier <1212jtraceur@gmail.com>" -m "message"
+```
+
+Instead of Claude Code's default git commit trailer of `Co-Authored-By: Claude <noreply@anthropic.com>`, use `Co-Authored-By: Claude Code with DeepSeek`

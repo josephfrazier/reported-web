@@ -89,7 +89,7 @@
   .tab + .tab { border-left: 1px solid var(--border2); }
 
   /* ── PANEL SHARED ── */
-  #panel-paste, #panel-draw {
+  #panel-paste, #panel-draw, #panel-my-submissions {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -98,7 +98,7 @@
     max-width: 640px;
   }
 
-  #panel-draw { display: none; }
+  #panel-draw, #panel-my-submissions { display: none; }
 
   #paste-screen p {
     font-size: 0.7rem;
@@ -145,7 +145,7 @@
     max-width: 640px;
   }
 
-  #load-btn {
+  #load-btn, #load-my-submissions-btn {
     background: var(--accent);
     color: #ffffff;
     border: none;
@@ -160,8 +160,9 @@
     transition: opacity 0.15s, transform 0.1s;
   }
 
-  #load-btn:hover { opacity: 0.85; transform: translateY(-1px); }
-  #load-btn:active { transform: translateY(0); }
+  #load-btn:hover, #load-my-submissions-btn:hover { opacity: 0.85; transform: translateY(-1px); }
+  #load-btn:active, #load-my-submissions-btn:active { transform: translateY(0); }
+  #load-my-submissions-btn:disabled { opacity: 0.5; cursor: default; transform: none; }
 
   /* ── MAP SCREEN ── */
   #map-screen {
@@ -397,6 +398,18 @@
     letter-spacing: 0.04em;
     text-align: center;
   }
+
+  #my-submissions-status {
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    text-align: center;
+    min-height: 1.5em;
+  }
+
+  #my-submissions-status a { color: var(--accent); }
+  #my-submissions-login-prompt { display: none; }
+  #my-submissions-login-prompt a { color: var(--accent); }
 </style>
 </head>
 <body>
@@ -407,6 +420,7 @@
   <div class="tabs">
     <button class="tab active" id="tab-paste">Paste JSON</button>
     <button class="tab" id="tab-draw">Draw Area</button>
+    <button class="tab" id="tab-my-submissions">My Submissions</button>
   </div>
 
   <div id="panel-paste">
@@ -437,12 +451,22 @@
     <div id="draw-map"></div>
     <div id="draw-status">Select the polygon tool and draw a shape on the map.</div>
   </div>
+
+  <div id="panel-my-submissions">
+    <p>Load all of your own submissions onto the map — no polygon needed. Sign in on the home page first if you haven't already.</p>
+    <div id="my-submissions-status"></div>
+    <button id="load-my-submissions-btn">Load My Submissions →</button>
+    <div id="my-submissions-login-prompt">
+      <p>You need to be logged in to view your submissions. <a href="/">Log in or sign up on the home page</a>, then come back and load them.</p>
+    </div>
+  </div>
 </div>
 
 <!-- MAP SCREEN -->
 <div id="map-screen">
   <header>
     <h1>Complaint Map</h1>
+    <span class="count-badge" id="mode-label"></span>
     <span class="count-badge" id="count-badge"></span>
     <div class="legend">
       <div class="legend-item"><div class="legend-dot" style="background:var(--crosswalk)"></div>Blocked crosswalk</div>
@@ -529,6 +553,7 @@ let currentPolygonStr = null;
 let loadedPolygonStr = null;
 let photosOnly = false;
 let isMapScreenVisible = false;
+let currentMode = null; // null | 'paste' | 'polygon' | 'my'
 
 const popup     = document.getElementById('popup');
 const popupComp = document.getElementById('popup-complaint');
@@ -536,6 +561,10 @@ const popupMeta = document.getElementById('popup-meta');
 const popupPics = document.getElementById('popup-photos');
 const closeBtn  = document.getElementById('popup-close');
 const photosOnlyCheckbox = document.getElementById('photos-only-checkbox');
+const mySubmissionsStatusEl = document.getElementById('my-submissions-status');
+const mySubmissionsPromptEl = document.getElementById('my-submissions-login-prompt');
+const mySubmissionsLoadBtn  = document.getElementById('load-my-submissions-btn');
+const modeLabelEl           = document.getElementById('mode-label');
 
 let hideTimer = null;
 let pinned    = false;
@@ -626,6 +655,7 @@ function polygonToString(vertices) {
 function updateUrlFromState(shouldPushToHistory = true) {
   const params = new URLSearchParams();
   if (currentPolygonStr) params.set('polygon', currentPolygonStr);
+  if (currentMode === 'my') params.set('mySubmissions', '1');
   if (photosOnly) params.set('photosOnly', '1');
   const nextUrl = params.toString() ? `?${params}` : window.location.pathname;
   if (shouldPushToHistory) history.pushState(null, '', nextUrl);
@@ -638,6 +668,9 @@ function renderMap(submissions) {
   mapScreen.style.display = 'flex';
   isMapScreenVisible = true;
   document.getElementById('count-badge').textContent = `${submissions.length} report${submissions.length !== 1 ? 's' : ''}`;
+  modeLabelEl.textContent = currentMode === 'polygon'
+    ? 'Drawn area'
+    : currentMode === 'my' ? 'My submissions' : '';
 
   if (!map) {
     map = L.map('map', { zoomControl: true });
@@ -695,6 +728,7 @@ document.getElementById('load-btn').addEventListener('click', () => {
   try {
     const data = parseInput(raw);
     if (!Array.isArray(data) || data.length === 0) throw new Error('Expected a non-empty array of submission objects.');
+    currentMode = 'paste';
     currentPolygonStr = null;
     loadedPolygonStr = null;
     updateUrlFromState(true);
@@ -714,30 +748,31 @@ document.getElementById('reset-btn').addEventListener('click', () => {
   if (drawnItems) drawnItems.clearLayers();
   document.getElementById('draw-status').textContent = 'Select the polygon tool and draw a shape on the map.';
   allSubmissions = [];
+  currentMode = null;
   currentPolygonStr = null;
   loadedPolygonStr = null;
   photosOnly = false;
   photosOnlyCheckbox.checked = false;
+  mySubmissionsStatusEl.textContent = '';
+  mySubmissionsPromptEl.style.display = 'none';
+  mySubmissionsLoadBtn.disabled = false;
   clearUrlParams();
 });
 
 // ── TAB SWITCHING ──
-document.getElementById('tab-paste').addEventListener('click', () => {
-  document.getElementById('tab-paste').classList.add('active');
-  document.getElementById('tab-draw').classList.remove('active');
-  document.getElementById('panel-paste').style.display = 'flex';
-  document.getElementById('panel-draw').style.display = 'none';
-  document.getElementById('paste-screen').classList.remove('draw-active');
-});
+function selectTab(tabId) {
+  document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+  document.getElementById('panel-paste').style.display = tabId === 'tab-paste' ? 'flex' : 'none';
+  document.getElementById('panel-draw').style.display = tabId === 'tab-draw' ? 'flex' : 'none';
+  document.getElementById('panel-my-submissions').style.display = tabId === 'tab-my-submissions' ? 'flex' : 'none';
+  document.getElementById('paste-screen').classList.toggle('draw-active', tabId === 'tab-draw');
+  if (tabId === 'tab-draw') initDrawMap();
+}
 
-document.getElementById('tab-draw').addEventListener('click', () => {
-  document.getElementById('tab-draw').classList.add('active');
-  document.getElementById('tab-paste').classList.remove('active');
-  document.getElementById('panel-paste').style.display = 'none';
-  document.getElementById('panel-draw').style.display = 'flex';
-  document.getElementById('paste-screen').classList.add('draw-active');
-  initDrawMap();
-});
+document.getElementById('tab-paste').addEventListener('click', () => selectTab('tab-paste'));
+document.getElementById('tab-draw').addEventListener('click', () => selectTab('tab-draw'));
+document.getElementById('tab-my-submissions').addEventListener('click', () => selectTab('tab-my-submissions'));
 
 // ── DRAW MAP ──
 let drawMap = null;
@@ -784,6 +819,7 @@ function initDrawMap() {
       polygonLatLngs[0].lng === last.lng
         ? polygonLatLngs.slice(0, -1)
         : polygonLatLngs;
+    currentMode = 'polygon';
     currentPolygonStr = polygonToString(vertices);
     updateUrlFromState(true);
     await fetchAndLoadPolygon(vertices);
@@ -828,6 +864,88 @@ async function fetchAndLoadPolygon(vertices) {
   }
 }
 
+// ── MY SUBMISSIONS ──
+const HOME_STATE_COOKIE = 'reportedWebHomeState';
+
+function getHomeStateCookie() {
+  try {
+    const entry = document.cookie
+      .split('; ')
+      .find(c => c.startsWith(`${HOME_STATE_COOKIE}=`));
+    if (!entry) return null;
+    return JSON.parse(decodeURIComponent(entry.slice(HOME_STATE_COOKIE.length + 1)));
+  } catch {
+    return null; // corrupt/undecodable cookie → treat as logged out
+  }
+}
+
+function getCredentials() {
+  const state = getHomeStateCookie();
+  if (!state) return null;
+  const { email, password, FirstName, LastName, Phone, testify } = state;
+  if (!email || !password || !FirstName || !LastName || !Phone) return null;
+  return { email, password, FirstName, LastName, Phone, testify: Boolean(testify) };
+}
+
+function showMySubmissionsLoginPrompt() {
+  mySubmissionsStatusEl.textContent = '';
+  mySubmissionsPromptEl.style.display = 'block';
+  mySubmissionsLoadBtn.disabled = false;
+}
+
+async function loadMySubmissions() {
+  const credentials = getCredentials();
+  if (!credentials) {
+    showMySubmissionsLoginPrompt();
+    return;
+  }
+  mySubmissionsPromptEl.style.display = 'none';
+  mySubmissionsStatusEl.textContent = 'Loading your submissions…';
+  mySubmissionsLoadBtn.disabled = true;
+  try {
+    const resp = await fetch('/submissions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(credentials),
+    });
+    if (!resp.ok) {
+      const body = await resp.json().catch(() => ({}));
+      throw new Error(body.error || `Unexpected server error (HTTP ${resp.status}). Please try again.`);
+    }
+    const data = await resp.json();
+    const submissions = Array.isArray(data.submissions) ? data.submissions : [];
+    mySubmissionsStatusEl.textContent = '';
+    if (submissions.length === 0) {
+      // Stay on the selection screen (mirrors polygon empty-state behavior)
+      mySubmissionsStatusEl.textContent = 'No submissions found yet.';
+    } else {
+      loadMap(submissions); // map screen, count badge, popups, photos-only filter all work unchanged
+    }
+  } catch (e) {
+    const isNetworkError = e instanceof TypeError;
+    if (isNetworkError) {
+      mySubmissionsStatusEl.textContent = 'Network error: could not reach the server. Please check your connection and try again.';
+    } else {
+      // e.message may be server-supplied text (e.g. the email-verification message)
+      mySubmissionsStatusEl.innerHTML =
+        `Could not load your submissions.${e.message ? ` ${e.message}` : ''} ` +
+        `<a href="/">Log in again on the home page</a> and try again.`;
+    }
+  } finally {
+    mySubmissionsLoadBtn.disabled = false;
+  }
+}
+
+mySubmissionsLoadBtn.addEventListener('click', () => {
+  if (!getCredentials()) {
+    showMySubmissionsLoginPrompt();
+    return;
+  }
+  currentMode = 'my';
+  updateUrlFromState(true); // push ?mySubmissions=1 (user-action sites push, like the polygon draw handler)
+  loadMySubmissions();
+});
+
 // ── URL PARAMS ──
 function clearUrlParams() {
   history.pushState(null, '', window.location.pathname);
@@ -843,6 +961,7 @@ function applyUrlState() {
 
   if (polygonStr) {
     const shouldFetchNewPolygonData = polygonStr !== loadedPolygonStr;
+    currentMode = 'polygon';
     currentPolygonStr = polygonStr;
     document.getElementById('map-screen').style.display = 'none';
     document.getElementById('paste-screen').style.display = 'flex';
@@ -866,8 +985,24 @@ function applyUrlState() {
     } else {
       applyPhotoFilter();
     }
+  } else if (params.get('mySubmissions') === '1') {
+    currentPolygonStr = null;
+    loadedPolygonStr = null;
+    // Keep the current map visible when only the photosOnly URL param changes
+    // (mirrors the keep-visible logic below for manually loaded data).
+    if (currentMode === 'my' && allSubmissions.length > 0 && isMapScreenVisible) {
+      applyPhotoFilter();
+      return;
+    }
+    document.getElementById('map-screen').style.display = 'none';
+    document.getElementById('paste-screen').style.display = 'flex';
+    isMapScreenVisible = false;
+    currentMode = 'my';
+    document.getElementById('tab-my-submissions').click();
+    loadMySubmissions(); // restore paths never pushState
   } else {
     currentPolygonStr = null;
+    currentMode = null;
     // Keep the current map visible when only the photosOnly URL param changes for manually loaded data.
     if (
       loadedPolygonStr === null &&
@@ -890,8 +1025,10 @@ function applyUrlState() {
 window.addEventListener('popstate', applyUrlState);
 
 // On load: apply the URL state (handles direct links with polygon params)
-const hasPolygonParam = new URLSearchParams(window.location.search).has('polygon');
-if (!hasPolygonParam) {
+const urlParams = new URLSearchParams(window.location.search);
+const hasPolygonParam = urlParams.has('polygon');
+const hasMySubmissionsParam = urlParams.has('mySubmissions');
+if (!hasPolygonParam && !hasMySubmissionsParam) {
   const tabDraw = document.getElementById('tab-draw');
   if (tabDraw) tabDraw.click();
 }

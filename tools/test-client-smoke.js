@@ -205,6 +205,20 @@ const run = async () => {
       const parts = tile.src.split('/');
       return Number(parts[parts.length - 3]);
     });
+
+    // The first marker belongs to `sub_1`; its popup should link that
+    // objectId to the Back4App browser view.
+    await mapPage.locator('#map .leaflet-marker-icon').first().hover();
+    await mapPage.waitForSelector('#popup.visible');
+    const objectIdHref = await mapPage
+      .locator('#popup-meta a')
+      .first()
+      .getAttribute('href');
+    const objectIdText = await mapPage
+      .locator('#popup-meta a')
+      .first()
+      .textContent();
+
     const countBadge = await mapPage.locator('#count-badge').textContent();
     const modeLabel = await mapPage.locator('#mode-label').textContent();
     const loggedInPromptVisible = await mapPage
@@ -239,6 +253,16 @@ const run = async () => {
         name: 'submissions map: keeps the view on NYC despite a far-away submission',
         ok: tileZoom !== null && tileZoom >= 10,
         detail: `tile zoom: ${tileZoom}`,
+      },
+      {
+        name: 'submissions map: popup links objectId to the Back4App browser',
+        ok:
+          objectIdHref?.startsWith(
+            'https://backend.back4app.com/apps/932de73d-5214-4a3e-aec5-5c9be0055dac/browser/submission?filters=',
+          ) &&
+          objectIdHref.includes('compareTo%22%3A%22sub_1%22') &&
+          objectIdText === 'sub_1',
+        detail: JSON.stringify({ objectIdHref, objectIdText }),
       },
       {
         name: 'submissions map: shows My submissions mode label',

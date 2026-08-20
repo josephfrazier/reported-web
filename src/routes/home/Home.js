@@ -218,39 +218,6 @@ function linkifyText(text) {
   );
 }
 
-// Uppercase what the user typed into a controlled <input>, without letting the
-// caret jump to the end of the field.
-//
-// React only writes to a DOM input's `value` when it differs from the value it
-// is rendering, and writing to `value` puts the caret at the end. Uppercasing
-// in an onChange handler causes exactly that: typing "b" into "A|Z" leaves the
-// DOM at "AbZ" while React renders "ABZ", so React rewrites the value and the
-// caret lands after the "Z". Digits are unaffected by toUpperCase(), which is
-// why they seem to behave.
-//
-// Writing the uppercased value back here — with the caret where the user left
-// it — means React finds the value it's about to render already in place, so it
-// leaves both the value and the caret alone.
-function upperCaseInputValueInPlace(input) {
-  const { value, selectionStart, selectionEnd } = input;
-  const upperCased = value.toUpperCase();
-
-  if (upperCased !== value) {
-    input.value = upperCased; // eslint-disable-line no-param-reassign
-
-    if (selectionStart !== null && selectionEnd !== null) {
-      // Uppercasing can change a character's length (e.g. "ß" -> "SS"), so map
-      // each offset through toUpperCase() instead of reusing it as-is.
-      input.setSelectionRange(
-        value.slice(0, selectionStart).toUpperCase().length,
-        value.slice(0, selectionEnd).toUpperCase().length,
-      );
-    }
-  }
-
-  return upperCased;
-}
-
 async function fetchPlateResults({
   attachmentFile,
   attachmentBuffer,
@@ -2216,9 +2183,7 @@ class Home extends React.Component {
                               ref={this.plateRef}
                               placeholder={this.state.allPlateData?.results?.[0]?.plate?.toUpperCase()}
                               onChange={event => {
-                                const plate = upperCaseInputValueInPlace(
-                                  event.target,
-                                );
+                                const plate = event.target.value.toUpperCase();
                                 const matchedResult =
                                   this.state.allPlateData?.results?.find(
                                     r => r.plate?.toUpperCase() === plate,

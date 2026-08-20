@@ -508,6 +508,7 @@ const COMPLAINT_COLORS = {
 
 const DEFAULT_MAP_CENTER = [40.72, -73.98];
 const DEFAULT_MAP_ZOOM = 12;
+const NYC_BOUNDS = L.latLngBounds([40.4774, -74.2591], [40.9176, -73.7004]);
 
 function colorFor(complaint) {
   if (!complaint) return '#7b8698';
@@ -699,7 +700,27 @@ function renderMap(submissions) {
     markerLayer.addLayer(marker);
   });
 
-  if (bounds.length > 0) map.fitBounds(bounds, { padding: [40, 40] });
+  if (bounds.length > 0) {
+    if (currentMode === 'my') {
+      // "My submissions" can include points far outside the city (e.g.
+      // mis-geocoded submissions), which would fit the view to the whole
+      // country. Keep the initial view on NYC instead.
+      const submissionBounds = L.latLngBounds(bounds);
+      const south = Math.max(submissionBounds.getSouth(), NYC_BOUNDS.getSouth());
+      const north = Math.min(submissionBounds.getNorth(), NYC_BOUNDS.getNorth());
+      const west = Math.max(submissionBounds.getWest(), NYC_BOUNDS.getWest());
+      const east = Math.min(submissionBounds.getEast(), NYC_BOUNDS.getEast());
+      const fitBounds =
+        north > south && east > west
+          ? L.latLngBounds([south, west], [north, east])
+          : NYC_BOUNDS;
+      map.fitBounds(fitBounds, { padding: [40, 40] });
+    } else {
+      map.fitBounds(bounds, { padding: [40, 40] });
+    }
+  } else if (currentMode === 'my') {
+    map.fitBounds(NYC_BOUNDS, { padding: [40, 40] });
+  }
   setTimeout(() => map.invalidateSize(), 60);
 }
 

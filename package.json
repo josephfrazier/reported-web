@@ -17,8 +17,7 @@
     "parse/@babel/runtime": "7.27.6",
     "parse/@babel/runtime-corejs3": "7.29.7",
     "node-fetch": "2.7.0",
-    "universal-router/path-to-regexp": "3.3.0",
-    "immutable": "4.3.9"
+    "universal-router/path-to-regexp": "3.3.0"
   },
   "dependencies": {
     "@babel/polyfill": "^7.0.0",

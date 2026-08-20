@@ -332,8 +332,6 @@
 
   .popup-meta .val { color: var(--text); }
 
-  #popup-meta a { color: var(--accent); }
-
   .popup-photos { display: flex; }
 
   .popup-photos img {
@@ -581,29 +579,6 @@ function positionPopup(clientX, clientY) {
   popup.style.top  = y + 'px';
 }
 
-// Link a submission's `objectId` to its Back4App browser view so it can
-// be found in the database directly from the map popup.
-const BACK4APP_APP_ID = '932de73d-5214-4a3e-aec5-5c9be0055dac';
-const BACK4APP_SUBMISSION_URL = `https://backend.back4app.com/apps/${BACK4APP_APP_ID}/browser/submission`;
-
-function back4appSubmissionUrl(objectId) {
-  const filters = encodeURIComponent(
-    JSON.stringify([
-      { field: 'objectId', constraint: 'eq', compareTo: objectId },
-    ]),
-  );
-  return `${BACK4APP_SUBMISSION_URL}?filters=${filters}`;
-}
-
-function escapeHtml(text) {
-  return String(text)
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
-}
-
 function populatePopup(s) {
   const photos = [s.photoData0, s.photoData1, s.photoData2].filter(p => p && p.url);
   const color  = colorFor(s.typeofcomplaint);
@@ -617,11 +592,6 @@ function populatePopup(s) {
   const d = formatDate(s.timeofreport?.iso);
   if (d) rows.push(d);
   if (s.reqnumber) rows.push(`req <span class="val">${s.reqnumber}</span>`);
-  if (s.objectId) {
-    rows.push(
-      `id <a href="${back4appSubmissionUrl(s.objectId)}" target="_blank" rel="noopener noreferrer">${escapeHtml(s.objectId)}</a>`,
-    );
-  }
   popupMeta.innerHTML = rows.join('<br>');
 
   if (photos.length > 0) {

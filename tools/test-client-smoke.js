@@ -176,19 +176,6 @@ const run = async () => {
     await mapPage.waitForFunction(
       () => document.querySelectorAll('.leaflet-marker-icon').length === 2,
     );
-
-    // The first marker belongs to `sub_1`; its popup should link that
-    // objectId to the Back4App browser view.
-    await mapPage.locator('#map .leaflet-marker-icon').first().hover();
-    await mapPage.waitForSelector('#popup.visible');
-    const objectIdHref = await mapPage
-      .locator('#popup-meta a')
-      .first()
-      .getAttribute('href');
-    const objectIdText = await mapPage
-      .locator('#popup-meta a')
-      .first()
-      .textContent();
     const countBadge = await mapPage.locator('#count-badge').textContent();
     const modeLabel = await mapPage.locator('#mode-label').textContent();
     const loggedInPromptVisible = await mapPage
@@ -218,16 +205,6 @@ const run = async () => {
         // Counts all submissions; geoless ones are skipped only for markers
         ok: countBadge === '3 reports',
         detail: `count-badge: ${countBadge}`,
-      },
-      {
-        name: 'submissions map: popup links objectId to the Back4App browser',
-        ok:
-          objectIdHref?.startsWith(
-            'https://backend.back4app.com/apps/932de73d-5214-4a3e-aec5-5c9be0055dac/browser/submission?filters=',
-          ) &&
-          objectIdHref.includes('compareTo%22%3A%22sub_1%22') &&
-          objectIdText === 'sub_1',
-        detail: JSON.stringify({ objectIdHref, objectIdText }),
       },
       {
         name: 'submissions map: shows My submissions mode label',

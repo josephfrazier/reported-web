@@ -198,6 +198,7 @@
     "test:no-flaky": "yarn run test --testPathIgnorePatterns='src/alpr.test.js|src/getVehicleType.test.js'",
     "test:ssr-css": "babel-node tools/test-ssr-css.js",
     "test:client-smoke": "babel-node tools/test-client-smoke.js",
+    "test:dev-server-smoke": "babel-node tools/test-dev-server-smoke.js",
     "test-watch": "yarn run test --watch --notify",
     "test-cover": "yarn run test --coverage",
     "coverage": "yarn run test-cover && open coverage/lcov-report/index.html",

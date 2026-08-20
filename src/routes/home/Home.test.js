@@ -52,6 +52,71 @@ function renderHome({ initialState, homeRef } = {}) {
   );
 }
 
+// Stand-in for a text <input> DOM node: reading/writing `value` works, and
+// writing it moves the caret to the end of the field, just like the real thing.
+function createFakeInput({ value, caret }) {
+  let currentValue = value;
+  const input = {
+    selectionStart: caret,
+    selectionEnd: caret,
+    setSelectionRange(selectionStart, selectionEnd) {
+      input.selectionStart = selectionStart;
+      input.selectionEnd = selectionEnd;
+    },
+  };
+  Object.defineProperty(input, 'value', {
+    get: () => currentValue,
+    set: newValue => {
+      currentValue = newValue;
+      input.selectionStart = newValue.length;
+      input.selectionEnd = newValue.length;
+    },
+  });
+  return input;
+}
+
+// Stand-in for React re-rendering a controlled input: it writes to the DOM
+// node's value only when it differs from the value being rendered. That write
+// is what moves the caret to the end of the field.
+function reRenderControlledInput(input, value) {
+  if (input.value !== value) {
+    input.value = value; // eslint-disable-line no-param-reassign
+  }
+}
+
+// Renders the form (which needs a photo attached) and returns the plate input.
+function renderPlateInput() {
+  const initialState = {
+    email: 'test@example.com',
+    loginSuccessful: true,
+  };
+
+  const originalCreateObjectURL = global.URL.createObjectURL;
+  global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+  let tree;
+  const homeRef = React.createRef();
+  renderer.act(() => {
+    tree = renderHome({ initialState, homeRef });
+  });
+  renderer.act(() => {
+    homeRef.current.setState({
+      attachmentData: [
+        new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }),
+      ],
+    });
+  });
+
+  return {
+    homeRef,
+    plateInput: tree.root.findByProps({ name: 'plate' }),
+    cleanup: () => {
+      tree.unmount();
+      global.URL.createObjectURL = originalCreateObjectURL;
+    },
+  };
+}
+
 describe('Home', () => {
   test('renders submission form and Previous Submissions when logged in with photos', () => {
     const initialState = {
@@ -308,5 +373,81 @@ describe('Home', () => {
     expect(homeRef.current.getPreviousSubmissionsSummary()).toBe(2);
 
     tree.unmount();
+  });
+
+  test('keeps the caret in place when typing a letter into the middle of the plate', () => {
+    const { homeRef, plateInput, cleanup } = renderPlateInput();
+
+    // The user typed "b" between the "A" and the "Z" of "AZ".
+    const input = createFakeInput({ value: 'AbZ', caret: 2 });
+    renderer.act(() => {
+      plateInput.props.onChange({ target: input });
+    });
+    reRenderControlledInput(input, homeRef.current.state.plate);
+
+    expect(homeRef.current.state.plate).toBe('ABZ');
+    expect(input.value).toBe('ABZ');
+    // ...and the caret stays after the "B", rather than jumping to the end.
+    expect(input.selectionStart).toBe(2);
+    expect(input.selectionEnd).toBe(2);
+
+    cleanup();
+  });
+
+  test('keeps the caret in place when typing a digit into the middle of the plate', () => {
+    const { homeRef, plateInput, cleanup } = renderPlateInput();
+
+    // The user typed "2" between the "A" and the "Z" of "AZ". Digits are
+    // unaffected by toUpperCase(), so this case already worked.
+    const input = createFakeInput({ value: 'A2Z', caret: 2 });
+    renderer.act(() => {
+      plateInput.props.onChange({ target: input });
+    });
+    reRenderControlledInput(input, homeRef.current.state.plate);
+
+    expect(homeRef.current.state.plate).toBe('A2Z');
+    expect(input.value).toBe('A2Z');
+    expect(input.selectionStart).toBe(2);
+    expect(input.selectionEnd).toBe(2);
+
+    cleanup();
+  });
+
+  test('keeps the caret after characters that grow when uppercased', () => {
+    const { homeRef, plateInput, cleanup } = renderPlateInput();
+
+    // "ß".toUpperCase() is "SS", so the caret has to move right by one to stay
+    // after the character the user just typed.
+    const input = createFakeInput({ value: 'AßZ', caret: 2 });
+    renderer.act(() => {
+      plateInput.props.onChange({ target: input });
+    });
+    reRenderControlledInput(input, homeRef.current.state.plate);
+
+    expect(homeRef.current.state.plate).toBe('ASSZ');
+    expect(input.value).toBe('ASSZ');
+    expect(input.selectionStart).toBe(3);
+    expect(input.selectionEnd).toBe(3);
+
+    cleanup();
+  });
+
+  test('tolerates inputs that do not report a selection', () => {
+    const { homeRef, plateInput, cleanup } = renderPlateInput();
+
+    // selectionStart/selectionEnd are null for input types that don't support
+    // text selection, and setSelectionRange throws on them.
+    const input = createFakeInput({ value: 'abc', caret: null });
+    input.setSelectionRange = () => {
+      throw new Error('setSelectionRange should not be called');
+    };
+    renderer.act(() => {
+      plateInput.props.onChange({ target: input });
+    });
+
+    expect(homeRef.current.state.plate).toBe('ABC');
+    expect(input.value).toBe('ABC');
+
+    cleanup();
   });
 });

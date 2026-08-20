@@ -55,5 +55,8 @@ module.exports = {
 
     // https://github.com/hudochenkov/stylelint-order/blob/master/rules/properties-order/README.md
     'order/properties-order': [],
+
+    // Allow camelCase class names (used in CSS Modules to match JS property access)
+    'selector-class-pattern': null,
   },
 };

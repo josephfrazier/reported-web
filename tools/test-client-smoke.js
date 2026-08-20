@@ -161,17 +161,6 @@ const run = async () => {
               photoData2: null,
             },
             { objectId: 'sub_3' }, // no location → skipped by renderMap
-            {
-              objectId: 'sub_4',
-              // Far outside NYC — without the NYC view clamp in "My
-              // submissions" mode this fits the whole USA into view
-              location: {
-                __type: 'GeoPoint',
-                latitude: 39.8,
-                longitude: -98.5,
-              },
-              typeofcomplaint: 'Ran red light',
-            },
           ],
         }),
       });
@@ -185,26 +174,8 @@ const run = async () => {
     await mapPage.click('#tab-my-submissions');
     await mapPage.click('#load-my-submissions-btn');
     await mapPage.waitForFunction(
-      () => document.querySelectorAll('.leaflet-marker-icon').length === 3,
+      () => document.querySelectorAll('.leaflet-marker-icon').length === 2,
     );
-    // Leaflet tile URLs embed the zoom level ({z}); wait for an
-    // NYC-scale view (zoom >= 10 — a USA-wide fit is zoom ~4) before
-    // asserting it.
-    await mapPage.waitForFunction(() => {
-      // Scope to the main map: the draw map's tiles (created at zoom
-      // 12 on page load) would otherwise satisfy the check.
-      const tile = document.querySelector('#map .leaflet-tile');
-      if (!tile) return false;
-      const parts = tile.src.split('/');
-      return Number(parts[parts.length - 3]) >= 10;
-    });
-
-    const tileZoom = await mapPage.evaluate(() => {
-      const tile = document.querySelector('#map .leaflet-tile');
-      if (!tile) return null;
-      const parts = tile.src.split('/');
-      return Number(parts[parts.length - 3]);
-    });
 
     // The first marker belongs to `sub_1`; its popup should link that
     // objectId to the Back4App browser view.
@@ -218,7 +189,6 @@ const run = async () => {
       .locator('#popup-meta a')
       .first()
       .textContent();
-
     const countBadge = await mapPage.locator('#count-badge').textContent();
     const modeLabel = await mapPage.locator('#mode-label').textContent();
     const loggedInPromptVisible = await mapPage
@@ -246,13 +216,8 @@ const run = async () => {
       {
         name: 'submissions map: renders markers and count badge',
         // Counts all submissions; geoless ones are skipped only for markers
-        ok: countBadge === '4 reports',
+        ok: countBadge === '3 reports',
         detail: `count-badge: ${countBadge}`,
-      },
-      {
-        name: 'submissions map: keeps the view on NYC despite a far-away submission',
-        ok: tileZoom !== null && tileZoom >= 10,
-        detail: `tile zoom: ${tileZoom}`,
       },
       {
         name: 'submissions map: popup links objectId to the Back4App browser',

@@ -220,6 +220,57 @@ const run = async () => {
         name: 'submissions map: login prompt stays hidden when logged in',
         ok: !loggedInPromptVisible,
       },
+      {
+        name: 'submissions map: legend toggle hidden on desktop viewport',
+        ok: await mapPage
+          .locator('#legend-toggle')
+          .isHidden()
+          .catch(() => false),
+      },
+    ]);
+
+    // ── Mobile viewport: the legend collapses behind the toggle ──
+    await mapPage.setViewportSize({ width: 390, height: 844 });
+    const toggleVisible = await mapPage
+      .locator('#legend-toggle')
+      .isVisible()
+      .catch(() => false);
+    const legendHidden = await mapPage
+      .locator('.legend')
+      .isHidden()
+      .catch(() => false);
+
+    await mapPage.click('#legend-toggle');
+    const legendVisibleAfterClick = await mapPage
+      .locator('.legend')
+      .isVisible()
+      .catch(() => false);
+    const legendAriaExpanded = await mapPage
+      .locator('#legend-toggle')
+      .getAttribute('aria-expanded');
+    const legendChecks = {
+      toggleVisible,
+      legendHidden,
+      legendVisibleAfterClick,
+      legendAriaExpanded,
+    };
+
+    failures += runChecks([
+      {
+        name: 'submissions map: legend toggle shown on mobile viewport',
+        ok: toggleVisible,
+        detail: JSON.stringify(legendChecks),
+      },
+      {
+        name: 'submissions map: legend collapses behind toggle on mobile',
+        ok: legendHidden,
+        detail: JSON.stringify(legendChecks),
+      },
+      {
+        name: 'submissions map: legend expands on toggle click',
+        ok: legendVisibleAfterClick && legendAriaExpanded === 'true',
+        detail: JSON.stringify(legendChecks),
+      },
     ]);
 
     // ── Submissions map: logged out ──

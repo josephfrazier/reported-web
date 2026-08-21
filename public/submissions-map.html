@@ -239,6 +239,22 @@
 
   #reset-btn:hover { color: var(--text); border-color: var(--text); }
 
+  #legend-toggle {
+    display: none;
+    background: none;
+    border: 1px solid var(--border2);
+    color: var(--muted);
+    border-radius: 3px;
+    padding: 5px 11px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  #legend-toggle:hover { color: var(--text); border-color: var(--text); }
+
   .photo-filter {
     display: flex;
     align-items: center;
@@ -410,6 +426,41 @@
   #my-submissions-status a { color: var(--accent); }
   #my-submissions-login-prompt { display: none; }
   #my-submissions-login-prompt a { color: var(--accent); }
+
+  /* ── NARROW SCREENS: collapse the legend behind a toggle ── */
+  /* The 6 legend items + photo filter + reset button can't fit in one
+     header row on phones/tablets, so the legend is hidden by default and
+     expands into its own row when toggled. Desktop (>1024px) never shows
+     the toggle and keeps the legend inline. */
+  @media (max-width: 1024px) {
+    header {
+      flex-wrap: wrap;
+    }
+
+    #legend-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    #legend-toggle::after {
+      content: '▾';
+    }
+
+    #legend-toggle[aria-expanded='true']::after {
+      content: '▴';
+    }
+
+    .legend {
+      display: none;
+      width: 100%;
+      margin-left: 0;
+    }
+
+    header.legend-open .legend {
+      display: flex;
+    }
+  }
 </style>
 </head>
 <body>
@@ -468,7 +519,8 @@
     <h1>Complaint Map</h1>
     <span class="count-badge" id="mode-label"></span>
     <span class="count-badge" id="count-badge"></span>
-    <div class="legend">
+    <button id="legend-toggle" type="button" aria-controls="legend" aria-expanded="false">Legend</button>
+    <div class="legend" id="legend">
       <div class="legend-item"><div class="legend-dot" style="background:var(--crosswalk)"></div>Blocked crosswalk</div>
       <div class="legend-item"><div class="legend-dot" style="background:var(--bikelane)"></div>Blocked bike lane</div>
       <div class="legend-item"><div class="legend-dot" style="background:var(--redlight)"></div>Ran red light</div>
@@ -565,6 +617,14 @@ const mySubmissionsStatusEl = document.getElementById('my-submissions-status');
 const mySubmissionsPromptEl = document.getElementById('my-submissions-login-prompt');
 const mySubmissionsLoadBtn  = document.getElementById('load-my-submissions-btn');
 const modeLabelEl           = document.getElementById('mode-label');
+const legendToggleEl        = document.getElementById('legend-toggle');
+const mapHeaderEl           = document.querySelector('header');
+
+legendToggleEl.addEventListener('click', () => {
+  const expanded = legendToggleEl.getAttribute('aria-expanded') !== 'true';
+  legendToggleEl.setAttribute('aria-expanded', String(expanded));
+  mapHeaderEl.classList.toggle('legend-open', expanded);
+});
 
 let hideTimer = null;
 let pinned    = false;

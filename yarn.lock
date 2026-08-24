@@ -3096,6 +3096,41 @@
     "@webassemblyjs/ast" "1.14.1"
     "@xtuc/long" "4.2.2"
 
+"@wreq-js/binding-darwin-arm64@3.1.0":
+  version "3.1.0"
+  resolved "https://registry.yarnpkg.com/@wreq-js/binding-darwin-arm64/-/binding-darwin-arm64-3.1.0.tgz#b4187051262795b6208f5abb20138d533bcf55f2"
+  integrity sha512-wa9xns8VngAc6rOv9f8AtLQVb0NttBtbJpxeTZBLyWY/6+q+HjVBfV/0VwoYO8xCL+U+VwYWHn2X80LvL2nvVg==
+
+"@wreq-js/binding-darwin-x64@3.1.0":
+  version "3.1.0"
+  resolved "https://registry.yarnpkg.com/@wreq-js/binding-darwin-x64/-/binding-darwin-x64-3.1.0.tgz#4a7449244e019c2e7c9a58d4f5d91cc7e8e04d2c"
+  integrity sha512-93y4x2XBlLRBUhCnCDeOUkH54eCut1RIrIOkWmWBDDBjM1VyLq2SxGEprWoEV2JMNaavTbrMM589MqwlqFA18w==
+
+"@wreq-js/binding-linux-arm64-gnu@3.1.0":
+  version "3.1.0"
+  resolved "https://registry.yarnpkg.com/@wreq-js/binding-linux-arm64-gnu/-/binding-linux-arm64-gnu-3.1.0.tgz#b7a15ab97520291f6db087068cfba4ef144d7bf3"
+  integrity sha512-98F2f95iMaFhfo6JuNXYpZRI8L0nK9h2/UOsaqN6CI7qUbAk/Cjf4FqYSIFs4FgC2Upe3Ju1ySxEXIWGXYPmeA==
+
+"@wreq-js/binding-linux-arm64-musl@3.1.0":
+  version "3.1.0"
+  resolved "https://registry.yarnpkg.com/@wreq-js/binding-linux-arm64-musl/-/binding-linux-arm64-musl-3.1.0.tgz#9f9063d6d28a2d60f1b66336b38cb61eed5bd4a7"
+  integrity sha512-FSjTGsj+Q/+wFWtGT7NwX7pRfaHRpKtcCq5WxviPei1+hpEX43EFHMfx0/taw2kDdArQ381MhVyrBQmZ1r4p5w==
+
+"@wreq-js/binding-linux-x64-gnu@3.1.0":
+  version "3.1.0"
+  resolved "https://registry.yarnpkg.com/@wreq-js/binding-linux-x64-gnu/-/binding-linux-x64-gnu-3.1.0.tgz#aff6e58bd7082948c24723c8f6a6707f247b88f6"
+  integrity sha512-+vNDkG6DtW/BAdzxfqycspHIsKYfS1EC21FoXUpgCfvEA5UZDTGE7funimEh+/T9WZmrH6ce9sjaWA2U32SIPA==
+
+"@wreq-js/binding-linux-x64-musl@3.1.0":
+  version "3.1.0"
+  resolved "https://registry.yarnpkg.com/@wreq-js/binding-linux-x64-musl/-/binding-linux-x64-musl-3.1.0.tgz#639602b28aa8f301680fa54eb689d09372f7d68e"
+  integrity sha512-PwS/8pNlyJZRxcUwYOAGhUQg3nx3/zWeOItGDlpnJFFNs7ooTRipVE25hLebZbCH0a5pydkprqQDy+KL5vMRWg==
+
+"@wreq-js/binding-win32-x64-msvc@3.1.0":
+  version "3.1.0"
+  resolved "https://registry.yarnpkg.com/@wreq-js/binding-win32-x64-msvc/-/binding-win32-x64-msvc-3.1.0.tgz#f2b9129ad6e228ac2b543da7952de04e3a08df10"
+  integrity sha512-rIhGDdsgtYdf9qSJvSU19Lu1yVa+6PTSjFE0SifUcimAP5cLJVysRyt8imxzv8c6+eGoEwqApvZ4SgBbED+3aQ==
+
 "@xtuc/ieee754@^1.2.0":
   version "1.2.0"
   resolved "https://registry.yarnpkg.com/@xtuc/ieee754/-/ieee754-1.2.0.tgz#eef014a3145ae477a1cbc00cd1e552336dceb790"
@@ -11475,10 +11510,18 @@ wrappy@1:
   resolved "https://registry.yarnpkg.com/wrappy/-/wrappy-1.0.2.tgz#b5243d8f3ec1aa35f1364605bc0d1036e30ab69f"
   integrity sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==
 
-wreq-js@^3.0.0:
-  version "3.0.0"
-  resolved "https://registry.yarnpkg.com/wreq-js/-/wreq-js-3.0.0.tgz#450e0bf32a7a9b9c2df145e93a3f9b1f5facfa88"
-  integrity sha512-RZCoRSevVPpH4A4B4MxbFGo/pVPFveWd2gbe4ENKpPWlKXEYklZSDESOjBMmrIsmnkHh+nhM4PNJvG+NL7wBPA==
+wreq-js@^3.1.0:
+  version "3.1.0"
+  resolved "https://registry.yarnpkg.com/wreq-js/-/wreq-js-3.1.0.tgz#a980344ea1afe958d6ac5d865617c9a6a6b91d8b"
+  integrity sha512-c+DF8s0kiCwTzXFwCNjBYJZMkodk2OukamoielaPegXWctrDth5tB1w0mszX7nysIJU4zge5q0RZUfoOfqH+uQ==
+  optionalDependencies:
+    "@wreq-js/binding-darwin-arm64" "3.1.0"
+    "@wreq-js/binding-darwin-x64" "3.1.0"
+    "@wreq-js/binding-linux-arm64-gnu" "3.1.0"
+    "@wreq-js/binding-linux-arm64-musl" "3.1.0"
+    "@wreq-js/binding-linux-x64-gnu" "3.1.0"
+    "@wreq-js/binding-linux-x64-musl" "3.1.0"
+    "@wreq-js/binding-win32-x64-msvc" "3.1.0"
 
 write-file-atomic@^5.0.1:
   version "5.0.1"

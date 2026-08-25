@@ -525,7 +525,6 @@ class Home extends React.Component {
     this.plateRef = React.createRef();
     this.loginEmailRef = React.createRef();
     this.signupEmailRef = React.createRef();
-    this.imageNaturalSizes = {};
   }
 
   componentDidMount() {
@@ -770,7 +769,7 @@ class Home extends React.Component {
     });
   };
 
-  renderPlateOverlays = ({ attachmentName, attachmentPlateData }) =>
+  renderPlateOverlays = ({ attachmentPlateData }) =>
     attachmentPlateData?.results?.map(result => {
       const { box } = result;
       const plate = result.plate?.toUpperCase();
@@ -781,9 +780,15 @@ class Home extends React.Component {
       }
       const licenseState = getLicenseStateFromPlateResult(result);
 
-      const naturalSize = this.imageNaturalSizes[attachmentName];
-      const effectiveWidth = naturalSize?.width || imageWidth;
-      const effectiveHeight = naturalSize?.height || imageHeight;
+      // `box` is in pixels of the image the server actually sent to Plate
+      // Recognizer (after `sharp().rotate()` and `downscaleForPlateRecognizer`
+      // in src/alpr.js), and `image_width`/`image_height` describe that same
+      // image. So `box / image_*` is the fraction of the picture, and these
+      // percentages are correct no matter what pixel size the browser renders
+      // the original file at -- percentages are scale-invariant. Do NOT switch
+      // these denominators to the <img>'s naturalWidth/naturalHeight: the
+      // original file is typically ~1.5x larger than the downscaled upload, so
+      // that shrinks every percentage and drags overlays up and to the left.
 
       return (
         <button
@@ -791,10 +796,10 @@ class Home extends React.Component {
           key={`${plate}-${box.xmin}-${box.ymin}`}
           className={homeStyles['plate-overlay']}
           style={{
-            left: `${(box.xmin / effectiveWidth) * 100}%`,
-            top: `${(box.ymin / effectiveHeight) * 100}%`,
-            width: `${((box.xmax - box.xmin) / effectiveWidth) * 100}%`,
-            height: `${((box.ymax - box.ymin) / effectiveHeight) * 100}%`,
+            left: `${(box.xmin / imageWidth) * 100}%`,
+            top: `${(box.ymin / imageHeight) * 100}%`,
+            width: `${((box.xmax - box.xmin) / imageWidth) * 100}%`,
+            height: `${((box.ymax - box.ymin) / imageHeight) * 100}%`,
           }}
           aria-label={`Select license plate ${plate}`}
           onClick={() => {
@@ -2086,13 +2091,6 @@ class Home extends React.Component {
                                       src={src}
                                       alt={name}
                                       style={{ display: 'block' }}
-                                      onLoad={e => {
-                                        const img = e.target;
-                                        this.imageNaturalSizes[name] = {
-                                          width: img.naturalWidth,
-                                          height: img.naturalHeight,
-                                        };
-                                      }}
                                     />
                                   ) : (
                                     /* eslint-disable-next-line jsx-a11y/media-has-caption */
@@ -2101,7 +2099,6 @@ class Home extends React.Component {
                                 </a>
                                 {isImg &&
                                   this.renderPlateOverlays({
-                                    attachmentName: name,
                                     attachmentPlateData,
                                   })}
                               </div>

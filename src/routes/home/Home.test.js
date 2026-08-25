@@ -323,6 +323,79 @@ describe('Home', () => {
     global.URL.createObjectURL = originalCreateObjectURL;
   });
 
+  test('positions plate overlays with API dimensions, not the rendered file size', () => {
+    // Plate Recognizer sees the image *after* src/alpr.js rotates and
+    // downscales it (~2048px wide), while the browser renders the original
+    // file (3024x4032 here). `box` and `image_width`/`image_height` share that
+    // downscaled coordinate space, so dividing by the <img>'s natural size
+    // shrinks every percentage by ~1.5x and drags overlays up and to the left.
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+    };
+
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ initialState, homeRef });
+    });
+
+    const plateDataByAttachmentName = {
+      'photo.jpg': {
+        results: [
+          {
+            plate: 'kna6960',
+            region: { code: 'us-ny' },
+            box: { xmin: 1114, ymin: 1266, xmax: 1188, ymax: 1304 },
+          },
+        ],
+        image_width: 2048,
+        image_height: 2731,
+      },
+    };
+
+    renderer.act(() => {
+      homeRef.current.setState({
+        attachmentData: [
+          new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }),
+        ],
+        plateDataByAttachmentName,
+      });
+    });
+
+    // Report a rendered size larger than the uploaded one, the way loading the
+    // original file would, then re-render so any size cached from it is used.
+    const img = tree.root
+      .findAllByType('img')
+      .find(node => node.props.alt === 'photo.jpg');
+    if (img.props.onLoad) {
+      renderer.act(() => {
+        img.props.onLoad({
+          target: { naturalWidth: 3024, naturalHeight: 4032 },
+        });
+      });
+    }
+    renderer.act(() => {
+      homeRef.current.setState({ plateDataByAttachmentName });
+    });
+
+    const overlay = tree.root.findByProps({
+      'aria-label': 'Select license plate KNA6960',
+    });
+    expect(overlay.props.style).toEqual({
+      left: '54.39453125%',
+      top: '46.35664591724643%',
+      width: '3.61328125%',
+      height: '1.3914317099963385%',
+    });
+
+    tree.unmount();
+    global.URL.createObjectURL = originalCreateObjectURL;
+  });
+
   test('renders Edit Profile UI', () => {
     const initialState = {
       email: 'test@example.com',

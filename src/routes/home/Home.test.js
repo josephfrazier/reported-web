@@ -323,6 +323,64 @@ describe('Home', () => {
     global.URL.createObjectURL = originalCreateObjectURL;
   });
 
+  test('shows the highest-resolution crop beside the plate input when multiple crops match the plate', () => {
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+      plate: 'ABC123',
+    };
+
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ initialState, homeRef });
+    });
+    renderer.act(() => {
+      homeRef.current.setState({
+        attachmentData: [
+          new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }),
+        ],
+        plateDataByAttachmentName: {
+          'small.jpg': {
+            results: [
+              {
+                plate: 'abc123',
+                box: { xmin: 100, ymin: 100, xmax: 200, ymax: 110 },
+                plateCropDataUrl: 'data:image/jpeg;base64,small',
+              },
+            ],
+          },
+          'big.jpg': {
+            results: [
+              {
+                plate: 'ABC123',
+                box: { xmin: 100, ymin: 100, xmax: 400, ymax: 250 },
+                plateCropDataUrl: 'data:image/jpeg;base64,big',
+              },
+              {
+                // Not the selected plate, so its larger box must be ignored.
+                plate: 'XYZ789',
+                box: { xmin: 0, ymin: 0, xmax: 1000, ymax: 1000 },
+                plateCropDataUrl: 'data:image/jpeg;base64,other',
+              },
+            ],
+          },
+        },
+      });
+    });
+
+    const thumbnail = tree.root.findByProps({
+      alt: 'Detected license plate',
+    });
+    expect(thumbnail.props.src).toBe('data:image/jpeg;base64,big');
+
+    tree.unmount();
+    global.URL.createObjectURL = originalCreateObjectURL;
+  });
+
   test('renders Edit Profile UI', () => {
     const initialState = {
       email: 'test@example.com',

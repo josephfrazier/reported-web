@@ -1404,17 +1404,30 @@ class Home extends React.Component {
   };
 
   findMatchingPlateThumbnail() {
+    let bestPlateCropDataUrl = null;
+    let bestResolution = -1;
     for (const data of Object.values(this.state.plateDataByAttachmentName)) {
       for (const result of data.results || []) {
         if (
           result.plate?.toUpperCase() === this.state.plate?.toUpperCase() &&
           result.plateCropDataUrl
         ) {
-          return result.plateCropDataUrl;
+          // The same plate can be detected in multiple photos (or multiple
+          // times in one photo). Show the highest-resolution crop beside the
+          // plate input, since more pixels make the plate easier to read.
+          // `box` is in the same downscaled image space the crop was cut from
+          // in src/alpr.js, so its area in pixels is the crop's resolution.
+          const { xmin, ymin, xmax, ymax } = result.box || {};
+          const resolution = (xmax - xmin) * (ymax - ymin) || 0;
+
+          if (resolution > bestResolution) {
+            bestResolution = resolution;
+            bestPlateCropDataUrl = result.plateCropDataUrl;
+          }
         }
       }
     }
-    return null;
+    return bestPlateCropDataUrl;
   }
 
   maybeGeneratePassword() {

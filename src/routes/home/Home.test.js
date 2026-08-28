@@ -617,14 +617,17 @@ describe('Home', () => {
 
     axiosGet.mockClear();
 
-    // ...but selecting a previously-looked-up plate again shows "Looking
-    // up..." until the debounced call resolves from the cache, without
-    // hitting the APIs.
+    // ...but selecting a previously-looked-up plate again restores its
+    // results immediately from the cache, without waiting out the debounce
+    // or hitting the APIs.
     renderer.act(() => {
       homeRef.current.setLicensePlate({ plate: 'ABC123', licenseState: 'NY' });
     });
-    expect(homeRef.current.state.vehicleInfoComponent).toBe(
-      'Looking up make/model for ABC123 in New York',
+    expect(homeRef.current.state.vehicleInfoComponent).toEqual(
+      vehicleInfoComponent,
+    );
+    expect(homeRef.current.state.violationSummaryComponent).toEqual(
+      violationSummaryComponent,
     );
 
     await renderer.act(async () => {

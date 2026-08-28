@@ -523,6 +523,7 @@ class Home extends React.Component {
     this.initialStatePersistent = initialStatePersistent;
     this.isDragging = false;
     this.plateRef = React.createRef();
+    this.plateLabelRef = React.createRef();
     this.loginEmailRef = React.createRef();
     this.signupEmailRef = React.createRef();
   }
@@ -810,6 +811,14 @@ class Home extends React.Component {
           aria-label={`Select license plate ${plate}`}
           onClick={() => {
             this.setLicensePlate({ plate, licenseState });
+            // Bring the License/Medallion label to the top of the screen so
+            // the user can confirm the selected plate. The optional call
+            // keeps this a no-op in the test renderer, where refs point at
+            // non-DOM instances without scrollIntoView.
+            this.plateLabelRef.current?.scrollIntoView?.({
+              block: 'start',
+              behavior: 'smooth',
+            });
           }}
         >
           <span className={homeStyles['plate-overlay-tooltip']}>
@@ -2208,7 +2217,7 @@ class Home extends React.Component {
                         })}
                       </div>
 
-                      <label htmlFor="plate">
+                      <label htmlFor="plate" ref={this.plateLabelRef}>
                         License/Medallion:
                         {this.state.isAlprLoading && (
                           <CircularProgress size="1em" />

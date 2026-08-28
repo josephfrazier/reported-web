@@ -325,6 +325,62 @@ describe('Home', () => {
     global.URL.createObjectURL = originalCreateObjectURL;
   });
 
+  test('scrolls the License/Medallion label into view when a plate overlay is clicked', () => {
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+    };
+
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ initialState, homeRef });
+    });
+    renderer.act(() => {
+      homeRef.current.setState({
+        attachmentData: [
+          new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }),
+        ],
+        plateDataByAttachmentName: {
+          'photo.jpg': {
+            results: [
+              {
+                plate: 'abc123',
+                region: { code: 'us-ny' },
+                box: { xmin: 100, ymin: 200, xmax: 300, ymax: 250 },
+              },
+            ],
+            image_width: 1000,
+            image_height: 500,
+          },
+        },
+      });
+    });
+
+    // react-test-renderer doesn't attach refs to host elements, so stand in
+    // for the label with a fake element that has a scrollIntoView to spy on.
+    const scrollIntoView = jest.fn();
+    homeRef.current.plateLabelRef.current = { scrollIntoView };
+
+    const overlay = tree.root.findByProps({
+      'aria-label': 'Select license plate ABC123',
+    });
+    renderer.act(() => {
+      overlay.props.onClick();
+    });
+
+    expect(scrollIntoView).toHaveBeenCalledWith({
+      block: 'start',
+      behavior: 'smooth',
+    });
+
+    tree.unmount();
+    global.URL.createObjectURL = originalCreateObjectURL;
+  });
+
   test('positions plate overlays with the uploaded image dimensions', () => {
     // Three sizes are in play for one photo, and only one of them is the space
     // `box` is measured in:

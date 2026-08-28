@@ -50,7 +50,6 @@ import homeStyles from './Home.css';
 
 import PreviousSubmissionsList from '../../components/PreviousSubmissionsList.js';
 import formatGeosearchAddress from '../../formatGeosearchAddress.js';
-import PlatePickerModal from './PlatePickerModal.js';
 import { isImage, isVideo } from '../../isImage.js';
 import getNycTimezoneOffset from '../../timezone.js';
 import { getBoroNameMemoized } from '../../getBoroName.js';
@@ -499,9 +498,6 @@ class Home extends React.Component {
       submissions: [],
       addressProvenance: '',
 
-      platePickerModalOpen: false,
-      platePickerResults: [],
-      platePickerLoading: false,
       plateDataByAttachmentName: {},
 
       isAuthModalOpen: false,
@@ -833,8 +829,8 @@ class Home extends React.Component {
     licenseState = licenseState || this.state.licenseState; // eslint-disable-line no-param-reassign
 
     // Selecting the plate/state that is already selected (e.g. clicking the
-    // overlay or plate picker entry for the current plate) is a no-op: skip
-    // the duplicate-submission warning and the vehicle/violation lookups.
+    // overlay for the current plate) is a no-op: skip the
+    // duplicate-submission warning and the vehicle/violation lookups.
     if (
       plate === this.state.plate &&
       licenseState === this.state.licenseState
@@ -1147,38 +1143,6 @@ class Home extends React.Component {
         );
       },
     );
-  };
-
-  handlePlatePickerClick = async attachmentFile => {
-    this.setState({ platePickerLoading: true });
-
-    try {
-      const { email, password } = this.state;
-      const { attachmentBuffer } = await blobToBuffer({ attachmentFile });
-      const ext = fileExtension(attachmentFile.name);
-      const data = await fetchPlateResults({
-        attachmentFile,
-        attachmentBuffer,
-        ext,
-        email,
-        password,
-      });
-      const { results } = data;
-
-      this.setState(state => ({
-        platePickerResults: results,
-        platePickerModalOpen: true,
-        platePickerLoading: false,
-        plateDataByAttachmentName: {
-          ...state.plateDataByAttachmentName,
-          [attachmentFile.name]: data,
-        },
-      }));
-    } catch (err) {
-      console.error(err);
-      Home.notifyError('Could not read license plates from this photo.');
-      this.setState({ platePickerLoading: false });
-    }
   };
 
   handleInputChange = event => {
@@ -2195,35 +2159,6 @@ class Home extends React.Component {
                                   ❌
                                 </span>
                               </button>
-
-                              {isImg && (
-                                <button
-                                  type="button"
-                                  style={{
-                                    position: 'absolute',
-                                    top: 0,
-                                    left: 0,
-                                    padding: 0,
-                                    margin: '1px',
-                                    background: 'white',
-                                  }}
-                                  onClick={() =>
-                                    this.handlePlatePickerClick(attachmentFile)
-                                  }
-                                  disabled={this.state.platePickerLoading}
-                                >
-                                  {this.state.platePickerLoading ? (
-                                    <CircularProgress size="1em" />
-                                  ) : (
-                                    <span
-                                      role="img"
-                                      aria-label="Pick license plate from photo"
-                                    >
-                                      🔍
-                                    </span>
-                                  )}
-                                </button>
-                              )}
                             </div>
                           );
                         })}
@@ -2455,18 +2390,6 @@ class Home extends React.Component {
                           Close
                         </button>
                       </Modal>
-
-                      <PlatePickerModal
-                        isOpen={this.state.platePickerModalOpen}
-                        results={this.state.platePickerResults}
-                        onSelectPlate={({ plate, licenseState }) => {
-                          this.setLicensePlate({ plate, licenseState });
-                          this.setState({ platePickerModalOpen: false });
-                        }}
-                        onClose={() =>
-                          this.setState({ platePickerModalOpen: false })
-                        }
-                      />
 
                       <label htmlFor="CreateDate">
                         When:{' '}

@@ -1293,28 +1293,6 @@ exports[`Home renders submission form and Previous Submissions when logged in wi
                   ❌
                 </span>
               </button>
-              <button
-                disabled={false}
-                onClick={[Function]}
-                style={
-                  {
-                    "background": "white",
-                    "left": 0,
-                    "margin": "1px",
-                    "padding": 0,
-                    "position": "absolute",
-                    "top": 0,
-                  }
-                }
-                type="button"
-              >
-                <span
-                  aria-label="Pick license plate from photo"
-                  role="img"
-                >
-                  🔍
-                </span>
-              </button>
             </div>
           </div>
           <label
@@ -2003,28 +1981,6 @@ exports[`Home renders with allPlateResults entry missing plate and photos 1`] = 
                   ❌
                 </span>
               </button>
-              <button
-                disabled={false}
-                onClick={[Function]}
-                style={
-                  {
-                    "background": "white",
-                    "left": 0,
-                    "margin": "1px",
-                    "padding": 0,
-                    "position": "absolute",
-                    "top": 0,
-                  }
-                }
-                type="button"
-              >
-                <span
-                  aria-label="Pick license plate from photo"
-                  role="img"
-                >
-                  🔍
-                </span>
-              </button>
             </div>
           </div>
           <label
@@ -2711,28 +2667,6 @@ exports[`Home renders with undefined allPlateResults and photos 1`] = `
                   role="img"
                 >
                   ❌
-                </span>
-              </button>
-              <button
-                disabled={false}
-                onClick={[Function]}
-                style={
-                  {
-                    "background": "white",
-                    "left": 0,
-                    "margin": "1px",
-                    "padding": 0,
-                    "position": "absolute",
-                    "top": 0,
-                  }
-                }
-                type="button"
-              >
-                <span
-                  aria-label="Pick license plate from photo"
-                  role="img"
-                >
-                  🔍
                 </span>
               </button>
             </div>

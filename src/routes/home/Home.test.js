@@ -37,6 +37,20 @@ const typeofcomplaintValues = [
 
 const insertCss = () => {};
 
+// jsdom has no navigator.geolocation, so promisedLocation() rejects and the
+// component falls back to ipapi.co over the network, making these tests
+// depend on a third-party service (and crash on its rate limits). Stub
+// geolocation with NYC's default coordinates so the fallback is never hit.
+beforeAll(() => {
+  navigator.geolocation = {
+    getCurrentPosition(success) {
+      success({
+        coords: { latitude: 40.7128, longitude: -74.006 },
+      });
+    },
+  };
+});
+
 function renderHome({ initialState, homeRef } = {}) {
   return renderer.create(
     <StyleContext.Provider value={{ insertCss }}>
@@ -166,6 +180,39 @@ describe('Home', () => {
 
     expect(tree.toJSON()).toMatchSnapshot();
 
+    tree.unmount();
+  });
+
+  test('handles geolocation and its ipapi fallback both failing', async () => {
+    const geolocationStub = navigator.geolocation;
+    navigator.geolocation = {
+      getCurrentPosition(success, failure) {
+        failure(new Error('Geolocation permission denied'));
+      },
+    };
+    const axiosGet = jest
+      .spyOn(axios, 'get')
+      .mockRejectedValue(new Error('ipapi.co rate limited'));
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ homeRef });
+    });
+
+    // This must not leave an unhandled rejection behind.
+    await renderer.act(async () => {
+      await homeRef.current.geolocateAndSetCoords();
+    });
+
+    expect(consoleError).toHaveBeenCalled();
+
+    consoleError.mockRestore();
+    axiosGet.mockRestore();
+    navigator.geolocation = geolocationStub;
     tree.unmount();
   });
 

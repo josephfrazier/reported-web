@@ -682,9 +682,9 @@ class Home extends React.Component {
   // Request the browser's geolocation permission and update coordinates.
   // Deferred until after login so the permission prompt appears in a trusted
   // context rather than on the first page visit.
-  geolocateAndSetCoords = () => {
-    geolocate().then(
-      ({ coords: { latitude, longitude }, ipProvenance = 'device' }) => {
+  geolocateAndSetCoords = () =>
+    geolocate()
+      .then(({ coords: { latitude, longitude }, ipProvenance = 'device' }) => {
         // if there's no attachments or a location couldn't be extracted, just use here
         if (
           this.state.attachmentData.length === 0 ||
@@ -697,9 +697,13 @@ class Home extends React.Component {
             addressProvenance: `(from ${ipProvenance}: ${latitude}, ${longitude})`,
           });
         }
-      },
-    );
-  };
+      })
+      .catch(err => {
+        // Both browser geolocation and the ipapi.co fallback can fail (e.g.
+        // permission denied plus rate limiting). Log instead of leaving an
+        // unhandled rejection; the form defaults to NYC coordinates anyway.
+        console.error(err);
+      });
 
   setCoords = (
     { latitude, longitude, addressProvenance } = { addressProvenance: '' },

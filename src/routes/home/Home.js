@@ -84,18 +84,47 @@ const debouncedGeosearch = debounce(async ({ latitude, longitude }) => {
   return data;
 }, 500);
 
-const debouncedGetVehicleType = debounce(
-  ({ plate, licenseState }) =>
-    axios.get(`/getVehicleType/${plate}/${licenseState}`),
-  1000,
-);
+const howsmydrivingApiUrl = ({ plate, licenseState }) =>
+  `https://api.howsmydrivingny.nyc/api/v1/?plate=${plate}:${licenseState}`;
 
-const debouncedGetViolations = debounce(async ({ plate, licenseState }) => {
-  const apiUrl = `https://api.howsmydrivingny.nyc/api/v1/?plate=${plate}:${licenseState}`;
-  const response = await axios.get(apiUrl);
+// Fetch and cache per plate+state, so re-selecting a plate that was already
+// looked up skips the network call. Caching here — inside the plain
+// functions debounce() wraps, rather than at the call sites — means the
+// cache is only ever written with the arguments the network request was
+// actually made for, never with plates typed while the request was pending.
+const getVehicleType = async ({ plate, licenseState, cache }) => {
+  const cacheKey = `${plate}:${licenseState}`;
+  const cachedVehicleInfoResponse = cache.get(cacheKey)?.vehicleInfoResponse;
+  if (cachedVehicleInfoResponse) {
+    return cachedVehicleInfoResponse;
+  }
+  const { data } = await axios.get(`/getVehicleType/${plate}/${licenseState}`);
+  cache.set(cacheKey, {
+    ...cache.get(cacheKey),
+    vehicleInfoResponse: data,
+  });
+  return data;
+};
 
-  return { apiUrl, response };
-}, 1000);
+const getViolations = async ({ plate, licenseState, cache }) => {
+  const cacheKey = `${plate}:${licenseState}`;
+  const cachedViolationsResponse = cache.get(cacheKey)?.violationsResponse;
+  if (cachedViolationsResponse) {
+    return cachedViolationsResponse;
+  }
+  const response = await axios.get(
+    howsmydrivingApiUrl({ plate, licenseState }),
+  );
+  cache.set(cacheKey, {
+    ...cache.get(cacheKey),
+    violationsResponse: response.data,
+  });
+  return response.data;
+};
+
+const debouncedGetVehicleType = debounce(getVehicleType, 1000);
+
+const debouncedGetViolations = debounce(getViolations, 1000);
 
 const debouncedSavePersistentStateToCookie = debounce(self => {
   self.savePersistentStateToCookie();
@@ -413,6 +442,125 @@ class Home extends React.Component {
     return `https://img.logo.dev/${vehicleMake}.com?token=pk_dUmX4e3CQxqMliLAmNRIqA`;
   }
 
+  // Whether a LookupAPlate response contains any vehicle data. Empty results
+  // are returned for plates without vehicle records (e.g. partial plates
+  // typed one character at a time).
+  static vehicleInfoResponseHasData(vehicleInfoResponse) {
+    const { vehicleYear, vehicleMake, vehicleModel, vehicleBody } =
+      vehicleInfoResponse?.result || {};
+    return !!(vehicleYear || vehicleMake || vehicleModel || vehicleBody);
+  }
+
+  // Render the make/model/year for a plate from a LookupAPlate response.
+  static buildVehicleInfoComponent({
+    plate,
+    licenseState,
+    vehicleInfoResponse,
+  }) {
+    const { vehicleYear, vehicleMake, vehicleModel, vehicleBody } =
+      vehicleInfoResponse.result;
+    return (
+      <React.Fragment>
+        <a
+          href={vehicleTypeUrl({ licensePlate: plate, licenseState })}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {plate} in {usStateNames[licenseState]}: {vehicleYear} {vehicleMake}{' '}
+          {vehicleModel} ({vehicleBody})
+        </a>
+        <img
+          src={Home.getVehicleMakeLogoUrl({ vehicleMake })}
+          alt={`${vehicleMake} logo`}
+          style={{
+            display: 'block',
+            maxWidth: '250px',
+          }}
+        />
+      </React.Fragment>
+    );
+  }
+
+  // Render the error state for a plate whose vehicle could not be looked up.
+  static buildVehicleLookupErrorComponent({ plate, licenseState }) {
+    return (
+      <React.Fragment>
+        Could not look up make/model of {plate} in {usStateNames[licenseState]},{' '}
+        <a
+          href="https://github.com/josephfrazier/Reported-Web/issues/295"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          click here for details
+        </a>
+        <br />
+        <a
+          href="https://www.lookupaplate.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Click here to manually look it up
+        </a>
+      </React.Fragment>
+    );
+  }
+
+  // Render the violation summary for a plate from a howsmydriving response,
+  // or null when the response has no vehicle data.
+  static buildViolationSummaryComponent({
+    plate,
+    licenseState,
+    violationsResponse,
+  }) {
+    const vehicle =
+      violationsResponse.data &&
+      violationsResponse.data[0] &&
+      violationsResponse.data[0].vehicle;
+
+    if (!vehicle || !vehicle.violations || !vehicle.fines) {
+      return null;
+    }
+
+    const totalViolations = vehicle.violations.length;
+    const { total_fined: fined, total_outstanding: outstanding } =
+      vehicle.fines;
+
+    const lastTweetPart =
+      vehicle.tweet_parts &&
+      vehicle.tweet_parts[vehicle.tweet_parts.length - 1];
+    const urlMatch = lastTweetPart && lastTweetPart.match(/https?:\/\/\S+/);
+    const detailsUrl = urlMatch
+      ? urlMatch[0].replace(/\.$/, '')
+      : 'https://howsmydrivingny.nyc/';
+
+    const firstViolation = vehicle.violations[0];
+    const make = firstViolation?.vehicle_make ?? '';
+    const color = firstViolation?.vehicle_color ?? '';
+    const body = firstViolation?.sanitized?.vehicle_body_type ?? '';
+
+    return (
+      <React.Fragment>
+        {totalViolations} violation
+        {totalViolations !== 1 ? 's' : ''} found{' '}
+        {make && `(Maybe: ${color} ${make} ${body})`} — ${fined.toFixed(2)}{' '}
+        fined, ${outstanding.toFixed(2)} outstanding
+        {' ('}
+        <a href={detailsUrl} target="_blank" rel="noopener noreferrer">
+          more details
+        </a>
+        {', or '}
+        <a
+          href={howsmydrivingApiUrl({ plate, licenseState })}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          full API response
+        </a>
+        )
+      </React.Fragment>
+    );
+  }
+
   static handleAxiosError(error) {
     return Promise.reject(error)
       .catch(err => {
@@ -518,6 +666,7 @@ class Home extends React.Component {
     this.initialStatePerSubmission = initialStatePerSubmission;
     this.initialStatePersistent = initialStatePersistent;
     this.isDragging = false;
+    this.plateLookupCache = new Map();
     this.plateRef = React.createRef();
     this.plateLabelRef = React.createRef();
     this.loginEmailRef = React.createRef();
@@ -843,15 +992,43 @@ class Home extends React.Component {
       return;
     }
 
+    // The debounced lookups cache their HTTP responses per plate+state (see
+    // getVehicleType/getViolations), so render a previously-looked-up plate
+    // from the cache immediately, without waiting out the debounce.
+    const cacheKey = `${plate}:${licenseState}`;
+    const cachedLookup = plate && this.plateLookupCache.get(cacheKey);
+    const cachedVehicleInfoResponse = cachedLookup?.vehicleInfoResponse;
+    const cachedViolationsResponse = cachedLookup?.violationsResponse;
+    const cachedVehicleInfoComponent =
+      cachedVehicleInfoResponse &&
+      (Home.vehicleInfoResponseHasData(cachedVehicleInfoResponse)
+        ? Home.buildVehicleInfoComponent({
+            plate,
+            licenseState,
+            vehicleInfoResponse: cachedVehicleInfoResponse,
+          })
+        : Home.buildVehicleLookupErrorComponent({ plate, licenseState }));
+    const cachedViolationSummaryComponent =
+      cachedViolationsResponse &&
+      Home.buildViolationSummaryComponent({
+        plate,
+        licenseState,
+        violationsResponse: cachedViolationsResponse,
+      });
+
     this.setState({
       plate,
       licenseState,
-      vehicleInfoComponent: plate
-        ? `Looking up make/model for ${plate} in ${usStateNames[licenseState]}`
-        : null,
-      violationSummaryComponent: plate
-        ? `Looking up violations for ${plate} in ${usStateNames[licenseState]}`
-        : null,
+      vehicleInfoComponent:
+        cachedVehicleInfoComponent ||
+        (plate
+          ? `Looking up make/model for ${plate} in ${usStateNames[licenseState]}`
+          : null),
+      violationSummaryComponent:
+        cachedViolationSummaryComponent ||
+        (plate
+          ? `Looking up violations for ${plate} in ${usStateNames[licenseState]}`
+          : null),
     });
 
     const selectedDate = new Date(this.state.CreateDate);
@@ -880,98 +1057,87 @@ class Home extends React.Component {
       );
     }
 
-    debouncedGetVehicleType({ plate, licenseState })
-      .then(({ data }) => {
-        const { vehicleYear, vehicleMake, vehicleModel, vehicleBody } =
-          data.result;
-
-        if (plate !== this.state.plate) {
-          console.info('ignoring stale plate:', plate);
-          return;
-        }
-
-        this.setState({
-          vehicleInfoComponent: (
-            <React.Fragment>
-              <a
-                href={vehicleTypeUrl({ licensePlate: plate, licenseState })}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {plate} in {usStateNames[licenseState]}: {vehicleYear}{' '}
-                {vehicleMake} {vehicleModel} ({vehicleBody})
-              </a>
-              <img
-                src={Home.getVehicleMakeLogoUrl({ vehicleMake })}
-                alt={`${vehicleMake} logo`}
-                style={{
-                  display: 'block',
-                  maxWidth: '250px',
-                }}
-              />
-            </React.Fragment>
-          ),
-        });
+    if (!cachedVehicleInfoComponent) {
+      debouncedGetVehicleType({
+        plate,
+        licenseState,
+        cache: this.plateLookupCache,
       })
-      .catch(err => {
-        console.error(err);
-
-        if (plate !== this.state.plate) {
-          console.info('ignoring stale plate:', plate);
-          return;
-        }
-
-        if (plate) {
-          this.setState({
-            vehicleInfoComponent: (
-              <React.Fragment>
-                Could not look up make/model of {plate} in{' '}
-                {usStateNames[licenseState]},{' '}
-                <a
-                  href="https://github.com/josephfrazier/Reported-Web/issues/295"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  click here for details
-                </a>
-                <br />
-                <a
-                  href="https://www.lookupaplate.com/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Click here to manually look it up
-                </a>
-              </React.Fragment>
-            ),
-          });
-
-          // autocorrect common license plate typos from ALPR/OCR
-          if (plate.match(/^1\d\d\d\d\d\dC$/)) {
-            this.setLicensePlate({
-              plate: plate.replace('1', 'T'),
-              licenseState,
-            });
-          } else if (plate.match(/^\d\d\d\d\d\dC$/)) {
-            this.setLicensePlate({
-              plate: `T${plate}`,
-              licenseState,
-            });
+        .then(vehicleInfoResponse => {
+          // Ignore responses for plates the user has moved on from: the
+          // debounced lookup resolves every selection made while it was
+          // pending with the LAST plate's data.
+          if (plate !== this.state.plate) {
+            console.info('ignoring stale plate:', plate);
+            return;
           }
-          // Commented out due to https://github.com/josephfrazier/Reported-Web/issues/295
-          //
-          // } else if (licenseState !== 'NY') {
-          //   this.setLicensePlate({
-          //     plate,
-          //     licenseState: 'NY',
-          //   });
-          // }
-        }
-      });
 
-    if (plate) {
-      debouncedGetViolations({ plate, licenseState })
-        .then(({ apiUrl, response: { data: responseData } }) => {
+          // LookupAPlate returns an empty result for plates without vehicle
+          // records (e.g. partial plates typed one character at a time). Fall
+          // through to the error path, which renders a manual lookup link
+          // instead of "undefined" make/model fields.
+          if (!Home.vehicleInfoResponseHasData(vehicleInfoResponse)) {
+            throw new Error(`No vehicle data for ${plate}`);
+          }
+
+          this.setState({
+            vehicleInfoComponent: Home.buildVehicleInfoComponent({
+              plate,
+              licenseState,
+              vehicleInfoResponse,
+            }),
+          });
+        })
+        .catch(err => {
+          console.error(err);
+
+          if (plate !== this.state.plate) {
+            console.info('ignoring stale plate:', plate);
+            return;
+          }
+
+          if (plate) {
+            this.setState({
+              vehicleInfoComponent: Home.buildVehicleLookupErrorComponent({
+                plate,
+                licenseState,
+              }),
+            });
+
+            // autocorrect common license plate typos from ALPR/OCR
+            if (plate.match(/^1\d\d\d\d\d\dC$/)) {
+              this.setLicensePlate({
+                plate: plate.replace('1', 'T'),
+                licenseState,
+              });
+            } else if (plate.match(/^\d\d\d\d\d\dC$/)) {
+              this.setLicensePlate({
+                plate: `T${plate}`,
+                licenseState,
+              });
+            }
+            // Commented out due to https://github.com/josephfrazier/Reported-Web/issues/295
+            //
+            // } else if (licenseState !== 'NY') {
+            //   this.setLicensePlate({
+            //     plate,
+            //     licenseState: 'NY',
+            //   });
+            // }
+          }
+        });
+    }
+
+    if (plate && !cachedViolationSummaryComponent) {
+      debouncedGetViolations({
+        plate,
+        licenseState,
+        cache: this.plateLookupCache,
+      })
+        .then(responseData => {
+          // Ignore responses for plates the user has moved on from: the
+          // debounced lookup resolves every selection made while it was
+          // pending with the LAST plate's data.
           if (plate !== this.state.plate) {
             return;
           }
@@ -985,42 +1151,12 @@ class Home extends React.Component {
             return;
           }
 
-          const totalViolations = vehicle.violations.length;
-          const { total_fined: fined, total_outstanding: outstanding } =
-            vehicle.fines;
-
-          const lastTweetPart =
-            vehicle.tweet_parts &&
-            vehicle.tweet_parts[vehicle.tweet_parts.length - 1];
-          const urlMatch =
-            lastTweetPart && lastTweetPart.match(/https?:\/\/\S+/);
-          const detailsUrl = urlMatch
-            ? urlMatch[0].replace(/\.$/, '')
-            : 'https://howsmydrivingny.nyc/';
-
-          const firstViolation = vehicle.violations[0];
-          const make = firstViolation?.vehicle_make ?? '';
-          const color = firstViolation?.vehicle_color ?? '';
-          const body = firstViolation?.sanitized?.vehicle_body_type ?? '';
-
           this.setState({
-            violationSummaryComponent: (
-              <React.Fragment>
-                {totalViolations} violation
-                {totalViolations !== 1 ? 's' : ''} found{' '}
-                {make && `(Maybe: ${color} ${make} ${body})`} — $
-                {fined.toFixed(2)} fined, ${outstanding.toFixed(2)} outstanding
-                {' ('}
-                <a href={detailsUrl} target="_blank" rel="noopener noreferrer">
-                  more details
-                </a>
-                {', or '}
-                <a href={apiUrl} target="_blank" rel="noopener noreferrer">
-                  full API response
-                </a>
-                )
-              </React.Fragment>
-            ),
+            violationSummaryComponent: Home.buildViolationSummaryComponent({
+              plate,
+              licenseState,
+              violationsResponse: responseData,
+            }),
           });
         })
         .catch(err => {

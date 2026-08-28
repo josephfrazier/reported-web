@@ -291,6 +291,8 @@ describe('Home', () => {
                 box: { xmin: 100, ymin: 200, xmax: 300, ymax: 250 },
               },
             ],
+            // No uploadWidth/uploadHeight, as in plate data cached before
+            // src/alpr.js started reporting them: fall back to the API's.
             image_width: 1000,
             image_height: 500,
           },
@@ -323,12 +325,15 @@ describe('Home', () => {
     global.URL.createObjectURL = originalCreateObjectURL;
   });
 
-  test('positions plate overlays with API dimensions, not the rendered file size', () => {
-    // Plate Recognizer sees the image *after* src/alpr.js rotates and
-    // downscales it (~2048px wide), while the browser renders the original
-    // file (3024x4032 here). `box` and `image_width`/`image_height` share that
-    // downscaled coordinate space, so dividing by the <img>'s natural size
-    // shrinks every percentage by ~1.5x and drags overlays up and to the left.
+  test('positions plate overlays with the uploaded image dimensions', () => {
+    // Three sizes are in play for one photo, and only one of them is the space
+    // `box` is measured in:
+    //   3024x4032  the original file, which is what the browser renders
+    //   2048x2731  what src/alpr.js uploaded, and what `box` is relative to
+    //   1919x2560  what Plate Recognizer reports as image_width/image_height,
+    //              having resized the upload again before processing it
+    // Dividing by the rendered size drags overlays ~1.5x up and to the left;
+    // dividing by image_width pushes them ~6.7% down and to the right.
     const initialState = {
       email: 'test@example.com',
       loginSuccessful: true,
@@ -352,8 +357,10 @@ describe('Home', () => {
             box: { xmin: 1114, ymin: 1266, xmax: 1188, ymax: 1304 },
           },
         ],
-        image_width: 2048,
-        image_height: 2731,
+        uploadWidth: 2048,
+        uploadHeight: 2731,
+        image_width: 1919,
+        image_height: 2560,
       },
     };
 

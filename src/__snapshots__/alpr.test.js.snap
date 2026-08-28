@@ -121,6 +121,8 @@ exports[`readLicenseViaALPR falling back to the second token 1`] = `
     },
   ],
   "timestamp": "timestamp REMOVED BECAUSE IT CHANGES",
+  "uploadHeight": 2731,
+  "uploadWidth": 2048,
   "version": 1,
 }
 `;
@@ -246,6 +248,8 @@ exports[`readLicenseViaALPR using only the first token 1`] = `
     },
   ],
   "timestamp": "timestamp REMOVED BECAUSE IT CHANGES",
+  "uploadHeight": 2731,
+  "uploadWidth": 2048,
   "version": 1,
 }
 `;

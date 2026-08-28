@@ -144,6 +144,20 @@ export default function readLicenseViaALPR({
           return platerecognizerRes.json();
         })
         .then(async data => {
+          // Plate Recognizer resizes uploads before processing and reports the
+          // resized size as image_width/image_height (e.g. a 2048x2731 upload
+          // comes back as 1919x2560), but `box` coordinates stay in the pixel
+          // space of the image we sent -- the same space cropBox() extracts
+          // from below. Pass that size along so the client can place plate
+          // overlays on the picture without guessing at the difference.
+          const { width: uploadWidth, height: uploadHeight } = await sharp(
+            attachmentBufferRotated,
+          )
+            .metadata()
+            // orientImageBuffer() falls back to the unprocessed buffer when
+            // sharp cannot read it; don't fail the whole request over sizing.
+            .catch(() => ({}));
+
           async function cropBox(box) {
             if (!box) return null;
             const { xmin, ymin, xmax, ymax } = box;
@@ -171,7 +185,12 @@ export default function readLicenseViaALPR({
               return { ...result, ...crops };
             }),
           );
-          return { ...data, results: resultsWithCrops };
+          return {
+            ...data,
+            results: resultsWithCrops,
+            uploadWidth,
+            uploadHeight,
+          };
         })
         .finally(() => console.timeEnd(`/platerecognizer plate-reader`)); // eslint-disable-line no-console
     });

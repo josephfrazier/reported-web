@@ -1262,7 +1262,6 @@ exports[`Home renders submission form and Previous Submissions when logged in wi
                 >
                   <img
                     alt="photo.jpg"
-                    onLoad={[Function]}
                     src="blob:mock"
                     style={
                       {
@@ -1973,7 +1972,6 @@ exports[`Home renders with allPlateResults entry missing plate and photos 1`] = 
                 >
                   <img
                     alt="photo.jpg"
-                    onLoad={[Function]}
                     src="blob:mock"
                     style={
                       {
@@ -2684,7 +2682,6 @@ exports[`Home renders with undefined allPlateResults and photos 1`] = `
                 >
                   <img
                     alt="photo.jpg"
-                    onLoad={[Function]}
                     src="blob:mock"
                     style={
                       {

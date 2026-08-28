@@ -291,6 +291,8 @@ describe('Home', () => {
                 box: { xmin: 100, ymin: 200, xmax: 300, ymax: 250 },
               },
             ],
+            // No uploadWidth/uploadHeight, as in plate data cached before
+            // src/alpr.js started reporting them: fall back to the API's.
             image_width: 1000,
             image_height: 500,
           },
@@ -318,6 +320,84 @@ describe('Home', () => {
     });
     expect(homeRef.current.state.plate).toBe('ABC123');
     expect(homeRef.current.state.licenseState).toBe('NY');
+
+    tree.unmount();
+    global.URL.createObjectURL = originalCreateObjectURL;
+  });
+
+  test('positions plate overlays with the uploaded image dimensions', () => {
+    // Three sizes are in play for one photo, and only one of them is the space
+    // `box` is measured in:
+    //   3024x4032  the original file, which is what the browser renders
+    //   2048x2731  what src/alpr.js uploaded, and what `box` is relative to
+    //   1919x2560  what Plate Recognizer reports as image_width/image_height,
+    //              having resized the upload again before processing it
+    // Dividing by the rendered size drags overlays ~1.5x up and to the left;
+    // dividing by image_width pushes them ~6.7% down and to the right.
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+    };
+
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ initialState, homeRef });
+    });
+
+    const plateDataByAttachmentName = {
+      'photo.jpg': {
+        results: [
+          {
+            plate: 'kna6960',
+            region: { code: 'us-ny' },
+            box: { xmin: 1114, ymin: 1266, xmax: 1188, ymax: 1304 },
+          },
+        ],
+        uploadWidth: 2048,
+        uploadHeight: 2731,
+        image_width: 1919,
+        image_height: 2560,
+      },
+    };
+
+    renderer.act(() => {
+      homeRef.current.setState({
+        attachmentData: [
+          new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }),
+        ],
+        plateDataByAttachmentName,
+      });
+    });
+
+    // Report a rendered size larger than the uploaded one, the way loading the
+    // original file would, then re-render so any size cached from it is used.
+    const img = tree.root
+      .findAllByType('img')
+      .find(node => node.props.alt === 'photo.jpg');
+    if (img.props.onLoad) {
+      renderer.act(() => {
+        img.props.onLoad({
+          target: { naturalWidth: 3024, naturalHeight: 4032 },
+        });
+      });
+    }
+    renderer.act(() => {
+      homeRef.current.setState({ plateDataByAttachmentName });
+    });
+
+    const overlay = tree.root.findByProps({
+      'aria-label': 'Select license plate KNA6960',
+    });
+    expect(overlay.props.style).toEqual({
+      left: '54.39453125%',
+      top: '46.35664591724643%',
+      width: '3.61328125%',
+      height: '1.3914317099963385%',
+    });
 
     tree.unmount();
     global.URL.createObjectURL = originalCreateObjectURL;

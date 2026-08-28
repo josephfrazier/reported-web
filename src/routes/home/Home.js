@@ -525,7 +525,6 @@ class Home extends React.Component {
     this.plateRef = React.createRef();
     this.loginEmailRef = React.createRef();
     this.signupEmailRef = React.createRef();
-    this.imageNaturalSizes = {};
   }
 
   componentDidMount() {
@@ -768,20 +767,34 @@ class Home extends React.Component {
     });
   };
 
-  renderPlateOverlays = ({ attachmentName, attachmentPlateData }) =>
+  renderPlateOverlays = ({ attachmentPlateData }) =>
     attachmentPlateData?.results?.map(result => {
       const { box } = result;
       const plate = result.plate?.toUpperCase();
-      const { image_width: imageWidth, image_height: imageHeight } =
-        attachmentPlateData;
-      if (!box || !plate || !imageWidth || !imageHeight) {
+      // `box` is in pixels of the image src/alpr.js uploaded to Plate
+      // Recognizer, so `uploadWidth`/`uploadHeight` are the denominators that
+      // turn it into a fraction of the picture. Percentages are
+      // scale-invariant, so that fraction is right however large the browser
+      // renders the original file -- do NOT reach for the <img>'s
+      // naturalWidth/naturalHeight, which is the pre-downscale size.
+      //
+      // image_width/image_height are only a fallback for plate data cached
+      // before uploadWidth existed. They are NOT interchangeable: Plate
+      // Recognizer resizes uploads before processing and reports the resized
+      // size (a 2048x2731 upload comes back as 1919x2560), so dividing by them
+      // stretches every percentage ~6.7% down and to the right.
+      const {
+        image_width: imageWidth,
+        image_height: imageHeight,
+        uploadWidth,
+        uploadHeight,
+      } = attachmentPlateData;
+      const boxWidth = uploadWidth || imageWidth;
+      const boxHeight = uploadHeight || imageHeight;
+      if (!box || !plate || !boxWidth || !boxHeight) {
         return null;
       }
       const licenseState = getLicenseStateFromPlateResult(result);
-
-      const naturalSize = this.imageNaturalSizes[attachmentName];
-      const effectiveWidth = naturalSize?.width || imageWidth;
-      const effectiveHeight = naturalSize?.height || imageHeight;
 
       return (
         <button
@@ -789,10 +802,10 @@ class Home extends React.Component {
           key={`${plate}-${box.xmin}-${box.ymin}`}
           className={homeStyles['plate-overlay']}
           style={{
-            left: `${(box.xmin / effectiveWidth) * 100}%`,
-            top: `${(box.ymin / effectiveHeight) * 100}%`,
-            width: `${((box.xmax - box.xmin) / effectiveWidth) * 100}%`,
-            height: `${((box.ymax - box.ymin) / effectiveHeight) * 100}%`,
+            left: `${(box.xmin / boxWidth) * 100}%`,
+            top: `${(box.ymin / boxHeight) * 100}%`,
+            width: `${((box.xmax - box.xmin) / boxWidth) * 100}%`,
+            height: `${((box.ymax - box.ymin) / boxHeight) * 100}%`,
           }}
           aria-label={`Select license plate ${plate}`}
           onClick={() => {
@@ -2097,13 +2110,6 @@ class Home extends React.Component {
                                       src={src}
                                       alt={name}
                                       style={{ display: 'block' }}
-                                      onLoad={e => {
-                                        const img = e.target;
-                                        this.imageNaturalSizes[name] = {
-                                          width: img.naturalWidth,
-                                          height: img.naturalHeight,
-                                        };
-                                      }}
                                     />
                                   ) : (
                                     /* eslint-disable-next-line jsx-a11y/media-has-caption */
@@ -2112,7 +2118,6 @@ class Home extends React.Component {
                                 </a>
                                 {isImg &&
                                   this.renderPlateOverlays({
-                                    attachmentName: name,
                                     attachmentPlateData,
                                   })}
                               </div>

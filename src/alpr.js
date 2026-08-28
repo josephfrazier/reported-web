@@ -29,11 +29,29 @@ async function orientImageBuffer({ attachmentBuffer }) {
 }
 
 // https://app.platerecognizer.com/upload-limit/
-const downscaleForPlateRecognizer = ({ buffer, targetWidth }) => {
+const downscaleForPlateRecognizer = async ({ buffer, targetWidth }) => {
   const fileSize = buffer.length;
   const maxFilesize = 2411654;
 
   if (fileSize < maxFilesize) {
+    return buffer;
+  }
+
+  // sharp's resize() enlarges by default, so a photo narrower than targetWidth
+  // gets blown up here only for the next, smaller pass to shrink it again --
+  // two resamples, a bigger intermediate buffer, and a generation of JPEG loss
+  // to end up at the same size. Leave it for that pass to handle instead.
+  const { width } = await sharp(buffer)
+    .metadata()
+    // A buffer sharp cannot read falls through to the resize below, which
+    // already handles that by returning the image unscaled.
+    .catch(() => ({}));
+
+  if (width && width <= targetWidth) {
+    // eslint-disable-next-line no-console
+    console.log(
+      `image is only ${width}px wide, skipping scale down to width of ${targetWidth}`,
+    );
     return buffer;
   }
 

@@ -831,6 +831,18 @@ class Home extends React.Component {
 
   setLicensePlate = ({ plate, licenseState }) => {
     licenseState = licenseState || this.state.licenseState; // eslint-disable-line no-param-reassign
+
+    // Selecting the plate/state that is already selected (e.g. clicking the
+    // overlay or plate picker entry for the current plate) is a no-op: skip
+    // the duplicate-submission warning and the vehicle/violation lookups.
+    if (
+      plate === this.state.plate &&
+      licenseState === this.state.licenseState
+    ) {
+      console.info('ignoring unchanged plate:', plate);
+      return;
+    }
+
     this.setState({
       plate,
       licenseState,

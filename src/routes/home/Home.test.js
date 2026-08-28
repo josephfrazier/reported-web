@@ -11,6 +11,8 @@ import '@babel/polyfill';
 import React from 'react';
 import renderer from 'react-test-renderer';
 import StyleContext from 'isomorphic-style-loader/StyleContext';
+import axios from 'axios';
+import { toast } from 'react-toastify';
 import App from '../../components/App.js';
 import Home from './Home.js';
 import boroughBoundariesFeatureCollection from '../../../public/borough-boundaries-clipped-to-shoreline.geo.json';
@@ -377,6 +379,167 @@ describe('Home', () => {
       behavior: 'smooth',
     });
 
+    tree.unmount();
+    global.URL.createObjectURL = originalCreateObjectURL;
+  });
+
+  test('skips the duplicate-submission warning and plate lookups when an overlay selects the already-selected plate', () => {
+    jest.useFakeTimers();
+
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+    };
+
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+    // Keep the geolocation fallback and reverse-geocoding quiet, and spy on
+    // the vehicle/violation lookups an unchanged selection must not trigger.
+    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+    const axiosPost = jest
+      .spyOn(axios, 'post')
+      .mockResolvedValue({ data: { features: [{ properties: {} }] } });
+    const toastWarn = jest.spyOn(toast, 'warn').mockImplementation(() => null);
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ initialState, homeRef });
+    });
+    renderer.act(() => {
+      homeRef.current.setState({
+        plate: 'ABC123',
+        licenseState: 'NY',
+        // A same-day submission for this plate, so selecting it again would
+        // show the duplicate-submission warning without the guard.
+        submissions: [
+          {
+            license: 'ABC123',
+            timeofreport: new Date().toISOString(),
+          },
+        ],
+        attachmentData: [
+          new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }),
+        ],
+        plateDataByAttachmentName: {
+          'photo.jpg': {
+            results: [
+              {
+                plate: 'abc123',
+                region: { code: 'us-ny' },
+                box: { xmin: 100, ymin: 200, xmax: 300, ymax: 250 },
+              },
+            ],
+            image_width: 1000,
+            image_height: 500,
+          },
+        },
+      });
+    });
+    axiosGet.mockClear();
+    axiosPost.mockClear();
+    toastWarn.mockClear();
+
+    const overlay = tree.root.findByProps({
+      'aria-label': 'Select license plate ABC123',
+    });
+    renderer.act(() => {
+      overlay.props.onClick();
+    });
+
+    expect(toastWarn).not.toHaveBeenCalled();
+
+    // Wait out the debounce windows: had the click scheduled the
+    // vehicle-type/violations lookups, they would have fired by now.
+    renderer.act(() => {
+      jest.advanceTimersByTime(1500);
+    });
+    expect(axiosGet).not.toHaveBeenCalled();
+
+    jest.useRealTimers();
+    axiosGet.mockRestore();
+    axiosPost.mockRestore();
+    toastWarn.mockRestore();
+    tree.unmount();
+    global.URL.createObjectURL = originalCreateObjectURL;
+  });
+
+  test('skips the duplicate-submission warning and plate lookups when the plate picker selects the already-selected plate', () => {
+    jest.useFakeTimers();
+
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+    };
+
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+    const axiosPost = jest
+      .spyOn(axios, 'post')
+      .mockResolvedValue({ data: { features: [{ properties: {} }] } });
+    const toastWarn = jest.spyOn(toast, 'warn').mockImplementation(() => null);
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ initialState, homeRef });
+    });
+    renderer.act(() => {
+      homeRef.current.setState({
+        plate: 'ABC123',
+        licenseState: 'NY',
+        submissions: [
+          {
+            license: 'ABC123',
+            timeofreport: new Date().toISOString(),
+          },
+        ],
+        attachmentData: [
+          new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }),
+        ],
+        plateDataByAttachmentName: {
+          'photo.jpg': {
+            results: [
+              {
+                plate: 'abc123',
+                region: { code: 'us-ny' },
+                box: { xmin: 100, ymin: 200, xmax: 300, ymax: 250 },
+              },
+            ],
+            image_width: 1000,
+            image_height: 500,
+          },
+        },
+        platePickerModalOpen: true,
+        platePickerResults: [{ plate: 'abc123', region: { code: 'us-ny' } }],
+      });
+    });
+    axiosGet.mockClear();
+    axiosPost.mockClear();
+    toastWarn.mockClear();
+
+    const useThisPlateButton = tree.root.find(
+      node =>
+        node.type === 'button' && node.props.children === 'Use this plate',
+    );
+    renderer.act(() => {
+      useThisPlateButton.props.onClick();
+    });
+
+    expect(toastWarn).not.toHaveBeenCalled();
+
+    renderer.act(() => {
+      jest.advanceTimersByTime(1500);
+    });
+    expect(axiosGet).not.toHaveBeenCalled();
+
+    jest.useRealTimers();
+    axiosGet.mockRestore();
+    axiosPost.mockRestore();
+    toastWarn.mockRestore();
     tree.unmount();
     global.URL.createObjectURL = originalCreateObjectURL;
   });

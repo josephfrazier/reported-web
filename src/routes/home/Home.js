@@ -43,13 +43,13 @@ import { ToastContainer, toast } from 'react-toastify';
 import toastifyStyles from 'react-toastify/dist/ReactToastify.css';
 import { zip } from 'zip-array';
 import PolygonLookup from 'polygon-lookup';
-import capitalize from 'capitalize';
 import CircularProgress from '@mui/material/CircularProgress';
 
 import marx from 'marx-css/css/marx.css';
 import homeStyles from './Home.css';
 
 import PreviousSubmissionsList from '../../components/PreviousSubmissionsList.js';
+import formatGeosearchAddress from '../../formatGeosearchAddress.js';
 import PlatePickerModal from './PlatePickerModal.js';
 import { isImage, isVideo } from '../../isImage.js';
 import getNycTimezoneOffset from '../../timezone.js';
@@ -747,9 +747,7 @@ class Home extends React.Component {
       const { properties } = data.features[0];
 
       this.setState({
-        formatted_address: capitalize.words(
-          `${properties.housenumber} ${properties.street}, ${properties.borough}`,
-        ),
+        formatted_address: formatGeosearchAddress(properties),
       });
     });
   };

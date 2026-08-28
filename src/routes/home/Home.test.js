@@ -565,6 +565,162 @@ describe('Home', () => {
     global.URL.createObjectURL = originalCreateObjectURL;
   });
 
+  test('does not cache results under plates typed while a lookup was pending', async () => {
+    jest.useFakeTimers();
+
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+    const axiosGet = jest.spyOn(axios, 'get').mockImplementation(url => {
+      if (url.startsWith('/getVehicleType/')) {
+        return Promise.resolve({
+          data: {
+            result: {
+              vehicleYear: 2020,
+              vehicleMake: 'Toyota',
+              vehicleModel: 'Camry',
+              vehicleBody: 'Sedan',
+            },
+          },
+        });
+      }
+      return Promise.resolve({
+        data: {
+          data: [
+            {
+              vehicle: {
+                violations: [
+                  {
+                    vehicle_make: 'Toyota',
+                    vehicle_color: 'Blue',
+                    sanitized: { vehicle_body_type: 'Sedan' },
+                  },
+                ],
+                fines: { total_fined: 10, total_outstanding: 20 },
+                tweet_parts: [],
+              },
+            },
+          ],
+        },
+      });
+    });
+    const axiosPost = jest
+      .spyOn(axios, 'post')
+      .mockResolvedValue({ data: { features: [{ properties: {} }] } });
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ homeRef });
+    });
+
+    // Type TEST quickly: the debounced lookups fire once, for TEST, but the
+    // intermediate T/TE/TES selections share that lookup's promise.
+    for (const plate of ['T', 'TE', 'TES', 'TEST']) {
+      renderer.act(() => {
+        homeRef.current.setLicensePlate({ plate, licenseState: 'NY' });
+      });
+    }
+    await renderer.act(async () => {
+      jest.advanceTimersByTime(1500);
+    });
+
+    expect(homeRef.current.plateLookupCache.has('TEST:NY')).toBe(true);
+    expect(homeRef.current.plateLookupCache.has('TES:NY')).toBe(false);
+    expect(homeRef.current.plateLookupCache.has('TE:NY')).toBe(false);
+    expect(homeRef.current.plateLookupCache.has('T:NY')).toBe(false);
+
+    // Deleting back through the intermediate plates shows "Looking up..."
+    // instead of restoring TEST's results.
+    renderer.act(() => {
+      homeRef.current.setLicensePlate({ plate: 'TES', licenseState: 'NY' });
+    });
+    expect(homeRef.current.state.vehicleInfoComponent).toBe(
+      'Looking up make/model for TES in New York',
+    );
+    expect(homeRef.current.state.violationSummaryComponent).toBe(
+      'Looking up violations for TES in New York',
+    );
+
+    jest.useRealTimers();
+    axiosGet.mockRestore();
+    axiosPost.mockRestore();
+    tree.unmount();
+    global.URL.createObjectURL = originalCreateObjectURL;
+  });
+
+  test('does not cache vehicle lookups that return no vehicle data', async () => {
+    jest.useFakeTimers();
+
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+    const axiosGet = jest.spyOn(axios, 'get').mockImplementation(url => {
+      if (url.startsWith('/getVehicleType/')) {
+        const licensePlate = url.split('/')[2];
+        if (licensePlate === 'TEST') {
+          return Promise.resolve({
+            data: {
+              result: {
+                vehicleYear: 2020,
+                vehicleMake: 'Toyota',
+                vehicleModel: 'Camry',
+                vehicleBody: 'Sedan',
+              },
+            },
+          });
+        }
+        // Like the real LookupAPlate API, plates without vehicle records
+        // (e.g. partial plates typed one character at a time) return an
+        // empty result instead of an error.
+        return Promise.resolve({ data: { result: {} } });
+      }
+      // Like the real howsmydriving API, partial plates return no vehicle.
+      return Promise.resolve({ data: { data: [] } });
+    });
+    const axiosPost = jest
+      .spyOn(axios, 'post')
+      .mockResolvedValue({ data: { features: [{ properties: {} }] } });
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ homeRef });
+    });
+
+    // Type TEST one character at a time, pausing after each so that every
+    // intermediate plate is looked up.
+    for (const plate of ['T', 'TE', 'TES', 'TEST']) {
+      renderer.act(() => {
+        homeRef.current.setLicensePlate({ plate, licenseState: 'NY' });
+      });
+      // eslint-disable-next-line no-await-in-loop -- each plate's lookup must complete before the next keystroke, to mimic slow typing.
+      await renderer.act(async () => {
+        jest.advanceTimersByTime(1500);
+      });
+    }
+
+    // Only TEST returned vehicle data, so deleting back through the
+    // intermediate plates must not restore saved results for them.
+    expect(homeRef.current.plateLookupCache.has('TEST:NY')).toBe(true);
+    expect(homeRef.current.plateLookupCache.has('TES:NY')).toBe(false);
+    expect(homeRef.current.plateLookupCache.has('TE:NY')).toBe(false);
+    expect(homeRef.current.plateLookupCache.has('T:NY')).toBe(false);
+
+    renderer.act(() => {
+      homeRef.current.setLicensePlate({ plate: 'TES', licenseState: 'NY' });
+    });
+    expect(homeRef.current.state.vehicleInfoComponent).toBe(
+      'Looking up make/model for TES in New York',
+    );
+
+    jest.useRealTimers();
+    axiosGet.mockRestore();
+    axiosPost.mockRestore();
+    tree.unmount();
+    global.URL.createObjectURL = originalCreateObjectURL;
+  });
+
   test('positions plate overlays with the uploaded image dimensions', () => {
     // Three sizes are in play for one photo, and only one of them is the space
     // `box` is measured in:

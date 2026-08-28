@@ -892,6 +892,14 @@ class Home extends React.Component {
     if (!cachedVehicleInfoComponent) {
       debouncedGetVehicleType({ plate, licenseState })
         .then(({ data }) => {
+          // Don't cache stale responses: the debounced lookup resolves every
+          // selection made while it was pending with the LAST plate's data,
+          // so only the last plate's response belongs in the cache.
+          if (plate !== this.state.plate) {
+            console.info('ignoring stale plate:', plate);
+            return;
+          }
+
           const { vehicleYear, vehicleMake, vehicleModel, vehicleBody } =
             data.result;
           const vehicleInfoComponent = (
@@ -915,12 +923,6 @@ class Home extends React.Component {
             </React.Fragment>
           );
           this.cachePlateLookup({ plate, licenseState, vehicleInfoComponent });
-
-          if (plate !== this.state.plate) {
-            console.info('ignoring stale plate:', plate);
-            return;
-          }
-
           this.setState({ vehicleInfoComponent });
         })
         .catch(err => {
@@ -983,6 +985,13 @@ class Home extends React.Component {
     if (plate && !cachedViolationSummaryComponent) {
       debouncedGetViolations({ plate, licenseState })
         .then(({ apiUrl, response: { data: responseData } }) => {
+          // Don't cache stale responses: the debounced lookup resolves every
+          // selection made while it was pending with the LAST plate's data,
+          // so only the last plate's response belongs in the cache.
+          if (plate !== this.state.plate) {
+            return;
+          }
+
           const vehicle =
             responseData.data &&
             responseData.data[0] &&
@@ -1032,11 +1041,6 @@ class Home extends React.Component {
             licenseState,
             violationSummaryComponent,
           });
-
-          if (plate !== this.state.plate) {
-            return;
-          }
-
           this.setState({ violationSummaryComponent });
         })
         .catch(err => {

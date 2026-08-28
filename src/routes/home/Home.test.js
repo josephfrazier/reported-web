@@ -465,6 +465,106 @@ describe('Home', () => {
     global.URL.createObjectURL = originalCreateObjectURL;
   });
 
+  test('restores cached vehicle/violations results when re-selecting a previously-looked-up plate', async () => {
+    jest.useFakeTimers();
+
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+    const axiosGet = jest.spyOn(axios, 'get').mockImplementation(url => {
+      if (url.startsWith('/getVehicleType/')) {
+        return Promise.resolve({
+          data: {
+            result: {
+              vehicleYear: 2020,
+              vehicleMake: 'Toyota',
+              vehicleModel: 'Camry',
+              vehicleBody: 'Sedan',
+            },
+          },
+        });
+      }
+      return Promise.resolve({
+        data: {
+          data: [
+            {
+              vehicle: {
+                violations: [
+                  {
+                    vehicle_make: 'Toyota',
+                    vehicle_color: 'Blue',
+                    sanitized: { vehicle_body_type: 'Sedan' },
+                  },
+                ],
+                fines: { total_fined: 10, total_outstanding: 20 },
+                tweet_parts: [],
+              },
+            },
+          ],
+        },
+      });
+    });
+    const axiosPost = jest
+      .spyOn(axios, 'post')
+      .mockResolvedValue({ data: { features: [{ properties: {} }] } });
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ homeRef });
+    });
+
+    renderer.act(() => {
+      homeRef.current.setLicensePlate({ plate: 'ABC123', licenseState: 'NY' });
+    });
+    await renderer.act(async () => {
+      jest.advanceTimersByTime(1500);
+    });
+
+    const { vehicleInfoComponent, violationSummaryComponent } =
+      homeRef.current.state;
+    expect(vehicleInfoComponent).not.toBe(
+      'Looking up make/model for ABC123 in New York',
+    );
+    expect(violationSummaryComponent).not.toBe(
+      'Looking up violations for ABC123 in New York',
+    );
+
+    // Selecting a different plate still fires fresh lookups...
+    renderer.act(() => {
+      homeRef.current.setLicensePlate({ plate: 'XYZ789', licenseState: 'NY' });
+    });
+    await renderer.act(async () => {
+      jest.advanceTimersByTime(1500);
+    });
+    expect(axiosGet).toHaveBeenCalledWith('/getVehicleType/XYZ789/NY');
+
+    axiosGet.mockClear();
+
+    // ...but selecting a previously-looked-up plate again restores its
+    // results without hitting the APIs.
+    renderer.act(() => {
+      homeRef.current.setLicensePlate({ plate: 'ABC123', licenseState: 'NY' });
+    });
+    expect(homeRef.current.state.vehicleInfoComponent).toBe(
+      vehicleInfoComponent,
+    );
+    expect(homeRef.current.state.violationSummaryComponent).toBe(
+      violationSummaryComponent,
+    );
+
+    await renderer.act(async () => {
+      jest.advanceTimersByTime(1500);
+    });
+    expect(axiosGet).not.toHaveBeenCalled();
+
+    jest.useRealTimers();
+    axiosGet.mockRestore();
+    axiosPost.mockRestore();
+    tree.unmount();
+    global.URL.createObjectURL = originalCreateObjectURL;
+  });
+
   test('positions plate overlays with the uploaded image dimensions', () => {
     // Three sizes are in play for one photo, and only one of them is the space
     // `box` is measured in:

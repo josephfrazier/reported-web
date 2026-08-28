@@ -518,6 +518,7 @@ class Home extends React.Component {
     this.initialStatePerSubmission = initialStatePerSubmission;
     this.initialStatePersistent = initialStatePersistent;
     this.isDragging = false;
+    this.plateLookupCache = new Map();
     this.plateRef = React.createRef();
     this.plateLabelRef = React.createRef();
     this.loginEmailRef = React.createRef();
@@ -839,15 +840,27 @@ class Home extends React.Component {
       return;
     }
 
+    // Lookups are cached per plate+state, so re-selecting a plate that was
+    // looked up earlier restores its results without hitting the APIs again.
+    const cacheKey = `${plate}:${licenseState}`;
+    const cachedLookup = plate && this.plateLookupCache.get(cacheKey);
+    const cachedVehicleInfoComponent = cachedLookup?.vehicleInfoComponent;
+    const cachedViolationSummaryComponent =
+      cachedLookup?.violationSummaryComponent;
+
     this.setState({
       plate,
       licenseState,
-      vehicleInfoComponent: plate
-        ? `Looking up make/model for ${plate} in ${usStateNames[licenseState]}`
-        : null,
-      violationSummaryComponent: plate
-        ? `Looking up violations for ${plate} in ${usStateNames[licenseState]}`
-        : null,
+      vehicleInfoComponent:
+        cachedVehicleInfoComponent ||
+        (plate
+          ? `Looking up make/model for ${plate} in ${usStateNames[licenseState]}`
+          : null),
+      violationSummaryComponent:
+        cachedViolationSummaryComponent ||
+        (plate
+          ? `Looking up violations for ${plate} in ${usStateNames[licenseState]}`
+          : null),
     });
 
     const selectedDate = new Date(this.state.CreateDate);
@@ -876,18 +889,12 @@ class Home extends React.Component {
       );
     }
 
-    debouncedGetVehicleType({ plate, licenseState })
-      .then(({ data }) => {
-        const { vehicleYear, vehicleMake, vehicleModel, vehicleBody } =
-          data.result;
-
-        if (plate !== this.state.plate) {
-          console.info('ignoring stale plate:', plate);
-          return;
-        }
-
-        this.setState({
-          vehicleInfoComponent: (
+    if (!cachedVehicleInfoComponent) {
+      debouncedGetVehicleType({ plate, licenseState })
+        .then(({ data }) => {
+          const { vehicleYear, vehicleMake, vehicleModel, vehicleBody } =
+            data.result;
+          const vehicleInfoComponent = (
             <React.Fragment>
               <a
                 href={vehicleTypeUrl({ licensePlate: plate, licenseState })}
@@ -906,72 +913,76 @@ class Home extends React.Component {
                 }}
               />
             </React.Fragment>
-          ),
-        });
-      })
-      .catch(err => {
-        console.error(err);
+          );
+          this.cachePlateLookup({ plate, licenseState, vehicleInfoComponent });
 
-        if (plate !== this.state.plate) {
-          console.info('ignoring stale plate:', plate);
-          return;
-        }
-
-        if (plate) {
-          this.setState({
-            vehicleInfoComponent: (
-              <React.Fragment>
-                Could not look up make/model of {plate} in{' '}
-                {usStateNames[licenseState]},{' '}
-                <a
-                  href="https://github.com/josephfrazier/Reported-Web/issues/295"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  click here for details
-                </a>
-                <br />
-                <a
-                  href="https://www.lookupaplate.com/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Click here to manually look it up
-                </a>
-              </React.Fragment>
-            ),
-          });
-
-          // autocorrect common license plate typos from ALPR/OCR
-          if (plate.match(/^1\d\d\d\d\d\dC$/)) {
-            this.setLicensePlate({
-              plate: plate.replace('1', 'T'),
-              licenseState,
-            });
-          } else if (plate.match(/^\d\d\d\d\d\dC$/)) {
-            this.setLicensePlate({
-              plate: `T${plate}`,
-              licenseState,
-            });
-          }
-          // Commented out due to https://github.com/josephfrazier/Reported-Web/issues/295
-          //
-          // } else if (licenseState !== 'NY') {
-          //   this.setLicensePlate({
-          //     plate,
-          //     licenseState: 'NY',
-          //   });
-          // }
-        }
-      });
-
-    if (plate) {
-      debouncedGetViolations({ plate, licenseState })
-        .then(({ apiUrl, response: { data: responseData } }) => {
           if (plate !== this.state.plate) {
+            console.info('ignoring stale plate:', plate);
             return;
           }
 
+          this.setState({ vehicleInfoComponent });
+        })
+        .catch(err => {
+          console.error(err);
+
+          if (plate !== this.state.plate) {
+            console.info('ignoring stale plate:', plate);
+            return;
+          }
+
+          if (plate) {
+            this.setState({
+              vehicleInfoComponent: (
+                <React.Fragment>
+                  Could not look up make/model of {plate} in{' '}
+                  {usStateNames[licenseState]},{' '}
+                  <a
+                    href="https://github.com/josephfrazier/Reported-Web/issues/295"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    click here for details
+                  </a>
+                  <br />
+                  <a
+                    href="https://www.lookupaplate.com/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Click here to manually look it up
+                  </a>
+                </React.Fragment>
+              ),
+            });
+
+            // autocorrect common license plate typos from ALPR/OCR
+            if (plate.match(/^1\d\d\d\d\d\dC$/)) {
+              this.setLicensePlate({
+                plate: plate.replace('1', 'T'),
+                licenseState,
+              });
+            } else if (plate.match(/^\d\d\d\d\d\dC$/)) {
+              this.setLicensePlate({
+                plate: `T${plate}`,
+                licenseState,
+              });
+            }
+            // Commented out due to https://github.com/josephfrazier/Reported-Web/issues/295
+            //
+            // } else if (licenseState !== 'NY') {
+            //   this.setLicensePlate({
+            //     plate,
+            //     licenseState: 'NY',
+            //   });
+            // }
+          }
+        });
+    }
+
+    if (plate && !cachedViolationSummaryComponent) {
+      debouncedGetViolations({ plate, licenseState })
+        .then(({ apiUrl, response: { data: responseData } }) => {
           const vehicle =
             responseData.data &&
             responseData.data[0] &&
@@ -999,30 +1010,53 @@ class Home extends React.Component {
           const color = firstViolation?.vehicle_color ?? '';
           const body = firstViolation?.sanitized?.vehicle_body_type ?? '';
 
-          this.setState({
-            violationSummaryComponent: (
-              <React.Fragment>
-                {totalViolations} violation
-                {totalViolations !== 1 ? 's' : ''} found{' '}
-                {make && `(Maybe: ${color} ${make} ${body})`} — $
-                {fined.toFixed(2)} fined, ${outstanding.toFixed(2)} outstanding
-                {' ('}
-                <a href={detailsUrl} target="_blank" rel="noopener noreferrer">
-                  more details
-                </a>
-                {', or '}
-                <a href={apiUrl} target="_blank" rel="noopener noreferrer">
-                  full API response
-                </a>
-                )
-              </React.Fragment>
-            ),
+          const violationSummaryComponent = (
+            <React.Fragment>
+              {totalViolations} violation
+              {totalViolations !== 1 ? 's' : ''} found{' '}
+              {make && `(Maybe: ${color} ${make} ${body})`} — $
+              {fined.toFixed(2)} fined, ${outstanding.toFixed(2)} outstanding
+              {' ('}
+              <a href={detailsUrl} target="_blank" rel="noopener noreferrer">
+                more details
+              </a>
+              {', or '}
+              <a href={apiUrl} target="_blank" rel="noopener noreferrer">
+                full API response
+              </a>
+              )
+            </React.Fragment>
+          );
+          this.cachePlateLookup({
+            plate,
+            licenseState,
+            violationSummaryComponent,
           });
+
+          if (plate !== this.state.plate) {
+            return;
+          }
+
+          this.setState({ violationSummaryComponent });
         })
         .catch(err => {
           console.error(err);
         });
     }
+  };
+
+  cachePlateLookup = ({
+    plate,
+    licenseState,
+    vehicleInfoComponent,
+    violationSummaryComponent,
+  }) => {
+    const cacheKey = `${plate}:${licenseState}`;
+    this.plateLookupCache.set(cacheKey, {
+      ...this.plateLookupCache.get(cacheKey),
+      ...(vehicleInfoComponent && { vehicleInfoComponent }),
+      ...(violationSummaryComponent && { violationSummaryComponent }),
+    });
   };
 
   // adapted from https://github.com/ngokevin/react-file-reader-input/tree/f970257f271b8c3bba9d529ffdbfa4f4731e0799#usage

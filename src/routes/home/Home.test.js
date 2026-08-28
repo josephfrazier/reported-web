@@ -617,22 +617,26 @@ describe('Home', () => {
 
     axiosGet.mockClear();
 
-    // ...but selecting a previously-looked-up plate again restores its
-    // results without hitting the APIs.
+    // ...but selecting a previously-looked-up plate again shows "Looking
+    // up..." until the debounced call resolves from the cache, without
+    // hitting the APIs.
     renderer.act(() => {
       homeRef.current.setLicensePlate({ plate: 'ABC123', licenseState: 'NY' });
     });
-    expect(homeRef.current.state.vehicleInfoComponent).toEqual(
-      vehicleInfoComponent,
-    );
-    expect(homeRef.current.state.violationSummaryComponent).toEqual(
-      violationSummaryComponent,
+    expect(homeRef.current.state.vehicleInfoComponent).toBe(
+      'Looking up make/model for ABC123 in New York',
     );
 
     await renderer.act(async () => {
       jest.advanceTimersByTime(1500);
     });
     expect(axiosGet).not.toHaveBeenCalled();
+    expect(homeRef.current.state.vehicleInfoComponent).toEqual(
+      vehicleInfoComponent,
+    );
+    expect(homeRef.current.state.violationSummaryComponent).toEqual(
+      violationSummaryComponent,
+    );
 
     jest.useRealTimers();
     axiosGet.mockRestore();
@@ -725,7 +729,7 @@ describe('Home', () => {
     global.URL.createObjectURL = originalCreateObjectURL;
   });
 
-  test('does not cache vehicle lookups that return no vehicle data', async () => {
+  test('reuses the cached empty vehicle response when re-selecting a partial plate', async () => {
     jest.useFakeTimers();
 
     const originalCreateObjectURL = global.URL.createObjectURL;
@@ -776,17 +780,23 @@ describe('Home', () => {
       });
     }
 
-    // Only TEST returned vehicle data, so deleting back through the
-    // intermediate plates must not restore saved results for them.
-    expect(homeRef.current.plateLookupCache.has('TEST:NY')).toBe(true);
-    expect(homeRef.current.plateLookupCache.has('TES:NY')).toBe(false);
-    expect(homeRef.current.plateLookupCache.has('TE:NY')).toBe(false);
-    expect(homeRef.current.plateLookupCache.has('T:NY')).toBe(false);
+    // Empty responses are cached like any other response...
+    expect(
+      homeRef.current.plateLookupCache.get('TES:NY').vehicleInfoResponse,
+    ).toEqual({ result: {} });
 
+    axiosGet.mockClear();
+
+    // ...so deleting back through a partial plate re-renders the error UI
+    // without hitting the API again.
     renderer.act(() => {
       homeRef.current.setLicensePlate({ plate: 'TES', licenseState: 'NY' });
     });
-    expect(homeRef.current.state.vehicleInfoComponent).toBe(
+    await renderer.act(async () => {
+      jest.advanceTimersByTime(1500);
+    });
+    expect(axiosGet).not.toHaveBeenCalled();
+    expect(homeRef.current.state.vehicleInfoComponent).not.toBe(
       'Looking up make/model for TES in New York',
     );
 

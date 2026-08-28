@@ -87,19 +87,44 @@ const debouncedGeosearch = debounce(async ({ latitude, longitude }) => {
 const howsmydrivingApiUrl = ({ plate, licenseState }) =>
   `https://api.howsmydrivingny.nyc/api/v1/?plate=${plate}:${licenseState}`;
 
-const debouncedGetVehicleType = debounce(
-  ({ plate, licenseState }) =>
-    axios.get(`/getVehicleType/${plate}/${licenseState}`),
-  1000,
-);
+// Fetch and cache per plate+state, so re-selecting a plate that was already
+// looked up skips the network call. Caching here — inside the plain
+// functions debounce() wraps, rather than at the call sites — means the
+// cache is only ever written with the arguments the network request was
+// actually made for, never with plates typed while the request was pending.
+const getVehicleType = async ({ plate, licenseState, cache }) => {
+  const cacheKey = `${plate}:${licenseState}`;
+  const cachedVehicleInfoResponse = cache.get(cacheKey)?.vehicleInfoResponse;
+  if (cachedVehicleInfoResponse) {
+    return cachedVehicleInfoResponse;
+  }
+  const { data } = await axios.get(`/getVehicleType/${plate}/${licenseState}`);
+  cache.set(cacheKey, {
+    ...cache.get(cacheKey),
+    vehicleInfoResponse: data,
+  });
+  return data;
+};
 
-const debouncedGetViolations = debounce(async ({ plate, licenseState }) => {
+const getViolations = async ({ plate, licenseState, cache }) => {
+  const cacheKey = `${plate}:${licenseState}`;
+  const cachedViolationsResponse = cache.get(cacheKey)?.violationsResponse;
+  if (cachedViolationsResponse) {
+    return cachedViolationsResponse;
+  }
   const response = await axios.get(
     howsmydrivingApiUrl({ plate, licenseState }),
   );
+  cache.set(cacheKey, {
+    ...cache.get(cacheKey),
+    violationsResponse: response.data,
+  });
+  return response.data;
+};
 
-  return response;
-}, 1000);
+const debouncedGetVehicleType = debounce(getVehicleType, 1000);
+
+const debouncedGetViolations = debounce(getViolations, 1000);
 
 const debouncedSavePersistentStateToCookie = debounce(self => {
   self.savePersistentStateToCookie();
@@ -934,35 +959,18 @@ class Home extends React.Component {
       return;
     }
 
-    // HTTP responses are cached per plate+state, so re-selecting a plate that
-    // was looked up earlier re-renders its results without hitting the APIs
-    // again.
-    const cacheKey = `${plate}:${licenseState}`;
-    const cachedLookup = plate && this.plateLookupCache.get(cacheKey);
-    const cachedVehicleInfoResponse = cachedLookup?.vehicleInfoResponse;
-    const cachedViolationsResponse = cachedLookup?.violationsResponse;
-
+    // The debounced lookups cache their HTTP responses per plate+state, so
+    // re-selecting a plate that was looked up earlier resolves them without
+    // hitting the APIs again.
     this.setState({
       plate,
       licenseState,
-      vehicleInfoComponent: cachedVehicleInfoResponse
-        ? Home.buildVehicleInfoComponent({
-            plate,
-            licenseState,
-            vehicleInfoResponse: cachedVehicleInfoResponse,
-          })
-        : plate
-          ? `Looking up make/model for ${plate} in ${usStateNames[licenseState]}`
-          : null,
-      violationSummaryComponent: cachedViolationsResponse
-        ? Home.buildViolationSummaryComponent({
-            plate,
-            licenseState,
-            violationsResponse: cachedViolationsResponse,
-          })
-        : plate
-          ? `Looking up violations for ${plate} in ${usStateNames[licenseState]}`
-          : null,
+      vehicleInfoComponent: plate
+        ? `Looking up make/model for ${plate} in ${usStateNames[licenseState]}`
+        : null,
+      violationSummaryComponent: plate
+        ? `Looking up violations for ${plate} in ${usStateNames[licenseState]}`
+        : null,
     });
 
     const selectedDate = new Date(this.state.CreateDate);
@@ -991,103 +999,104 @@ class Home extends React.Component {
       );
     }
 
-    if (!cachedVehicleInfoResponse) {
-      debouncedGetVehicleType({ plate, licenseState })
-        .then(({ data }) => {
-          // Don't cache stale responses: the debounced lookup resolves every
-          // selection made while it was pending with the LAST plate's data,
-          // so only the last plate's response belongs in the cache.
-          if (plate !== this.state.plate) {
-            console.info('ignoring stale plate:', plate);
-            return;
-          }
+    debouncedGetVehicleType({
+      plate,
+      licenseState,
+      cache: this.plateLookupCache,
+    })
+      .then(vehicleInfoResponse => {
+        // Ignore responses for plates the user has moved on from: the
+        // debounced lookup resolves every selection made while it was
+        // pending with the LAST plate's data.
+        if (plate !== this.state.plate) {
+          console.info('ignoring stale plate:', plate);
+          return;
+        }
 
-          const { vehicleYear, vehicleMake, vehicleModel, vehicleBody } =
-            data.result;
-          // LookupAPlate returns an empty result for plates without vehicle
-          // records (e.g. partial plates typed one character at a time).
-          // Don't cache those; the error path below renders a manual lookup
-          // link instead of "undefined" make/model fields.
-          if (!vehicleYear && !vehicleMake && !vehicleModel && !vehicleBody) {
-            throw new Error(`No vehicle data for ${plate}`);
-          }
+        const { vehicleYear, vehicleMake, vehicleModel, vehicleBody } =
+          vehicleInfoResponse.result;
+        // LookupAPlate returns an empty result for plates without vehicle
+        // records (e.g. partial plates typed one character at a time). Fall
+        // through to the error path, which renders a manual lookup link
+        // instead of "undefined" make/model fields.
+        if (!vehicleYear && !vehicleMake && !vehicleModel && !vehicleBody) {
+          throw new Error(`No vehicle data for ${plate}`);
+        }
 
-          this.cachePlateLookup({
+        this.setState({
+          vehicleInfoComponent: Home.buildVehicleInfoComponent({
             plate,
             licenseState,
-            vehicleInfoResponse: data,
-          });
-          this.setState({
-            vehicleInfoComponent: Home.buildVehicleInfoComponent({
-              plate,
-              licenseState,
-              vehicleInfoResponse: data,
-            }),
-          });
-        })
-        .catch(err => {
-          console.error(err);
-
-          if (plate !== this.state.plate) {
-            console.info('ignoring stale plate:', plate);
-            return;
-          }
-
-          if (plate) {
-            this.setState({
-              vehicleInfoComponent: (
-                <React.Fragment>
-                  Could not look up make/model of {plate} in{' '}
-                  {usStateNames[licenseState]},{' '}
-                  <a
-                    href="https://github.com/josephfrazier/Reported-Web/issues/295"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    click here for details
-                  </a>
-                  <br />
-                  <a
-                    href="https://www.lookupaplate.com/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Click here to manually look it up
-                  </a>
-                </React.Fragment>
-              ),
-            });
-
-            // autocorrect common license plate typos from ALPR/OCR
-            if (plate.match(/^1\d\d\d\d\d\dC$/)) {
-              this.setLicensePlate({
-                plate: plate.replace('1', 'T'),
-                licenseState,
-              });
-            } else if (plate.match(/^\d\d\d\d\d\dC$/)) {
-              this.setLicensePlate({
-                plate: `T${plate}`,
-                licenseState,
-              });
-            }
-            // Commented out due to https://github.com/josephfrazier/Reported-Web/issues/295
-            //
-            // } else if (licenseState !== 'NY') {
-            //   this.setLicensePlate({
-            //     plate,
-            //     licenseState: 'NY',
-            //   });
-            // }
-          }
+            vehicleInfoResponse,
+          }),
         });
-    }
+      })
+      .catch(err => {
+        console.error(err);
 
-    if (plate && !cachedViolationsResponse) {
-      debouncedGetViolations({ plate, licenseState })
-        .then(({ data: responseData }) => {
-          // Don't cache stale responses: the debounced lookup resolves every
-          // selection made while it was pending with the LAST plate's data,
-          // so only the last plate's response belongs in the cache.
+        if (plate !== this.state.plate) {
+          console.info('ignoring stale plate:', plate);
+          return;
+        }
+
+        if (plate) {
+          this.setState({
+            vehicleInfoComponent: (
+              <React.Fragment>
+                Could not look up make/model of {plate} in{' '}
+                {usStateNames[licenseState]},{' '}
+                <a
+                  href="https://github.com/josephfrazier/Reported-Web/issues/295"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  click here for details
+                </a>
+                <br />
+                <a
+                  href="https://www.lookupaplate.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Click here to manually look it up
+                </a>
+              </React.Fragment>
+            ),
+          });
+
+          // autocorrect common license plate typos from ALPR/OCR
+          if (plate.match(/^1\d\d\d\d\d\dC$/)) {
+            this.setLicensePlate({
+              plate: plate.replace('1', 'T'),
+              licenseState,
+            });
+          } else if (plate.match(/^\d\d\d\d\d\dC$/)) {
+            this.setLicensePlate({
+              plate: `T${plate}`,
+              licenseState,
+            });
+          }
+          // Commented out due to https://github.com/josephfrazier/Reported-Web/issues/295
+          //
+          // } else if (licenseState !== 'NY') {
+          //   this.setLicensePlate({
+          //     plate,
+          //     licenseState: 'NY',
+          //   });
+          // }
+        }
+      });
+
+    if (plate) {
+      debouncedGetViolations({
+        plate,
+        licenseState,
+        cache: this.plateLookupCache,
+      })
+        .then(responseData => {
+          // Ignore responses for plates the user has moved on from: the
+          // debounced lookup resolves every selection made while it was
+          // pending with the LAST plate's data.
           if (plate !== this.state.plate) {
             return;
           }
@@ -1101,11 +1110,6 @@ class Home extends React.Component {
             return;
           }
 
-          this.cachePlateLookup({
-            plate,
-            licenseState,
-            violationsResponse: responseData,
-          });
           this.setState({
             violationSummaryComponent: Home.buildViolationSummaryComponent({
               plate,
@@ -1118,20 +1122,6 @@ class Home extends React.Component {
           console.error(err);
         });
     }
-  };
-
-  cachePlateLookup = ({
-    plate,
-    licenseState,
-    vehicleInfoResponse,
-    violationsResponse,
-  }) => {
-    const cacheKey = `${plate}:${licenseState}`;
-    this.plateLookupCache.set(cacheKey, {
-      ...this.plateLookupCache.get(cacheKey),
-      ...(vehicleInfoResponse && { vehicleInfoResponse }),
-      ...(violationsResponse && { violationsResponse }),
-    });
   };
 
   // adapted from https://github.com/ngokevin/react-file-reader-input/tree/f970257f271b8c3bba9d529ffdbfa4f4731e0799#usage

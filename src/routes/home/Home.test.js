@@ -577,6 +577,35 @@ describe('Home', () => {
       'Looking up violations for ABC123 in New York',
     );
 
+    // The cache stores the raw HTTP responses, not rendered components.
+    expect(homeRef.current.plateLookupCache.get('ABC123:NY')).toEqual({
+      vehicleInfoResponse: {
+        result: {
+          vehicleYear: 2020,
+          vehicleMake: 'Toyota',
+          vehicleModel: 'Camry',
+          vehicleBody: 'Sedan',
+        },
+      },
+      violationsResponse: {
+        data: [
+          {
+            vehicle: {
+              violations: [
+                {
+                  vehicle_make: 'Toyota',
+                  vehicle_color: 'Blue',
+                  sanitized: { vehicle_body_type: 'Sedan' },
+                },
+              ],
+              fines: { total_fined: 10, total_outstanding: 20 },
+              tweet_parts: [],
+            },
+          },
+        ],
+      },
+    });
+
     // Selecting a different plate still fires fresh lookups...
     renderer.act(() => {
       homeRef.current.setLicensePlate({ plate: 'XYZ789', licenseState: 'NY' });
@@ -593,10 +622,10 @@ describe('Home', () => {
     renderer.act(() => {
       homeRef.current.setLicensePlate({ plate: 'ABC123', licenseState: 'NY' });
     });
-    expect(homeRef.current.state.vehicleInfoComponent).toBe(
+    expect(homeRef.current.state.vehicleInfoComponent).toEqual(
       vehicleInfoComponent,
     );
-    expect(homeRef.current.state.violationSummaryComponent).toBe(
+    expect(homeRef.current.state.violationSummaryComponent).toEqual(
       violationSummaryComponent,
     );
 

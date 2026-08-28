@@ -84,6 +84,9 @@ const debouncedGeosearch = debounce(async ({ latitude, longitude }) => {
   return data;
 }, 500);
 
+const howsmydrivingApiUrl = ({ plate, licenseState }) =>
+  `https://api.howsmydrivingny.nyc/api/v1/?plate=${plate}:${licenseState}`;
+
 const debouncedGetVehicleType = debounce(
   ({ plate, licenseState }) =>
     axios.get(`/getVehicleType/${plate}/${licenseState}`),
@@ -91,10 +94,11 @@ const debouncedGetVehicleType = debounce(
 );
 
 const debouncedGetViolations = debounce(async ({ plate, licenseState }) => {
-  const apiUrl = `https://api.howsmydrivingny.nyc/api/v1/?plate=${plate}:${licenseState}`;
-  const response = await axios.get(apiUrl);
+  const response = await axios.get(
+    howsmydrivingApiUrl({ plate, licenseState }),
+  );
 
-  return { apiUrl, response };
+  return response;
 }, 1000);
 
 const debouncedSavePersistentStateToCookie = debounce(self => {
@@ -411,6 +415,92 @@ class Home extends React.Component {
       return 'https://upload.wikimedia.org/wikipedia/commons/3/38/Honda.svg';
     }
     return `https://img.logo.dev/${vehicleMake}.com?token=pk_dUmX4e3CQxqMliLAmNRIqA`;
+  }
+
+  // Render the make/model/year for a plate from a LookupAPlate response.
+  static buildVehicleInfoComponent({
+    plate,
+    licenseState,
+    vehicleInfoResponse,
+  }) {
+    const { vehicleYear, vehicleMake, vehicleModel, vehicleBody } =
+      vehicleInfoResponse.result;
+    return (
+      <React.Fragment>
+        <a
+          href={vehicleTypeUrl({ licensePlate: plate, licenseState })}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {plate} in {usStateNames[licenseState]}: {vehicleYear} {vehicleMake}{' '}
+          {vehicleModel} ({vehicleBody})
+        </a>
+        <img
+          src={Home.getVehicleMakeLogoUrl({ vehicleMake })}
+          alt={`${vehicleMake} logo`}
+          style={{
+            display: 'block',
+            maxWidth: '250px',
+          }}
+        />
+      </React.Fragment>
+    );
+  }
+
+  // Render the violation summary for a plate from a howsmydriving response,
+  // or null when the response has no vehicle data.
+  static buildViolationSummaryComponent({
+    plate,
+    licenseState,
+    violationsResponse,
+  }) {
+    const vehicle =
+      violationsResponse.data &&
+      violationsResponse.data[0] &&
+      violationsResponse.data[0].vehicle;
+
+    if (!vehicle || !vehicle.violations || !vehicle.fines) {
+      return null;
+    }
+
+    const totalViolations = vehicle.violations.length;
+    const { total_fined: fined, total_outstanding: outstanding } =
+      vehicle.fines;
+
+    const lastTweetPart =
+      vehicle.tweet_parts &&
+      vehicle.tweet_parts[vehicle.tweet_parts.length - 1];
+    const urlMatch = lastTweetPart && lastTweetPart.match(/https?:\/\/\S+/);
+    const detailsUrl = urlMatch
+      ? urlMatch[0].replace(/\.$/, '')
+      : 'https://howsmydrivingny.nyc/';
+
+    const firstViolation = vehicle.violations[0];
+    const make = firstViolation?.vehicle_make ?? '';
+    const color = firstViolation?.vehicle_color ?? '';
+    const body = firstViolation?.sanitized?.vehicle_body_type ?? '';
+
+    return (
+      <React.Fragment>
+        {totalViolations} violation
+        {totalViolations !== 1 ? 's' : ''} found{' '}
+        {make && `(Maybe: ${color} ${make} ${body})`} — ${fined.toFixed(2)}{' '}
+        fined, ${outstanding.toFixed(2)} outstanding
+        {' ('}
+        <a href={detailsUrl} target="_blank" rel="noopener noreferrer">
+          more details
+        </a>
+        {', or '}
+        <a
+          href={howsmydrivingApiUrl({ plate, licenseState })}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          full API response
+        </a>
+        )
+      </React.Fragment>
+    );
   }
 
   static handleAxiosError(error) {
@@ -844,27 +934,35 @@ class Home extends React.Component {
       return;
     }
 
-    // Lookups are cached per plate+state, so re-selecting a plate that was
-    // looked up earlier restores its results without hitting the APIs again.
+    // HTTP responses are cached per plate+state, so re-selecting a plate that
+    // was looked up earlier re-renders its results without hitting the APIs
+    // again.
     const cacheKey = `${plate}:${licenseState}`;
     const cachedLookup = plate && this.plateLookupCache.get(cacheKey);
-    const cachedVehicleInfoComponent = cachedLookup?.vehicleInfoComponent;
-    const cachedViolationSummaryComponent =
-      cachedLookup?.violationSummaryComponent;
+    const cachedVehicleInfoResponse = cachedLookup?.vehicleInfoResponse;
+    const cachedViolationsResponse = cachedLookup?.violationsResponse;
 
     this.setState({
       plate,
       licenseState,
-      vehicleInfoComponent:
-        cachedVehicleInfoComponent ||
-        (plate
+      vehicleInfoComponent: cachedVehicleInfoResponse
+        ? Home.buildVehicleInfoComponent({
+            plate,
+            licenseState,
+            vehicleInfoResponse: cachedVehicleInfoResponse,
+          })
+        : plate
           ? `Looking up make/model for ${plate} in ${usStateNames[licenseState]}`
-          : null),
-      violationSummaryComponent:
-        cachedViolationSummaryComponent ||
-        (plate
+          : null,
+      violationSummaryComponent: cachedViolationsResponse
+        ? Home.buildViolationSummaryComponent({
+            plate,
+            licenseState,
+            violationsResponse: cachedViolationsResponse,
+          })
+        : plate
           ? `Looking up violations for ${plate} in ${usStateNames[licenseState]}`
-          : null),
+          : null,
     });
 
     const selectedDate = new Date(this.state.CreateDate);
@@ -893,7 +991,7 @@ class Home extends React.Component {
       );
     }
 
-    if (!cachedVehicleInfoComponent) {
+    if (!cachedVehicleInfoResponse) {
       debouncedGetVehicleType({ plate, licenseState })
         .then(({ data }) => {
           // Don't cache stale responses: the debounced lookup resolves every
@@ -906,28 +1004,26 @@ class Home extends React.Component {
 
           const { vehicleYear, vehicleMake, vehicleModel, vehicleBody } =
             data.result;
-          const vehicleInfoComponent = (
-            <React.Fragment>
-              <a
-                href={vehicleTypeUrl({ licensePlate: plate, licenseState })}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {plate} in {usStateNames[licenseState]}: {vehicleYear}{' '}
-                {vehicleMake} {vehicleModel} ({vehicleBody})
-              </a>
-              <img
-                src={Home.getVehicleMakeLogoUrl({ vehicleMake })}
-                alt={`${vehicleMake} logo`}
-                style={{
-                  display: 'block',
-                  maxWidth: '250px',
-                }}
-              />
-            </React.Fragment>
-          );
-          this.cachePlateLookup({ plate, licenseState, vehicleInfoComponent });
-          this.setState({ vehicleInfoComponent });
+          // LookupAPlate returns an empty result for plates without vehicle
+          // records (e.g. partial plates typed one character at a time).
+          // Don't cache those; the error path below renders a manual lookup
+          // link instead of "undefined" make/model fields.
+          if (!vehicleYear && !vehicleMake && !vehicleModel && !vehicleBody) {
+            throw new Error(`No vehicle data for ${plate}`);
+          }
+
+          this.cachePlateLookup({
+            plate,
+            licenseState,
+            vehicleInfoResponse: data,
+          });
+          this.setState({
+            vehicleInfoComponent: Home.buildVehicleInfoComponent({
+              plate,
+              licenseState,
+              vehicleInfoResponse: data,
+            }),
+          });
         })
         .catch(err => {
           console.error(err);
@@ -986,9 +1082,9 @@ class Home extends React.Component {
         });
     }
 
-    if (plate && !cachedViolationSummaryComponent) {
+    if (plate && !cachedViolationsResponse) {
       debouncedGetViolations({ plate, licenseState })
-        .then(({ apiUrl, response: { data: responseData } }) => {
+        .then(({ data: responseData }) => {
           // Don't cache stale responses: the debounced lookup resolves every
           // selection made while it was pending with the LAST plate's data,
           // so only the last plate's response belongs in the cache.
@@ -1005,47 +1101,18 @@ class Home extends React.Component {
             return;
           }
 
-          const totalViolations = vehicle.violations.length;
-          const { total_fined: fined, total_outstanding: outstanding } =
-            vehicle.fines;
-
-          const lastTweetPart =
-            vehicle.tweet_parts &&
-            vehicle.tweet_parts[vehicle.tweet_parts.length - 1];
-          const urlMatch =
-            lastTweetPart && lastTweetPart.match(/https?:\/\/\S+/);
-          const detailsUrl = urlMatch
-            ? urlMatch[0].replace(/\.$/, '')
-            : 'https://howsmydrivingny.nyc/';
-
-          const firstViolation = vehicle.violations[0];
-          const make = firstViolation?.vehicle_make ?? '';
-          const color = firstViolation?.vehicle_color ?? '';
-          const body = firstViolation?.sanitized?.vehicle_body_type ?? '';
-
-          const violationSummaryComponent = (
-            <React.Fragment>
-              {totalViolations} violation
-              {totalViolations !== 1 ? 's' : ''} found{' '}
-              {make && `(Maybe: ${color} ${make} ${body})`} — $
-              {fined.toFixed(2)} fined, ${outstanding.toFixed(2)} outstanding
-              {' ('}
-              <a href={detailsUrl} target="_blank" rel="noopener noreferrer">
-                more details
-              </a>
-              {', or '}
-              <a href={apiUrl} target="_blank" rel="noopener noreferrer">
-                full API response
-              </a>
-              )
-            </React.Fragment>
-          );
           this.cachePlateLookup({
             plate,
             licenseState,
-            violationSummaryComponent,
+            violationsResponse: responseData,
           });
-          this.setState({ violationSummaryComponent });
+          this.setState({
+            violationSummaryComponent: Home.buildViolationSummaryComponent({
+              plate,
+              licenseState,
+              violationsResponse: responseData,
+            }),
+          });
         })
         .catch(err => {
           console.error(err);
@@ -1056,14 +1123,14 @@ class Home extends React.Component {
   cachePlateLookup = ({
     plate,
     licenseState,
-    vehicleInfoComponent,
-    violationSummaryComponent,
+    vehicleInfoResponse,
+    violationsResponse,
   }) => {
     const cacheKey = `${plate}:${licenseState}`;
     this.plateLookupCache.set(cacheKey, {
       ...this.plateLookupCache.get(cacheKey),
-      ...(vehicleInfoComponent && { vehicleInfoComponent }),
-      ...(violationSummaryComponent && { violationSummaryComponent }),
+      ...(vehicleInfoResponse && { vehicleInfoResponse }),
+      ...(violationsResponse && { violationsResponse }),
     });
   };
 

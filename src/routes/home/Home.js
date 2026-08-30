@@ -1077,7 +1077,7 @@ class Home extends React.Component {
           // through to the error path, which renders a manual lookup link
           // instead of "undefined" make/model fields.
           if (!Home.vehicleInfoResponseHasData(vehicleInfoResponse)) {
-            throw new Error(`No vehicle data for ${plate}`);
+            throw new Error(`No make/model data for ${plate}`);
           }
 
           this.setState({
@@ -1089,7 +1089,7 @@ class Home extends React.Component {
           });
         })
         .catch(err => {
-          console.error(err);
+          console.warn(err);
 
           if (plate !== this.state.plate) {
             console.info('ignoring stale plate:', plate);

@@ -340,6 +340,10 @@ async function extractPlate({
     });
     const { results } = data;
 
+    if (!results || results.length === 0) {
+      throw new Error('No license plate detected');
+    }
+
     // Choose first result with T######C plate if it exists, see https://github.com/josephfrazier/reported-web/issues/584
     let result = results.filter(r =>
       r.plate?.toUpperCase().match(/^T\d\d\d\d\d\dC$/),

@@ -340,10 +340,6 @@ async function extractPlate({
     });
     const { results } = data;
 
-    // Plate Recognizer returns an empty results array when no plate is
-    // detected. Without this guard, `result` stays undefined and setting
-    // `result.licenseState` below crashes with a TypeError instead of taking
-    // the "Could not extract the license plate" path.
     if (!results || results.length === 0) {
       throw new Error('No license plate detected');
     }

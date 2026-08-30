@@ -158,10 +158,10 @@ const jsDateToCreateDate = jsDate =>
   jsDate.toISOString().replace(/:\d\d\..*/g, '');
 
 async function blobToBuffer({ attachmentFile }) {
-  console.time(`blobUtil.blobToArrayBuffer(attachmentFile)`); // eslint-disable-line no-console
+  console.time(`blobUtil.blobToArrayBuffer(${attachmentFile.name})`); // eslint-disable-line no-console
   const attachmentArrayBuffer =
     await blobUtil.blobToArrayBuffer(attachmentFile);
-  console.timeEnd(`blobUtil.blobToArrayBuffer(attachmentFile)`); // eslint-disable-line no-console
+  console.timeEnd(`blobUtil.blobToArrayBuffer(${attachmentFile.name})`); // eslint-disable-line no-console
 
   console.time(`Buffer.from(attachmentArrayBuffer)`); // eslint-disable-line no-console
   const attachmentBuffer = Buffer.from(attachmentArrayBuffer);
@@ -324,7 +324,7 @@ async function extractPlate({
   password,
 }) {
   try {
-    console.time('extractPlate'); // eslint-disable-line no-console
+    console.time(`extractPlate(${attachmentFile.name})`); // eslint-disable-line no-console
 
     if (isAlprEnabled === false) {
       console.info('ALPR is disabled, skipping');
@@ -366,7 +366,7 @@ async function extractPlate({
 
     throw 'license plate'; // eslint-disable-line no-throw-literal
   } finally {
-    console.timeEnd('extractPlate'); // eslint-disable-line no-console
+    console.timeEnd(`extractPlate(${attachmentFile.name})`); // eslint-disable-line no-console
   }
 }
 

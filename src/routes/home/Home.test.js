@@ -374,6 +374,65 @@ describe('Home', () => {
     global.URL.createObjectURL = originalCreateObjectURL;
   });
 
+  test('renders plate overlays on uploaded videos and selects plate on click', () => {
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+    };
+
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ initialState, homeRef });
+    });
+    renderer.act(() => {
+      homeRef.current.setState({
+        attachmentData: [
+          new File(['video'], 'video.mp4', { type: 'video/mp4' }),
+        ],
+        plateDataByAttachmentName: {
+          'video.mp4': {
+            results: [
+              {
+                plate: 'abc123',
+                region: { code: 'us-ny' },
+                box: { xmin: 100, ymin: 200, xmax: 300, ymax: 250 },
+              },
+            ],
+            // uploadWidth/uploadHeight are the screenshot frame's pixel
+            // dimensions (the video's intrinsic size), so box coordinates
+            // turn into percentages the same way they do for images.
+            uploadWidth: 1000,
+            uploadHeight: 500,
+          },
+        },
+      });
+    });
+
+    const overlay = tree.root.findByProps({
+      'aria-label': 'Select license plate ABC123',
+    });
+    expect(overlay.props.className).toBe('plate-overlay');
+    expect(overlay.props.style).toEqual({
+      left: '10%',
+      top: '40%',
+      width: '20%',
+      height: '10%',
+    });
+
+    renderer.act(() => {
+      overlay.props.onClick();
+    });
+    expect(homeRef.current.state.plate).toBe('ABC123');
+    expect(homeRef.current.state.licenseState).toBe('NY');
+
+    tree.unmount();
+    global.URL.createObjectURL = originalCreateObjectURL;
+  });
+
   test('scrolls the License/Medallion label into view when a plate overlay is clicked', () => {
     const initialState = {
       email: 'test@example.com',

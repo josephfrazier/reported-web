@@ -2242,13 +2242,30 @@ class Home extends React.Component {
                                     />
                                   ) : (
                                     /* eslint-disable-next-line jsx-a11y/media-has-caption */
-                                    <video src={src} alt={name} />
+                                    <video
+                                      src={src}
+                                      alt={name}
+                                      // The position:relative wrapper shrink-
+                                      // wraps its content, and plate overlays
+                                      // are percentage-positioned against that
+                                      // wrapper, so the video must fill it
+                                      // exactly like the img above does:
+                                      // display:block closes the inline
+                                      // baseline gap, and max-width:100%
+                                      // (which marx-css gives img but not
+                                      // video) keeps the video from
+                                      // overflowing the wrapper when it is
+                                      // wider than the container.
+                                      style={{
+                                        display: 'block',
+                                        maxWidth: '100%',
+                                      }}
+                                    />
                                   )}
                                 </a>
-                                {isImg &&
-                                  this.renderPlateOverlays({
-                                    attachmentPlateData,
-                                  })}
+                                {this.renderPlateOverlays({
+                                  attachmentPlateData,
+                                })}
                               </div>
 
                               <button

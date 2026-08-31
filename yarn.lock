@@ -11179,9 +11179,10 @@ vary@^1, vary@~1.1.2:
   resolved "https://registry.yarnpkg.com/vary/-/vary-1.1.2.tgz#2299f02c6ded30d4a5961b0b9f74524a18f634fc"
   integrity sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==
 
-video-extensions@^1.1.0:
-  version "1.1.0"
-  resolved "https://registry.yarnpkg.com/video-extensions/-/video-extensions-1.1.0.tgz#eaa86b45f29a853c2b873e9d8e23b513712997d6"
+video-extensions@^2.0.0:
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/video-extensions/-/video-extensions-2.0.0.tgz#e5ee7a0ae262bd01913e6424bf008f13a1aac93e"
+  integrity sha512-qSXHIVmAVVKYk16x4keCwSqFuvF3D0K9KFuywWxd6ulpDfBHZ5QkGccMbT789IwSX9ykC88dL5kYGK3DZ59/ng==
 
 w3c-xmlserializer@^5.0.0:
   version "5.0.0"

@@ -9,8 +9,10 @@
 
 import path from 'path';
 import assert from 'assert';
+import crypto from 'crypto';
 import { execSync } from 'child_process';
 import express from 'express';
+import { rateLimit } from 'express-rate-limit';
 import forceSsl from 'force-ssl-heroku';
 import compression from 'compression';
 import React from 'react';
@@ -38,6 +40,7 @@ import router from './router.js';
 import chunks from './chunk-manifest.json'; // eslint-disable-line import/no-unresolved
 import config from './config.js';
 import readLicenseViaALPR from './alpr.js';
+import { readAttachment, writeAttachment } from './attachmentStore.js';
 
 require('dotenv').config();
 
@@ -329,10 +332,36 @@ app.use('/requestPasswordReset', (req, res) => {
     .catch(handlePromiseRejection(res));
 });
 
+app.use(
+  '/api/uploadAttachment',
+  rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    limit: 30, // max 30 uploads per window per IP (5 submissions × 6 files each)
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+  }),
+  upload.single('attachmentData'),
+  async (req, res) => {
+    const { email, password } = req.body;
+
+    try {
+      await logIn({ email, password });
+    } catch (error) {
+      handlePromiseRejection(res)(error);
+      return;
+    }
+
+    const { buffer } = req.file;
+    const id = crypto.createHash('sha256').update(buffer).digest('hex');
+    await writeAttachment(id, buffer);
+    res.json({ id });
+  },
+);
+
 app.use('/submit', (req, res) => {
   // Call upload.array directly to intercept errors and respond with JSON, see the following:
   // https://github.com/expressjs/multer/tree/80ee2f52432cc0c81c93b03c6b0b448af1f626e5#error-handling
-  upload.array('attachmentData[]')(req, res, error => {
+  upload.array('attachmentData[]')(req, res, async error => {
     if (error) {
       // Make error.message enumerable so it gets sent to the client
       const { message } = error;
@@ -365,7 +394,34 @@ app.use('/submit', (req, res) => {
     const latitude = Number(latitudeString);
     const longitude = Number(longitudeString);
 
-    const attachmentData = req.files;
+    const { attachmentIds: attachmentIdsJson } = req.body;
+    let attachmentData;
+    try {
+      if (attachmentIdsJson) {
+        const parsedIds = JSON.parse(attachmentIdsJson);
+        if (
+          !Array.isArray(parsedIds) ||
+          !parsedIds.every(id => typeof id === 'string')
+        ) {
+          throw { message: 'Invalid attachmentIds format' }; // eslint-disable-line no-throw-literal
+        }
+        attachmentData = await Promise.all(
+          parsedIds.map(async id => {
+            const buffer = await readAttachment(id);
+            if (!buffer) {
+              const message = `Attachment not found; please re-add your files and try again`;
+              throw { message }; // eslint-disable-line no-throw-literal
+            }
+            return { buffer };
+          }),
+        );
+      } else {
+        attachmentData = req.files;
+      }
+    } catch (attachmentError) {
+      handlePromiseRejection(res)(attachmentError);
+      return;
+    }
 
     const timeofreport = new Date(CreateDate);
     const timeofreported = timeofreport;

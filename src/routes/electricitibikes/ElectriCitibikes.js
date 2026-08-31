@@ -37,13 +37,28 @@ class ElectriCitibikes extends React.Component {
   componentDidMount() {
     this.updateData();
 
-    fetch('/borough-boundaries-clipped-to-shoreline.geo.json')
-      .then(response => response.json())
-      .then(boroughBoundariesFeatureCollection => {
+    // Fetch the same combined boundaries as src/boroughBoundaries.js:
+    // water-areas-included plus the shoreline slivers it leaves uncovered.
+    Promise.all([
+      fetch('/borough-boundaries-water-areas-included.geo.json').then(
+        response => response.json(),
+      ),
+      fetch('/borough-boundaries-shoreline-slivers.geo.json').then(response =>
+        response.json(),
+      ),
+    ]).then(
+      ([waterAreasFeatureCollection, shorelineSliversFeatureCollection]) => {
         this.setState({
-          boroughBoundariesFeatureCollection,
+          boroughBoundariesFeatureCollection: {
+            type: 'FeatureCollection',
+            features: [
+              ...waterAreasFeatureCollection.features,
+              ...shorelineSliversFeatureCollection.features,
+            ],
+          },
         });
-      });
+      },
+    );
   }
 
   updateData = async () => {

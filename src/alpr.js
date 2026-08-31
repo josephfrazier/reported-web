@@ -37,22 +37,53 @@ const downscaleForPlateRecognizer = async ({ buffer, targetWidth }) => {
     return buffer;
   }
 
+  // Video screenshots arrive as PNG, and a lossless PNG of a photo-like
+  // frame is large enough to trip Plate Recognizer's upload limit even
+  // after resizing (a 2048-wide one measured 13.8MB). Convert oversized
+  // non-JPEG uploads to JPEG: the bytes are POSTed as image/jpeg either
+  // way, and JPEG shrinks them below the limit. JPEGs are left alone here
+  // -- re-encoding them would add a generation of loss the 2048 pass is
+  // going to resize anyway.
+  const toJpeg = () =>
+    sharp(buffer)
+      .jpeg()
+      .toBuffer()
+      .catch(error => {
+        console.error('could not convert to JPEG, using unconverted image', {
+          error,
+        });
+        return buffer;
+      })
+      // sharp v0.35+ always returns a Buffer from toBuffer(), but guard
+      // against the old Uint8Array bug without an unnecessary copy.
+      .then(jpegBuffer =>
+        Buffer.isBuffer(jpegBuffer) ? jpegBuffer : Buffer.from(jpegBuffer),
+      );
+
   // sharp's resize() enlarges by default, so a photo narrower than targetWidth
   // gets blown up here only for the next, smaller pass to shrink it again --
   // two resamples, a bigger intermediate buffer, and a generation of JPEG loss
   // to end up at the same size. Leave it for that pass to handle instead.
-  const { width } = await sharp(buffer)
+  const { width, format } = await sharp(buffer)
     .metadata()
     // A buffer sharp cannot read falls through to the resize below, which
     // already handles that by returning the image unscaled.
     .catch(() => ({}));
 
-  if (width && width <= targetWidth) {
+  if (width && width <= targetWidth && format === 'jpeg') {
     // eslint-disable-next-line no-console
     console.log(
       `image is only ${width}px wide, skipping scale down to width of ${targetWidth}`,
     );
     return buffer;
+  }
+
+  if (width && width <= targetWidth) {
+    // eslint-disable-next-line no-console
+    console.log(
+      `image is only ${width}px wide, skipping scale down to width of ${targetWidth}, converting to JPEG instead`,
+    );
+    return toJpeg();
   }
 
   // eslint-disable-next-line no-console
@@ -63,6 +94,7 @@ const downscaleForPlateRecognizer = async ({ buffer, targetWidth }) => {
   return (
     sharp(buffer)
       .resize({ width: targetWidth })
+      .jpeg()
       .toBuffer()
       .catch(error => {
         console.error('could not scale down, using unscaled image', { error });

@@ -204,7 +204,11 @@ async function getVideoScreenshot({ attachmentFile }) {
   video.currentTime = 0; // TODO let user choose time?
   await pEvent(video, 'seeked');
 
-  const buf = captureFrame(video).image;
+  // JPEG, not the default PNG: a lossless PNG frame of a high-res video is
+  // tens of megabytes, which trips Plate Recognizer's upload limit even
+  // after the server scales it down (see src/alpr.js). JPEG is a fraction
+  // of that size and what the API expects anyway.
+  const buf = captureFrame(video, 'jpeg').image;
 
   // unload video element, to prevent memory leaks
   video.pause();

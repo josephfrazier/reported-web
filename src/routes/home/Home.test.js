@@ -1132,4 +1132,193 @@ describe('Home', () => {
 
     cleanup();
   });
+
+  describe('background attachment uploads', () => {
+    // Renders the form as a logged-in user, disables the network-backed
+    // extraction pipelines, and adds the given files through the same code
+    // path as the file <input>. Returns spies for asserting on the
+    // background upload and submit requests.
+    async function renderWithFiles({ files, uploadError }) {
+      const initialState = {
+        email: 'test@example.com',
+        password: 'test-password',
+        loginSuccessful: true,
+      };
+
+      const originalCreateObjectURL = global.URL.createObjectURL;
+      global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+      // The submit success path scrolls to the top of the page; the rendered
+      // tree isn't attached to the jsdom document, so provide a stand-in.
+      const originalQuerySelector = document.querySelector;
+      document.querySelector = jest.fn(() => ({ scrollTo: jest.fn() }));
+
+      const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+      const axiosPost = jest
+        .spyOn(axios, 'post')
+        .mockImplementation((url, body) => {
+          if (url === '/api/uploadAttachment') {
+            if (uploadError) {
+              const uploadPromise = Promise.reject(uploadError);
+              // Mark the rejection as handled so the test runner doesn't
+              // flag it: the component only catches it at submit time.
+              uploadPromise.catch(() => {});
+              return uploadPromise;
+            }
+            return Promise.resolve({
+              data: { id: `uploaded-${body.get('attachmentData').name}` },
+            });
+          }
+          return Promise.resolve({
+            data: {
+              submission: {
+                objectId: 'objectId123',
+                timeofreport: '2020-01-01T00:00:00.000Z',
+                timeofreported: '2020-01-01T00:00:00.000Z',
+              },
+            },
+          });
+        });
+      const toastSuccess = jest
+        .spyOn(toast, 'success')
+        .mockImplementation(() => null);
+      const toastWarn = jest
+        .spyOn(toast, 'warn')
+        .mockImplementation(() => null);
+      const consoleError = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
+
+      let tree;
+      const homeRef = React.createRef();
+      renderer.act(() => {
+        tree = renderHome({ initialState, homeRef });
+      });
+      renderer.act(() => {
+        homeRef.current.setState({
+          isAlprEnabled: false,
+          isReverseGeocodingEnabled: false,
+          // A location other than the defaultLatitude/defaultLongitude
+          // constants, so the submit handler passes its guard
+          latitude: 40.7129,
+          longitude: -74.0061,
+        });
+      });
+
+      // Add the files through the same path the file <input> uses, so the
+      // background uploads start exactly as they do in the browser.
+      await renderer.act(async () => {
+        await homeRef.current.handleAttachmentData({ attachmentData: files });
+        // Let the extraction pipeline settle so it doesn't touch state after
+        // the tree is unmounted.
+        await new Promise(resolve => setImmediate(resolve));
+        await new Promise(resolve => setImmediate(resolve));
+      });
+
+      return {
+        homeRef,
+        axiosPost,
+        submit: () => {
+          const form = tree.root
+            .findAllByType('form')
+            .find(formEl => typeof formEl.props.onSubmit === 'function');
+          return renderer.act(async () => {
+            await form.props.onSubmit({ preventDefault() {} });
+          });
+        },
+        cleanup: () => {
+          tree.unmount();
+          axiosGet.mockRestore();
+          axiosPost.mockRestore();
+          toastSuccess.mockRestore();
+          toastWarn.mockRestore();
+          consoleError.mockRestore();
+          document.querySelector = originalQuerySelector;
+          global.URL.createObjectURL = originalCreateObjectURL;
+        },
+      };
+    }
+
+    test('uploads files to /api/uploadAttachment in the background when files are added', async () => {
+      const photo = new File(['photo'], 'photo.jpg', { type: 'image/jpeg' });
+      const video = new File(['video'], 'video.mp4', { type: 'video/mp4' });
+      const { axiosPost, cleanup } = await renderWithFiles({
+        files: [photo, video],
+      });
+
+      const uploadCalls = axiosPost.mock.calls.filter(
+        ([url]) => url === '/api/uploadAttachment',
+      );
+      expect(uploadCalls).toHaveLength(2);
+      uploadCalls.forEach(([, body], index) => {
+        expect(body.get('email')).toBe('test@example.com');
+        expect(body.get('password')).toBe('test-password');
+        expect(body.get('attachmentData')).toBe(index === 0 ? photo : video);
+      });
+
+      // Nothing has been submitted yet: the uploads happen before the user
+      // clicks Submit.
+      expect(
+        axiosPost.mock.calls.filter(([url]) => url === '/submit'),
+      ).toHaveLength(0);
+
+      cleanup();
+    });
+
+    test('submits the pre-uploaded attachment IDs instead of re-sending the files', async () => {
+      const photo = new File(['photo'], 'photo.jpg', { type: 'image/jpeg' });
+      const { homeRef, axiosPost, submit, cleanup } = await renderWithFiles({
+        files: [photo],
+      });
+      await submit();
+
+      const submitCall = axiosPost.mock.calls.find(
+        ([url]) => url === '/submit',
+      );
+      expect(submitCall).toBeDefined();
+      const [, submitBody] = submitCall;
+      expect(JSON.parse(submitBody.get('attachmentIds'))).toEqual([
+        'uploaded-photo.jpg',
+      ]);
+      expect(submitBody.get('attachmentData')).toBeNull();
+
+      // The upload must have started before the submit request went out,
+      // i.e. in the background rather than as part of submitting.
+      const uploadCallIndex = axiosPost.mock.calls.findIndex(
+        ([url]) => url === '/api/uploadAttachment',
+      );
+      const submitCallIndex = axiosPost.mock.calls.findIndex(
+        ([url]) => url === '/submit',
+      );
+      expect(uploadCallIndex).toBeLessThan(submitCallIndex);
+
+      // The success path cleared the submitted files.
+      expect(homeRef.current.state.attachmentData).toEqual([]);
+
+      cleanup();
+    });
+
+    test('falls back to submitting the files themselves when a background upload failed', async () => {
+      const photo = new File(['photo'], 'photo.jpg', { type: 'image/jpeg' });
+      const { homeRef, axiosPost, submit, cleanup } = await renderWithFiles({
+        files: [photo],
+        uploadError: new Error('upload failed'),
+      });
+      await submit();
+
+      const submitCall = axiosPost.mock.calls.find(
+        ([url]) => url === '/submit',
+      );
+      expect(submitCall).toBeDefined();
+      const [, submitBody] = submitCall;
+      expect(submitBody.get('attachmentIds')).toBeNull();
+      // object-to-formdata serializes array items under `<name>[]`, which is
+      // the field name the server's multer `upload.array` expects.
+      expect(submitBody.get('attachmentData[]')).toBe(photo);
+
+      expect(homeRef.current.state.attachmentData).toEqual([]);
+
+      cleanup();
+    });
+  });
 });

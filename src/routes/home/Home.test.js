@@ -15,7 +15,7 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 import App from '../../components/App.js';
 import Home from './Home.js';
-import boroughBoundariesFeatureCollection from '../../../public/borough-boundaries-clipped-to-shoreline.geo.json';
+import boroughBoundariesFeatureCollection from '../../boroughBoundaries.js';
 
 jest.mock(
   'react-modal',

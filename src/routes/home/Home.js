@@ -52,7 +52,7 @@ import PreviousSubmissionsList from '../../components/PreviousSubmissionsList.js
 import formatGeosearchAddress from '../../formatGeosearchAddress.js';
 import { isImage, isVideo } from '../../isImage.js';
 import getNycTimezoneOffset from '../../timezone.js';
-import { getBoroNameMemoized } from '../../getBoroName.js';
+import { isPointInNycMemoized } from '../../isPointInNyc.js';
 import vehicleTypeUrl from '../../vehicleTypeUrl.js';
 import {
   clearCachedSubmissions,
@@ -886,8 +886,7 @@ class Home extends React.Component {
     );
     console.timeEnd('new PolygonLookup'); // eslint-disable-line no-console
     const end = { latitude, longitude };
-    const BoroName = getBoroNameMemoized({ lookup, end });
-    if (BoroName === '(unknown borough)') {
+    if (!isPointInNycMemoized({ lookup, end })) {
       const errorMessage = `latitude/longitude (${latitude}, ${longitude}) is outside NYC. Please select a location within NYC.`;
       this.setState({
         formatted_address: errorMessage,

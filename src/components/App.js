@@ -15,6 +15,7 @@ const ContextType = {
   fetch: PropTypes.func.isRequired,
   pathname: PropTypes.string.isRequired,
   query: PropTypes.object,
+  commitHash: PropTypes.string,
 };
 
 /**
@@ -48,8 +49,10 @@ class App extends React.PureComponent {
   static childContextTypes = ContextType;
 
   getChildContext() {
-    // Only return non-insertCss context for legacy components
-    const { insertCss, ...legacyContext } = this.props.context;
+    // Only return non-insertCss, non-cookies context for legacy components.
+    // insertCss is handled via StyleContext; cookies are server-only and
+    // don't belong in the React child context.
+    const { insertCss, cookies, ...legacyContext } = this.props.context;
     return legacyContext;
   }
 

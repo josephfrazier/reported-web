@@ -14,11 +14,18 @@ import deepForceUpdate from 'react-deep-force-update';
 import queryString from 'query-string';
 import { createPath } from 'history';
 import StyleContext from 'isomorphic-style-loader/StyleContext';
+import cookie from 'cookie';
 import App from './components/App.js';
 import createFetch from './createFetch.js';
 import history from './history.js';
 import { updateMeta } from './DOMUtils.js';
 import router from './router.js';
+
+// Parse cookies from document.cookie into a plain object. This must be in
+// the client context so that route actions receive the same cookie data
+// during client-side hydration as they did during SSR — otherwise React
+// hydration will replace the logged-in SSR UI with a logged-out one.
+const cookies = cookie.parse(document.cookie);
 
 // Global (context) variables that can be easily accessed from any React component
 // https://facebook.github.io/react/docs/context.html
@@ -27,6 +34,8 @@ const context = {
   fetch: createFetch(fetch, {
     baseUrl: window.App.apiUrl,
   }),
+  commitHash: window.App.commitHash,
+  cookies,
 };
 
 // insertCss function for client-side rendering

@@ -1,45 +1,72 @@
-import axios from 'axios';
+import { createSession } from 'wreq-js';
+
+// Lazily-created persistent session reused across calls.
+// Firefox TLS impersonation is needed to bypass Cloudflare anti-bot
+// detection on api.lookupaplate.com. The session is shared so that
+// subsequent requests reuse the same TLS session cache and cookies,
+// which reduces the chance of being challenged.
+let sessionPromise = null;
+
+function getSession() {
+  if (!sessionPromise) {
+    sessionPromise = createSession({ browser: 'firefox_151', os: 'macos' });
+  }
+  return sessionPromise;
+}
 
 // ported from https://github.com/jeffrono/Reported/blob/19b588171315a3093d53986f9fb995059f5084b4/v2/enrich_functions.rb#L325-L346
+//
+// Switched from the deprecated REST endpoint (/api/v1/wait_for_vehicle_details/)
+// to the current GraphQL API at /graphql.
 export default async function getVehicleType({ licensePlate, licenseState }) {
-  const url = `https://api.lookupaplate.com/api/v1/wait_for_vehicle_details/${licenseState}/${licensePlate}/`;
+  const url = 'https://api.lookupaplate.com/graphql';
 
-  console.time(url); // eslint-disable-line no-console
+  console.time(`getVehicleType ${licenseState}/${licensePlate}`); // eslint-disable-line no-console
+
+  const session = await getSession();
 
   try {
-    const { data } = await axios.get(url, {
+    const res = await session.fetch(url, {
+      method: 'POST',
       headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:132.0) Gecko/20100101 Firefox/132.0',
-        Accept:
-          'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
-        'Accept-Encoding': 'gzip, deflate',
-        DNT: '1',
-        'Sec-GPC': '1',
-        Connection: 'keep-alive',
-        'Upgrade-Insecure-Requests': '1',
-        'Sec-Fetch-Dest': 'document',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'none',
-        'Sec-Fetch-User': '?1',
-        Priority: 'u=0, i',
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        Referer: 'https://lookupaplate.com/',
       },
+      body: JSON.stringify({
+        query: `{
+          licensePlate(licensePlate: "${licensePlate}", stateCode: "${licenseState}") {
+            vehicle {
+              make
+              model
+              year
+            }
+            vehicleJson
+          }
+        }`,
+      }),
     });
 
-    const vehicleJson = data.vehicle_json || {};
+    if (!res.ok) {
+      throw new Error(`LookupAPlate returned ${res.status} ${res.statusText}`);
+    }
+
+    const { data } = await res.json();
+    const lp = data?.licensePlate;
+    const vehicle = lp?.vehicle || {};
+    const vehicleJson = lp?.vehicleJson || {};
 
     return {
       result: {
-        vehicleYear: vehicleJson['29'] || undefined,
-        vehicleMake: vehicleJson['26'] || undefined,
-        vehicleModel: vehicleJson['28'] || undefined,
+        vehicleYear: vehicle.year || vehicleJson['29'] || undefined,
+        vehicleMake: vehicle.make || vehicleJson['26'] || undefined,
+        vehicleModel: vehicle.model || vehicleJson['28'] || undefined,
         vehicleBody: vehicleJson['5'] || undefined,
         licensePlate,
         licenseState,
       },
     };
   } finally {
-    console.timeEnd(url); // eslint-disable-line no-console
+    console.timeEnd(`getVehicleType ${licenseState}/${licensePlate}`); // eslint-disable-line no-console
   }
 }

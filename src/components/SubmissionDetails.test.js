@@ -1,6 +1,3 @@
-/* eslint-env jest */
-/* eslint-disable padded-blocks, no-unused-expressions */
-
 import '@babel/polyfill';
 import React from 'react';
 import renderer from 'react-test-renderer';
@@ -15,6 +12,7 @@ describe('SubmissionDetails', () => {
     const submission = {
       reqnumber: 'reqnumber',
       medallionNo: 'medallionNo',
+      state: 'licenseState',
       typeofcomplaint: 'typeofcomplaint',
       loc1_address: '82 Reade St, New York, NY 10007, USA',
       timeofreport: new Date(Date.now()).toISOString(),
@@ -50,6 +48,7 @@ describe('SubmissionDetails', () => {
     const submission = {
       reqnumber: 'reqnumber',
       license: 'license',
+      state: 'licenseState',
       typeofcomplaint: 'typeofcomplaint',
       loc1_address: '82 Reade St, New York, NY 10007, USA',
       timeofreport: new Date(Date.now()).toISOString(),
@@ -83,8 +82,9 @@ describe('SubmissionDetails', () => {
 
   test('renders delete button correctly', () => {
     const submission = {
-      reqnumber: 'reqnumber',
+      reqnumber: 'N/A until submitted to 311',
       medallionNo: 'medallionNo',
+      state: 'licenseState',
       typeofcomplaint: 'typeofcomplaint',
       loc1_address: '82 Reade St, New York, NY 10007, USA',
       timeofreport: new Date(Date.now()).toISOString(),
@@ -119,6 +119,7 @@ describe('SubmissionDetails', () => {
   test('renders TLC and NYPD SR numbers when submission has matching tasks', () => {
     const submission = {
       medallionNo: 'medallionNo',
+      state: 'licenseState',
       typeofcomplaint: 'typeofcomplaint',
       loc1_address: '82 Reade St, New York, NY 10007, USA',
       timeofreport: new Date(Date.now()).toISOString(),

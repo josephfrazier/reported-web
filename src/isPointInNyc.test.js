@@ -5,14 +5,14 @@
 import PolygonLookup from 'polygon-lookup';
 
 import boroughBoundariesFeatureCollection from './boroughBoundaries.js';
-import { getBoroName } from './getBoroName.js';
+import { isPointInNyc } from './isPointInNyc.js';
 
 const lookup = new PolygonLookup(boroughBoundariesFeatureCollection);
 
 // Regression test: coordinates over water (on bridges, etc.) used to be
 // reported as outside NYC because the borough boundaries were clipped to the
 // shoreline and didn't include bodies of water.
-describe('getBoroName', () => {
+describe('isPointInNyc', () => {
   test.each([
     // Reported by a user on a bridge over Jamaica Bay.
     ['a bridge over Jamaica Bay', 40.64091111111111, -73.834175],
@@ -24,23 +24,16 @@ describe('getBoroName', () => {
     ['the Henry Hudson Bridge', 40.875, -73.921],
     ['the Hudson River off Manhattan', 40.765, -74.001],
     ['Upper New York Bay off Staten Island', 40.642, -74.062],
-  ])(
-    'returns a borough for %s (was: outside NYC)',
-    (label, latitude, longitude) => {
-      expect(getBoroName({ lookup, end: { latitude, longitude } })).not.toBe(
-        '(unknown borough)',
-      );
-    },
-  );
+  ])('returns true for %s (was: outside NYC)', (label, latitude, longitude) => {
+    expect(isPointInNyc({ lookup, end: { latitude, longitude } })).toBe(true);
+  });
 
   test.each([
     ['Times Square', 40.758, -73.9855],
     ['Coney Island', 40.575, -73.971],
     ['Flushing Meadows', 40.74, -73.841],
-  ])('still returns a borough for %s', (label, latitude, longitude) => {
-    expect(getBoroName({ lookup, end: { latitude, longitude } })).not.toBe(
-      '(unknown borough)',
-    );
+  ])('still returns true for %s', (label, latitude, longitude) => {
+    expect(isPointInNyc({ lookup, end: { latitude, longitude } })).toBe(true);
   });
 
   test.each([
@@ -50,9 +43,7 @@ describe('getBoroName', () => {
     ['Great Neck, Long Island', 40.801, -73.727],
     ['Mount Vernon', 40.9126, -73.8372],
     ['the ocean, far from shore', 40.5, -73.5],
-  ])('still reports %s as outside NYC', (label, latitude, longitude) => {
-    expect(getBoroName({ lookup, end: { latitude, longitude } })).toBe(
-      '(unknown borough)',
-    );
+  ])('still returns false for %s', (label, latitude, longitude) => {
+    expect(isPointInNyc({ lookup, end: { latitude, longitude } })).toBe(false);
   });
 });

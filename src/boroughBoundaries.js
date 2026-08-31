@@ -17,8 +17,8 @@
 // included)": https://data.cityofnewyork.us/d/wh2p-dxnf
 // The shoreline-clipped layer the slivers were subtracted from was vendored
 // from the DCP nybb ArcGIS service (see commit b4e00d42).
-import boroughBoundariesWaterAreasFeatureCollection from '../public/borough-boundaries-water-areas-included.geo.json';
-import boroughBoundariesShorelineSliversFeatureCollection from '../public/borough-boundaries-shoreline-slivers.geo.json';
+import boroughBoundariesWaterAreasFeatureCollection from './borough-boundaries-water-areas-included.geo.json';
+import boroughBoundariesShorelineSliversFeatureCollection from './borough-boundaries-shoreline-slivers.geo.json';
 
 export default {
   type: 'FeatureCollection',

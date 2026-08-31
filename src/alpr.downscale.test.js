@@ -69,4 +69,59 @@ describe('downscaleForPlateRecognizer', () => {
     expect(data.uploadWidth).toBe(2048);
     expect(data.uploadHeight).toBe(2731);
   }, 15000);
+
+  test('converts an oversized PNG video frame to JPEG so Plate Recognizer accepts it', async () => {
+    // Video screenshots arrive as PNG (capture-frame's default), and a
+    // lossless PNG of a 3024x4032 frame is ~29MB -- large enough to still
+    // exceed the upload limit after resizing, since the format was inferred
+    // from the input. Forcing JPEG fixes the 413 this caused.
+    const attachmentBuffer = await sharp(readFileSync(photoPath))
+      .png()
+      .toBuffer();
+    expect(attachmentBuffer.length).toBeGreaterThan(2411654);
+
+    const { uploaded, data } = await captureUpload({ attachmentBuffer });
+
+    const metadata = await sharp(uploaded).metadata();
+    expect(metadata.format).toBe('jpeg');
+    expect({ width: metadata.width, height: metadata.height }).toEqual({
+      width: 2048,
+      height: 2731,
+    });
+    expect(uploaded.length).toBeLessThan(2411654);
+
+    expect(data.uploadWidth).toBe(2048);
+    expect(data.uploadHeight).toBe(2731);
+  }, 15000);
+
+  test('converts an oversized PNG frame narrower than 2048 without resizing it', async () => {
+    // A 1080p/1920-wide video frame: both downscale passes skip because the
+    // width is already under their targets, but the PNG is still ~12MB. The
+    // JPEG conversion alone must bring it under the upload limit.
+    const attachmentBuffer = await sharp(readFileSync(photoPath))
+      .resize({ width: 1920 })
+      .png()
+      .toBuffer();
+    expect(attachmentBuffer.length).toBeGreaterThan(2411654);
+
+    const { uploaded, logs, data } = await captureUpload({ attachmentBuffer });
+
+    expect(logs).toContainEqual(
+      expect.stringContaining('skipping scale down to width of 4096'),
+    );
+    expect(logs).not.toContainEqual(
+      expect.stringContaining('attempting to scale down'),
+    );
+
+    const metadata = await sharp(uploaded).metadata();
+    expect(metadata.format).toBe('jpeg');
+    expect({ width: metadata.width, height: metadata.height }).toEqual({
+      width: 1920,
+      height: 2560,
+    });
+    expect(uploaded.length).toBeLessThan(2411654);
+
+    expect(data.uploadWidth).toBe(1920);
+    expect(data.uploadHeight).toBe(2560);
+  }, 15000);
 });

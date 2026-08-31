@@ -22,7 +22,6 @@ import runServer from './runServer.js';
 // ];
 const routes = [
   '/',
-  '/electricitibikes',
   '/login',
   '/register',
   '/about',

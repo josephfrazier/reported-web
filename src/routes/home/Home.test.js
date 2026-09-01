@@ -265,6 +265,54 @@ describe('Home', () => {
     tree.unmount();
   });
 
+  test('focuses the map search input once it is in the document', () => {
+    jest.useFakeTimers();
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    try {
+      Home.handleSearchInputMounted(input);
+
+      jest.advanceTimersByTime(20);
+
+      expect(document.activeElement).toBe(input);
+    } finally {
+      jest.clearAllTimers();
+      jest.useRealTimers();
+      document.body.removeChild(input);
+    }
+  });
+
+  test('keeps retrying until the map attaches the search input', () => {
+    jest.useFakeTimers();
+    const input = document.createElement('input');
+    try {
+      Home.handleSearchInputMounted(input);
+
+      jest.advanceTimersByTime(20); // first attempt, input not attached yet
+      expect(document.activeElement).not.toBe(input);
+
+      document.body.appendChild(input);
+      jest.advanceTimersByTime(100); // next retry, input now attached
+
+      expect(document.activeElement).toBe(input);
+    } finally {
+      jest.clearAllTimers();
+      jest.useRealTimers();
+      document.body.removeChild(input);
+    }
+  });
+
+  test('ignores the null ref the search input passes when unmounting', () => {
+    jest.useFakeTimers();
+    try {
+      Home.handleSearchInputMounted(null);
+
+      expect(jest.getTimerCount()).toBe(0);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   test('renders with undefined allPlateResults and photos', () => {
     const initialState = {
       email: 'test@example.com',

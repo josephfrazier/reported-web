@@ -1249,6 +1249,12 @@ class Home extends React.Component {
               );
               return data.id;
             })();
+            // The submit handler awaits this promise (catching failures so
+            // it can fall back to sending the files directly), so it can sit
+            // unhandled until then. Attach a no-op catch so the test runner
+            // and the browser console don't flag the rejection in the
+            // meantime.
+            uploadPromise.catch(() => {});
             fileUploadPromises.set(attachmentFile, uploadPromise);
           }
         });

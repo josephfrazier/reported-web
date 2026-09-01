@@ -7,9 +7,10 @@
  * LICENSE.txt file in the root directory of this source tree.
  */
 
-import '@babel/polyfill';
 import React from 'react';
 import renderer from 'react-test-renderer';
+// jsdom doesn't provide the setImmediate global, so use Node's directly.
+import { setImmediate } from 'timers';
 import StyleContext from 'isomorphic-style-loader/StyleContext';
 import axios from 'axios';
 import { toast } from 'react-toastify';

@@ -13,15 +13,15 @@ import renderer from 'react-test-renderer';
 import StyleContext from 'isomorphic-style-loader/StyleContext';
 import axios from 'axios';
 import { toast } from 'react-toastify';
+import Modal from 'react-modal';
 import App from '../../components/App.js';
 import Home from './Home.js';
 import boroughBoundariesFeatureCollection from '../../boroughBoundaries.js';
 
-jest.mock(
-  'react-modal',
-  () =>
-    ({ children, isOpen }) =>
-      isOpen ? children : null,
+jest.mock('react-modal', () =>
+  Object.assign(({ children, isOpen }) => (isOpen ? children : null), {
+    setAppElement: jest.fn(),
+  }),
 );
 
 require('timezone-mock').register('US/Eastern');
@@ -249,6 +249,18 @@ describe('Home', () => {
     });
 
     expect(tree.toJSON()).toMatchSnapshot();
+
+    tree.unmount();
+  });
+
+  test('tells react-modal which element holds the page content', () => {
+    Modal.setAppElement.mockClear();
+    let tree;
+    renderer.act(() => {
+      tree = renderHome();
+    });
+
+    expect(Modal.setAppElement).toHaveBeenCalledTimes(1);
 
     tree.unmount();
   });

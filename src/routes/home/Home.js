@@ -934,6 +934,24 @@ class Home extends React.Component {
     });
   };
 
+  handleSearchBoxMounted = ref => {
+    this.searchBox = ref;
+    // Ref callbacks fire with null when the SearchBox unmounts; only a
+    // real mount receives the component instance to focus from.
+    if (!ref) {
+      return;
+    }
+    // The SearchBox portal-renders its input into a container that only
+    // gets attached to the map afterwards, in the SearchBox's own
+    // componentDidMount (which runs after this ref callback), so defer
+    // focusing the input a frame until it is actually in the document.
+    // If the map closed before then, the input is gone and the optional
+    // chaining makes this a no-op.
+    requestAnimationFrame(() => {
+      ref.containerElement.querySelector('input')?.focus();
+    });
+  };
+
   renderPlateOverlays = ({ attachmentPlateData }) =>
     attachmentPlateData?.results?.map(result => {
       const { box } = result;
@@ -2548,20 +2566,7 @@ class Home extends React.Component {
                           onDragEnd={() => {
                             this.isDragging = false;
                           }}
-                          onSearchBoxMounted={ref => {
-                            this.searchBox = ref;
-                            // The SearchBox portal-renders its input into a
-                            // container that only gets attached to the map
-                            // afterwards, in the SearchBox's own
-                            // componentDidMount (which runs after this ref
-                            // callback), so defer focusing the input a frame
-                            // until it is actually in the document.
-                            requestAnimationFrame(() => {
-                              ref.containerElement
-                                .querySelector('input')
-                                .focus();
-                            });
-                          }}
+                          onSearchBoxMounted={this.handleSearchBoxMounted}
                           onPlacesChanged={() => {
                             const places = this.searchBox.getPlaces();
 

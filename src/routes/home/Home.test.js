@@ -265,6 +265,43 @@ describe('Home', () => {
     tree.unmount();
   });
 
+  test('focuses the map search input when the SearchBox mounts', () => {
+    const { requestAnimationFrame } = global;
+    global.requestAnimationFrame = callback => callback();
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ homeRef });
+    });
+    const input = { focus: jest.fn() };
+    const searchBox = {
+      containerElement: { querySelector: () => input },
+    };
+
+    homeRef.current.handleSearchBoxMounted(searchBox);
+
+    expect(input.focus).toHaveBeenCalledTimes(1);
+    global.requestAnimationFrame = requestAnimationFrame;
+    tree.unmount();
+  });
+
+  test('ignores the null ref the SearchBox passes when unmounting', () => {
+    const { requestAnimationFrame } = global;
+    global.requestAnimationFrame = jest.fn();
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ homeRef });
+    });
+
+    homeRef.current.handleSearchBoxMounted(null);
+
+    expect(global.requestAnimationFrame).not.toHaveBeenCalled();
+    expect(homeRef.current.searchBox).toBeNull();
+    global.requestAnimationFrame = requestAnimationFrame;
+    tree.unmount();
+  });
+
   test('renders with undefined allPlateResults and photos', () => {
     const initialState = {
       email: 'test@example.com',

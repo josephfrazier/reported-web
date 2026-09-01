@@ -52,7 +52,7 @@ import PreviousSubmissionsList from '../../components/PreviousSubmissionsList.js
 import formatGeosearchAddress from '../../formatGeosearchAddress.js';
 import { isImage, isVideo } from '../../isImage.js';
 import getNycTimezoneOffset from '../../timezone.js';
-import { getBoroNameMemoized } from '../../getBoroName.js';
+import { isPointInNycMemoized } from '../../isPointInNyc.js';
 import vehicleTypeUrl from '../../vehicleTypeUrl.js';
 import {
   clearCachedSubmissions,
@@ -607,6 +607,42 @@ class Home extends React.Component {
     return toast.error(notificationContent);
   }
 
+  static handleSearchInputMounted(input) {
+    // Only a real mount passes the input element; unmounts pass null.
+    if (!input) {
+      return;
+    }
+    let attempts = 0;
+    const attemptFocus = () => {
+      if (document.activeElement === input) {
+        return; // focus landed
+      }
+      attempts += 1;
+      if (attempts > 40) {
+        return; // give up after ~4s rather than retrying forever
+      }
+      const { activeElement } = document;
+      // The user interacting with the page (clicking a button or the map
+      // itself) wins over the deferred focus; don't steal it back.
+      const userInteracted =
+        ['BUTTON', 'INPUT', 'SELECT', 'TEXTAREA', 'A'].includes(
+          activeElement?.tagName,
+        ) || activeElement?.classList?.contains('gm-style');
+      // The SearchBox portal-renders the input into a container that is
+      // not in the document yet when this ref fires, and Google Maps only
+      // attaches the control containers to the page as the map finishes
+      // initializing. focus() on a detached element is a no-op, so retry
+      // until the input is in the document and the focus sticks.
+      if (!userInteracted && document.contains(input)) {
+        input.focus();
+      }
+      if (document.activeElement !== input) {
+        setTimeout(attemptFocus, 100);
+      }
+    };
+    requestAnimationFrame(attemptFocus);
+  }
+
   constructor(props) {
     super(props);
 
@@ -786,6 +822,13 @@ class Home extends React.Component {
     if (this.state.isLoadPreviousSubmissionsEnabled) {
       this.loadPreviousSubmissions();
     }
+
+    // Tell react-modal which element holds the page content, so it can mark
+    // that element aria-hidden while a modal is open (the "App element is
+    // not defined" warning). The element must not contain the modals'
+    // portal, which parentSelector renders as a sibling of the container
+    // inside the root, so use the container div rather than #app.
+    Modal.setAppElement(document.querySelector(`.${homeStyles.container}`));
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -886,8 +929,7 @@ class Home extends React.Component {
     );
     console.timeEnd('new PolygonLookup'); // eslint-disable-line no-console
     const end = { latitude, longitude };
-    const BoroName = getBoroNameMemoized({ lookup, end });
-    if (BoroName === '(unknown borough)') {
+    if (!isPointInNycMemoized({ lookup, end })) {
       const errorMessage = `latitude/longitude (${latitude}, ${longitude}) is outside NYC. Please select a location within NYC.`;
       this.setState({
         formatted_address: errorMessage,
@@ -926,6 +968,10 @@ class Home extends React.Component {
     this.setState({
       CreateDate: jsDateToCreateDate(CreateDateJsLocal),
     });
+  };
+
+  handleSearchBoxMounted = ref => {
+    this.searchBox = ref;
   };
 
   renderPlateOverlays = ({ attachmentPlateData }) =>
@@ -2542,9 +2588,8 @@ class Home extends React.Component {
                           onDragEnd={() => {
                             this.isDragging = false;
                           }}
-                          onSearchBoxMounted={ref => {
-                            this.searchBox = ref;
-                          }}
+                          onSearchBoxMounted={this.handleSearchBoxMounted}
+                          onSearchInputMounted={Home.handleSearchInputMounted}
                           onPlacesChanged={() => {
                             const places = this.searchBox.getPlaces();
 
@@ -2786,6 +2831,7 @@ const MyMapComponentPure = props => {
     onDragStart,
     onDragEnd,
     onSearchBoxMounted,
+    onSearchInputMounted,
     onPlacesChanged,
   } = props;
 
@@ -2816,6 +2862,7 @@ const MyMapComponentPure = props => {
         }}
       >
         <input
+          ref={onSearchInputMounted}
           type="text"
           placeholder="Search..."
           style={{
@@ -2848,6 +2895,7 @@ MyMapComponentPure.propTypes = {
   onDragStart: PropTypes.func.isRequired,
   onDragEnd: PropTypes.func.isRequired,
   onSearchBoxMounted: PropTypes.func.isRequired,
+  onSearchInputMounted: PropTypes.func.isRequired,
   onPlacesChanged: PropTypes.func.isRequired,
 };
 

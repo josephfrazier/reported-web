@@ -11,7 +11,7 @@ import React from 'react';
 import sortBy from 'lodash.sortby';
 import Home from './Home.js';
 import Layout from '../../components/Layout/Layout.js';
-import boroughBoundariesFeatureCollection from '../../../public/borough-boundaries-clipped-to-shoreline.geo.json';
+import boroughBoundariesFeatureCollection from '../../boroughBoundaries.js';
 import categoriesData from './categories.json';
 
 async function action({ commitHash, cookies }) {

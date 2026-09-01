@@ -13,15 +13,15 @@ import renderer from 'react-test-renderer';
 import StyleContext from 'isomorphic-style-loader/StyleContext';
 import axios from 'axios';
 import { toast } from 'react-toastify';
+import Modal from 'react-modal';
 import App from '../../components/App.js';
 import Home from './Home.js';
-import boroughBoundariesFeatureCollection from '../../../public/borough-boundaries-clipped-to-shoreline.geo.json';
+import boroughBoundariesFeatureCollection from '../../boroughBoundaries.js';
 
-jest.mock(
-  'react-modal',
-  () =>
-    ({ children, isOpen }) =>
-      isOpen ? children : null,
+jest.mock('react-modal', () =>
+  Object.assign(({ children, isOpen }) => (isOpen ? children : null), {
+    setAppElement: jest.fn(),
+  }),
 );
 
 require('timezone-mock').register('US/Eastern');
@@ -251,6 +251,66 @@ describe('Home', () => {
     expect(tree.toJSON()).toMatchSnapshot();
 
     tree.unmount();
+  });
+
+  test('tells react-modal which element holds the page content', () => {
+    Modal.setAppElement.mockClear();
+    let tree;
+    renderer.act(() => {
+      tree = renderHome();
+    });
+
+    expect(Modal.setAppElement).toHaveBeenCalledTimes(1);
+
+    tree.unmount();
+  });
+
+  test('focuses the map search input once it is in the document', () => {
+    jest.useFakeTimers();
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    try {
+      Home.handleSearchInputMounted(input);
+
+      jest.advanceTimersByTime(20);
+
+      expect(document.activeElement).toBe(input);
+    } finally {
+      jest.clearAllTimers();
+      jest.useRealTimers();
+      document.body.removeChild(input);
+    }
+  });
+
+  test('keeps retrying until the map attaches the search input', () => {
+    jest.useFakeTimers();
+    const input = document.createElement('input');
+    try {
+      Home.handleSearchInputMounted(input);
+
+      jest.advanceTimersByTime(20); // first attempt, input not attached yet
+      expect(document.activeElement).not.toBe(input);
+
+      document.body.appendChild(input);
+      jest.advanceTimersByTime(100); // next retry, input now attached
+
+      expect(document.activeElement).toBe(input);
+    } finally {
+      jest.clearAllTimers();
+      jest.useRealTimers();
+      document.body.removeChild(input);
+    }
+  });
+
+  test('ignores the null ref the search input passes when unmounting', () => {
+    jest.useFakeTimers();
+    try {
+      Home.handleSearchInputMounted(null);
+
+      expect(jest.getTimerCount()).toBe(0);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   test('renders with undefined allPlateResults and photos', () => {

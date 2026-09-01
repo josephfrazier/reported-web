@@ -673,6 +673,23 @@ app.get('/api/submissions-in-polygon', (req, res) => {
 });
 
 //
+// Firefox with the React DevTools browser extension installed injects
+// `installHook.js` into the page, then tries to fetch the script's source
+// map relative to the page's origin (`/installHook.js.map`). Without this
+// route, that request falls through to the SSR catch-all below and gets a
+// 404 page, filling the browser console with:
+//   Source map error: Error: request failed with status 404
+// Serve a valid empty source map to silence it, as suggested in:
+// https://github.com/facebook/react/issues/32339
+// -----------------------------------------------------------------------------
+app.get('/installHook.js.map', (req, res) => {
+  res.type('application/json');
+  res.send(
+    '{"version":3,"file":"installHook.js","sources":["installHook.js"],"sourcesContent":[""],"mappings":""}',
+  );
+});
+
+//
 // Register server-side rendering middleware
 // -----------------------------------------------------------------------------
 app.get('*', async (req, res, next) => {

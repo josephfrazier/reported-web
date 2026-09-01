@@ -110,6 +110,8 @@ const run = async () => {
     const home = await request(`${BASE_URL}/`);
     const favicon = await request(`${BASE_URL}/favicon.ico`);
     const submissionsMap = await request(`${BASE_URL}/submissions-map`);
+    const installHookMap = await request(`${BASE_URL}/installHook.js.map`);
+    const unknownPath = await request(`${BASE_URL}/this-page-does-not-exist`);
 
     // The SSR HTML references the client bundle compiled by
     // webpack-dev-middleware; request it to prove that middleware is
@@ -145,6 +147,30 @@ const run = async () => {
           submissionsMap.status === 200 &&
           submissionsMap.body.includes('id="tab-paste"'),
         detail: `status ${submissionsMap.status}, body starts: ${submissionsMap.body.slice(0, 80)}`,
+      },
+      {
+        // Firefox fetches this after the React DevTools extension injects
+        // `installHook.js` into the page; a 404 here spams the console with
+        // "Source map error: request failed with status 404".
+        // https://github.com/facebook/react/issues/32339
+        name: 'GET /installHook.js.map serves a stub source map',
+        ok:
+          installHookMap.status === 200 &&
+          (() => {
+            try {
+              return JSON.parse(installHookMap.body).version === 3;
+            } catch {
+              return false;
+            }
+          })(),
+        detail: `status ${installHookMap.status}, body starts: ${installHookMap.body.slice(0, 80)}`,
+      },
+      {
+        // Unknown paths must still 404 via the SSR catch-all, rather than
+        // being served the stub above.
+        name: 'unknown paths still 404 via the SSR catch-all',
+        ok: unknownPath.status === 404,
+        detail: `status ${unknownPath.status}`,
       },
       {
         name: 'GET of the client bundle in /assets/ is served by webpack-dev-middleware',

@@ -612,13 +612,35 @@ class Home extends React.Component {
     if (!input) {
       return;
     }
-    // The SearchBox portal-renders the input into a container and only
-    // moves it into the map's controls afterwards, in the SearchBox's own
-    // componentDidMount (which runs after this ref callback), so defer
-    // focusing it a frame until it is actually in the document. The input
-    // is referenced directly because the SearchBox moves it out of its
-    // container, so querying the container finds nothing by then.
-    requestAnimationFrame(() => input.focus());
+    let attempts = 0;
+    const attemptFocus = () => {
+      if (document.activeElement === input) {
+        return; // focus landed
+      }
+      attempts += 1;
+      if (attempts > 40) {
+        return; // give up after ~4s rather than retrying forever
+      }
+      const { activeElement } = document;
+      // The user interacting with the page (clicking a button or the map
+      // itself) wins over the deferred focus; don't steal it back.
+      const userInteracted =
+        ['BUTTON', 'INPUT', 'SELECT', 'TEXTAREA', 'A'].includes(
+          activeElement?.tagName,
+        ) || activeElement?.classList?.contains('gm-style');
+      // The SearchBox portal-renders the input into a container that is
+      // not in the document yet when this ref fires, and Google Maps only
+      // attaches the control containers to the page as the map finishes
+      // initializing. focus() on a detached element is a no-op, so retry
+      // until the input is in the document and the focus sticks.
+      if (!userInteracted && document.contains(input)) {
+        input.focus();
+      }
+      if (document.activeElement !== input) {
+        setTimeout(attemptFocus, 100);
+      }
+    };
+    requestAnimationFrame(attemptFocus);
   }
 
   constructor(props) {

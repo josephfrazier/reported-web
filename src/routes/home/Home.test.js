@@ -265,37 +265,52 @@ describe('Home', () => {
     tree.unmount();
   });
 
-  test('focuses the map search input when it mounts', () => {
-    const { requestAnimationFrame } = global;
-    global.requestAnimationFrame = callback => callback();
-    let tree;
-    const homeRef = React.createRef();
-    renderer.act(() => {
-      tree = renderHome({ homeRef });
-    });
-    const input = { focus: jest.fn() };
+  test('focuses the map search input once it is in the document', () => {
+    jest.useFakeTimers();
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    try {
+      Home.handleSearchInputMounted(input);
 
-    Home.handleSearchInputMounted(input);
+      jest.advanceTimersByTime(20);
 
-    expect(input.focus).toHaveBeenCalledTimes(1);
-    global.requestAnimationFrame = requestAnimationFrame;
-    tree.unmount();
+      expect(document.activeElement).toBe(input);
+    } finally {
+      jest.clearAllTimers();
+      jest.useRealTimers();
+      document.body.removeChild(input);
+    }
+  });
+
+  test('keeps retrying until the map attaches the search input', () => {
+    jest.useFakeTimers();
+    const input = document.createElement('input');
+    try {
+      Home.handleSearchInputMounted(input);
+
+      jest.advanceTimersByTime(20); // first attempt, input not attached yet
+      expect(document.activeElement).not.toBe(input);
+
+      document.body.appendChild(input);
+      jest.advanceTimersByTime(100); // next retry, input now attached
+
+      expect(document.activeElement).toBe(input);
+    } finally {
+      jest.clearAllTimers();
+      jest.useRealTimers();
+      document.body.removeChild(input);
+    }
   });
 
   test('ignores the null ref the search input passes when unmounting', () => {
-    const { requestAnimationFrame } = global;
-    global.requestAnimationFrame = jest.fn();
-    let tree;
-    const homeRef = React.createRef();
-    renderer.act(() => {
-      tree = renderHome({ homeRef });
-    });
+    jest.useFakeTimers();
+    try {
+      Home.handleSearchInputMounted(null);
 
-    Home.handleSearchInputMounted(null);
-
-    expect(global.requestAnimationFrame).not.toHaveBeenCalled();
-    global.requestAnimationFrame = requestAnimationFrame;
-    tree.unmount();
+      expect(jest.getTimerCount()).toBe(0);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   test('renders with undefined allPlateResults and photos', () => {

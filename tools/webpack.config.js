@@ -270,6 +270,22 @@ const config = {
   // Don't attempt to continue if there are any errors.
   bail: !isDebug,
 
+  // exifr's UMD bundle contains a Node-only fallback that dynamically
+  // requires 'http'/'https' (guarded at runtime by `process.versions.node`,
+  // which is always false in the browser). Webpack's parser still flags the
+  // non-literal require() as a critical dependency, so `yarn start` logs
+  // "Critical dependency: the request of a dependency is an expression" on
+  // every (HMR) recompile. Silencing it here, scoped to that file, instead
+  // of switching to exifr's `lite` build, which can't parse the array form
+  // of `exifr.parse()` options that Home.js uses.
+  ignoreWarnings: [
+    {
+      module: /exifr[/\\]dist[/\\]full\.umd\.js/,
+      message:
+        /Critical dependency: the request of a dependency is an expression/,
+    },
+  ],
+
   cache: isDebug,
 
   // Specify what bundle information gets displayed

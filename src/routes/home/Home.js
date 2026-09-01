@@ -2905,6 +2905,17 @@ MyMapComponentPure.propTypes = {
   onPlacesChanged: PropTypes.func.isRequired,
 };
 
+// recompose@0.26.0 and react-google-maps@9.4.5 (both unmaintained) call
+// the deprecated `React.createFactory()` when the map HOCs are composed
+// below, logging a warning once per page load. React implements
+// `createFactory` as `createElement.bind(null, type)` plus the `.type`
+// property, so reimplement it here without the deprecation warning.
+React.createFactory = type => {
+  const factory = React.createElement.bind(null, type);
+  factory.type = type;
+  return factory;
+};
+
 const MyMapComponent = compose(
   withProps({
     googleMapURL: `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&v=3.exp&libraries=geometry,drawing,places`,

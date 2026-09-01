@@ -786,6 +786,13 @@ class Home extends React.Component {
     if (this.state.isLoadPreviousSubmissionsEnabled) {
       this.loadPreviousSubmissions();
     }
+
+    // Tell react-modal which element holds the page content, so it can mark
+    // that element aria-hidden while a modal is open (the "App element is
+    // not defined" warning). The element must not contain the modals'
+    // portal, which parentSelector renders as a sibling of the container
+    // inside the root, so use the container div rather than #app.
+    Modal.setAppElement(document.querySelector(`.${homeStyles.container}`));
   }
 
   componentDidUpdate(prevProps, prevState) {

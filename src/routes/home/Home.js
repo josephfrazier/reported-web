@@ -2543,6 +2543,17 @@ class Home extends React.Component {
                           }}
                           onSearchBoxMounted={ref => {
                             this.searchBox = ref;
+                            // The SearchBox portal-renders its input into a
+                            // container that only gets attached to the map
+                            // afterwards, in the SearchBox's own
+                            // componentDidMount (which runs after this ref
+                            // callback), so defer focusing the input a frame
+                            // until it is actually in the document.
+                            requestAnimationFrame(() => {
+                              ref.containerElement
+                                .querySelector('input')
+                                .focus();
+                            });
                           }}
                           onPlacesChanged={() => {
                             const places = this.searchBox.getPlaces();

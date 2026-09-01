@@ -607,6 +607,20 @@ class Home extends React.Component {
     return toast.error(notificationContent);
   }
 
+  static handleSearchInputMounted(input) {
+    // Only a real mount passes the input element; unmounts pass null.
+    if (!input) {
+      return;
+    }
+    // The SearchBox portal-renders the input into a container and only
+    // moves it into the map's controls afterwards, in the SearchBox's own
+    // componentDidMount (which runs after this ref callback), so defer
+    // focusing it a frame until it is actually in the document. The input
+    // is referenced directly because the SearchBox moves it out of its
+    // container, so querying the container finds nothing by then.
+    requestAnimationFrame(() => input.focus());
+  }
+
   constructor(props) {
     super(props);
 
@@ -936,20 +950,6 @@ class Home extends React.Component {
 
   handleSearchBoxMounted = ref => {
     this.searchBox = ref;
-    // Ref callbacks fire with null when the SearchBox unmounts; only a
-    // real mount receives the component instance to focus from.
-    if (!ref) {
-      return;
-    }
-    // The SearchBox portal-renders its input into a container that only
-    // gets attached to the map afterwards, in the SearchBox's own
-    // componentDidMount (which runs after this ref callback), so defer
-    // focusing the input a frame until it is actually in the document.
-    // If the map closed before then, the input is gone and the optional
-    // chaining makes this a no-op.
-    requestAnimationFrame(() => {
-      ref.containerElement.querySelector('input')?.focus();
-    });
   };
 
   renderPlateOverlays = ({ attachmentPlateData }) =>
@@ -2567,6 +2567,7 @@ class Home extends React.Component {
                             this.isDragging = false;
                           }}
                           onSearchBoxMounted={this.handleSearchBoxMounted}
+                          onSearchInputMounted={Home.handleSearchInputMounted}
                           onPlacesChanged={() => {
                             const places = this.searchBox.getPlaces();
 
@@ -2808,6 +2809,7 @@ const MyMapComponentPure = props => {
     onDragStart,
     onDragEnd,
     onSearchBoxMounted,
+    onSearchInputMounted,
     onPlacesChanged,
   } = props;
 
@@ -2838,6 +2840,7 @@ const MyMapComponentPure = props => {
         }}
       >
         <input
+          ref={onSearchInputMounted}
           type="text"
           placeholder="Search..."
           style={{
@@ -2870,6 +2873,7 @@ MyMapComponentPure.propTypes = {
   onDragStart: PropTypes.func.isRequired,
   onDragEnd: PropTypes.func.isRequired,
   onSearchBoxMounted: PropTypes.func.isRequired,
+  onSearchInputMounted: PropTypes.func.isRequired,
   onPlacesChanged: PropTypes.func.isRequired,
 };
 

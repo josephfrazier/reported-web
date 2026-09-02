@@ -1425,4 +1425,298 @@ describe('Home', () => {
       cleanup();
     });
   });
+
+  describe('clicking an attachment before its ALPR results arrive', () => {
+    // A click event on the attachment's <a>, at coordinates relative to a
+    // stand-in 400x200 rendered size.
+    const clickEvent = ({ x, y }) => ({
+      clientX: x,
+      clientY: y,
+      preventDefault: jest.fn(),
+      currentTarget: {
+        getBoundingClientRect: () => ({
+          left: 0,
+          top: 0,
+          width: 400,
+          height: 200,
+        }),
+      },
+    });
+
+    const makePlateData = () => ({
+      results: [
+        {
+          plate: 'abc123',
+          region: { code: 'us-ny' },
+          // 10%-30% x 40%-50% of the 1000x500 uploaded image.
+          box: { xmin: 100, ymin: 200, xmax: 300, ymax: 250 },
+        },
+      ],
+      uploadWidth: 1000,
+      uploadHeight: 500,
+    });
+
+    // Renders Home, adds photo.jpg, and holds the plate-recognition response
+    // open so the caller can click the attachment before the results arrive
+    // and then deliver them.
+    function renderWithPendingPlateData() {
+      const initialState = {
+        email: 'test@example.com',
+        loginSuccessful: true,
+      };
+
+      const originalCreateObjectURL = global.URL.createObjectURL;
+      global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+      let resolvePlateRecognizer;
+      let plateRecognizerCalled = false;
+      const plateRecognizerResponse = new Promise(resolve => {
+        resolvePlateRecognizer = resolve;
+      });
+
+      const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+      const axiosPost = jest.spyOn(axios, 'post').mockImplementation(url => {
+        if (url === '/platerecognizer') {
+          plateRecognizerCalled = true;
+          return plateRecognizerResponse;
+        }
+        return Promise.resolve({ data: { features: [{ properties: {} }] } });
+      });
+      const toastWarn = jest
+        .spyOn(toast, 'warn')
+        .mockImplementation(() => null);
+      const consoleError = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
+
+      let tree;
+      const homeRef = React.createRef();
+      renderer.act(() => {
+        tree = renderHome({ initialState, homeRef });
+      });
+
+      // Real image bytes, so detectFromBuffer classifies the file as an
+      // image and extractPlate proceeds to the plate-recognizer request.
+      // (Garbage bytes detect as text/plain, which extractPlate rejects
+      // before any request is made.)
+      const photo = new File(
+        [
+          Buffer.from(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+            'base64',
+          ),
+        ],
+        'photo.jpg',
+        { type: 'image/jpeg' },
+      );
+      renderer.act(() => {
+        // Don't await here: the extraction parks on the pending
+        // plate-recognizer response until deliverPlateData or
+        // settleWithoutResults runs.
+        homeRef.current.handleAttachmentData({ attachmentData: [photo] });
+      });
+
+      const attachmentLink = tree.root.findAllByProps({ href: 'blob:mock' })[0];
+
+      // handleAttachmentData's own promise settles before the extraction
+      // pipeline it starts in a setState callback does, so wait for the
+      // pipeline's end instead: the plate-recognizer request has been made
+      // and its results applied (isAlprLoading flips off in the pipeline's
+      // last step).
+      const awaitExtractionSettled = async (attempts = 0) => {
+        if (attempts >= 100) {
+          throw new Error('timed out waiting for extraction to settle');
+        }
+        if (plateRecognizerCalled && !homeRef.current.state.isAlprLoading) {
+          return;
+        }
+        await new Promise(resolve => setImmediate(resolve));
+        await awaitExtractionSettled(attempts + 1);
+      };
+
+      return {
+        homeRef,
+        clickAttachment: ({ x, y }) => {
+          const event = clickEvent({ x, y });
+          renderer.act(() => {
+            attachmentLink.props.onClick(event);
+          });
+          return event;
+        },
+        deliverPlateData: plateData =>
+          renderer.act(async () => {
+            resolvePlateRecognizer({ data: plateData });
+            await awaitExtractionSettled();
+          }),
+        // Settle the parked extraction with no detections (what a photo
+        // without a visible plate produces), so tests that don't exercise
+        // the results can finish without leaving it dangling.
+        settleWithoutResults: () =>
+          renderer.act(async () => {
+            resolvePlateRecognizer({ data: { results: [] } });
+            await awaitExtractionSettled();
+          }),
+        cleanup: () => {
+          tree.unmount();
+          axiosGet.mockRestore();
+          axiosPost.mockRestore();
+          toastWarn.mockRestore();
+          consoleError.mockRestore();
+          global.URL.createObjectURL = originalCreateObjectURL;
+        },
+      };
+    }
+
+    // Wait out the debounced vehicle/violation lookups that a plate
+    // selection schedules, so they don't fire against the real network
+    // after the mocks are restored.
+    const waitOutPlateLookups = () =>
+      renderer.act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 1100));
+      });
+
+    test('selects the plate under a click made before the results arrive', async () => {
+      const { homeRef, clickAttachment, deliverPlateData, cleanup } =
+        renderWithPendingPlateData();
+
+      const event = clickAttachment({ x: 60, y: 90 }); // 15%, 45% of the image
+      // The click interrupted the attachment's open-in-new-tab default and
+      // was recorded against the attachment's name.
+      expect(event.preventDefault).toHaveBeenCalled();
+      expect(homeRef.current.pendingPlateClicks['photo.jpg']).toEqual({
+        x: 15,
+        y: 45,
+      });
+
+      // The click is inside the single detected box, so its plate gets
+      // selected even though the user clicked before the overlay existed.
+      await deliverPlateData(makePlateData());
+
+      expect(homeRef.current.state.plate).toBe('ABC123');
+      expect(homeRef.current.state.licenseState).toBe('NY');
+      // The click was consumed, so it can't select the plate twice.
+      expect(homeRef.current.pendingPlateClicks['photo.jpg']).toBeUndefined();
+
+      await waitOutPlateLookups();
+      cleanup();
+    });
+
+    test('selects the clicked plate even when the auto-selection would have chosen a different one', async () => {
+      const { homeRef, clickAttachment, deliverPlateData, cleanup } =
+        renderWithPendingPlateData();
+
+      clickAttachment({ x: 60, y: 90 }); // 15%, 45% of the image
+
+      await deliverPlateData({
+        results: [
+          {
+            // The T######C plate extractPlate prefers to auto-select,
+            // positioned away from the click.
+            plate: 't123456c',
+            region: { code: 'us-ny' },
+            box: { xmin: 600, ymin: 600, xmax: 800, ymax: 800 },
+          },
+          {
+            // 10%-30% x 40%-50% of the 1000x1000 uploaded image: the plate
+            // under the click.
+            plate: 'abc123',
+            region: { code: 'us-ny' },
+            box: { xmin: 100, ymin: 400, xmax: 300, ymax: 500 },
+          },
+        ],
+        uploadWidth: 1000,
+        uploadHeight: 1000,
+      });
+
+      // The click wins over the auto-selected T######C plate.
+      expect(homeRef.current.state.plate).toBe('ABC123');
+      expect(homeRef.current.state.licenseState).toBe('NY');
+
+      await waitOutPlateLookups();
+      cleanup();
+    });
+
+    test('falls back to the default auto-selected plate when the click misses every overlay', async () => {
+      const { homeRef, clickAttachment, deliverPlateData, cleanup } =
+        renderWithPendingPlateData();
+
+      clickAttachment({ x: 160, y: 180 }); // 40%, 90% — outside the box
+
+      await deliverPlateData(makePlateData());
+
+      // No overlay would have covered the click, so the pre-existing
+      // behavior (select the first detected plate) still applies.
+      expect(homeRef.current.state.plate).toBe('ABC123');
+      expect(homeRef.current.pendingPlateClicks['photo.jpg']).toBeUndefined();
+
+      await waitOutPlateLookups();
+      cleanup();
+    });
+
+    test('does not record clicks when ALPR is disabled', async () => {
+      const { homeRef, cleanup } = renderWithPendingPlateData();
+      renderer.act(() => {
+        homeRef.current.setState({ isAlprEnabled: false });
+      });
+
+      const event = clickEvent({ x: 60, y: 90 });
+      homeRef.current.handleAttachmentClick({
+        attachmentName: 'photo.jpg',
+        event,
+      });
+
+      expect(event.preventDefault).not.toHaveBeenCalled();
+      expect(homeRef.current.pendingPlateClicks).toEqual({});
+
+      // The extraction skips the plate-recognizer request entirely (ALPR is
+      // off), so just wait out the pipeline and its debounces.
+      await waitOutPlateLookups();
+      cleanup();
+    });
+
+    test('does not record clicks once the attachment has plate data', async () => {
+      const { homeRef, settleWithoutResults, cleanup } =
+        renderWithPendingPlateData();
+      renderer.act(() => {
+        homeRef.current.setState({
+          plateDataByAttachmentName: { 'photo.jpg': makePlateData() },
+        });
+      });
+
+      const event = clickEvent({ x: 60, y: 90 });
+      homeRef.current.handleAttachmentClick({
+        attachmentName: 'photo.jpg',
+        event,
+      });
+
+      // The overlays are rendered now and handle their own clicks.
+      expect(event.preventDefault).not.toHaveBeenCalled();
+      expect(homeRef.current.pendingPlateClicks).toEqual({});
+
+      await settleWithoutResults();
+      await waitOutPlateLookups();
+      cleanup();
+    });
+
+    test('does not record clicks after the attachment extraction has settled without results', async () => {
+      const { homeRef, settleWithoutResults, cleanup } =
+        renderWithPendingPlateData();
+      homeRef.current.settledAttachmentExtractions.add('photo.jpg');
+
+      const event = clickEvent({ x: 60, y: 90 });
+      homeRef.current.handleAttachmentClick({
+        attachmentName: 'photo.jpg',
+        event,
+      });
+
+      // No overlays will ever exist for this attachment, so the click should
+      // keep its default behavior (opening the attachment in a new tab).
+      expect(event.preventDefault).not.toHaveBeenCalled();
+      expect(homeRef.current.pendingPlateClicks).toEqual({});
+
+      await settleWithoutResults();
+      await waitOutPlateLookups();
+      cleanup();
+    });
+  });
 });

@@ -327,6 +327,9 @@ const clientConfig = {
     // https://webpack.js.org/plugins/define-plugin/
     new webpack.DefinePlugin({
       'process.env.BROWSER': true,
+      'process.env.GOOGLE_MAPS_API_KEY': JSON.stringify(
+        process.env.GOOGLE_MAPS_API_KEY,
+      ),
       __DEV__: isDebug,
     }),
 

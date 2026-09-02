@@ -62,7 +62,9 @@ import {
 
 usStateNames.DC = 'District of Columbia';
 
-const GOOGLE_MAPS_API_KEY = 'AIzaSyDlwm2ykA0ohTXeVepQYvkcmdjz2M2CKEI';
+// Injected at build time via webpack DefinePlugin from the GOOGLE_MAPS_API_KEY
+// environment variable. Do not hardcode secrets in source.
+const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 
 const COOKIE_KEY = 'reportedWebHomeState';
 const COOKIE_MAX_AGE = 365 * 24 * 60 * 60; // 1 year in seconds

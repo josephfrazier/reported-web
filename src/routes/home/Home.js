@@ -817,6 +817,11 @@ class Home extends React.Component {
       return confirmationMessage; // Webkit, Safari, Chrome etc.
     });
 
+    // react-modal only handles Escape when focus is inside the modal
+    // content, but the map modal's Google Maps search box captures focus,
+    // so listen at the document level instead.
+    document.addEventListener('keydown', this.handleDocumentKeyDown);
+
     this.forceUpdate(); // force "Create/Edit User" fields to render persisted value after load
 
     if (this.state.isLoadPreviousSubmissionsEnabled) {
@@ -845,6 +850,10 @@ class Home extends React.Component {
         if (ref.current) ref.current.focus();
       });
     }
+  }
+
+  componentWillUnmount() {
+    document.removeEventListener('keydown', this.handleDocumentKeyDown);
   }
 
   onDeleteSubmission = ({ objectId }) => {
@@ -1437,6 +1446,12 @@ class Home extends React.Component {
 
   closeAuthModal = () => {
     this.setState({ isAuthModalOpen: false, authError: null });
+  };
+
+  handleDocumentKeyDown = event => {
+    if (event.key === 'Escape' && this.state.isMapOpen) {
+      this.setState({ isMapOpen: false });
+    }
   };
 
   switchAuthTab = tab => {

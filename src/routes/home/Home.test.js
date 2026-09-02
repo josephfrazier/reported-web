@@ -266,6 +266,49 @@ describe('Home', () => {
     tree.unmount();
   });
 
+  test('closes the map modal on Escape', () => {
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+    };
+
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ initialState, homeRef });
+    });
+    renderer.act(() => {
+      homeRef.current.setState({
+        attachmentData: [
+          new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }),
+        ],
+        isMapOpen: true,
+      });
+    });
+
+    const closeButton = tree.root.findAll(
+      node => node.type === 'button' && node.props.children === 'Close',
+    );
+    expect(closeButton).toHaveLength(1);
+
+    renderer.act(() => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    });
+
+    expect(homeRef.current.state.isMapOpen).toBe(false);
+    expect(
+      tree.root.findAll(
+        node => node.type === 'button' && node.props.children === 'Close',
+      ),
+    ).toHaveLength(0);
+
+    tree.unmount();
+    global.URL.createObjectURL = originalCreateObjectURL;
+  });
+
   test('focuses the map search input once it is in the document', () => {
     jest.useFakeTimers();
     const input = document.createElement('input');

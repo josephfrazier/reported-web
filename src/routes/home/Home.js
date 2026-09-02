@@ -768,6 +768,12 @@ class Home extends React.Component {
       submissions: [],
       addressProvenance: '',
 
+      // Per-attachment plate-recognizer responses, keyed by attachment name.
+      // The value is the response data, or null once the extraction has
+      // settled without results: the key's presence alone then says "no
+      // overlays will ever exist for this attachment", which stops clicks
+      // from being recorded (see handleAttachmentClick). A missing key means
+      // the extraction is still pending.
       plateDataByAttachmentName: {},
 
       isAuthModalOpen: false,
@@ -792,11 +798,6 @@ class Home extends React.Component {
     // keyed by attachment name, in the same percentage coordinates the
     // overlays use. See handleAttachmentClick/findPlateResultAtClick.
     this.pendingPlateClicks = {};
-    // Attachment names whose ALPR extraction has settled (success or
-    // failure). Once settled, further clicks are not recorded: either the
-    // overlays now handle their own clicks, or the extraction failed and
-    // overlays will never exist (see handleAttachmentClick).
-    this.settledAttachmentExtractions = new Set();
     this.plateLookupCache = new Map();
     this.plateRef = React.createRef();
     this.plateLabelRef = React.createRef();
@@ -1121,12 +1122,13 @@ class Home extends React.Component {
   // ignored: the former never produce overlays, a settled extraction either
   // already renders overlays (whose buttons select the plate themselves and,
   // as siblings of the <a> this handler lives on, don't reach it) or failed
-  // so overlays will never exist for this attachment.
+  // so overlays will never exist for this attachment. Both settled outcomes
+  // leave a key in plateDataByAttachmentName (the data, or null on failure),
+  // so the key's presence is the settled marker.
   handleAttachmentClick = ({ attachmentName, event }) => {
     if (
       !this.state.isAlprEnabled ||
-      this.state.plateDataByAttachmentName[attachmentName] ||
-      this.settledAttachmentExtractions.has(attachmentName)
+      this.state.plateDataByAttachmentName[attachmentName] !== undefined
     ) {
       return;
     }
@@ -1438,10 +1440,22 @@ class Home extends React.Component {
                   // failed/were empty so it never can be. Either way it must
                   // not leak into a later resolution.
                   delete this.pendingPlateClicks[attachmentFile.name];
-                  // No overlays will ever appear for this attachment if they
-                  // haven't already: stop recording clicks on it.
-                  this.settledAttachmentExtractions.add(attachmentFile.name);
-                  this.setState({ isAlprLoading: false });
+                  this.setState(state => ({
+                    isAlprLoading: false,
+                    // Mark the extraction settled even when it produced no
+                    // data: a null entry means "no overlays will ever exist
+                    // for this attachment", and its key's presence stops
+                    // clicks from being recorded. The success path above
+                    // stores the real data instead, so leave that in place.
+                    plateDataByAttachmentName: state.plateDataByAttachmentName[
+                      attachmentFile.name
+                    ]
+                      ? state.plateDataByAttachmentName
+                      : {
+                          ...state.plateDataByAttachmentName,
+                          [attachmentFile.name]: null,
+                        },
+                  }));
                 }),
               extractDate({
                 attachmentFile,
@@ -1761,7 +1775,8 @@ class Home extends React.Component {
     let bestPlateCropDataUrl = null;
     let bestResolution = -1;
     for (const data of Object.values(this.state.plateDataByAttachmentName)) {
-      for (const result of data.results || []) {
+      // Entries whose extraction settled without results are null.
+      for (const result of data?.results || []) {
         if (
           result.plate?.toUpperCase() === this.state.plate?.toUpperCase() &&
           result.plateCropDataUrl
@@ -2369,10 +2384,10 @@ class Home extends React.Component {
                       }));
                       // Pending clicks were recorded against attachments that
                       // no longer exist; a late-resolving extraction must not
-                      // select a plate from them. The settled markers go too,
-                      // so files re-added under the same names record clicks.
+                      // select a plate from them. (plateDataByAttachmentName
+                      // was reset above, so files re-added under the same
+                      // names record clicks.)
                       this.pendingPlateClicks = {};
-                      this.settledAttachmentExtractions.clear();
                       this.setLicensePlate({ plate: '', licenseState: 'NY' });
                       this.setCoords({
                         latitude: defaultLatitude,
@@ -2537,14 +2552,12 @@ class Home extends React.Component {
                                 onClick={() => {
                                   // A pending click on a deleted attachment
                                   // must not select a plate when that
-                                  // attachment's extraction resolves. The
-                                  // settled marker goes too, so a different
-                                  // file re-added under the same name still
+                                  // attachment's extraction resolves. Its
+                                  // plateDataByAttachmentName entry is
+                                  // omitted below, so a different file
+                                  // re-added under the same name still
                                   // records clicks.
                                   delete this.pendingPlateClicks[name];
-                                  this.settledAttachmentExtractions.delete(
-                                    name,
-                                  );
                                   this.setState(state => {
                                     const attachmentData =
                                       state.attachmentData.filter(

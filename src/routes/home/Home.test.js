@@ -1675,13 +1675,12 @@ describe('Home', () => {
     });
 
     test('does not record clicks once the attachment has plate data', async () => {
-      const { homeRef, settleWithoutResults, cleanup } =
+      const { homeRef, deliverPlateData, cleanup } =
         renderWithPendingPlateData();
-      renderer.act(() => {
-        homeRef.current.setState({
-          plateDataByAttachmentName: { 'photo.jpg': makePlateData() },
-        });
-      });
+
+      // The extraction settles with results: the overlays are rendered now
+      // and handle their own clicks.
+      await deliverPlateData(makePlateData());
 
       const event = clickEvent({ x: 60, y: 90 });
       homeRef.current.handleAttachmentClick({
@@ -1689,11 +1688,9 @@ describe('Home', () => {
         event,
       });
 
-      // The overlays are rendered now and handle their own clicks.
       expect(event.preventDefault).not.toHaveBeenCalled();
       expect(homeRef.current.pendingPlateClicks).toEqual({});
 
-      await settleWithoutResults();
       await waitOutPlateLookups();
       cleanup();
     });
@@ -1701,7 +1698,8 @@ describe('Home', () => {
     test('does not record clicks after the attachment extraction has settled without results', async () => {
       const { homeRef, settleWithoutResults, cleanup } =
         renderWithPendingPlateData();
-      homeRef.current.settledAttachmentExtractions.add('photo.jpg');
+
+      await settleWithoutResults();
 
       const event = clickEvent({ x: 60, y: 90 });
       homeRef.current.handleAttachmentClick({
@@ -1714,7 +1712,6 @@ describe('Home', () => {
       expect(event.preventDefault).not.toHaveBeenCalled();
       expect(homeRef.current.pendingPlateClicks).toEqual({});
 
-      await settleWithoutResults();
       await waitOutPlateLookups();
       cleanup();
     });

@@ -3096,6 +3096,51 @@
     "@webassemblyjs/ast" "1.14.1"
     "@xtuc/long" "4.2.2"
 
+"@wreq-js/binding-android-arm64@3.2.0":
+  version "3.2.0"
+  resolved "https://registry.yarnpkg.com/@wreq-js/binding-android-arm64/-/binding-android-arm64-3.2.0.tgz#2228ced0d99016afc55a4486c655c97798671b2b"
+  integrity sha512-PRsy18Z+0fftLeDvFTQwpgdepihRk6oVzdQWt92hEdarI7DexhgDJvvZfDsylMp7GDfsys9sFks8nIAi4n7eKQ==
+
+"@wreq-js/binding-darwin-arm64@3.2.0":
+  version "3.2.0"
+  resolved "https://registry.yarnpkg.com/@wreq-js/binding-darwin-arm64/-/binding-darwin-arm64-3.2.0.tgz#5470e8d3aa341cb208d1e905a644c59b3beaf02d"
+  integrity sha512-TGbgqj7YKp6m2p79hyLtTBatKgU8SKEVL5e903KGSeSDKkLbgk8knFoZ2MakhJnlqKZhvLPCNLT7A3AStwIoHQ==
+
+"@wreq-js/binding-darwin-x64@3.2.0":
+  version "3.2.0"
+  resolved "https://registry.yarnpkg.com/@wreq-js/binding-darwin-x64/-/binding-darwin-x64-3.2.0.tgz#eb6b32f0a7fb8f011d1768f5ff5a699011a933c3"
+  integrity sha512-89JkGsik49nUcQR7HfO6M+Na3whkhAQBghVFWn+vGmz32RzTX+HVy6q7wThjN+XGT+xvn9ZQpzTie3B292S50g==
+
+"@wreq-js/binding-linux-arm64-gnu@3.2.0":
+  version "3.2.0"
+  resolved "https://registry.yarnpkg.com/@wreq-js/binding-linux-arm64-gnu/-/binding-linux-arm64-gnu-3.2.0.tgz#bd1c89e5b7bdc8f5c5aa6ef21dacebe246e3ec8a"
+  integrity sha512-WXqMK7AtOxMJAdwDpnAdDq0NZqf6wuRucKCQWQSLdSTUyTEuGo2anRkUsZwqvHbLrkWCTXNfl1hAfA+wIk/4kw==
+
+"@wreq-js/binding-linux-arm64-musl@3.2.0":
+  version "3.2.0"
+  resolved "https://registry.yarnpkg.com/@wreq-js/binding-linux-arm64-musl/-/binding-linux-arm64-musl-3.2.0.tgz#1db212605ed74a80139296feed09acb29e04c251"
+  integrity sha512-YSMWs3BNBCNhWvIAUHWyp2K/L17qxfaRTl+t97ykOIOIKZSduNYZn/Yn3hTNtpbdfrTmNMG9pltEcbixFKS4xQ==
+
+"@wreq-js/binding-linux-x64-gnu@3.2.0":
+  version "3.2.0"
+  resolved "https://registry.yarnpkg.com/@wreq-js/binding-linux-x64-gnu/-/binding-linux-x64-gnu-3.2.0.tgz#43aece4733010f53bf47d0b61c8ab77476c21f26"
+  integrity sha512-6N7C1uc1qieM23rdKR5k07hfS50hVFExVHzLhHiWbmk9NyqBj0xyj2Mh5ThIrvz/or/6Pe79P8D7UWbl4aJTkw==
+
+"@wreq-js/binding-linux-x64-musl@3.2.0":
+  version "3.2.0"
+  resolved "https://registry.yarnpkg.com/@wreq-js/binding-linux-x64-musl/-/binding-linux-x64-musl-3.2.0.tgz#10b065075a059f97f0cd5bab1bc36455de32b747"
+  integrity sha512-0h0xJsmhVlmh+vHs9dYMIp5lpkKGNZrSedkl2Mh9XmR5slBahTcHT7oEEclhV+aNcY3V2Afmmqfil5huL+yDpA==
+
+"@wreq-js/binding-win32-arm64-msvc@3.2.0":
+  version "3.2.0"
+  resolved "https://registry.yarnpkg.com/@wreq-js/binding-win32-arm64-msvc/-/binding-win32-arm64-msvc-3.2.0.tgz#7f51fdc63b20be318397f2da4dc991e30cc6b634"
+  integrity sha512-6bfaVFfbI61s5YLgQL+43uURk/VuOu7TPlUwY1l0Q9yJdWzD+Jpdokgl5cEiY2a0FEAw8Q4LqPI+XZT3YAMnQA==
+
+"@wreq-js/binding-win32-x64-msvc@3.2.0":
+  version "3.2.0"
+  resolved "https://registry.yarnpkg.com/@wreq-js/binding-win32-x64-msvc/-/binding-win32-x64-msvc-3.2.0.tgz#5945d7d7e9d4840059a7b410a094559ad02edaa6"
+  integrity sha512-w4aktLElPgBXkWC/v9Ti9np6jBjYOzIyqmzgT41V/zuDq/V+V7s/13f9OzcX5hObH2WOpajo0KeljTJ2aRExNQ==
+
 "@xtuc/ieee754@^1.2.0":
   version "1.2.0"
   resolved "https://registry.yarnpkg.com/@xtuc/ieee754/-/ieee754-1.2.0.tgz#eef014a3145ae477a1cbc00cd1e552336dceb790"
@@ -11462,10 +11507,20 @@ wrappy@1:
   resolved "https://registry.yarnpkg.com/wrappy/-/wrappy-1.0.2.tgz#b5243d8f3ec1aa35f1364605bc0d1036e30ab69f"
   integrity sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==
 
-wreq-js@^3.0.0:
-  version "3.0.0"
-  resolved "https://registry.yarnpkg.com/wreq-js/-/wreq-js-3.0.0.tgz#450e0bf32a7a9b9c2df145e93a3f9b1f5facfa88"
-  integrity sha512-RZCoRSevVPpH4A4B4MxbFGo/pVPFveWd2gbe4ENKpPWlKXEYklZSDESOjBMmrIsmnkHh+nhM4PNJvG+NL7wBPA==
+wreq-js@^3.2.0:
+  version "3.2.0"
+  resolved "https://registry.yarnpkg.com/wreq-js/-/wreq-js-3.2.0.tgz#57f45adfcf63bc0465ff706f62b0e0d69068c842"
+  integrity sha512-dawhEbhvd5hxivKZSvv/mAQGO3mwZYESyctOvIIZ/H3DvQJzUM2UoFQsij0fg7hIClQ/GEQgg+2259UcFwhpMQ==
+  optionalDependencies:
+    "@wreq-js/binding-android-arm64" "3.2.0"
+    "@wreq-js/binding-darwin-arm64" "3.2.0"
+    "@wreq-js/binding-darwin-x64" "3.2.0"
+    "@wreq-js/binding-linux-arm64-gnu" "3.2.0"
+    "@wreq-js/binding-linux-arm64-musl" "3.2.0"
+    "@wreq-js/binding-linux-x64-gnu" "3.2.0"
+    "@wreq-js/binding-linux-x64-musl" "3.2.0"
+    "@wreq-js/binding-win32-arm64-msvc" "3.2.0"
+    "@wreq-js/binding-win32-x64-msvc" "3.2.0"
 
 write-file-atomic@^5.0.1:
   version "5.0.1"

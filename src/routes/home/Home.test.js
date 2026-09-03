@@ -1129,6 +1129,70 @@ describe('Home', () => {
     tree.unmount();
   });
 
+  test('renders Preferences UI', () => {
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+    };
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ initialState, homeRef });
+    });
+    renderer.act(() => {
+      homeRef.current.setState({ isPreferencesOpen: true });
+    });
+
+    expect(tree.toJSON()).toMatchSnapshot();
+    expect(tree.root.findByProps({ name: 'isAlprEnabled' })).toBeTruthy();
+    expect(
+      tree.root.findByProps({ name: 'isReverseGeocodingEnabled' }),
+    ).toBeTruthy();
+    expect(
+      tree.root.findByProps({ name: 'isLoadPreviousSubmissionsEnabled' }),
+    ).toBeTruthy();
+    // Nothing from the Edit Profile form leaks into the Preferences panel,
+    // and the main submission form is hidden while the panel is open.
+    expect(tree.root.findAllByType('form')).toHaveLength(0);
+    expect(() => tree.root.findByProps({ name: 'FirstName' })).toThrow();
+
+    tree.unmount();
+  });
+
+  test('opens only one of Edit Profile/Preferences at a time', () => {
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+    };
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ initialState, homeRef });
+    });
+
+    const preferencesButton = tree.root.findAll(
+      node => node.type === 'button' && node.props.children === 'Preferences',
+    )[0];
+    renderer.act(() => {
+      preferencesButton.props.onClick();
+    });
+    expect(homeRef.current.state.isPreferencesOpen).toBe(true);
+    expect(homeRef.current.state.isEditProfileOpen).toBe(false);
+
+    const editProfileButton = tree.root.findAll(
+      node => node.type === 'button' && node.props.children === 'Edit Profile',
+    )[0];
+    renderer.act(() => {
+      editProfileButton.props.onClick();
+    });
+    expect(homeRef.current.state.isEditProfileOpen).toBe(true);
+    expect(homeRef.current.state.isPreferencesOpen).toBe(false);
+
+    tree.unmount();
+  });
+
   test('shows loading summary when refreshing cached submissions', () => {
     const initialState = {
       email: 'test@example.com',

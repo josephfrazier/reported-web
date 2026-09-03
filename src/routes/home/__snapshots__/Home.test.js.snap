@@ -70,6 +70,13 @@ exports[`Home hides form fields when logged in with no photos uploaded 1`] = `
             onClick={[Function]}
             type="button"
           >
+            Preferences
+          </button>
+          <button
+            className="status-bar-btn"
+            onClick={[Function]}
+            type="button"
+          >
             Log Out
           </button>
         </div>
@@ -251,6 +258,13 @@ exports[`Home renders Edit Profile UI 1`] = `
             onClick={[Function]}
             type="button"
           >
+            Preferences
+          </button>
+          <button
+            className="status-bar-btn"
+            onClick={[Function]}
+            type="button"
+          >
             Log Out
           </button>
         </div>
@@ -323,35 +337,6 @@ exports[`Home renders Edit Profile UI 1`] = `
              
             I'm willing to testify at a hearing, which can be done by phone.
           </label>
-          <h3>
-            Preferences
-          </h3>
-          <label
-            htmlFor="isAlprEnabled"
-          >
-            <input
-              checked={true}
-              id="isAlprEnabled"
-              name="isAlprEnabled"
-              onChange={[Function]}
-              type="checkbox"
-            />
-             
-            Automatically read license plates from pictures/videos
-          </label>
-          <label
-            htmlFor="isReverseGeocodingEnabled"
-          >
-            <input
-              checked={true}
-              id="isReverseGeocodingEnabled"
-              name="isReverseGeocodingEnabled"
-              onChange={[Function]}
-              type="checkbox"
-            />
-             
-            Automatically read addresses from pictures/videos
-          </label>
           <label
             htmlFor="can_be_shared_publicly"
           >
@@ -364,19 +349,6 @@ exports[`Home renders Edit Profile UI 1`] = `
             />
              
             Allow the photos/videos, description, category, and location to be publicly displayed
-          </label>
-          <label
-            htmlFor="isLoadPreviousSubmissionsEnabled"
-          >
-            <input
-              checked={false}
-              id="isLoadPreviousSubmissionsEnabled"
-              name="isLoadPreviousSubmissionsEnabled"
-              onChange={[Function]}
-              type="checkbox"
-            />
-             
-            Load previous submissions on page load
           </label>
           <button
             className="auth-submit-btn"
@@ -636,6 +608,183 @@ exports[`Home renders Log In modal UI 1`] = `
            
           to submit a report.
         </p>
+      </div>
+      <br />
+      <div
+        style={
+          {
+            "float": "right",
+          }
+        }
+      >
+        <a
+          href="/submissions-map"
+          style={
+            {
+              "background": "black",
+              "border": "1em solid black",
+              "borderRadius": "2em",
+              "textDecoration": "none",
+            }
+          }
+        >
+          <span
+            aria-label="world map"
+            role="img"
+          >
+            🗺️
+          </span>
+        </a>
+      </div>
+    </main>
+  </div>
+  <input
+    autoComplete="off"
+    disabled={false}
+    multiple={true}
+    onChange={[Function]}
+    style={
+      {
+        "bottom": 0,
+        "left": 0,
+        "opacity": 0.00001,
+        "pointerEvents": "none",
+        "position": "absolute",
+        "right": 0,
+        "top": 0,
+      }
+    }
+    type="file"
+  />
+</div>
+`;
+
+exports[`Home renders Preferences UI 1`] = `
+<div
+  aria-disabled={false}
+  className="root"
+  onClick={[Function]}
+  onDragEnter={[Function]}
+  onDragLeave={[Function]}
+  onDragOver={[Function]}
+  onDragStart={[Function]}
+  onDrop={[Function]}
+  style={
+    {
+      "bottom": 0,
+      "left": 0,
+      "overflowY": "scroll",
+      "position": "fixed",
+      "right": 0,
+      "top": 0,
+    }
+  }
+>
+  <div
+    className="container"
+  >
+    <main>
+      <h1>
+        <a
+          href="https://reportedly.weebly.com/"
+          style={
+            {
+              "textDecoration": "underline",
+            }
+          }
+        >
+          Reported
+        </a>
+      </h1>
+      <div
+        className="Toastify"
+      />
+      <div
+        className="user-status-bar"
+      >
+        <div
+          className="user-greeting"
+        >
+          <span
+            aria-label="user"
+            role="img"
+          >
+            👤
+          </span>
+           
+          test@example.com
+        </div>
+        <div
+          className="user-actions"
+        >
+          <button
+            className="status-bar-btn-primary"
+            onClick={[Function]}
+            type="button"
+          >
+            Edit Profile
+          </button>
+          <button
+            className="status-bar-btn"
+            onClick={[Function]}
+            type="button"
+          >
+            Cancel
+          </button>
+          <button
+            className="status-bar-btn"
+            onClick={[Function]}
+            type="button"
+          >
+            Log Out
+          </button>
+        </div>
+      </div>
+      <div
+        className="edit-profile-section"
+      >
+        <h3>
+          Preferences
+        </h3>
+        <label
+          htmlFor="isAlprEnabled"
+        >
+          <input
+            checked={true}
+            id="isAlprEnabled"
+            name="isAlprEnabled"
+            onChange={[Function]}
+            type="checkbox"
+          />
+           
+          Automatically read license plates from pictures/videos
+        </label>
+        <label
+          htmlFor="isReverseGeocodingEnabled"
+        >
+          <input
+            checked={true}
+            id="isReverseGeocodingEnabled"
+            name="isReverseGeocodingEnabled"
+            onChange={[Function]}
+            type="checkbox"
+          />
+           
+          Automatically read addresses from pictures/videos
+        </label>
+        <label
+          htmlFor="isLoadPreviousSubmissionsEnabled"
+        >
+          <input
+            checked={false}
+            id="isLoadPreviousSubmissionsEnabled"
+            name="isLoadPreviousSubmissionsEnabled"
+            onChange={[Function]}
+            type="checkbox"
+          />
+           
+          Load previous submissions on page load
+        </label>
       </div>
       <br />
       <div
@@ -1170,6 +1319,13 @@ exports[`Home renders submission form and Previous Submissions when logged in wi
             type="button"
           >
             Edit Profile
+          </button>
+          <button
+            className="status-bar-btn"
+            onClick={[Function]}
+            type="button"
+          >
+            Preferences
           </button>
           <button
             className="status-bar-btn"
@@ -1825,6 +1981,13 @@ exports[`Home renders with allPlateResults entry missing plate and photos 1`] = 
             onClick={[Function]}
             type="button"
           >
+            Preferences
+          </button>
+          <button
+            className="status-bar-btn"
+            onClick={[Function]}
+            type="button"
+          >
             Log Out
           </button>
         </div>
@@ -2468,6 +2631,13 @@ exports[`Home renders with undefined allPlateResults and photos 1`] = `
             type="button"
           >
             Edit Profile
+          </button>
+          <button
+            className="status-bar-btn"
+            onClick={[Function]}
+            type="button"
+          >
+            Preferences
           </button>
           <button
             className="status-bar-btn"

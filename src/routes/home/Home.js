@@ -698,6 +698,7 @@ class Home extends React.Component {
       isAuthModalOpen: false,
       authModalTab: 'login',
       isEditProfileOpen: false,
+      isPreferencesOpen: false,
       authError: null,
     };
 
@@ -1551,6 +1552,7 @@ class Home extends React.Component {
         testify: false,
         submissions: [],
         isEditProfileOpen: false,
+        isPreferencesOpen: false,
         hasLoadedPreviousSubmissions: false,
         loginSuccessful: false,
       },
@@ -1682,6 +1684,8 @@ class Home extends React.Component {
   render() {
     const matchingPlateThumbnail = this.findMatchingPlateThumbnail();
     const previousSubmissionsSummary = this.getPreviousSubmissionsSummary();
+    const isSettingsPanelOpen =
+      this.state.isEditProfileOpen || this.state.isPreferencesOpen;
 
     return (
       <Dropzone
@@ -1750,10 +1754,23 @@ class Home extends React.Component {
                       onClick={() =>
                         this.setState(state => ({
                           isEditProfileOpen: !state.isEditProfileOpen,
+                          isPreferencesOpen: false,
                         }))
                       }
                     >
                       {this.state.isEditProfileOpen ? 'Cancel' : 'Edit Profile'}
+                    </button>
+                    <button
+                      type="button"
+                      className={homeStyles['status-bar-btn']}
+                      onClick={() =>
+                        this.setState(state => ({
+                          isPreferencesOpen: !state.isPreferencesOpen,
+                          isEditProfileOpen: false,
+                        }))
+                      }
+                    >
+                      {this.state.isPreferencesOpen ? 'Cancel' : 'Preferences'}
                     </button>
                     <button
                       type="button"
@@ -1839,6 +1856,19 @@ class Home extends React.Component {
                     I&apos;m willing to testify at a hearing, which can be done
                     by phone.
                   </label>
+
+                  <label htmlFor="can_be_shared_publicly">
+                    <input
+                      id="can_be_shared_publicly"
+                      type="checkbox"
+                      checked={this.state.can_be_shared_publicly}
+                      name="can_be_shared_publicly"
+                      onChange={this.handleInputChange}
+                    />{' '}
+                    Allow the photos/videos, description, category, and location
+                    to be publicly displayed
+                  </label>
+
                   <button
                     type="submit"
                     className={homeStyles['auth-submit-btn']}
@@ -1849,6 +1879,49 @@ class Home extends React.Component {
                   </button>
                 </fieldset>
               </form>
+            )}
+
+            {/* Preferences (shown inline when toggled). Unlike the Edit
+                Profile form above, nothing here needs saving: these toggles
+                affect only how the page behaves, not what is submitted, so
+                they persist to the cookie as they change. */}
+            {this.state.isPreferencesOpen && (
+              <div className={homeStyles['edit-profile-section']}>
+                <h3>Preferences</h3>
+
+                <label htmlFor="isAlprEnabled">
+                  <input
+                    id="isAlprEnabled"
+                    type="checkbox"
+                    checked={this.state.isAlprEnabled}
+                    name="isAlprEnabled"
+                    onChange={this.handleInputChange}
+                  />{' '}
+                  Automatically read license plates from pictures/videos
+                </label>
+
+                <label htmlFor="isReverseGeocodingEnabled">
+                  <input
+                    id="isReverseGeocodingEnabled"
+                    type="checkbox"
+                    checked={this.state.isReverseGeocodingEnabled}
+                    name="isReverseGeocodingEnabled"
+                    onChange={this.handleInputChange}
+                  />{' '}
+                  Automatically read addresses from pictures/videos
+                </label>
+
+                <label htmlFor="isLoadPreviousSubmissionsEnabled">
+                  <input
+                    id="isLoadPreviousSubmissionsEnabled"
+                    type="checkbox"
+                    checked={this.state.isLoadPreviousSubmissionsEnabled}
+                    name="isLoadPreviousSubmissionsEnabled"
+                    onChange={this.handleInputChange}
+                  />{' '}
+                  Load previous submissions on page load
+                </label>
+              </div>
             )}
 
             {/* Auth Modal */}
@@ -2136,7 +2209,7 @@ class Home extends React.Component {
                 </p>
               </div>
             )}
-            {this.isLoggedIn() && !this.state.isEditProfileOpen && (
+            {this.isLoggedIn() && !isSettingsPanelOpen && (
               <form
                 onSubmit={async e => {
                   e.preventDefault();
@@ -2293,28 +2366,6 @@ class Home extends React.Component {
                   </FileReaderInput>
 
                   <div style={{ clear: 'both' }} />
-
-                  <label htmlFor="isAlprEnabled">
-                    <input
-                      id="isAlprEnabled"
-                      type="checkbox"
-                      checked={this.state.isAlprEnabled}
-                      name="isAlprEnabled"
-                      onChange={this.handleInputChange}
-                    />{' '}
-                    Automatically read license plates from pictures/videos
-                  </label>
-
-                  <label htmlFor="isReverseGeocodingEnabled">
-                    <input
-                      id="isReverseGeocodingEnabled"
-                      type="checkbox"
-                      checked={this.state.isReverseGeocodingEnabled}
-                      name="isReverseGeocodingEnabled"
-                      onChange={this.handleInputChange}
-                    />{' '}
-                    Automatically read addresses from pictures/videos
-                  </label>
 
                   {this.state.attachmentData.length > 0 && (
                     <React.Fragment>
@@ -2693,18 +2744,6 @@ class Home extends React.Component {
                         />
                       </label>
 
-                      <label htmlFor="can_be_shared_publicly">
-                        <input
-                          id="can_be_shared_publicly"
-                          type="checkbox"
-                          checked={this.state.can_be_shared_publicly}
-                          name="can_be_shared_publicly"
-                          onChange={this.handleInputChange}
-                        />{' '}
-                        Allow the photos/videos, description, category, and
-                        location to be publicly displayed
-                      </label>
-
                       {this.state.isSubmitting ? (
                         <progress
                           max={this.state.submitProgressMax}
@@ -2738,7 +2777,7 @@ class Home extends React.Component {
 
             <br />
 
-            {this.isLoggedIn() && !this.state.isEditProfileOpen && (
+            {this.isLoggedIn() && !isSettingsPanelOpen && (
               <details
                 onToggle={evt => {
                   const isPreviousSubmissionsOpen = evt.currentTarget.open;
@@ -2765,33 +2804,14 @@ class Home extends React.Component {
                 </summary>
 
                 {this.state.isPreviousSubmissionsOpen && (
-                  <>
-                    {/* Also show this while cached submissions are being
-                        refreshed in the background. */}
-                    {this.state.hasLoadedPreviousSubmissions && (
-                      <label
-                        htmlFor="isLoadPreviousSubmissionsEnabled"
-                        style={{ display: 'block', marginBottom: '1rem' }}
-                      >
-                        <input
-                          id="isLoadPreviousSubmissionsEnabled"
-                          type="checkbox"
-                          checked={this.state.isLoadPreviousSubmissionsEnabled}
-                          name="isLoadPreviousSubmissionsEnabled"
-                          onChange={this.handleInputChange}
-                        />{' '}
-                        Load previous submissions immediately next time
-                      </label>
-                    )}
-                    <PreviousSubmissionsList
-                      submissions={this.state.submissions}
-                      onDeleteSubmission={this.onDeleteSubmission}
-                      isLoading={this.state.isPreviousSubmissionsLoading}
-                      hasLoadedPreviousSubmissions={
-                        this.state.hasLoadedPreviousSubmissions
-                      }
-                    />
-                  </>
+                  <PreviousSubmissionsList
+                    submissions={this.state.submissions}
+                    onDeleteSubmission={this.onDeleteSubmission}
+                    isLoading={this.state.isPreviousSubmissionsLoading}
+                    hasLoadedPreviousSubmissions={
+                      this.state.hasLoadedPreviousSubmissions
+                    }
+                  />
                 )}
               </details>
             )}

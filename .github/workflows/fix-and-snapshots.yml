@@ -25,6 +25,13 @@ jobs:
       - run: echo "$HOME/.yarn/bin" >> "$GITHUB_PATH"
       - run: yarn
 
+      # The mongod 4.4 binary that mongodb-memory-server downloads for the
+      # getSubmissions test needs libssl1.1, which the runner's Ubuntu doesn't ship.
+      - name: Install libssl1.1
+        run: |
+          wget -q https://archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2_amd64.deb
+          sudo dpkg -i libssl1.1_1.1.1f-1ubuntu2_amd64.deb
+
       - name: Run yarn fix
         run: yarn fix
 

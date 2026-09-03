@@ -131,6 +131,7 @@
     "jest-mock-now": "^1.2.0",
     "markdown-it": "^14.2.0",
     "mkdirp": "^0.5.1",
+    "mongodb-memory-server": "^11.2.0",
     "null-loader": "^0.1.1",
     "playwright": "^1.62.1",
     "postcss": "^8.5.23",

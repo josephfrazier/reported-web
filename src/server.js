@@ -813,4 +813,6 @@ if (module.hot) {
   module.hot.accept('./router');
 }
 
+export { getSubmissions };
+
 export default app;

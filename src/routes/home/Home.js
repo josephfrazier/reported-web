@@ -1684,6 +1684,8 @@ class Home extends React.Component {
   render() {
     const matchingPlateThumbnail = this.findMatchingPlateThumbnail();
     const previousSubmissionsSummary = this.getPreviousSubmissionsSummary();
+    const isSettingsPanelOpen =
+      this.state.isEditProfileOpen || this.state.isPreferencesOpen;
 
     return (
       <Dropzone
@@ -2207,620 +2209,612 @@ class Home extends React.Component {
                 </p>
               </div>
             )}
-            {this.isLoggedIn() &&
-              !this.state.isEditProfileOpen &&
-              !this.state.isPreferencesOpen && (
-                <form
-                  onSubmit={async e => {
-                    e.preventDefault();
+            {this.isLoggedIn() && !isSettingsPanelOpen && (
+              <form
+                onSubmit={async e => {
+                  e.preventDefault();
 
-                    if (
-                      this.state.latitude === defaultLatitude &&
-                      this.state.longitude === defaultLongitude
-                    ) {
-                      Home.notifyError(
-                        'Please provide the location of the incident',
-                      );
-                      return;
-                    }
-
-                    this.setState({
-                      isSubmitting: true,
-                    });
-
-                    // Collect pre-uploaded IDs for all attachment files
-                    const attachmentIds = await Promise.all(
-                      this.state.attachmentData.map(async file => {
-                        const uploadPromise = fileUploadPromises.get(file);
-                        if (!uploadPromise) return null;
-                        try {
-                          return await uploadPromise;
-                        } catch (_err) {
-                          console.error(
-                            'Background attachment upload failed:',
-                            _err,
-                          );
-                          return null;
-                        }
-                      }),
+                  if (
+                    this.state.latitude === defaultLatitude &&
+                    this.state.longitude === defaultLongitude
+                  ) {
+                    Home.notifyError(
+                      'Please provide the location of the incident',
                     );
-                    const hasAllIds =
-                      attachmentIds.length > 0 &&
-                      attachmentIds.every(id => id !== null);
+                    return;
+                  }
 
-                    axios
-                      .post(
-                        '/submit',
-                        serialize(
-                          hasAllIds
-                            ? {
-                                ...this.getPerSubmissionState(),
-                                attachmentIds: JSON.stringify(attachmentIds),
-                                CreateDate: new Date(
-                                  this.state.CreateDate,
-                                ).toISOString(),
-                              }
-                            : {
-                                ...this.getPerSubmissionState(),
-                                attachmentData: this.state.attachmentData,
-                                CreateDate: new Date(
-                                  this.state.CreateDate,
-                                ).toISOString(),
-                              },
-                          { allowEmptyArrays: true },
-                        ),
-                        {
-                          onUploadProgress: progressEvent => {
-                            const {
-                              loaded: submitProgressValue,
-                              total: submitProgressMax,
-                            } = progressEvent;
+                  this.setState({
+                    isSubmitting: true,
+                  });
 
-                            this.setState({
-                              submitProgressValue,
-                              submitProgressMax,
-                            });
-                          },
-
-                          onDownloadProgress: progressEvent => {
-                            const {
-                              loaded: submitProgressValue,
-                              total: submitProgressMax,
-                            } = progressEvent;
-
-                            this.setState({
-                              submitProgressValue,
-                              submitProgressMax,
-                            });
-                          },
-                        },
-                      )
-                      .then(({ data }) => {
-                        const { submission } = data;
-                        document.querySelector(`.${homeStyles.root}`).scrollTo({
-                          top: 100,
-                          left: 100,
-                          behavior: 'smooth',
-                        });
-                        console.info(
-                          `submitted successfully. Returned data: ${JSON.stringify(
-                            data,
-                            null,
-                            2,
-                          )}`,
+                  // Collect pre-uploaded IDs for all attachment files
+                  const attachmentIds = await Promise.all(
+                    this.state.attachmentData.map(async file => {
+                      const uploadPromise = fileUploadPromises.get(file);
+                      if (!uploadPromise) return null;
+                      try {
+                        return await uploadPromise;
+                      } catch (_err) {
+                        console.error(
+                          'Background attachment upload failed:',
+                          _err,
                         );
-                        this.setState(state => ({
-                          attachmentData: [],
-                          submissions: [submission].concat(state.submissions),
-                          allPlateData: null,
-                          plateDataByAttachmentName: {},
-                          vehicleInfoComponent: null,
-                          violationSummaryComponent: null,
-                          reportDescription: '',
-                        }));
-                        this.setLicensePlate({ plate: '', licenseState: 'NY' });
-                        this.setCoords({
-                          latitude: defaultLatitude,
-                          longitude: defaultLongitude,
-                        });
-                        Home.notifySuccess(
-                          <React.Fragment>
-                            <p>Thanks for your submission!</p>
-                            <p>
-                              Your information has been submitted to Reported.
-                              It may take up to 24 hours for it to be processed.
-                            </p>
+                        return null;
+                      }
+                    }),
+                  );
+                  const hasAllIds =
+                    attachmentIds.length > 0 &&
+                    attachmentIds.every(id => id !== null);
 
-                            {/*
+                  axios
+                    .post(
+                      '/submit',
+                      serialize(
+                        hasAllIds
+                          ? {
+                              ...this.getPerSubmissionState(),
+                              attachmentIds: JSON.stringify(attachmentIds),
+                              CreateDate: new Date(
+                                this.state.CreateDate,
+                              ).toISOString(),
+                            }
+                          : {
+                              ...this.getPerSubmissionState(),
+                              attachmentData: this.state.attachmentData,
+                              CreateDate: new Date(
+                                this.state.CreateDate,
+                              ).toISOString(),
+                            },
+                        { allowEmptyArrays: true },
+                      ),
+                      {
+                        onUploadProgress: progressEvent => {
+                          const {
+                            loaded: submitProgressValue,
+                            total: submitProgressMax,
+                          } = progressEvent;
+
+                          this.setState({
+                            submitProgressValue,
+                            submitProgressMax,
+                          });
+                        },
+
+                        onDownloadProgress: progressEvent => {
+                          const {
+                            loaded: submitProgressValue,
+                            total: submitProgressMax,
+                          } = progressEvent;
+
+                          this.setState({
+                            submitProgressValue,
+                            submitProgressMax,
+                          });
+                        },
+                      },
+                    )
+                    .then(({ data }) => {
+                      const { submission } = data;
+                      document.querySelector(`.${homeStyles.root}`).scrollTo({
+                        top: 100,
+                        left: 100,
+                        behavior: 'smooth',
+                      });
+                      console.info(
+                        `submitted successfully. Returned data: ${JSON.stringify(
+                          data,
+                          null,
+                          2,
+                        )}`,
+                      );
+                      this.setState(state => ({
+                        attachmentData: [],
+                        submissions: [submission].concat(state.submissions),
+                        allPlateData: null,
+                        plateDataByAttachmentName: {},
+                        vehicleInfoComponent: null,
+                        violationSummaryComponent: null,
+                        reportDescription: '',
+                      }));
+                      this.setLicensePlate({ plate: '', licenseState: 'NY' });
+                      this.setCoords({
+                        latitude: defaultLatitude,
+                        longitude: defaultLongitude,
+                      });
+                      Home.notifySuccess(
+                        <React.Fragment>
+                          <p>Thanks for your submission!</p>
+                          <p>
+                            Your information has been submitted to Reported. It
+                            may take up to 24 hours for it to be processed.
+                          </p>
+
+                          {/*
                         <p>objectId: {data.submission.objectId}</p>
                         */}
-                          </React.Fragment>,
-                        );
-                      })
-                      .catch(Home.handleAxiosError)
-                      .then(() => {
-                        this.setState({
-                          isSubmitting: false,
-                          submitProgressValue: null,
-                          submitProgressMax: null,
-                        });
-                      })
-                      .then(() => {
-                        this.savePersistentStateToCookie();
+                        </React.Fragment>,
+                      );
+                    })
+                    .catch(Home.handleAxiosError)
+                    .then(() => {
+                      this.setState({
+                        isSubmitting: false,
+                        submitProgressValue: null,
+                        submitProgressMax: null,
                       });
-                  }}
-                >
-                  <fieldset disabled={this.state.isSubmitting}>
-                    <FileReaderInput
-                      multiple
-                      as="buffer"
-                      onChange={this.handleAttachmentInput}
-                      style={{
-                        float: 'left',
-                        margin: '1px',
-                      }}
-                    >
-                      <button type="button" style={{ whiteSpace: 'wrap' }}>
-                        Add pictures/videos (up to 3 each, 20MB max each)
-                      </button>
-                    </FileReaderInput>
+                    })
+                    .then(() => {
+                      this.savePersistentStateToCookie();
+                    });
+                }}
+              >
+                <fieldset disabled={this.state.isSubmitting}>
+                  <FileReaderInput
+                    multiple
+                    as="buffer"
+                    onChange={this.handleAttachmentInput}
+                    style={{
+                      float: 'left',
+                      margin: '1px',
+                    }}
+                  >
+                    <button type="button" style={{ whiteSpace: 'wrap' }}>
+                      Add pictures/videos (up to 3 each, 20MB max each)
+                    </button>
+                  </FileReaderInput>
 
-                    <div style={{ clear: 'both' }} />
+                  <div style={{ clear: 'both' }} />
 
-                    {this.state.attachmentData.length > 0 && (
-                      <React.Fragment>
+                  {this.state.attachmentData.length > 0 && (
+                    <React.Fragment>
+                      <div
+                        style={{
+                          display: 'flex',
+                          flexWrap: 'wrap',
+                        }}
+                      >
+                        {this.state.attachmentData.map(attachmentFile => {
+                          const { name } = attachmentFile;
+                          const ext = fileExtension(name);
+                          const isImg = isImage({ ext });
+                          const src = getBlobUrl(attachmentFile);
+                          const attachmentPlateData =
+                            this.state.plateDataByAttachmentName[name];
+
+                          return (
+                            <div
+                              key={name}
+                              style={{
+                                width: '33%',
+                                margin: '0.1%',
+                                flexGrow: 1,
+                                position: 'relative',
+                              }}
+                            >
+                              <div
+                                style={{
+                                  position: 'relative',
+                                  display: 'inline-block',
+                                  maxWidth: '100%',
+                                }}
+                              >
+                                <a
+                                  href={src}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{ display: 'block' }}
+                                >
+                                  {isImg ? (
+                                    <img
+                                      src={src}
+                                      alt={name}
+                                      style={{ display: 'block' }}
+                                    />
+                                  ) : (
+                                    /* eslint-disable-next-line jsx-a11y/media-has-caption */
+                                    <video
+                                      src={src}
+                                      alt={name}
+                                      // The position:relative wrapper shrink-
+                                      // wraps its content, and plate overlays
+                                      // are percentage-positioned against that
+                                      // wrapper, so the video must fill it
+                                      // exactly like the img above does:
+                                      // display:block closes the inline
+                                      // baseline gap, and max-width:100%
+                                      // (which marx-css gives img but not
+                                      // video) keeps the video from
+                                      // overflowing the wrapper when it is
+                                      // wider than the container.
+                                      style={{
+                                        display: 'block',
+                                        maxWidth: '100%',
+                                      }}
+                                    />
+                                  )}
+                                </a>
+                                {this.renderPlateOverlays({
+                                  attachmentPlateData,
+                                })}
+                              </div>
+
+                              <button
+                                type="button"
+                                style={{
+                                  position: 'absolute',
+                                  top: 0,
+                                  right: 0,
+                                  padding: 0,
+                                  margin: '1px',
+                                  color: 'red', // Ubuntu Chrome shows black otherwise
+                                  background: 'white',
+                                }}
+                                onClick={() => {
+                                  this.setState(state => {
+                                    const attachmentData =
+                                      state.attachmentData.filter(
+                                        file => file.name !== name,
+                                      );
+                                    if (attachmentData.length === 0) {
+                                      this.setCoords({
+                                        latitude: defaultLatitude,
+                                        longitude: defaultLongitude,
+                                      });
+                                      this.setCreateDate({
+                                        millisecondsSinceEpoch: Date.now(),
+                                      });
+                                      return {
+                                        attachmentData,
+                                        plate: '',
+                                        licenseState: 'NY',
+                                        allPlateData: null,
+                                        plateDataByAttachmentName: {},
+                                        vehicleInfoComponent: null,
+                                        violationSummaryComponent: null,
+                                      };
+                                    }
+                                    return {
+                                      attachmentData,
+                                      plateDataByAttachmentName: omit(
+                                        state.plateDataByAttachmentName,
+                                        name,
+                                      ),
+                                    };
+                                  });
+                                }}
+                              >
+                                <span
+                                  role="img"
+                                  aria-label="Delete photo/video"
+                                >
+                                  ❌
+                                </span>
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <label htmlFor="plate" ref={this.plateLabelRef}>
+                        License/Medallion:
+                        {this.state.isAlprLoading && (
+                          <CircularProgress size="1em" />
+                        )}
                         <div
                           style={{
                             display: 'flex',
                             flexWrap: 'wrap',
+                            alignItems: 'flex-start',
+                            gap: '0.5rem',
                           }}
                         >
-                          {this.state.attachmentData.map(attachmentFile => {
-                            const { name } = attachmentFile;
-                            const ext = fileExtension(name);
-                            const isImg = isImage({ ext });
-                            const src = getBlobUrl(attachmentFile);
-                            const attachmentPlateData =
-                              this.state.plateDataByAttachmentName[name];
-
-                            return (
-                              <div
-                                key={name}
-                                style={{
-                                  width: '33%',
-                                  margin: '0.1%',
-                                  flexGrow: 1,
-                                  position: 'relative',
-                                }}
-                              >
-                                <div
-                                  style={{
-                                    position: 'relative',
-                                    display: 'inline-block',
-                                    maxWidth: '100%',
-                                  }}
-                                >
-                                  <a
-                                    href={src}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    style={{ display: 'block' }}
-                                  >
-                                    {isImg ? (
-                                      <img
-                                        src={src}
-                                        alt={name}
-                                        style={{ display: 'block' }}
-                                      />
-                                    ) : (
-                                      /* eslint-disable-next-line jsx-a11y/media-has-caption */
-                                      <video
-                                        src={src}
-                                        alt={name}
-                                        // The position:relative wrapper shrink-
-                                        // wraps its content, and plate overlays
-                                        // are percentage-positioned against that
-                                        // wrapper, so the video must fill it
-                                        // exactly like the img above does:
-                                        // display:block closes the inline
-                                        // baseline gap, and max-width:100%
-                                        // (which marx-css gives img but not
-                                        // video) keeps the video from
-                                        // overflowing the wrapper when it is
-                                        // wider than the container.
-                                        style={{
-                                          display: 'block',
-                                          maxWidth: '100%',
-                                        }}
-                                      />
-                                    )}
-                                  </a>
-                                  {this.renderPlateOverlays({
-                                    attachmentPlateData,
-                                  })}
-                                </div>
-
-                                <button
-                                  type="button"
-                                  style={{
-                                    position: 'absolute',
-                                    top: 0,
-                                    right: 0,
-                                    padding: 0,
-                                    margin: '1px',
-                                    color: 'red', // Ubuntu Chrome shows black otherwise
-                                    background: 'white',
-                                  }}
-                                  onClick={() => {
-                                    this.setState(state => {
-                                      const attachmentData =
-                                        state.attachmentData.filter(
-                                          file => file.name !== name,
-                                        );
-                                      if (attachmentData.length === 0) {
-                                        this.setCoords({
-                                          latitude: defaultLatitude,
-                                          longitude: defaultLongitude,
-                                        });
-                                        this.setCreateDate({
-                                          millisecondsSinceEpoch: Date.now(),
-                                        });
-                                        return {
-                                          attachmentData,
-                                          plate: '',
-                                          licenseState: 'NY',
-                                          allPlateData: null,
-                                          plateDataByAttachmentName: {},
-                                          vehicleInfoComponent: null,
-                                          violationSummaryComponent: null,
-                                        };
-                                      }
-                                      return {
-                                        attachmentData,
-                                        plateDataByAttachmentName: omit(
-                                          state.plateDataByAttachmentName,
-                                          name,
-                                        ),
-                                      };
-                                    });
-                                  }}
-                                >
-                                  <span
-                                    role="img"
-                                    aria-label="Delete photo/video"
-                                  >
-                                    ❌
-                                  </span>
-                                </button>
-                              </div>
-                            );
-                          })}
-                        </div>
-
-                        <label htmlFor="plate" ref={this.plateLabelRef}>
-                          License/Medallion:
-                          {this.state.isAlprLoading && (
-                            <CircularProgress size="1em" />
-                          )}
-                          <div
-                            style={{
-                              display: 'flex',
-                              flexWrap: 'wrap',
-                              alignItems: 'flex-start',
-                              gap: '0.5rem',
-                            }}
-                          >
-                            <div style={{ minWidth: 0, flex: 1 }}>
-                              <input
-                                required
-                                type="search"
-                                value={this.state.plate}
-                                name="plate"
-                                list="plateSuggestions"
-                                autoComplete="off"
-                                ref={this.plateRef}
-                                placeholder={this.state.allPlateData?.results?.[0]?.plate?.toUpperCase()}
-                                onChange={event => {
-                                  const plate = upperCaseInputValueInPlace(
-                                    event.target,
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <input
+                              required
+                              type="search"
+                              value={this.state.plate}
+                              name="plate"
+                              list="plateSuggestions"
+                              autoComplete="off"
+                              ref={this.plateRef}
+                              placeholder={this.state.allPlateData?.results?.[0]?.plate?.toUpperCase()}
+                              onChange={event => {
+                                const plate = upperCaseInputValueInPlace(
+                                  event.target,
+                                );
+                                const matchedResult =
+                                  this.state.allPlateData?.results?.find(
+                                    r => r.plate?.toUpperCase() === plate,
                                   );
-                                  const matchedResult =
-                                    this.state.allPlateData?.results?.find(
-                                      r => r.plate?.toUpperCase() === plate,
-                                    );
-                                  const licenseState = matchedResult
-                                    ? getLicenseStateFromPlateResult(
-                                        matchedResult,
-                                      )
-                                    : null;
-                                  this.setLicensePlate({ plate, licenseState });
-                                }}
-                              />
-                              <datalist id="plateSuggestions">
-                                {this.state.allPlateData?.results?.map(
-                                  result => (
-                                    <option
-                                      value={result.plate?.toUpperCase()}
-                                    />
-                                  ),
-                                )}
-                              </datalist>
-                              <select
-                                style={{
-                                  marginTop: '0.5rem',
-                                }}
-                                value={this.state.licenseState}
-                                name="licenseState"
-                                onChange={event => {
-                                  this.setLicensePlate({
-                                    plate: this.state.plate,
-                                    licenseState: event.target.value,
-                                  });
-                                }}
-                              >
-                                {Object.entries(usStateNames)
-                                  .sort(([, name1], [, name2]) =>
-                                    name1
-                                      .toUpperCase()
-                                      .localeCompare(name2.toUpperCase()),
-                                  )
-                                  .map(([abbr, name]) => (
-                                    <option key={abbr} value={abbr}>
-                                      {name}
-                                    </option>
-                                  ))}
-                              </select>
-                            </div>
-                            {matchingPlateThumbnail && (
-                              <img
-                                src={matchingPlateThumbnail}
-                                alt="Detected license plate"
-                                style={{
-                                  maxHeight: '5rem',
-                                  maxWidth: '12rem',
-                                  objectFit: 'contain',
-                                }}
-                              />
-                            )}
+                                const licenseState = matchedResult
+                                  ? getLicenseStateFromPlateResult(
+                                      matchedResult,
+                                    )
+                                  : null;
+                                this.setLicensePlate({ plate, licenseState });
+                              }}
+                            />
+                            <datalist id="plateSuggestions">
+                              {this.state.allPlateData?.results?.map(result => (
+                                <option value={result.plate?.toUpperCase()} />
+                              ))}
+                            </datalist>
+                            <select
+                              style={{
+                                marginTop: '0.5rem',
+                              }}
+                              value={this.state.licenseState}
+                              name="licenseState"
+                              onChange={event => {
+                                this.setLicensePlate({
+                                  plate: this.state.plate,
+                                  licenseState: event.target.value,
+                                });
+                              }}
+                            >
+                              {Object.entries(usStateNames)
+                                .sort(([, name1], [, name2]) =>
+                                  name1
+                                    .toUpperCase()
+                                    .localeCompare(name2.toUpperCase()),
+                                )
+                                .map(([abbr, name]) => (
+                                  <option key={abbr} value={abbr}>
+                                    {name}
+                                  </option>
+                                ))}
+                            </select>
                           </div>
-                          <div>{this.state.violationSummaryComponent}</div>
-                          <div>{this.state.vehicleInfoComponent}</div>
-                        </label>
+                          {matchingPlateThumbnail && (
+                            <img
+                              src={matchingPlateThumbnail}
+                              alt="Detected license plate"
+                              style={{
+                                maxHeight: '5rem',
+                                maxWidth: '12rem',
+                                objectFit: 'contain',
+                              }}
+                            />
+                          )}
+                        </div>
+                        <div>{this.state.violationSummaryComponent}</div>
+                        <div>{this.state.vehicleInfoComponent}</div>
+                      </label>
 
-                        <label htmlFor="typeofcomplaint">
-                          Type:{' '}
-                          <select
-                            value={this.state.typeofcomplaint}
-                            name="typeofcomplaint"
-                            onChange={this.handleInputChange}
-                          >
-                            {this.props.typeofcomplaintValues.map(
-                              typeofcomplaint => (
-                                <option
-                                  key={typeofcomplaint}
-                                  value={typeofcomplaint}
-                                >
-                                  {typeofcomplaint}
-                                </option>
-                              ),
-                            )}
-                          </select>
-                        </label>
+                      <label htmlFor="typeofcomplaint">
+                        Type:{' '}
+                        <select
+                          value={this.state.typeofcomplaint}
+                          name="typeofcomplaint"
+                          onChange={this.handleInputChange}
+                        >
+                          {this.props.typeofcomplaintValues.map(
+                            typeofcomplaint => (
+                              <option
+                                key={typeofcomplaint}
+                                value={typeofcomplaint}
+                              >
+                                {typeofcomplaint}
+                              </option>
+                            ),
+                          )}
+                        </select>
+                      </label>
 
-                        <label htmlFor="where">
-                          Where: {this.state.addressProvenance}
-                          <br />
-                          <button
-                            type="button"
-                            name="where"
-                            onClick={() => this.setState({ isMapOpen: true })}
-                            style={{
-                              width: '100%',
-                            }}
-                          >
-                            {this.state.formatted_address
-                              .split(', ')
-                              .slice(0, 2)
-                              .join(', ')}
-                          </button>
-                        </label>
+                      <label htmlFor="where">
+                        Where: {this.state.addressProvenance}
+                        <br />
+                        <button
+                          type="button"
+                          name="where"
+                          onClick={() => this.setState({ isMapOpen: true })}
+                          style={{
+                            width: '100%',
+                          }}
+                        >
+                          {this.state.formatted_address
+                            .split(', ')
+                            .slice(0, 2)
+                            .join(', ')}
+                        </button>
+                      </label>
 
-                        <Modal
-                          parentSelector={() =>
-                            document.querySelector(`.${homeStyles.root}`) ||
-                            document.body
-                          }
-                          isOpen={this.state.isMapOpen}
-                          onRequestClose={() =>
-                            this.setState({ isMapOpen: false })
+                      <Modal
+                        parentSelector={() =>
+                          document.querySelector(`.${homeStyles.root}`) ||
+                          document.body
+                        }
+                        isOpen={this.state.isMapOpen}
+                        onRequestClose={() =>
+                          this.setState({ isMapOpen: false })
+                        }
+                        style={{
+                          content: {
+                            padding: 0,
+                          },
+                        }}
+                      >
+                        <MyMapComponent
+                          key="map"
+                          position={{
+                            lat: this.state.latitude,
+                            lng: this.state.longitude,
+                          }}
+                          onRef={mapRef => {
+                            this.mapRef = mapRef;
+                          }}
+                          onCenterChanged={() => {
+                            const latitude = this.mapRef.getCenter().lat();
+                            const longitude = this.mapRef.getCenter().lng();
+                            this.setCoords({
+                              latitude,
+                              longitude,
+                              addressProvenance: '(manually set)',
+                            });
+                          }}
+                          onDragStart={() => {
+                            this.isDragging = true;
+                          }}
+                          onDragEnd={() => {
+                            this.isDragging = false;
+                          }}
+                          onSearchBoxMounted={this.handleSearchBoxMounted}
+                          onSearchInputMounted={Home.handleSearchInputMounted}
+                          onPlacesChanged={() => {
+                            const places = this.searchBox.getPlaces();
+
+                            const nextMarkers = places.map(place => ({
+                              position: place.geometry.location,
+                            }));
+                            const { latitude, longitude } =
+                              nextMarkers.length > 0
+                                ? {
+                                    latitude: nextMarkers[0].position.lat(),
+                                    longitude: nextMarkers[0].position.lng(),
+                                  }
+                                : this.state;
+
+                            this.setCoords({
+                              latitude,
+                              longitude,
+                              addressProvenance: '(manually set)',
+                            });
+                          }}
+                        />
+
+                        <button
+                          type="button"
+                          style={{
+                            float: 'left',
+                          }}
+                          onClick={() => {
+                            geolocate()
+                              .then(
+                                ({
+                                  coords: { latitude, longitude },
+                                  ipProvenance = 'device',
+                                }) => {
+                                  this.setCoords({
+                                    latitude,
+                                    longitude,
+                                    addressProvenance: `(from ${ipProvenance}: ${latitude}, ${longitude})`,
+                                  });
+                                },
+                              )
+                              .catch(err => {
+                                Home.notifyError(err.message);
+                                console.error(err);
+                              });
+                          }}
+                        >
+                          Use current location
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => this.setState({ isMapOpen: false })}
+                          style={{
+                            float: 'right',
+                          }}
+                        >
+                          Close
+                        </button>
+                      </Modal>
+
+                      <label htmlFor="CreateDate">
+                        When:{' '}
+                        <input
+                          required
+                          type="datetime-local"
+                          value={this.state.CreateDate}
+                          name="CreateDate"
+                          onChange={this.handleInputChange}
+                        />
+                      </label>
+
+                      <label htmlFor="reportDescription">
+                        Description:{' '}
+                        <textarea
+                          value={this.state.reportDescription}
+                          name="reportDescription"
+                          onChange={this.handleInputChange}
+                          autoComplete="off"
+                        />
+                      </label>
+
+                      {this.state.isSubmitting ? (
+                        <progress
+                          max={this.state.submitProgressMax}
+                          value={this.state.submitProgressValue}
+                          style={{
+                            width: '100%',
+                          }}
+                        >
+                          {this.state.submitProgressValue}/
+                          {this.state.submitProgressMax}
+                        </progress>
+                      ) : (
+                        <button
+                          type="submit"
+                          disabled={
+                            this.state.isSubmitting ||
+                            !this.state.coordsAreInNyc
                           }
                           style={{
-                            content: {
-                              padding: 0,
-                            },
+                            width: '100%',
                           }}
                         >
-                          <MyMapComponent
-                            key="map"
-                            position={{
-                              lat: this.state.latitude,
-                              lng: this.state.longitude,
-                            }}
-                            onRef={mapRef => {
-                              this.mapRef = mapRef;
-                            }}
-                            onCenterChanged={() => {
-                              const latitude = this.mapRef.getCenter().lat();
-                              const longitude = this.mapRef.getCenter().lng();
-                              this.setCoords({
-                                latitude,
-                                longitude,
-                                addressProvenance: '(manually set)',
-                              });
-                            }}
-                            onDragStart={() => {
-                              this.isDragging = true;
-                            }}
-                            onDragEnd={() => {
-                              this.isDragging = false;
-                            }}
-                            onSearchBoxMounted={this.handleSearchBoxMounted}
-                            onSearchInputMounted={Home.handleSearchInputMounted}
-                            onPlacesChanged={() => {
-                              const places = this.searchBox.getPlaces();
-
-                              const nextMarkers = places.map(place => ({
-                                position: place.geometry.location,
-                              }));
-                              const { latitude, longitude } =
-                                nextMarkers.length > 0
-                                  ? {
-                                      latitude: nextMarkers[0].position.lat(),
-                                      longitude: nextMarkers[0].position.lng(),
-                                    }
-                                  : this.state;
-
-                              this.setCoords({
-                                latitude,
-                                longitude,
-                                addressProvenance: '(manually set)',
-                              });
-                            }}
-                          />
-
-                          <button
-                            type="button"
-                            style={{
-                              float: 'left',
-                            }}
-                            onClick={() => {
-                              geolocate()
-                                .then(
-                                  ({
-                                    coords: { latitude, longitude },
-                                    ipProvenance = 'device',
-                                  }) => {
-                                    this.setCoords({
-                                      latitude,
-                                      longitude,
-                                      addressProvenance: `(from ${ipProvenance}: ${latitude}, ${longitude})`,
-                                    });
-                                  },
-                                )
-                                .catch(err => {
-                                  Home.notifyError(err.message);
-                                  console.error(err);
-                                });
-                            }}
-                          >
-                            Use current location
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => this.setState({ isMapOpen: false })}
-                            style={{
-                              float: 'right',
-                            }}
-                          >
-                            Close
-                          </button>
-                        </Modal>
-
-                        <label htmlFor="CreateDate">
-                          When:{' '}
-                          <input
-                            required
-                            type="datetime-local"
-                            value={this.state.CreateDate}
-                            name="CreateDate"
-                            onChange={this.handleInputChange}
-                          />
-                        </label>
-
-                        <label htmlFor="reportDescription">
-                          Description:{' '}
-                          <textarea
-                            value={this.state.reportDescription}
-                            name="reportDescription"
-                            onChange={this.handleInputChange}
-                            autoComplete="off"
-                          />
-                        </label>
-
-                        {this.state.isSubmitting ? (
-                          <progress
-                            max={this.state.submitProgressMax}
-                            value={this.state.submitProgressValue}
-                            style={{
-                              width: '100%',
-                            }}
-                          >
-                            {this.state.submitProgressValue}/
-                            {this.state.submitProgressMax}
-                          </progress>
-                        ) : (
-                          <button
-                            type="submit"
-                            disabled={
-                              this.state.isSubmitting ||
-                              !this.state.coordsAreInNyc
-                            }
-                            style={{
-                              width: '100%',
-                            }}
-                          >
-                            Submit
-                          </button>
-                        )}
-                      </React.Fragment>
-                    )}
-                  </fieldset>
-                </form>
-              )}
+                          Submit
+                        </button>
+                      )}
+                    </React.Fragment>
+                  )}
+                </fieldset>
+              </form>
+            )}
 
             <br />
 
-            {this.isLoggedIn() &&
-              !this.state.isEditProfileOpen &&
-              !this.state.isPreferencesOpen && (
-                <details
-                  onToggle={evt => {
-                    const isPreviousSubmissionsOpen = evt.currentTarget.open;
-                    const shouldLoadPreviousSubmissions =
-                      isPreviousSubmissionsOpen &&
-                      !this.state.isPreviousSubmissionsLoading &&
-                      !this.state.isLoadPreviousSubmissionsEnabled &&
-                      !this.state.hasLoadedPreviousSubmissions;
+            {this.isLoggedIn() && !isSettingsPanelOpen && (
+              <details
+                onToggle={evt => {
+                  const isPreviousSubmissionsOpen = evt.currentTarget.open;
+                  const shouldLoadPreviousSubmissions =
+                    isPreviousSubmissionsOpen &&
+                    !this.state.isPreviousSubmissionsLoading &&
+                    !this.state.isLoadPreviousSubmissionsEnabled &&
+                    !this.state.hasLoadedPreviousSubmissions;
 
-                    this.setState(
-                      {
-                        isPreviousSubmissionsOpen,
-                      },
-                      () => {
-                        if (shouldLoadPreviousSubmissions) {
-                          this.loadPreviousSubmissions();
-                        }
-                      },
-                    );
-                  }}
-                >
-                  <summary>
-                    Previous Submissions ({previousSubmissionsSummary})
-                  </summary>
-
-                  {this.state.isPreviousSubmissionsOpen && (
-                    <PreviousSubmissionsList
-                      submissions={this.state.submissions}
-                      onDeleteSubmission={this.onDeleteSubmission}
-                      isLoading={this.state.isPreviousSubmissionsLoading}
-                      hasLoadedPreviousSubmissions={
-                        this.state.hasLoadedPreviousSubmissions
+                  this.setState(
+                    {
+                      isPreviousSubmissionsOpen,
+                    },
+                    () => {
+                      if (shouldLoadPreviousSubmissions) {
+                        this.loadPreviousSubmissions();
                       }
-                    />
-                  )}
-                </details>
-              )}
+                    },
+                  );
+                }}
+              >
+                <summary>
+                  Previous Submissions ({previousSubmissionsSummary})
+                </summary>
+
+                {this.state.isPreviousSubmissionsOpen && (
+                  <PreviousSubmissionsList
+                    submissions={this.state.submissions}
+                    onDeleteSubmission={this.onDeleteSubmission}
+                    isLoading={this.state.isPreviousSubmissionsLoading}
+                    hasLoadedPreviousSubmissions={
+                      this.state.hasLoadedPreviousSubmissions
+                    }
+                  />
+                )}
+              </details>
+            )}
 
             <div style={{ float: 'right' }}>
               <a

@@ -1831,6 +1831,46 @@ describe('Home', () => {
     tree.unmount();
   });
 
+  test('inverts omit_contact_info_from_nypd from the checkbox', () => {
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+    };
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ initialState, homeRef });
+    });
+    renderer.act(() => {
+      homeRef.current.setState({ isEditProfileOpen: true });
+    });
+
+    const checkbox = tree.root.findByProps({
+      name: 'omit_contact_info_from_nypd',
+    });
+    // The checkbox is labeled "Share contact info with NYPD" and is checked
+    // by default: the omit flag is only set when the user opts out.
+    expect(checkbox.props.checked).toBe(true);
+    expect(homeRef.current.state.omit_contact_info_from_nypd).toBe(false);
+
+    // Unchecking the box sets the omit flag...
+    renderer.act(() => {
+      checkbox.props.onChange({ target: { checked: false } });
+    });
+    expect(homeRef.current.state.omit_contact_info_from_nypd).toBe(true);
+
+    // ...and re-checking it clears the flag.
+    renderer.act(() => {
+      tree.root
+        .findByProps({ name: 'omit_contact_info_from_nypd' })
+        .props.onChange({ target: { checked: true } });
+    });
+    expect(homeRef.current.state.omit_contact_info_from_nypd).toBe(false);
+
+    tree.unmount();
+  });
+
   test('renders Preferences UI', () => {
     const initialState = {
       email: 'test@example.com',
@@ -2249,6 +2289,9 @@ describe('Home', () => {
         'uploaded-photo.jpg',
       ]);
       expect(submitBody.get('attachmentData')).toBeNull();
+      // The omit flag is sent alongside the rest of the per-submission
+      // state, so the server can store it (sparsely) when true.
+      expect(submitBody.get('omit_contact_info_from_nypd')).toBe('false');
 
       // The upload must have started before the submit request went out,
       // i.e. in the background rather than as part of submitting.

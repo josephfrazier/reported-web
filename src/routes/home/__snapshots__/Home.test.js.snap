@@ -517,6 +517,19 @@ exports[`Home renders Edit Profile UI 1`] = `
              
             Allow the photos/videos, description, category, and location to be publicly displayed
           </label>
+          <label
+            htmlFor="omit_contact_info_from_nypd"
+          >
+            <input
+              checked={true}
+              id="omit_contact_info_from_nypd"
+              name="omit_contact_info_from_nypd"
+              onChange={[Function]}
+              type="checkbox"
+            />
+             
+            Share contact info with NYPD
+          </label>
           <button
             className="auth-submit-btn"
             disabled={false}

@@ -727,6 +727,7 @@ class Home extends React.Component {
       typeofcomplaint: typeofcomplaintValues[0],
       reportDescription: '',
       can_be_shared_publicly: false,
+      omit_contact_info_from_nypd: false,
       latitude: defaultLatitude,
       longitude: defaultLongitude,
       coordsAreInNyc: true,
@@ -1700,6 +1701,19 @@ class Home extends React.Component {
     );
   };
 
+  handleOmitContactInfoFromNypdChange = event => {
+    // The checkbox is labeled "Share contact info with NYPD" (checked by
+    // default), but the state/cookie/submission field
+    // `omit_contact_info_from_nypd` is the inverse of that, so store the
+    // opposite of the checkbox value.
+    this.setState(
+      {
+        omit_contact_info_from_nypd: !event.target.checked,
+      },
+      () => debouncedSavePersistentStateToCookie(this),
+    );
+  };
+
   loadPreviousSubmissions = () => {
     if (this.state.isPreviousSubmissionsLoading) {
       return;
@@ -2219,6 +2233,17 @@ class Home extends React.Component {
                     />{' '}
                     Allow the photos/videos, description, category, and location
                     to be publicly displayed
+                  </label>
+
+                  <label htmlFor="omit_contact_info_from_nypd">
+                    <input
+                      id="omit_contact_info_from_nypd"
+                      type="checkbox"
+                      checked={!this.state.omit_contact_info_from_nypd}
+                      name="omit_contact_info_from_nypd"
+                      onChange={this.handleOmitContactInfoFromNypdChange}
+                    />{' '}
+                    Share contact info with NYPD
                   </label>
 
                   <button

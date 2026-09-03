@@ -79,10 +79,10 @@ module.exports = [
     },
   },
 
-  // Same for src/server.test.js, which requires parse-server directly to
-  // start the test server.
+  // Same for src/createSubmission.test.js, which requires parse-server
+  // directly to start the test server.
   {
-    files: ['src/server.test.js'],
+    files: ['src/createSubmission.test.js'],
     rules: {
       'import/no-unresolved': 'off',
       'import/no-extraneous-dependencies': 'off',

@@ -120,32 +120,6 @@ exports[`Home hides form fields when logged in with no photos uploaded 1`] = `
               }
             }
           />
-          <label
-            htmlFor="isAlprEnabled"
-          >
-            <input
-              checked={true}
-              id="isAlprEnabled"
-              name="isAlprEnabled"
-              onChange={[Function]}
-              type="checkbox"
-            />
-             
-            Automatically read license plates from pictures/videos
-          </label>
-          <label
-            htmlFor="isReverseGeocodingEnabled"
-          >
-            <input
-              checked={true}
-              id="isReverseGeocodingEnabled"
-              name="isReverseGeocodingEnabled"
-              onChange={[Function]}
-              type="checkbox"
-            />
-             
-            Automatically read addresses from pictures/videos
-          </label>
         </fieldset>
       </form>
       <br />
@@ -348,6 +322,61 @@ exports[`Home renders Edit Profile UI 1`] = `
             />
              
             I'm willing to testify at a hearing, which can be done by phone.
+          </label>
+          <h3>
+            Preferences
+          </h3>
+          <label
+            htmlFor="isAlprEnabled"
+          >
+            <input
+              checked={true}
+              id="isAlprEnabled"
+              name="isAlprEnabled"
+              onChange={[Function]}
+              type="checkbox"
+            />
+             
+            Automatically read license plates from pictures/videos
+          </label>
+          <label
+            htmlFor="isReverseGeocodingEnabled"
+          >
+            <input
+              checked={true}
+              id="isReverseGeocodingEnabled"
+              name="isReverseGeocodingEnabled"
+              onChange={[Function]}
+              type="checkbox"
+            />
+             
+            Automatically read addresses from pictures/videos
+          </label>
+          <label
+            htmlFor="can_be_shared_publicly"
+          >
+            <input
+              checked={false}
+              id="can_be_shared_publicly"
+              name="can_be_shared_publicly"
+              onChange={[Function]}
+              type="checkbox"
+            />
+             
+            Allow the photos/videos, description, category, and location to be publicly displayed
+          </label>
+          <label
+            htmlFor="isLoadPreviousSubmissionsEnabled"
+          >
+            <input
+              checked={false}
+              id="isLoadPreviousSubmissionsEnabled"
+              name="isLoadPreviousSubmissionsEnabled"
+              onChange={[Function]}
+              type="checkbox"
+            />
+             
+            Load previous submissions on page load
           </label>
           <button
             className="auth-submit-btn"
@@ -1197,32 +1226,6 @@ exports[`Home renders submission form and Previous Submissions when logged in wi
               }
             }
           />
-          <label
-            htmlFor="isAlprEnabled"
-          >
-            <input
-              checked={true}
-              id="isAlprEnabled"
-              name="isAlprEnabled"
-              onChange={[Function]}
-              type="checkbox"
-            />
-             
-            Automatically read license plates from pictures/videos
-          </label>
-          <label
-            htmlFor="isReverseGeocodingEnabled"
-          >
-            <input
-              checked={true}
-              id="isReverseGeocodingEnabled"
-              name="isReverseGeocodingEnabled"
-              onChange={[Function]}
-              type="checkbox"
-            />
-             
-            Automatically read addresses from pictures/videos
-          </label>
           <div
             style={
               {
@@ -1679,19 +1682,6 @@ exports[`Home renders submission form and Previous Submissions when logged in wi
               onChange={[Function]}
               value=""
             />
-          </label>
-          <label
-            htmlFor="can_be_shared_publicly"
-          >
-            <input
-              checked={false}
-              id="can_be_shared_publicly"
-              name="can_be_shared_publicly"
-              onChange={[Function]}
-              type="checkbox"
-            />
-             
-            Allow the photos/videos, description, category, and location to be publicly displayed
           </label>
           <button
             disabled={false}
@@ -1885,32 +1875,6 @@ exports[`Home renders with allPlateResults entry missing plate and photos 1`] = 
               }
             }
           />
-          <label
-            htmlFor="isAlprEnabled"
-          >
-            <input
-              checked={true}
-              id="isAlprEnabled"
-              name="isAlprEnabled"
-              onChange={[Function]}
-              type="checkbox"
-            />
-             
-            Automatically read license plates from pictures/videos
-          </label>
-          <label
-            htmlFor="isReverseGeocodingEnabled"
-          >
-            <input
-              checked={true}
-              id="isReverseGeocodingEnabled"
-              name="isReverseGeocodingEnabled"
-              onChange={[Function]}
-              type="checkbox"
-            />
-             
-            Automatically read addresses from pictures/videos
-          </label>
           <div
             style={
               {
@@ -2367,19 +2331,6 @@ exports[`Home renders with allPlateResults entry missing plate and photos 1`] = 
               onChange={[Function]}
               value=""
             />
-          </label>
-          <label
-            htmlFor="can_be_shared_publicly"
-          >
-            <input
-              checked={false}
-              id="can_be_shared_publicly"
-              name="can_be_shared_publicly"
-              onChange={[Function]}
-              type="checkbox"
-            />
-             
-            Allow the photos/videos, description, category, and location to be publicly displayed
           </label>
           <button
             disabled={false}
@@ -2573,32 +2524,6 @@ exports[`Home renders with undefined allPlateResults and photos 1`] = `
               }
             }
           />
-          <label
-            htmlFor="isAlprEnabled"
-          >
-            <input
-              checked={true}
-              id="isAlprEnabled"
-              name="isAlprEnabled"
-              onChange={[Function]}
-              type="checkbox"
-            />
-             
-            Automatically read license plates from pictures/videos
-          </label>
-          <label
-            htmlFor="isReverseGeocodingEnabled"
-          >
-            <input
-              checked={true}
-              id="isReverseGeocodingEnabled"
-              name="isReverseGeocodingEnabled"
-              onChange={[Function]}
-              type="checkbox"
-            />
-             
-            Automatically read addresses from pictures/videos
-          </label>
           <div
             style={
               {
@@ -3055,19 +2980,6 @@ exports[`Home renders with undefined allPlateResults and photos 1`] = `
               onChange={[Function]}
               value=""
             />
-          </label>
-          <label
-            htmlFor="can_be_shared_publicly"
-          >
-            <input
-              checked={false}
-              id="can_be_shared_publicly"
-              name="can_be_shared_publicly"
-              onChange={[Function]}
-              type="checkbox"
-            />
-             
-            Allow the photos/videos, description, category, and location to be publicly displayed
           </label>
           <button
             disabled={false}

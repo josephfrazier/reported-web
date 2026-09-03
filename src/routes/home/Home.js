@@ -1839,6 +1839,50 @@ class Home extends React.Component {
                     I&apos;m willing to testify at a hearing, which can be done
                     by phone.
                   </label>
+
+                  <h3>Preferences</h3>
+                  <label htmlFor="isAlprEnabled">
+                    <input
+                      id="isAlprEnabled"
+                      type="checkbox"
+                      checked={this.state.isAlprEnabled}
+                      name="isAlprEnabled"
+                      onChange={this.handleInputChange}
+                    />{' '}
+                    Automatically read license plates from pictures/videos
+                  </label>
+                  <label htmlFor="isReverseGeocodingEnabled">
+                    <input
+                      id="isReverseGeocodingEnabled"
+                      type="checkbox"
+                      checked={this.state.isReverseGeocodingEnabled}
+                      name="isReverseGeocodingEnabled"
+                      onChange={this.handleInputChange}
+                    />{' '}
+                    Automatically read addresses from pictures/videos
+                  </label>
+                  <label htmlFor="can_be_shared_publicly">
+                    <input
+                      id="can_be_shared_publicly"
+                      type="checkbox"
+                      checked={this.state.can_be_shared_publicly}
+                      name="can_be_shared_publicly"
+                      onChange={this.handleInputChange}
+                    />{' '}
+                    Allow the photos/videos, description, category, and location
+                    to be publicly displayed
+                  </label>
+                  <label htmlFor="isLoadPreviousSubmissionsEnabled">
+                    <input
+                      id="isLoadPreviousSubmissionsEnabled"
+                      type="checkbox"
+                      checked={this.state.isLoadPreviousSubmissionsEnabled}
+                      name="isLoadPreviousSubmissionsEnabled"
+                      onChange={this.handleInputChange}
+                    />{' '}
+                    Load previous submissions on page load
+                  </label>
+
                   <button
                     type="submit"
                     className={homeStyles['auth-submit-btn']}
@@ -2294,28 +2338,6 @@ class Home extends React.Component {
 
                   <div style={{ clear: 'both' }} />
 
-                  <label htmlFor="isAlprEnabled">
-                    <input
-                      id="isAlprEnabled"
-                      type="checkbox"
-                      checked={this.state.isAlprEnabled}
-                      name="isAlprEnabled"
-                      onChange={this.handleInputChange}
-                    />{' '}
-                    Automatically read license plates from pictures/videos
-                  </label>
-
-                  <label htmlFor="isReverseGeocodingEnabled">
-                    <input
-                      id="isReverseGeocodingEnabled"
-                      type="checkbox"
-                      checked={this.state.isReverseGeocodingEnabled}
-                      name="isReverseGeocodingEnabled"
-                      onChange={this.handleInputChange}
-                    />{' '}
-                    Automatically read addresses from pictures/videos
-                  </label>
-
                   {this.state.attachmentData.length > 0 && (
                     <React.Fragment>
                       <div
@@ -2693,18 +2715,6 @@ class Home extends React.Component {
                         />
                       </label>
 
-                      <label htmlFor="can_be_shared_publicly">
-                        <input
-                          id="can_be_shared_publicly"
-                          type="checkbox"
-                          checked={this.state.can_be_shared_publicly}
-                          name="can_be_shared_publicly"
-                          onChange={this.handleInputChange}
-                        />{' '}
-                        Allow the photos/videos, description, category, and
-                        location to be publicly displayed
-                      </label>
-
                       {this.state.isSubmitting ? (
                         <progress
                           max={this.state.submitProgressMax}
@@ -2765,33 +2775,14 @@ class Home extends React.Component {
                 </summary>
 
                 {this.state.isPreviousSubmissionsOpen && (
-                  <>
-                    {/* Also show this while cached submissions are being
-                        refreshed in the background. */}
-                    {this.state.hasLoadedPreviousSubmissions && (
-                      <label
-                        htmlFor="isLoadPreviousSubmissionsEnabled"
-                        style={{ display: 'block', marginBottom: '1rem' }}
-                      >
-                        <input
-                          id="isLoadPreviousSubmissionsEnabled"
-                          type="checkbox"
-                          checked={this.state.isLoadPreviousSubmissionsEnabled}
-                          name="isLoadPreviousSubmissionsEnabled"
-                          onChange={this.handleInputChange}
-                        />{' '}
-                        Load previous submissions immediately next time
-                      </label>
-                    )}
-                    <PreviousSubmissionsList
-                      submissions={this.state.submissions}
-                      onDeleteSubmission={this.onDeleteSubmission}
-                      isLoading={this.state.isPreviousSubmissionsLoading}
-                      hasLoadedPreviousSubmissions={
-                        this.state.hasLoadedPreviousSubmissions
-                      }
-                    />
-                  </>
+                  <PreviousSubmissionsList
+                    submissions={this.state.submissions}
+                    onDeleteSubmission={this.onDeleteSubmission}
+                    isLoading={this.state.isPreviousSubmissionsLoading}
+                    hasLoadedPreviousSubmissions={
+                      this.state.hasLoadedPreviousSubmissions
+                    }
+                  />
                 )}
               </details>
             )}

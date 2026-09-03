@@ -78,4 +78,14 @@ module.exports = [
       'import/no-extraneous-dependencies': 'off',
     },
   },
+
+  // Same for src/server.test.js, which requires parse-server directly to
+  // start the test server.
+  {
+    files: ['src/server.test.js'],
+    rules: {
+      'import/no-unresolved': 'off',
+      'import/no-extraneous-dependencies': 'off',
+    },
+  },
 ];

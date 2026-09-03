@@ -237,7 +237,12 @@ async function getSubmissions(req) {
     emailQuery.limit(Number.MAX_SAFE_INTEGER);
 
     const query = Parse.Query.or(usernameQuery, emailQuery);
-    query.descending('timeofreport');
+    // Sort by when the photo was taken (timeofreport), newest first, and break
+    // ties by when the submission was created (createdAt), newest first, so a
+    // later submission appears before an earlier one with the same photo
+    // timestamp. NOTE: ParseQuery.descending() resets _order each call, so both
+    // keys must be passed together.
+    query.descending(['timeofreport', 'createdAt']);
     query.limit(Number.MAX_SAFE_INTEGER);
     return query.find();
   });

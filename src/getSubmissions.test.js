@@ -12,6 +12,9 @@ import Parse from 'parse/node';
 import getSubmissions from './getSubmissions.js';
 
 const { MongoMemoryServer } = require('mongodb-memory-server');
+// parse-server is deliberately installed on demand instead of being a project
+// dependency (see jest.globalSetup.js), so the no-extraneous rule doesn't apply.
+// eslint-disable-next-line import/no-extraneous-dependencies
 const { ParseServer } = require('parse-server');
 
 // parse-server skips its cloud/URL verification (and test-unfriendly process

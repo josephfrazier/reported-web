@@ -1841,6 +1841,7 @@ class Home extends React.Component {
                   </label>
 
                   <h3>Preferences</h3>
+
                   <label htmlFor="isAlprEnabled">
                     <input
                       id="isAlprEnabled"
@@ -1851,6 +1852,7 @@ class Home extends React.Component {
                     />{' '}
                     Automatically read license plates from pictures/videos
                   </label>
+
                   <label htmlFor="isReverseGeocodingEnabled">
                     <input
                       id="isReverseGeocodingEnabled"
@@ -1861,6 +1863,7 @@ class Home extends React.Component {
                     />{' '}
                     Automatically read addresses from pictures/videos
                   </label>
+
                   <label htmlFor="can_be_shared_publicly">
                     <input
                       id="can_be_shared_publicly"
@@ -1872,6 +1875,7 @@ class Home extends React.Component {
                     Allow the photos/videos, description, category, and location
                     to be publicly displayed
                   </label>
+
                   <label htmlFor="isLoadPreviousSubmissionsEnabled">
                     <input
                       id="isLoadPreviousSubmissionsEnabled"

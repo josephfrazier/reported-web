@@ -430,6 +430,7 @@ app.use('/submit', (req, res) => {
       typeofcomplaint,
       reportDescription,
       can_be_shared_publicly: can_be_shared_publiclyString, // eslint-disable-line camelcase
+      omit_contact_info_from_nypd: omit_contact_info_from_nypdString, // eslint-disable-line camelcase
       latitude: latitudeString,
       longitude: longitudeString,
       formatted_address, // eslint-disable-line camelcase
@@ -438,6 +439,9 @@ app.use('/submit', (req, res) => {
 
     const testify = testifyString === 'true';
     const can_be_shared_publicly = can_be_shared_publiclyString === 'true'; // eslint-disable-line camelcase
+    // eslint-disable-next-line camelcase
+    const omit_contact_info_from_nypd =
+      omit_contact_info_from_nypdString === 'true'; // eslint-disable-line camelcase
     const latitude = Number(latitudeString);
     const longitude = Number(longitudeString);
 
@@ -473,6 +477,7 @@ app.use('/submit', (req, res) => {
       CreateDate,
       attachmentData,
       versionNumber: Number(HEROKU_RELEASE_VERSION.slice(1)),
+      omit_contact_info_from_nypd, // eslint-disable-line camelcase
     })
       .then(submission => {
         console.info({ submission });

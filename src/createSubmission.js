@@ -26,6 +26,7 @@ const createSubmission = async ({
   typeofcomplaint,
   reportDescription,
   can_be_shared_publicly, // eslint-disable-line camelcase
+  omit_contact_info_from_nypd, // eslint-disable-line camelcase
   latitude,
   longitude,
   formatted_address, // eslint-disable-line camelcase
@@ -113,6 +114,14 @@ const createSubmission = async ({
     reqnumber: 'N/A until submitted to 311',
   });
   submission.setACL(new Parse.ACL(user));
+
+  // Sparse flag: only stored when true, so existing submissions are
+  // unaffected (absence means contact info is included on the 311
+  // report). See https://github.com/jeffrono/Reported/pull/66
+  // eslint-disable-next-line camelcase
+  if (omit_contact_info_from_nypd) {
+    submission.set('omit_contact_info_from_nypd', true);
+  }
 
   // upload attachments
   // http://docs.parseplatform.org/js/guide/#creating-a-parsefile

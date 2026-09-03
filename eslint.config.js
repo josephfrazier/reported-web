@@ -66,4 +66,16 @@ module.exports = [
       },
     },
   },
+
+  // src/getSubmissions.test.js requires parse-server, which is installed on
+  // demand by jest.globalSetup.js instead of being a project dependency, so
+  // the import rules can't check it (it's often absent from node_modules when
+  // linting runs).
+  {
+    files: ['src/getSubmissions.test.js'],
+    rules: {
+      'import/no-unresolved': 'off',
+      'import/no-extraneous-dependencies': 'off',
+    },
+  },
 ];

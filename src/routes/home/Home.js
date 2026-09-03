@@ -1840,6 +1840,18 @@ class Home extends React.Component {
                     by phone.
                   </label>
 
+                  <label htmlFor="can_be_shared_publicly">
+                    <input
+                      id="can_be_shared_publicly"
+                      type="checkbox"
+                      checked={this.state.can_be_shared_publicly}
+                      name="can_be_shared_publicly"
+                      onChange={this.handleInputChange}
+                    />{' '}
+                    Allow the photos/videos, description, category, and location
+                    to be publicly displayed
+                  </label>
+
                   <h3>Preferences</h3>
 
                   <label htmlFor="isAlprEnabled">
@@ -1862,18 +1874,6 @@ class Home extends React.Component {
                       onChange={this.handleInputChange}
                     />{' '}
                     Automatically read addresses from pictures/videos
-                  </label>
-
-                  <label htmlFor="can_be_shared_publicly">
-                    <input
-                      id="can_be_shared_publicly"
-                      type="checkbox"
-                      checked={this.state.can_be_shared_publicly}
-                      name="can_be_shared_publicly"
-                      onChange={this.handleInputChange}
-                    />{' '}
-                    Allow the photos/videos, description, category, and location
-                    to be publicly displayed
                   </label>
 
                   <label htmlFor="isLoadPreviousSubmissionsEnabled">

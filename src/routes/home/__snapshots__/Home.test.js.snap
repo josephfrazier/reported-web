@@ -1411,6 +1411,7 @@ exports[`Home renders submission form and Previous Submissions when logged in wi
               >
                 <a
                   href="blob:mock"
+                  onClick={[Function]}
                   rel="noopener noreferrer"
                   style={
                     {
@@ -2067,6 +2068,7 @@ exports[`Home renders with allPlateResults entry missing plate and photos 1`] = 
               >
                 <a
                   href="blob:mock"
+                  onClick={[Function]}
                   rel="noopener noreferrer"
                   style={
                     {
@@ -2723,6 +2725,7 @@ exports[`Home renders with undefined allPlateResults and photos 1`] = `
               >
                 <a
                   href="blob:mock"
+                  onClick={[Function]}
                   rel="noopener noreferrer"
                   style={
                     {

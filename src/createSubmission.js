@@ -59,7 +59,13 @@ const createSubmission = async ({
   process.env.TZ = 'America/New_York';
   if (timeofreport.valueOf() > Date.now()) {
     const message = `Timestamp cannot be in the future (submitted time: ${timeofreport}, actual time: ${new Date()})`;
-    process.env.TZ = timezone;
+    // Assigning an undefined value would store the string "undefined", so
+    // delete the variable instead when it was previously unset.
+    if (timezone === undefined) {
+      delete process.env.TZ;
+    } else {
+      process.env.TZ = timezone;
+    }
     throw { message }; // eslint-disable-line no-throw-literal
   }
 

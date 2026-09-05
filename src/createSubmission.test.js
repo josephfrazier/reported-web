@@ -154,7 +154,13 @@ describe('createSubmission', () => {
   });
 
   afterEach(() => {
-    process.env.TZ = originalTZ;
+    // Same delete-vs-assign subtlety as the module itself: assigning an
+    // undefined value would store the string "undefined".
+    if (originalTZ === undefined) {
+      delete process.env.TZ;
+    } else {
+      process.env.TZ = originalTZ;
+    }
   });
 
   const validParams = overrides => ({

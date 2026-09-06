@@ -20,13 +20,6 @@ const routes = {
       load: () => import(/* webpackChunkName: 'home' */ './home/index.js'),
     },
     {
-      path: '/electricitibikes',
-      load: () =>
-        import(
-          /* webpackChunkName: 'electricitibikes' */ './electricitibikes/index.js'
-        ),
-    },
-    {
       path: '/login',
       load: () => import(/* webpackChunkName: 'login' */ './login/index.js'),
     },

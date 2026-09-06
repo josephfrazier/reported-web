@@ -46,6 +46,10 @@ module.exports = {
   // coverageReporters: [], // [array<string>]
   // coverageThreshold: {}, // [object]
 
+  // Installs parse-server (kept out of package.json/yarn.lock, see
+  // jest.globalSetup.js) before any test runs.
+  globalSetup: '<rootDir>/jest.globalSetup.js', // [string]
+
   globals: {
     __DEV__: true,
   },

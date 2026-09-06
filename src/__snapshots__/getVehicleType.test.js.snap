@@ -3,12 +3,12 @@
 exports[`getVehicleType returns the right object 1`] = `
 {
   "result": {
-    "licensePlate": "TEST",
+    "licensePlate": "T144594C",
     "licenseState": "NY",
-    "vehicleBody": "Coupe",
-    "vehicleMake": "BMW",
-    "vehicleModel": "135i",
-    "vehicleYear": "2010",
+    "vehicleBody": "Minivan",
+    "vehicleMake": "TOYOTA",
+    "vehicleModel": "Sienna",
+    "vehicleYear": "2020",
   },
 }
 `;

@@ -23,9 +23,8 @@ import {
   Marker,
 } from 'react-google-maps';
 import { SearchBox } from 'react-google-maps/lib/components/places/SearchBox';
-import withLocalStorage from 'react-localstorage';
 import debounce from 'debounce-promise';
-import FileType from 'file-type/browser';
+import { detectFromBuffer } from 'mime-bytes/file-type-detector';
 import MP4Box from 'mp4box';
 import execall from 'execall';
 import captureFrame from 'capture-frame';
@@ -34,6 +33,7 @@ import omit from 'object.omit';
 import bufferToArrayBuffer from 'buffer-to-arraybuffer';
 import { serialize } from 'object-to-formdata';
 import usStateNames from 'datasets-us-states-abbr-names';
+import cookie from 'cookie';
 import fileExtension from 'file-extension';
 import diceware from 'diceware-generator';
 import wordlist from 'diceware-wordlist-en-eff';
@@ -43,46 +43,91 @@ import { ToastContainer, toast } from 'react-toastify';
 import toastifyStyles from 'react-toastify/dist/ReactToastify.css';
 import { zip } from 'zip-array';
 import PolygonLookup from 'polygon-lookup';
-import capitalize from 'capitalize';
 import CircularProgress from '@mui/material/CircularProgress';
 
 import marx from 'marx-css/css/marx.css';
 import homeStyles from './Home.css';
 
 import PreviousSubmissionsList from '../../components/PreviousSubmissionsList.js';
-import PlatePickerModal from './PlatePickerModal.js';
+import formatGeosearchAddress from '../../formatGeosearchAddress.js';
 import { isImage, isVideo } from '../../isImage.js';
 import getNycTimezoneOffset from '../../timezone.js';
-import { getBoroNameMemoized } from '../../getBoroName.js';
+import { isPointInNycMemoized } from '../../isPointInNyc.js';
 import vehicleTypeUrl from '../../vehicleTypeUrl.js';
+import {
+  clearCachedSubmissions,
+  readCachedSubmissions,
+  writeCachedSubmissions,
+} from './submissionsCache.js';
 
 usStateNames.DC = 'District of Columbia';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyDlwm2ykA0ohTXeVepQYvkcmdjz2M2CKEI';
 
-const debouncedProcessValidation = debounce(async ({ latitude, longitude }) => {
-  const { data } = await axios.post('/api/process_validation', {
+const COOKIE_KEY = 'reportedWebHomeState';
+const COOKIE_MAX_AGE = 365 * 24 * 60 * 60; // 1 year in seconds
+
+const setHomeStateCookie = (value, maxAge) => {
+  document.cookie = cookie.serialize(COOKIE_KEY, value, {
+    maxAge,
+    path: '/',
+    sameSite: 'lax',
+    secure: window.location.protocol === 'https:',
+  });
+};
+
+const debouncedGeosearch = debounce(async ({ latitude, longitude }) => {
+  const { data } = await axios.post('/api/geosearch', {
     lat: latitude,
     long: longitude,
   });
   return data;
 }, 500);
 
-const debouncedGetVehicleType = debounce(
-  ({ plate, licenseState }) =>
-    axios.get(`/getVehicleType/${plate}/${licenseState}`),
-  1000,
-);
+const howsmydrivingApiUrl = ({ plate, licenseState }) =>
+  `https://api.howsmydrivingny.nyc/api/v1/?plate=${plate}:${licenseState}`;
 
-const debouncedGetViolations = debounce(async ({ plate, licenseState }) => {
-  const apiUrl = `https://api.howsmydrivingny.nyc/api/v1/?plate=${plate}:${licenseState}`;
-  const response = await axios.get(apiUrl);
+// Fetch and cache per plate+state, so re-selecting a plate that was already
+// looked up skips the network call. Caching here — inside the plain
+// functions debounce() wraps, rather than at the call sites — means the
+// cache is only ever written with the arguments the network request was
+// actually made for, never with plates typed while the request was pending.
+const getVehicleType = async ({ plate, licenseState, cache }) => {
+  const cacheKey = `${plate}:${licenseState}`;
+  const cachedVehicleInfoResponse = cache.get(cacheKey)?.vehicleInfoResponse;
+  if (cachedVehicleInfoResponse) {
+    return cachedVehicleInfoResponse;
+  }
+  const { data } = await axios.get(`/getVehicleType/${plate}/${licenseState}`);
+  cache.set(cacheKey, {
+    ...cache.get(cacheKey),
+    vehicleInfoResponse: data,
+  });
+  return data;
+};
 
-  return { apiUrl, response };
-}, 1000);
+const getViolations = async ({ plate, licenseState, cache }) => {
+  const cacheKey = `${plate}:${licenseState}`;
+  const cachedViolationsResponse = cache.get(cacheKey)?.violationsResponse;
+  if (cachedViolationsResponse) {
+    return cachedViolationsResponse;
+  }
+  const response = await axios.get(
+    howsmydrivingApiUrl({ plate, licenseState }),
+  );
+  cache.set(cacheKey, {
+    ...cache.get(cacheKey),
+    violationsResponse: response.data,
+  });
+  return response.data;
+};
 
-const debouncedSaveStateToLocalStorage = debounce(self => {
-  self.saveStateToLocalStorage();
+const debouncedGetVehicleType = debounce(getVehicleType, 1000);
+
+const debouncedGetViolations = debounce(getViolations, 1000);
+
+const debouncedSavePersistentStateToCookie = debounce(self => {
+  self.savePersistentStateToCookie();
 }, 500);
 
 const defaultLatitude = 40.7128;
@@ -99,6 +144,9 @@ const getBlobUrl = blob => {
   return blobUrl;
 };
 
+// Tracks in-progress background upload promises keyed by File object
+const fileUploadPromises = new WeakMap();
+
 const geolocate = () =>
   promisedLocation().catch(async () => {
     const { data } = await axios.get('https://ipapi.co/json');
@@ -113,10 +161,10 @@ const jsDateToCreateDate = jsDate =>
   jsDate.toISOString().replace(/:\d\d\..*/g, '');
 
 async function blobToBuffer({ attachmentFile }) {
-  console.time(`blobUtil.blobToArrayBuffer(attachmentFile)`); // eslint-disable-line no-console
+  console.time(`blobUtil.blobToArrayBuffer(${attachmentFile.name})`); // eslint-disable-line no-console
   const attachmentArrayBuffer =
     await blobUtil.blobToArrayBuffer(attachmentFile);
-  console.timeEnd(`blobUtil.blobToArrayBuffer(attachmentFile)`); // eslint-disable-line no-console
+  console.timeEnd(`blobUtil.blobToArrayBuffer(${attachmentFile.name})`); // eslint-disable-line no-console
 
   console.time(`Buffer.from(attachmentArrayBuffer)`); // eslint-disable-line no-console
   const attachmentBuffer = Buffer.from(attachmentArrayBuffer);
@@ -159,7 +207,11 @@ async function getVideoScreenshot({ attachmentFile }) {
   video.currentTime = 0; // TODO let user choose time?
   await pEvent(video, 'seeked');
 
-  const buf = captureFrame(video).image;
+  // JPEG, not the default PNG: a lossless PNG frame of a high-res video is
+  // tens of megabytes, which trips Plate Recognizer's upload limit even
+  // after the server scales it down (see src/alpr.js). JPEG is a fraction
+  // of that size and what the API expects anyway.
+  const buf = captureFrame(video, 'jpeg').image;
 
   // unload video element, to prevent memory leaks
   video.pause();
@@ -181,23 +233,57 @@ function getLicenseStateFromPlateResult(result) {
   }
 }
 
-function getPlateThumbnailKey(plate) {
-  return (plate || '').toUpperCase();
+const urlRegex = /(https?:\/\/\S+)/;
+
+// Turn bare URLs in a string into clickable React <a> elements.
+// Returns a plain string when there are no URLs, or an array of mixed
+// strings and <a> elements otherwise — both valid as JSX children.
+function linkifyText(text) {
+  if (typeof text !== 'string') return text;
+  const parts = text.split(urlRegex);
+  if (parts.length === 1) return text;
+  return parts.map((part, i) =>
+    i % 2 === 1 ? (
+      <a key={part} href={part} target="_blank" rel="noopener noreferrer">
+        {part}
+      </a>
+    ) : (
+      part
+    ),
+  );
 }
 
-function getPlateThumbnailsByKey(results = []) {
-  return results.reduce((acc, result) => {
-    const plate = (result.plate || '').toUpperCase();
+// Uppercase what the user typed into a controlled <input>, without letting the
+// caret jump to the end of the field.
+//
+// React only writes to a DOM input's `value` when it differs from the value it
+// is rendering, and writing to `value` puts the caret at the end. Uppercasing
+// in an onChange handler causes exactly that: typing "b" into "A|Z" leaves the
+// DOM at "AbZ" while React renders "ABZ", so React rewrites the value and the
+// caret lands after the "Z". Digits are unaffected by toUpperCase(), which is
+// why they seem to behave.
+//
+// Writing the uppercased value back here — with the caret where the user left
+// it — means React finds the value it's about to render already in place, so it
+// leaves both the value and the caret alone.
+function upperCaseInputValueInPlace(input) {
+  const { value, selectionStart, selectionEnd } = input;
+  const upperCased = value.toUpperCase();
 
-    if (!result.plateCropDataUrl || !plate) {
-      return acc;
+  if (upperCased !== value) {
+    input.value = upperCased; // eslint-disable-line no-param-reassign
+
+    if (selectionStart !== null && selectionEnd !== null) {
+      // Uppercasing can change a character's length (e.g. "ß" -> "SS"), so map
+      // each offset through toUpperCase() instead of reusing it as-is.
+      input.setSelectionRange(
+        value.slice(0, selectionStart).toUpperCase().length,
+        value.slice(0, selectionEnd).toUpperCase().length,
+      );
     }
+  }
 
-    const key = getPlateThumbnailKey(plate);
-
-    acc[key] = result.plateCropDataUrl;
-    return acc;
-  }, {});
+  return upperCased;
 }
 
 async function fetchPlateResults({
@@ -232,8 +318,8 @@ async function fetchPlateResults({
   });
   const { data } = await axios.post('/platerecognizer', formData);
 
-  attachmentPlateCache.set(attachmentFile, data.results);
-  return data.results;
+  attachmentPlateCache.set(attachmentFile, data);
+  return data;
 }
 
 async function extractPlate({
@@ -245,20 +331,25 @@ async function extractPlate({
   password,
 }) {
   try {
-    console.time('extractPlate'); // eslint-disable-line no-console
+    console.time(`extractPlate(${attachmentFile.name})`); // eslint-disable-line no-console
 
     if (isAlprEnabled === false) {
       console.info('ALPR is disabled, skipping');
       return { plate: '', licenseState: '' };
     }
 
-    const results = await fetchPlateResults({
+    const data = await fetchPlateResults({
       attachmentFile,
       attachmentBuffer,
       ext,
       email,
       password,
     });
+    const { results } = data;
+
+    if (!results || results.length === 0) {
+      throw new Error('No license plate detected');
+    }
 
     // Choose first result with T######C plate if it exists, see https://github.com/josephfrazier/reported-web/issues/584
     let result = results.filter(r =>
@@ -274,7 +365,7 @@ async function extractPlate({
       result.licenseState = null;
     }
     result.plate = result.plate?.toUpperCase();
-    result.allPlateResults = results;
+    result.allPlateData = data;
 
     return result;
   } catch (err) {
@@ -282,7 +373,7 @@ async function extractPlate({
 
     throw 'license plate'; // eslint-disable-line no-throw-literal
   } finally {
-    console.timeEnd('extractPlate'); // eslint-disable-line no-console
+    console.timeEnd(`extractPlate(${attachmentFile.name})`); // eslint-disable-line no-console
   }
 }
 
@@ -362,6 +453,125 @@ class Home extends React.Component {
     return `https://img.logo.dev/${vehicleMake}.com?token=pk_dUmX4e3CQxqMliLAmNRIqA`;
   }
 
+  // Whether a LookupAPlate response contains any vehicle data. Empty results
+  // are returned for plates without vehicle records (e.g. partial plates
+  // typed one character at a time).
+  static vehicleInfoResponseHasData(vehicleInfoResponse) {
+    const { vehicleYear, vehicleMake, vehicleModel, vehicleBody } =
+      vehicleInfoResponse?.result || {};
+    return !!(vehicleYear || vehicleMake || vehicleModel || vehicleBody);
+  }
+
+  // Render the make/model/year for a plate from a LookupAPlate response.
+  static buildVehicleInfoComponent({
+    plate,
+    licenseState,
+    vehicleInfoResponse,
+  }) {
+    const { vehicleYear, vehicleMake, vehicleModel, vehicleBody } =
+      vehicleInfoResponse.result;
+    return (
+      <React.Fragment>
+        <a
+          href={vehicleTypeUrl({ licensePlate: plate, licenseState })}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {plate} in {usStateNames[licenseState]}: {vehicleYear} {vehicleMake}{' '}
+          {vehicleModel} ({vehicleBody})
+        </a>
+        <img
+          src={Home.getVehicleMakeLogoUrl({ vehicleMake })}
+          alt={`${vehicleMake} logo`}
+          style={{
+            display: 'block',
+            maxWidth: '250px',
+          }}
+        />
+      </React.Fragment>
+    );
+  }
+
+  // Render the error state for a plate whose vehicle could not be looked up.
+  static buildVehicleLookupErrorComponent({ plate, licenseState }) {
+    return (
+      <React.Fragment>
+        Could not look up make/model of {plate} in {usStateNames[licenseState]},{' '}
+        <a
+          href="https://github.com/josephfrazier/Reported-Web/issues/295"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          click here for details
+        </a>
+        <br />
+        <a
+          href="https://www.lookupaplate.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Click here to manually look it up
+        </a>
+      </React.Fragment>
+    );
+  }
+
+  // Render the violation summary for a plate from a howsmydriving response,
+  // or null when the response has no vehicle data.
+  static buildViolationSummaryComponent({
+    plate,
+    licenseState,
+    violationsResponse,
+  }) {
+    const vehicle =
+      violationsResponse.data &&
+      violationsResponse.data[0] &&
+      violationsResponse.data[0].vehicle;
+
+    if (!vehicle || !vehicle.violations || !vehicle.fines) {
+      return null;
+    }
+
+    const totalViolations = vehicle.violations.length;
+    const { total_fined: fined, total_outstanding: outstanding } =
+      vehicle.fines;
+
+    const lastTweetPart =
+      vehicle.tweet_parts &&
+      vehicle.tweet_parts[vehicle.tweet_parts.length - 1];
+    const urlMatch = lastTweetPart && lastTweetPart.match(/https?:\/\/\S+/);
+    const detailsUrl = urlMatch
+      ? urlMatch[0].replace(/\.$/, '')
+      : 'https://howsmydrivingny.nyc/';
+
+    const firstViolation = vehicle.violations[0];
+    const make = firstViolation?.vehicle_make ?? '';
+    const color = firstViolation?.vehicle_color ?? '';
+    const body = firstViolation?.sanitized?.vehicle_body_type ?? '';
+
+    return (
+      <React.Fragment>
+        {totalViolations} violation
+        {totalViolations !== 1 ? 's' : ''} found{' '}
+        {make && `(Maybe: ${color} ${make} ${body})`} — ${fined.toFixed(2)}{' '}
+        fined, ${outstanding.toFixed(2)} outstanding
+        {' ('}
+        <a href={detailsUrl} target="_blank" rel="noopener noreferrer">
+          more details
+        </a>
+        {', or '}
+        <a
+          href={howsmydrivingApiUrl({ plate, licenseState })}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          full API response
+        </a>
+        )
+      </React.Fragment>
+    );
+  }
+
   static handleAxiosError(error) {
     return Promise.reject(error)
       .catch(err => {
@@ -395,6 +605,42 @@ class Home extends React.Component {
 
   static notifyError(notificationContent) {
     return toast.error(notificationContent);
+  }
+
+  static handleSearchInputMounted(input) {
+    // Only a real mount passes the input element; unmounts pass null.
+    if (!input) {
+      return;
+    }
+    let attempts = 0;
+    const attemptFocus = () => {
+      if (document.activeElement === input) {
+        return; // focus landed
+      }
+      attempts += 1;
+      if (attempts > 40) {
+        return; // give up after ~4s rather than retrying forever
+      }
+      const { activeElement } = document;
+      // The user interacting with the page (clicking a button or the map
+      // itself) wins over the deferred focus; don't steal it back.
+      const userInteracted =
+        ['BUTTON', 'INPUT', 'SELECT', 'TEXTAREA', 'A'].includes(
+          activeElement?.tagName,
+        ) || activeElement?.classList?.contains('gm-style');
+      // The SearchBox portal-renders the input into a container that is
+      // not in the document yet when this ref fires, and Google Maps only
+      // attaches the control containers to the page as the map finishes
+      // initializing. focus() on a detached element is a no-op, so retry
+      // until the input is in the document and the focus sticks.
+      if (!userInteracted && document.contains(input)) {
+        input.focus();
+      }
+      if (document.activeElement !== input) {
+        setTimeout(attemptFocus, 100);
+      }
+    };
+    requestAnimationFrame(attemptFocus);
   }
 
   constructor(props) {
@@ -441,59 +687,80 @@ class Home extends React.Component {
       isSubmitting: false,
       isPreviousSubmissionsLoading: false,
       hasLoadedPreviousSubmissions: false,
-      allPlateResults: [],
+      allPlateData: null,
       vehicleInfoComponent: null,
       violationSummaryComponent: null,
       submissions: [],
       addressProvenance: '',
 
-      platePickerModalOpen: false,
-      platePickerResults: [],
-      platePickerLoading: false,
-      plateThumbnailsByKey: {},
+      plateDataByAttachmentName: {},
 
       isAuthModalOpen: false,
       authModalTab: 'login',
       isEditProfileOpen: false,
+      isPreferencesOpen: false,
       authError: null,
     };
 
     const initialState = {
       ...initialStatePersistent,
       ...initialStatePerSession,
+      // Apply server-provided initial state (from cookie via SSR) over the defaults.
+      // This ensures logged-in users see the correct UI immediately on first render.
+      ...(props.initialState || {}),
     };
 
     this.state = initialState;
     this.initialStatePerSubmission = initialStatePerSubmission;
     this.initialStatePersistent = initialStatePersistent;
+    this.isDragging = false;
+    this.plateLookupCache = new Map();
     this.plateRef = React.createRef();
+    this.plateLabelRef = React.createRef();
+    this.loginEmailRef = React.createRef();
+    this.signupEmailRef = React.createRef();
   }
 
   componentDidMount() {
-    // Copy from old localStorage key to new explicit key.
-    // The old key came from getDisplayName() which resolved to 'Function'
-    // for class components (Component.constructor.name === 'Function').
-    // This can be removed once all users have been migrated.
-    const oldKey = 'Function';
-    const newKey = this.getLocalStorageKey();
-    if (newKey !== oldKey) {
-      const oldData = localStorage.getItem(oldKey);
-      if (oldData && !localStorage.getItem(newKey)) {
-        try {
-          const parsedOldData = JSON.parse(oldData);
-          localStorage.setItem(newKey, JSON.stringify(parsedOldData));
-          // TODO: uncomment this line once this migration has been live for a bit without revert-worthy bug reports
-          // localStorage.removeItem(oldKey);
-          this.setState(parsedOldData);
-        } catch {
-          // Ignore parse errors from corrupted data.
+    // Migrate from old localStorage key ('Function') to cookie.
+    // The old localStorage key came from getDisplayName() which resolved to
+    // 'Function' for class components. The newer key was 'reportedWebHomeState'.
+    // Migrate both old localStorage keys to the cookie if no cookie exists yet.
+    if (!document.cookie.includes(`${COOKIE_KEY}=`)) {
+      const migrateKeys = ['Function', 'reportedWebHomeState'];
+      for (const key of migrateKeys) {
+        const oldData = localStorage.getItem(key);
+        if (oldData) {
+          try {
+            const parsed = JSON.parse(oldData);
+            // Filter to only persistent keys before storing in cookie
+            const persistentData = {};
+            Object.keys(this.initialStatePersistent).forEach(k => {
+              if (k in parsed) persistentData[k] = parsed[k];
+            });
+            setHomeStateCookie(JSON.stringify(persistentData), COOKIE_MAX_AGE);
+
+            // Use the setState callback so handleLogIn sees the migrated
+            // email/password in this.state, not the constructor defaults.
+            this.setState(persistentData, () => {
+              if (
+                persistentData.email &&
+                persistentData.password &&
+                !persistentData.loginSuccessful
+              ) {
+                this.handleLogIn();
+              }
+            });
+            break;
+          } catch {
+            // Ignore parse errors from corrupted data.
+          }
         }
       }
     }
 
-    // Existing users who saved email & password before loginSuccessful
-    // was introduced won't have it set. Try to log them in so the
-    // server can validate the credentials and set the flag properly.
+    // If the cookie already existed at mount time (i.e. a subsequent
+    // page load), check whether loginSuccessful is missing and retry.
     if (
       this.state.email &&
       this.state.password &&
@@ -515,22 +782,13 @@ class Home extends React.Component {
       longitude: defaultLongitude,
     });
 
-    geolocate().then(
-      ({ coords: { latitude, longitude }, ipProvenance = 'device' }) => {
-        // if there's no attachments or a location couldn't be extracted, just use here
-        if (
-          this.state.attachmentData.length === 0 ||
-          (this.state.latitude === defaultLatitude &&
-            this.state.longitude === defaultLongitude)
-        ) {
-          this.setCoords({
-            latitude,
-            longitude,
-            addressProvenance: `(from ${ipProvenance}: ${latitude}, ${longitude})`,
-          });
-        }
-      },
-    );
+    // Only request geolocation if the user is already logged in (cookie
+    // restores loginSuccessful on page load). For new sessions, defer the
+    // browser permission prompt until after the user has logged in, so the
+    // prompt appears in a trusted context rather than on first visit.
+    if (this.state.loginSuccessful) {
+      this.geolocateAndSetCoords();
+    }
 
     // Allow users to paste image data
     // adapted from https://github.com/charliewilco/react-gluejar/blob/b69d7cfa9d08bfb34d8eb6815e4b548528218883/src/index.js#L85
@@ -560,11 +818,43 @@ class Home extends React.Component {
       return confirmationMessage; // Webkit, Safari, Chrome etc.
     });
 
+    // react-modal only handles Escape when focus is inside the modal
+    // content, but the map modal's Google Maps search box captures focus,
+    // so listen at the document level instead.
+    document.addEventListener('keydown', this.handleDocumentKeyDown);
+
     this.forceUpdate(); // force "Create/Edit User" fields to render persisted value after load
 
     if (this.state.isLoadPreviousSubmissionsEnabled) {
       this.loadPreviousSubmissions();
     }
+
+    // Tell react-modal which element holds the page content, so it can mark
+    // that element aria-hidden while a modal is open (the "App element is
+    // not defined" warning). The element must not contain the modals'
+    // portal, which parentSelector renders as a sibling of the container
+    // inside the root, so use the container div rather than #app.
+    Modal.setAppElement(document.querySelector(`.${homeStyles.container}`));
+  }
+
+  componentDidUpdate(prevProps, prevState) {
+    if (
+      this.state.isAuthModalOpen &&
+      (this.state.authModalTab !== prevState.authModalTab ||
+        !prevState.isAuthModalOpen)
+    ) {
+      const ref =
+        this.state.authModalTab === 'signup'
+          ? this.signupEmailRef
+          : this.loginEmailRef;
+      requestAnimationFrame(() => {
+        if (ref.current) ref.current.focus();
+      });
+    }
+  }
+
+  componentWillUnmount() {
+    document.removeEventListener('keydown', this.handleDocumentKeyDown);
   }
 
   onDeleteSubmission = ({ objectId }) => {
@@ -602,14 +892,31 @@ class Home extends React.Component {
     );
   }
 
-  getLocalStorageKey() {
-    return this.props.localStorageKey || 'reportedWebHomeState';
-  }
-
-  getStateFilterKeys() {
-    // used by react-localstorage to determine which `state` keys to save, see https://github.com/josephfrazier/react-localstorage/tree/75f0303aa775e1625ef9cb0d936b6aa0bcdbaffc#filtering
-    return Object.keys(this.initialStatePersistent);
-  }
+  // Request the browser's geolocation permission and update coordinates.
+  // Deferred until after login so the permission prompt appears in a trusted
+  // context rather than on the first page visit.
+  geolocateAndSetCoords = () =>
+    geolocate()
+      .then(({ coords: { latitude, longitude }, ipProvenance = 'device' }) => {
+        // if there's no attachments or a location couldn't be extracted, just use here
+        if (
+          this.state.attachmentData.length === 0 ||
+          (this.state.latitude === defaultLatitude &&
+            this.state.longitude === defaultLongitude)
+        ) {
+          this.setCoords({
+            latitude,
+            longitude,
+            addressProvenance: `(from ${ipProvenance}: ${latitude}, ${longitude})`,
+          });
+        }
+      })
+      .catch(err => {
+        // Both browser geolocation and the ipapi.co fallback can fail (e.g.
+        // permission denied plus rate limiting). Log instead of leaving an
+        // unhandled rejection; the form defaults to NYC coordinates anyway.
+        console.error(err);
+      });
 
   setCoords = (
     { latitude, longitude, addressProvenance } = { addressProvenance: '' },
@@ -632,14 +939,15 @@ class Home extends React.Component {
     );
     console.timeEnd('new PolygonLookup'); // eslint-disable-line no-console
     const end = { latitude, longitude };
-    const BoroName = getBoroNameMemoized({ lookup, end });
-    if (BoroName === '(unknown borough)') {
+    if (!isPointInNycMemoized({ lookup, end })) {
       const errorMessage = `latitude/longitude (${latitude}, ${longitude}) is outside NYC. Please select a location within NYC.`;
       this.setState({
         formatted_address: errorMessage,
         coordsAreInNyc: false,
       });
-      Home.notifyError(errorMessage);
+      if (!this.isDragging) {
+        Home.notifyError(errorMessage);
+      }
 
       return;
     }
@@ -647,11 +955,11 @@ class Home extends React.Component {
       coordsAreInNyc: true,
     });
 
-    debouncedProcessValidation({ latitude, longitude }).then(data => {
+    debouncedGeosearch({ latitude, longitude }).then(data => {
+      const { properties } = data.features[0];
+
       this.setState({
-        formatted_address: capitalize.words(
-          `${data.geoclient_response.address.houseNumber} ${data.geoclient_response.address.streetName1In}, ${data.geoclient_response.address.firstBoroughName}`,
-        ),
+        formatted_address: formatGeosearchAddress(properties),
       });
     });
   };
@@ -672,17 +980,122 @@ class Home extends React.Component {
     });
   };
 
+  handleSearchBoxMounted = ref => {
+    this.searchBox = ref;
+  };
+
+  renderPlateOverlays = ({ attachmentPlateData }) =>
+    attachmentPlateData?.results?.map(result => {
+      const { box } = result;
+      const plate = result.plate?.toUpperCase();
+      // `box` is in pixels of the image src/alpr.js uploaded to Plate
+      // Recognizer, so `uploadWidth`/`uploadHeight` are the denominators that
+      // turn it into a fraction of the picture. Percentages are
+      // scale-invariant, so that fraction is right however large the browser
+      // renders the original file -- do NOT reach for the <img>'s
+      // naturalWidth/naturalHeight, which is the pre-downscale size.
+      //
+      // image_width/image_height are only a fallback for plate data cached
+      // before uploadWidth existed. They are NOT interchangeable: Plate
+      // Recognizer resizes uploads before processing and reports the resized
+      // size (a 2048x2731 upload comes back as 1919x2560), so dividing by them
+      // stretches every percentage ~6.7% down and to the right.
+      const {
+        image_width: imageWidth,
+        image_height: imageHeight,
+        uploadWidth,
+        uploadHeight,
+      } = attachmentPlateData;
+      const boxWidth = uploadWidth || imageWidth;
+      const boxHeight = uploadHeight || imageHeight;
+      if (!box || !plate || !boxWidth || !boxHeight) {
+        return null;
+      }
+      const licenseState = getLicenseStateFromPlateResult(result);
+
+      return (
+        <button
+          type="button"
+          key={`${plate}-${box.xmin}-${box.ymin}`}
+          className={homeStyles['plate-overlay']}
+          style={{
+            left: `${(box.xmin / boxWidth) * 100}%`,
+            top: `${(box.ymin / boxHeight) * 100}%`,
+            width: `${((box.xmax - box.xmin) / boxWidth) * 100}%`,
+            height: `${((box.ymax - box.ymin) / boxHeight) * 100}%`,
+          }}
+          aria-label={`Select license plate ${plate}`}
+          onClick={() => {
+            this.setLicensePlate({ plate, licenseState });
+            // Bring the License/Medallion label to the top of the screen so
+            // the user can confirm the selected plate. The optional call
+            // keeps this a no-op in the test renderer, where refs point at
+            // non-DOM instances without scrollIntoView.
+            this.plateLabelRef.current?.scrollIntoView?.({
+              block: 'start',
+              behavior: 'smooth',
+            });
+          }}
+        >
+          <span className={homeStyles['plate-overlay-tooltip']}>
+            {plate}
+            {licenseState && ` (${licenseState})`}
+          </span>
+        </button>
+      );
+    });
+
   setLicensePlate = ({ plate, licenseState }) => {
     licenseState = licenseState || this.state.licenseState; // eslint-disable-line no-param-reassign
+
+    // Selecting the plate/state that is already selected (e.g. clicking the
+    // overlay for the current plate) is a no-op: skip the
+    // duplicate-submission warning and the vehicle/violation lookups.
+    if (
+      plate === this.state.plate &&
+      licenseState === this.state.licenseState
+    ) {
+      console.info('ignoring unchanged plate:', plate);
+      return;
+    }
+
+    // The debounced lookups cache their HTTP responses per plate+state (see
+    // getVehicleType/getViolations), so render a previously-looked-up plate
+    // from the cache immediately, without waiting out the debounce.
+    const cacheKey = `${plate}:${licenseState}`;
+    const cachedLookup = plate && this.plateLookupCache.get(cacheKey);
+    const cachedVehicleInfoResponse = cachedLookup?.vehicleInfoResponse;
+    const cachedViolationsResponse = cachedLookup?.violationsResponse;
+    const cachedVehicleInfoComponent =
+      cachedVehicleInfoResponse &&
+      (Home.vehicleInfoResponseHasData(cachedVehicleInfoResponse)
+        ? Home.buildVehicleInfoComponent({
+            plate,
+            licenseState,
+            vehicleInfoResponse: cachedVehicleInfoResponse,
+          })
+        : Home.buildVehicleLookupErrorComponent({ plate, licenseState }));
+    const cachedViolationSummaryComponent =
+      cachedViolationsResponse &&
+      Home.buildViolationSummaryComponent({
+        plate,
+        licenseState,
+        violationsResponse: cachedViolationsResponse,
+      });
+
     this.setState({
       plate,
       licenseState,
-      vehicleInfoComponent: plate
-        ? `Looking up make/model for ${plate} in ${usStateNames[licenseState]}`
-        : null,
-      violationSummaryComponent: plate
-        ? `Looking up violations for ${plate} in ${usStateNames[licenseState]}`
-        : null,
+      vehicleInfoComponent:
+        cachedVehicleInfoComponent ||
+        (plate
+          ? `Looking up make/model for ${plate} in ${usStateNames[licenseState]}`
+          : null),
+      violationSummaryComponent:
+        cachedViolationSummaryComponent ||
+        (plate
+          ? `Looking up violations for ${plate} in ${usStateNames[licenseState]}`
+          : null),
     });
 
     const selectedDate = new Date(this.state.CreateDate);
@@ -711,98 +1124,87 @@ class Home extends React.Component {
       );
     }
 
-    debouncedGetVehicleType({ plate, licenseState })
-      .then(({ data }) => {
-        const { vehicleYear, vehicleMake, vehicleModel, vehicleBody } =
-          data.result;
-
-        if (plate !== this.state.plate) {
-          console.info('ignoring stale plate:', plate);
-          return;
-        }
-
-        this.setState({
-          vehicleInfoComponent: (
-            <React.Fragment>
-              <a
-                href={vehicleTypeUrl({ licensePlate: plate, licenseState })}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {plate} in {usStateNames[licenseState]}: {vehicleYear}{' '}
-                {vehicleMake} {vehicleModel} ({vehicleBody})
-              </a>
-              <img
-                src={Home.getVehicleMakeLogoUrl({ vehicleMake })}
-                alt={`${vehicleMake} logo`}
-                style={{
-                  display: 'block',
-                  maxWidth: '250px',
-                }}
-              />
-            </React.Fragment>
-          ),
-        });
+    if (!cachedVehicleInfoComponent) {
+      debouncedGetVehicleType({
+        plate,
+        licenseState,
+        cache: this.plateLookupCache,
       })
-      .catch(err => {
-        console.error(err);
-
-        if (plate !== this.state.plate) {
-          console.info('ignoring stale plate:', plate);
-          return;
-        }
-
-        if (plate) {
-          this.setState({
-            vehicleInfoComponent: (
-              <React.Fragment>
-                Could not look up make/model of {plate} in{' '}
-                {usStateNames[licenseState]},{' '}
-                <a
-                  href="https://github.com/josephfrazier/Reported-Web/issues/295"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  click here for details
-                </a>
-                <br />
-                <a
-                  href="https://www.lookupaplate.com/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Click here to manually look it up
-                </a>
-              </React.Fragment>
-            ),
-          });
-
-          // autocorrect common license plate typos from ALPR/OCR
-          if (plate.match(/^1\d\d\d\d\d\dC$/)) {
-            this.setLicensePlate({
-              plate: plate.replace('1', 'T'),
-              licenseState,
-            });
-          } else if (plate.match(/^\d\d\d\d\d\dC$/)) {
-            this.setLicensePlate({
-              plate: `T${plate}`,
-              licenseState,
-            });
+        .then(vehicleInfoResponse => {
+          // Ignore responses for plates the user has moved on from: the
+          // debounced lookup resolves every selection made while it was
+          // pending with the LAST plate's data.
+          if (plate !== this.state.plate) {
+            console.info('ignoring stale plate:', plate);
+            return;
           }
-          // Commented out due to https://github.com/josephfrazier/Reported-Web/issues/295
-          //
-          // } else if (licenseState !== 'NY') {
-          //   this.setLicensePlate({
-          //     plate,
-          //     licenseState: 'NY',
-          //   });
-          // }
-        }
-      });
 
-    if (plate) {
-      debouncedGetViolations({ plate, licenseState })
-        .then(({ apiUrl, response: { data: responseData } }) => {
+          // LookupAPlate returns an empty result for plates without vehicle
+          // records (e.g. partial plates typed one character at a time). Fall
+          // through to the error path, which renders a manual lookup link
+          // instead of "undefined" make/model fields.
+          if (!Home.vehicleInfoResponseHasData(vehicleInfoResponse)) {
+            throw new Error(`No make/model data for ${plate}`);
+          }
+
+          this.setState({
+            vehicleInfoComponent: Home.buildVehicleInfoComponent({
+              plate,
+              licenseState,
+              vehicleInfoResponse,
+            }),
+          });
+        })
+        .catch(err => {
+          console.warn(err);
+
+          if (plate !== this.state.plate) {
+            console.info('ignoring stale plate:', plate);
+            return;
+          }
+
+          if (plate) {
+            this.setState({
+              vehicleInfoComponent: Home.buildVehicleLookupErrorComponent({
+                plate,
+                licenseState,
+              }),
+            });
+
+            // autocorrect common license plate typos from ALPR/OCR
+            if (plate.match(/^1\d\d\d\d\d\dC$/)) {
+              this.setLicensePlate({
+                plate: plate.replace('1', 'T'),
+                licenseState,
+              });
+            } else if (plate.match(/^\d\d\d\d\d\dC$/)) {
+              this.setLicensePlate({
+                plate: `T${plate}`,
+                licenseState,
+              });
+            }
+            // Commented out due to https://github.com/josephfrazier/Reported-Web/issues/295
+            //
+            // } else if (licenseState !== 'NY') {
+            //   this.setLicensePlate({
+            //     plate,
+            //     licenseState: 'NY',
+            //   });
+            // }
+          }
+        });
+    }
+
+    if (plate && !cachedViolationSummaryComponent) {
+      debouncedGetViolations({
+        plate,
+        licenseState,
+        cache: this.plateLookupCache,
+      })
+        .then(responseData => {
+          // Ignore responses for plates the user has moved on from: the
+          // debounced lookup resolves every selection made while it was
+          // pending with the LAST plate's data.
           if (plate !== this.state.plate) {
             return;
           }
@@ -816,42 +1218,12 @@ class Home extends React.Component {
             return;
           }
 
-          const totalViolations = vehicle.violations.length;
-          const { total_fined: fined, total_outstanding: outstanding } =
-            vehicle.fines;
-
-          const lastTweetPart =
-            vehicle.tweet_parts &&
-            vehicle.tweet_parts[vehicle.tweet_parts.length - 1];
-          const urlMatch =
-            lastTweetPart && lastTweetPart.match(/https?:\/\/\S+/);
-          const detailsUrl = urlMatch
-            ? urlMatch[0].replace(/\.$/, '')
-            : 'https://howsmydrivingny.nyc/';
-
-          const firstViolation = vehicle.violations[0];
-          const make = firstViolation?.vehicle_make ?? '';
-          const color = firstViolation?.vehicle_color ?? '';
-          const body = firstViolation?.sanitized?.vehicle_body_type ?? '';
-
           this.setState({
-            violationSummaryComponent: (
-              <React.Fragment>
-                {totalViolations} violation
-                {totalViolations !== 1 ? 's' : ''} found{' '}
-                {make && `(Maybe: ${color} ${make} ${body})`} — $
-                {fined.toFixed(2)} fined, ${outstanding.toFixed(2)} outstanding
-                {' ('}
-                <a href={detailsUrl} target="_blank" rel="noopener noreferrer">
-                  more details
-                </a>
-                {', or '}
-                <a href={apiUrl} target="_blank" rel="noopener noreferrer">
-                  full API response
-                </a>
-                )
-              </React.Fragment>
-            ),
+            violationSummaryComponent: Home.buildViolationSummaryComponent({
+              plate,
+              licenseState,
+              violationsResponse: responseData,
+            }),
           });
         })
         .catch(err => {
@@ -873,6 +1245,30 @@ class Home extends React.Component {
         attachmentData: state.attachmentData.concat(attachmentData),
       }),
       async () => {
+        // Start background upload for each newly added file
+        attachmentData.forEach(attachmentFile => {
+          if (!fileUploadPromises.has(attachmentFile)) {
+            const uploadPromise = (async () => {
+              const formData = new FormData();
+              formData.append('email', this.state.email);
+              formData.append('password', this.state.password);
+              formData.append('attachmentData', attachmentFile);
+              const { data } = await axios.post(
+                '/api/uploadAttachment',
+                formData,
+              );
+              return data.id;
+            })();
+            // The submit handler awaits this promise (catching failures so
+            // it can fall back to sending the files directly), so it can sit
+            // unhandled until then. Attach a no-op catch so the test runner
+            // and the browser console don't flag the rejection in the
+            // meantime.
+            uploadPromise.catch(() => {});
+            fileUploadPromises.set(attachmentFile, uploadPromise);
+          }
+        });
+
         const listsOfExtractions = await Promise.all(
           this.state.attachmentData.map(async (attachmentFile, index) => {
             if (attachmentFile.size > 20 * 1000 * 1000) {
@@ -892,7 +1288,9 @@ class Home extends React.Component {
                 attachmentFile,
               });
 
-            const { ext } = await FileType.fromBuffer(attachmentBuffer);
+            const { name: ext } = (await detectFromBuffer(
+              attachmentBuffer,
+            )) || { name: 'jpg' };
 
             this.setState({ isAlprLoading: true });
             return Promise.allSettled([
@@ -912,11 +1310,13 @@ class Home extends React.Component {
                     this.setLicensePlate(result);
                   }
                   this.setState(state => ({
-                    allPlateResults: result.allPlateResults,
-                    plateThumbnailsByKey: {
-                      ...state.plateThumbnailsByKey,
-                      ...getPlateThumbnailsByKey(result.allPlateResults),
-                    },
+                    allPlateData: result.allPlateData,
+                    plateDataByAttachmentName: result.allPlateData
+                      ? {
+                          ...state.plateDataByAttachmentName,
+                          [attachmentFile.name]: result.allPlateData,
+                        }
+                      : state.plateDataByAttachmentName,
                   }));
                 })
                 .finally(() => {
@@ -934,7 +1334,7 @@ class Home extends React.Component {
                 isReverseGeocodingEnabled: this.state.isReverseGeocodingEnabled,
               }).then(({ latitude, longitude }) => {
                 if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
-                  throw 'location (may have been stripped by Android, see <a href="https://github.com/josephfrazier/reported-web/issues/751">details</a>)'; // eslint-disable-line no-throw-literal
+                  throw 'location (may have been stripped by Android, see https://github.com/josephfrazier/reported-web/issues/751 for details)'; // eslint-disable-line no-throw-literal
                 }
 
                 this.setCoords({
@@ -960,52 +1360,20 @@ class Home extends React.Component {
           return;
         }
 
-        const missingValuesHtml = rejected.map(v => v.reason).join(', ');
+        const missingValuesString = rejected.map(v => v.reason).join(', ');
         const hasMultipleAttachments = this.state.attachmentData.length > 1;
         const fileCopy = hasMultipleAttachments ? 'the files.' : 'the file.';
 
         Home.notifyWarning(
           <React.Fragment>
             <p>
-              Could not extract the{' '}
-              <span dangerouslySetInnerHTML={{ __html: missingValuesHtml }} />{' '}
-              from {fileCopy} Please enter/confirm any missing values manually.
+              Could not extract the {linkifyText(missingValuesString)} from{' '}
+              {fileCopy} Please enter/confirm any missing values manually.
             </p>
           </React.Fragment>,
         );
       },
     );
-  };
-
-  handlePlatePickerClick = async attachmentFile => {
-    this.setState({ platePickerLoading: true });
-
-    try {
-      const { email, password } = this.state;
-      const { attachmentBuffer } = await blobToBuffer({ attachmentFile });
-      const ext = fileExtension(attachmentFile.name);
-      const results = await fetchPlateResults({
-        attachmentFile,
-        attachmentBuffer,
-        ext,
-        email,
-        password,
-      });
-
-      this.setState(state => ({
-        platePickerResults: results,
-        platePickerModalOpen: true,
-        platePickerLoading: false,
-        plateThumbnailsByKey: {
-          ...state.plateThumbnailsByKey,
-          ...getPlateThumbnailsByKey(results),
-        },
-      }));
-    } catch (err) {
-      console.error(err);
-      Home.notifyError('Could not read license plates from this photo.');
-      this.setState({ platePickerLoading: false });
-    }
   };
 
   handleInputChange = event => {
@@ -1022,13 +1390,23 @@ class Home extends React.Component {
       {
         [name]: value,
       },
-      () => debouncedSaveStateToLocalStorage(this),
+      () => debouncedSavePersistentStateToCookie(this),
     );
   };
 
   loadPreviousSubmissions = () => {
     if (this.state.isPreviousSubmissionsLoading) {
       return;
+    }
+
+    // Show the cached recent submissions (if any) immediately, then replace
+    // them with the fresh list once the fetch completes.
+    const cachedSubmissions = readCachedSubmissions();
+    if (cachedSubmissions) {
+      this.setState({
+        submissions: cachedSubmissions,
+        hasLoadedPreviousSubmissions: true,
+      });
     }
 
     this.setState({
@@ -1044,6 +1422,7 @@ class Home extends React.Component {
           isPreviousSubmissionsLoading: false,
           hasLoadedPreviousSubmissions: true,
         });
+        writeCachedSubmissions(submissions);
       })
       .catch(error => {
         this.setState({
@@ -1070,6 +1449,12 @@ class Home extends React.Component {
     this.setState({ isAuthModalOpen: false, authError: null });
   };
 
+  handleDocumentKeyDown = event => {
+    if (event.key === 'Escape' && this.state.isMapOpen) {
+      this.setState({ isMapOpen: false });
+    }
+  };
+
   switchAuthTab = tab => {
     this.setState({
       authModalTab: tab,
@@ -1082,7 +1467,8 @@ class Home extends React.Component {
     }
   };
 
-  handleLogIn = async () => {
+  handleLogIn = async e => {
+    if (e) e.preventDefault();
     this.setState({ isUserInfoSaving: true, authError: null });
     try {
       const { data } = await axios.post('/api/logIn', {
@@ -1101,8 +1487,11 @@ class Home extends React.Component {
           loginSuccessful: true,
         }),
         () => {
-          this.saveStateToLocalStorage();
+          this.savePersistentStateToCookie();
           this.loadPreviousSubmissions();
+          // Now that the user has logged in, request geolocation
+          // permission in a trusted context.
+          this.geolocateAndSetCoords();
         },
       );
     } catch (err) {
@@ -1111,7 +1500,8 @@ class Home extends React.Component {
     }
   };
 
-  handleSignUp = async () => {
+  handleSignUp = async e => {
+    e.preventDefault();
     this.setState({ isUserInfoSaving: true, authError: null });
     try {
       const { data } = await axios.post('/api/logIn', {
@@ -1131,8 +1521,11 @@ class Home extends React.Component {
           try {
             await axios.post('/saveUser', this.state);
             this.setState({ isUserInfoSaving: false, isAuthModalOpen: false });
-            this.saveStateToLocalStorage();
+            this.savePersistentStateToCookie();
             this.loadPreviousSubmissions();
+            // Now that the user has signed up (and is logged in),
+            // request geolocation permission in a trusted context.
+            this.geolocateAndSetCoords();
           } catch (saveErr) {
             this.setState({
               isUserInfoSaving: false,
@@ -1159,11 +1552,18 @@ class Home extends React.Component {
         testify: false,
         submissions: [],
         isEditProfileOpen: false,
+        isPreferencesOpen: false,
         hasLoadedPreviousSubmissions: false,
         loginSuccessful: false,
       },
       () => {
-        localStorage.removeItem(this.getLocalStorageKey());
+        setHomeStateCookie('', 0);
+        // Remove old localStorage keys so they aren't re-migrated
+        // if the user logs back in later.
+        localStorage.removeItem('Function');
+        localStorage.removeItem('reportedWebHomeState');
+        // Don't keep this user's submissions cached after they log out.
+        clearCachedSubmissions();
       },
     );
   };
@@ -1214,7 +1614,11 @@ class Home extends React.Component {
     } = this.state;
 
     if (submissions.length > 0) {
-      return submissions.length;
+      // Cached submissions may be visible while the fresh list loads in the
+      // background, so indicate that a load is in progress.
+      return isPreviousSubmissionsLoading
+        ? `at least ${submissions.length}, loading more...`
+        : submissions.length;
     }
     if (hasLoadedPreviousSubmissions) {
       return 0;
@@ -1224,6 +1628,41 @@ class Home extends React.Component {
     }
     return isLoadPreviousSubmissionsEnabled ? 'loading...' : 'expand to load';
   };
+
+  savePersistentStateToCookie = () => {
+    const persistentState = {};
+    Object.keys(this.initialStatePersistent).forEach(key => {
+      persistentState[key] = this.state[key];
+    });
+    setHomeStateCookie(JSON.stringify(persistentState), COOKIE_MAX_AGE);
+  };
+
+  findMatchingPlateThumbnail() {
+    let bestPlateCropDataUrl = null;
+    let bestResolution = -1;
+    for (const data of Object.values(this.state.plateDataByAttachmentName)) {
+      for (const result of data.results || []) {
+        if (
+          result.plate?.toUpperCase() === this.state.plate?.toUpperCase() &&
+          result.plateCropDataUrl
+        ) {
+          // The same plate can be detected in multiple photos (or multiple
+          // times in one photo). Show the highest-resolution crop beside the
+          // plate input, since more pixels make the plate easier to read.
+          // `box` is in the same downscaled image space the crop was cut from
+          // in src/alpr.js, so its area in pixels is the crop's resolution.
+          const { xmin, ymin, xmax, ymax } = result.box || {};
+          const resolution = (xmax - xmin) * (ymax - ymin) || 0;
+
+          if (resolution > bestResolution) {
+            bestResolution = resolution;
+            bestPlateCropDataUrl = result.plateCropDataUrl;
+          }
+        }
+      }
+    }
+    return bestPlateCropDataUrl;
+  }
 
   maybeGeneratePassword() {
     if (!this.state.password) {
@@ -1243,9 +1682,10 @@ class Home extends React.Component {
   }
 
   render() {
-    const matchingPlateThumbnail =
-      this.state.plateThumbnailsByKey[getPlateThumbnailKey(this.state.plate)];
+    const matchingPlateThumbnail = this.findMatchingPlateThumbnail();
     const previousSubmissionsSummary = this.getPreviousSubmissionsSummary();
+    const isSettingsPanelOpen =
+      this.state.isEditProfileOpen || this.state.isPreferencesOpen;
 
     return (
       <Dropzone
@@ -1314,10 +1754,23 @@ class Home extends React.Component {
                       onClick={() =>
                         this.setState(state => ({
                           isEditProfileOpen: !state.isEditProfileOpen,
+                          isPreferencesOpen: false,
                         }))
                       }
                     >
                       {this.state.isEditProfileOpen ? 'Cancel' : 'Edit Profile'}
+                    </button>
+                    <button
+                      type="button"
+                      className={homeStyles['status-bar-btn']}
+                      onClick={() =>
+                        this.setState(state => ({
+                          isPreferencesOpen: !state.isPreferencesOpen,
+                          isEditProfileOpen: false,
+                        }))
+                      }
+                    >
+                      {this.state.isPreferencesOpen ? 'Cancel' : 'Preferences'}
                     </button>
                     <button
                       type="button"
@@ -1403,6 +1856,19 @@ class Home extends React.Component {
                     I&apos;m willing to testify at a hearing, which can be done
                     by phone.
                   </label>
+
+                  <label htmlFor="can_be_shared_publicly">
+                    <input
+                      id="can_be_shared_publicly"
+                      type="checkbox"
+                      checked={this.state.can_be_shared_publicly}
+                      name="can_be_shared_publicly"
+                      onChange={this.handleInputChange}
+                    />{' '}
+                    Allow the photos/videos, description, category, and location
+                    to be publicly displayed
+                  </label>
+
                   <button
                     type="submit"
                     className={homeStyles['auth-submit-btn']}
@@ -1413,6 +1879,49 @@ class Home extends React.Component {
                   </button>
                 </fieldset>
               </form>
+            )}
+
+            {/* Preferences (shown inline when toggled). Unlike the Edit
+                Profile form above, nothing here needs saving: these toggles
+                affect only how the page behaves, not what is submitted, so
+                they persist to the cookie as they change. */}
+            {this.state.isPreferencesOpen && (
+              <div className={homeStyles['edit-profile-section']}>
+                <h3>Preferences</h3>
+
+                <label htmlFor="isAlprEnabled">
+                  <input
+                    id="isAlprEnabled"
+                    type="checkbox"
+                    checked={this.state.isAlprEnabled}
+                    name="isAlprEnabled"
+                    onChange={this.handleInputChange}
+                  />{' '}
+                  Automatically read license plates from pictures/videos
+                </label>
+
+                <label htmlFor="isReverseGeocodingEnabled">
+                  <input
+                    id="isReverseGeocodingEnabled"
+                    type="checkbox"
+                    checked={this.state.isReverseGeocodingEnabled}
+                    name="isReverseGeocodingEnabled"
+                    onChange={this.handleInputChange}
+                  />{' '}
+                  Automatically read addresses from pictures/videos
+                </label>
+
+                <label htmlFor="isLoadPreviousSubmissionsEnabled">
+                  <input
+                    id="isLoadPreviousSubmissionsEnabled"
+                    type="checkbox"
+                    checked={this.state.isLoadPreviousSubmissionsEnabled}
+                    name="isLoadPreviousSubmissionsEnabled"
+                    onChange={this.handleInputChange}
+                  />{' '}
+                  Load previous submissions on page load
+                </label>
+              </div>
             )}
 
             {/* Auth Modal */}
@@ -1467,10 +1976,14 @@ class Home extends React.Component {
 
               {/* Log In form */}
               {this.state.authModalTab === 'login' && (
-                <div className={homeStyles['auth-modal-body']}>
+                <form
+                  className={homeStyles['auth-modal-body']}
+                  onSubmit={this.handleLogIn}
+                >
                   <label htmlFor="auth-email">
                     Email:
                     <input
+                      ref={this.loginEmailRef}
                       required
                       id="auth-email"
                       type="email"
@@ -1516,10 +2029,9 @@ class Home extends React.Component {
                     </div>
                   </label>
                   <button
-                    type="button"
+                    type="submit"
                     className={homeStyles['auth-submit-btn']}
                     disabled={this.state.isUserInfoSaving}
-                    onClick={this.handleLogIn}
                   >
                     {this.state.isUserInfoSaving ? 'Logging in...' : 'Log In'}
                   </button>
@@ -1549,15 +2061,19 @@ class Home extends React.Component {
                       Sign Up
                     </button>
                   </div>
-                </div>
+                </form>
               )}
 
               {/* Sign Up form */}
               {this.state.authModalTab === 'signup' && (
-                <div className={homeStyles['auth-modal-body']}>
+                <form
+                  className={homeStyles['auth-modal-body']}
+                  onSubmit={this.handleSignUp}
+                >
                   <label htmlFor="auth-signup-email">
                     Email:
                     <input
+                      ref={this.signupEmailRef}
                       required
                       id="auth-signup-email"
                       type="email"
@@ -1651,10 +2167,9 @@ class Home extends React.Component {
                     by phone.
                   </label>
                   <button
-                    type="button"
+                    type="submit"
                     className={homeStyles['auth-submit-btn']}
                     disabled={this.state.isUserInfoSaving}
-                    onClick={this.handleSignUp}
                   >
                     {this.state.isUserInfoSaving
                       ? 'Creating account...'
@@ -1669,7 +2184,7 @@ class Home extends React.Component {
                       Log In
                     </button>
                   </div>
-                </div>
+                </form>
               )}
             </Modal>
 
@@ -1694,7 +2209,7 @@ class Home extends React.Component {
                 </p>
               </div>
             )}
-            {this.isLoggedIn() && !this.state.isEditProfileOpen && (
+            {this.isLoggedIn() && !isSettingsPanelOpen && (
               <form
                 onSubmit={async e => {
                   e.preventDefault();
@@ -1712,17 +2227,46 @@ class Home extends React.Component {
                   this.setState({
                     isSubmitting: true,
                   });
+
+                  // Collect pre-uploaded IDs for all attachment files
+                  const attachmentIds = await Promise.all(
+                    this.state.attachmentData.map(async file => {
+                      const uploadPromise = fileUploadPromises.get(file);
+                      if (!uploadPromise) return null;
+                      try {
+                        return await uploadPromise;
+                      } catch (_err) {
+                        console.error(
+                          'Background attachment upload failed:',
+                          _err,
+                        );
+                        return null;
+                      }
+                    }),
+                  );
+                  const hasAllIds =
+                    attachmentIds.length > 0 &&
+                    attachmentIds.every(id => id !== null);
+
                   axios
                     .post(
                       '/submit',
                       serialize(
-                        {
-                          ...this.getPerSubmissionState(),
-                          attachmentData: this.state.attachmentData,
-                          CreateDate: new Date(
-                            this.state.CreateDate,
-                          ).toISOString(),
-                        },
+                        hasAllIds
+                          ? {
+                              ...this.getPerSubmissionState(),
+                              attachmentIds: JSON.stringify(attachmentIds),
+                              CreateDate: new Date(
+                                this.state.CreateDate,
+                              ).toISOString(),
+                            }
+                          : {
+                              ...this.getPerSubmissionState(),
+                              attachmentData: this.state.attachmentData,
+                              CreateDate: new Date(
+                                this.state.CreateDate,
+                              ).toISOString(),
+                            },
                         { allowEmptyArrays: true },
                       ),
                       {
@@ -1768,8 +2312,8 @@ class Home extends React.Component {
                       this.setState(state => ({
                         attachmentData: [],
                         submissions: [submission].concat(state.submissions),
-                        allPlateResults: [],
-                        plateThumbnailsByKey: {},
+                        allPlateData: null,
+                        plateDataByAttachmentName: {},
                         vehicleInfoComponent: null,
                         violationSummaryComponent: null,
                         reportDescription: '',
@@ -1802,7 +2346,7 @@ class Home extends React.Component {
                       });
                     })
                     .then(() => {
-                      this.saveStateToLocalStorage();
+                      this.savePersistentStateToCookie();
                     });
                 }}
               >
@@ -1821,419 +2365,411 @@ class Home extends React.Component {
                     </button>
                   </FileReaderInput>
 
-                  <div
-                    style={{
-                      clear: 'both',
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                    }}
-                  >
-                    {this.state.attachmentData.map(attachmentFile => {
-                      const { name } = attachmentFile;
-                      const ext = fileExtension(name);
-                      const isImg = isImage({ ext });
-                      const src = getBlobUrl(attachmentFile);
+                  <div style={{ clear: 'both' }} />
 
-                      return (
-                        <div
-                          key={name}
-                          style={{
-                            width: '33%',
-                            margin: '0.1%',
-                            flexGrow: 1,
-                            position: 'relative',
-                          }}
-                        >
-                          <a
-                            href={src}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            {isImg ? (
-                              <img src={src} alt={name} />
-                            ) : (
-                              /* eslint-disable-next-line jsx-a11y/media-has-caption */
-                              <video src={src} alt={name} />
-                            )}
-                          </a>
+                  {this.state.attachmentData.length > 0 && (
+                    <React.Fragment>
+                      <div
+                        style={{
+                          display: 'flex',
+                          flexWrap: 'wrap',
+                        }}
+                      >
+                        {this.state.attachmentData.map(attachmentFile => {
+                          const { name } = attachmentFile;
+                          const ext = fileExtension(name);
+                          const isImg = isImage({ ext });
+                          const src = getBlobUrl(attachmentFile);
+                          const attachmentPlateData =
+                            this.state.plateDataByAttachmentName[name];
 
-                          <button
-                            type="button"
-                            style={{
-                              position: 'absolute',
-                              top: 0,
-                              right: 0,
-                              padding: 0,
-                              margin: '1px',
-                              color: 'red', // Ubuntu Chrome shows black otherwise
-                              background: 'white',
-                            }}
-                            onClick={() => {
-                              this.setState(state => {
-                                const attachmentData =
-                                  state.attachmentData.filter(
-                                    file => file.name !== name,
-                                  );
-                                if (attachmentData.length === 0) {
-                                  this.setCoords({
-                                    latitude: defaultLatitude,
-                                    longitude: defaultLongitude,
-                                  });
-                                  this.setCreateDate({
-                                    millisecondsSinceEpoch: Date.now(),
-                                  });
-                                  return {
-                                    attachmentData,
-                                    plate: '',
-                                    licenseState: 'NY',
-                                    allPlateResults: [],
-                                    plateThumbnailsByKey: {},
-                                    vehicleInfoComponent: null,
-                                    violationSummaryComponent: null,
-                                  };
-                                }
-                                return { attachmentData };
-                              });
-                            }}
-                          >
-                            <span role="img" aria-label="Delete photo/video">
-                              ❌
-                            </span>
-                          </button>
-
-                          {isImg && (
-                            <button
-                              type="button"
+                          return (
+                            <div
+                              key={name}
                               style={{
-                                position: 'absolute',
-                                top: 0,
-                                left: 0,
-                                padding: 0,
-                                margin: '1px',
-                                background: 'white',
+                                width: '33%',
+                                margin: '0.1%',
+                                flexGrow: 1,
+                                position: 'relative',
                               }}
-                              onClick={() =>
-                                this.handlePlatePickerClick(attachmentFile)
-                              }
-                              disabled={this.state.platePickerLoading}
                             >
-                              {this.state.platePickerLoading ? (
-                                <CircularProgress size="1em" />
-                              ) : (
+                              <div
+                                style={{
+                                  position: 'relative',
+                                  display: 'inline-block',
+                                  maxWidth: '100%',
+                                }}
+                              >
+                                <a
+                                  href={src}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{ display: 'block' }}
+                                >
+                                  {isImg ? (
+                                    <img
+                                      src={src}
+                                      alt={name}
+                                      style={{ display: 'block' }}
+                                    />
+                                  ) : (
+                                    /* eslint-disable-next-line jsx-a11y/media-has-caption */
+                                    <video
+                                      src={src}
+                                      alt={name}
+                                      // The position:relative wrapper shrink-
+                                      // wraps its content, and plate overlays
+                                      // are percentage-positioned against that
+                                      // wrapper, so the video must fill it
+                                      // exactly like the img above does:
+                                      // display:block closes the inline
+                                      // baseline gap, and max-width:100%
+                                      // (which marx-css gives img but not
+                                      // video) keeps the video from
+                                      // overflowing the wrapper when it is
+                                      // wider than the container.
+                                      style={{
+                                        display: 'block',
+                                        maxWidth: '100%',
+                                      }}
+                                    />
+                                  )}
+                                </a>
+                                {this.renderPlateOverlays({
+                                  attachmentPlateData,
+                                })}
+                              </div>
+
+                              <button
+                                type="button"
+                                style={{
+                                  position: 'absolute',
+                                  top: 0,
+                                  right: 0,
+                                  padding: 0,
+                                  margin: '1px',
+                                  color: 'red', // Ubuntu Chrome shows black otherwise
+                                  background: 'white',
+                                }}
+                                onClick={() => {
+                                  this.setState(state => {
+                                    const attachmentData =
+                                      state.attachmentData.filter(
+                                        file => file.name !== name,
+                                      );
+                                    if (attachmentData.length === 0) {
+                                      this.setCoords({
+                                        latitude: defaultLatitude,
+                                        longitude: defaultLongitude,
+                                      });
+                                      this.setCreateDate({
+                                        millisecondsSinceEpoch: Date.now(),
+                                      });
+                                      return {
+                                        attachmentData,
+                                        plate: '',
+                                        licenseState: 'NY',
+                                        allPlateData: null,
+                                        plateDataByAttachmentName: {},
+                                        vehicleInfoComponent: null,
+                                        violationSummaryComponent: null,
+                                      };
+                                    }
+                                    return {
+                                      attachmentData,
+                                      plateDataByAttachmentName: omit(
+                                        state.plateDataByAttachmentName,
+                                        name,
+                                      ),
+                                    };
+                                  });
+                                }}
+                              >
                                 <span
                                   role="img"
-                                  aria-label="Pick license plate from photo"
+                                  aria-label="Delete photo/video"
                                 >
-                                  🔍
+                                  ❌
                                 </span>
-                              )}
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
 
-                  <label htmlFor="isAlprEnabled">
-                    <input
-                      id="isAlprEnabled"
-                      type="checkbox"
-                      checked={this.state.isAlprEnabled}
-                      name="isAlprEnabled"
-                      onChange={this.handleInputChange}
-                    />{' '}
-                    Automatically read license plates from pictures/videos
-                  </label>
-
-                  <label htmlFor="isReverseGeocodingEnabled">
-                    <input
-                      id="isReverseGeocodingEnabled"
-                      type="checkbox"
-                      checked={this.state.isReverseGeocodingEnabled}
-                      name="isReverseGeocodingEnabled"
-                      onChange={this.handleInputChange}
-                    />{' '}
-                    Automatically read addresses from pictures/videos
-                  </label>
-
-                  <label htmlFor="plate">
-                    License/Medallion:
-                    {this.state.isAlprLoading && (
-                      <CircularProgress size="1em" />
-                    )}
-                    <div
-                      style={{
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        alignItems: 'flex-start',
-                        gap: '0.5rem',
-                      }}
-                    >
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <input
-                          required
-                          type="search"
-                          value={this.state.plate}
-                          name="plate"
-                          list="plateSuggestions"
-                          autoComplete="off"
-                          ref={this.plateRef}
-                          placeholder={this.state.allPlateResults?.[0]?.plate?.toUpperCase()}
-                          onChange={event => {
-                            const plate = event.target.value.toUpperCase();
-                            const matchedResult =
-                              this.state.allPlateResults.find(
-                                r => r.plate?.toUpperCase() === plate,
-                              );
-                            const licenseState = matchedResult
-                              ? getLicenseStateFromPlateResult(matchedResult)
-                              : null;
-                            this.setLicensePlate({ plate, licenseState });
-                          }}
-                        />
-                        <datalist id="plateSuggestions">
-                          {this.state.allPlateResults?.map(result => (
-                            <option value={result.plate?.toUpperCase()} />
-                          ))}
-                        </datalist>
-                        <select
+                      <label htmlFor="plate" ref={this.plateLabelRef}>
+                        License/Medallion:
+                        {this.state.isAlprLoading && (
+                          <CircularProgress size="1em" />
+                        )}
+                        <div
                           style={{
-                            marginTop: '0.5rem',
-                          }}
-                          value={this.state.licenseState}
-                          name="licenseState"
-                          onChange={event => {
-                            this.setLicensePlate({
-                              plate: this.state.plate,
-                              licenseState: event.target.value,
-                            });
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            alignItems: 'flex-start',
+                            gap: '0.5rem',
                           }}
                         >
-                          {Object.entries(usStateNames)
-                            .sort(([, name1], [, name2]) =>
-                              name1
-                                .toUpperCase()
-                                .localeCompare(name2.toUpperCase()),
-                            )
-                            .map(([abbr, name]) => (
-                              <option key={abbr} value={abbr}>
-                                {name}
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <input
+                              required
+                              type="search"
+                              value={this.state.plate}
+                              name="plate"
+                              list="plateSuggestions"
+                              autoComplete="off"
+                              ref={this.plateRef}
+                              placeholder={this.state.allPlateData?.results?.[0]?.plate?.toUpperCase()}
+                              onChange={event => {
+                                const plate = upperCaseInputValueInPlace(
+                                  event.target,
+                                );
+                                const matchedResult =
+                                  this.state.allPlateData?.results?.find(
+                                    r => r.plate?.toUpperCase() === plate,
+                                  );
+                                const licenseState = matchedResult
+                                  ? getLicenseStateFromPlateResult(
+                                      matchedResult,
+                                    )
+                                  : null;
+                                this.setLicensePlate({ plate, licenseState });
+                              }}
+                            />
+                            <datalist id="plateSuggestions">
+                              {this.state.allPlateData?.results?.map(result => (
+                                <option value={result.plate?.toUpperCase()} />
+                              ))}
+                            </datalist>
+                            <select
+                              style={{
+                                marginTop: '0.5rem',
+                              }}
+                              value={this.state.licenseState}
+                              name="licenseState"
+                              onChange={event => {
+                                this.setLicensePlate({
+                                  plate: this.state.plate,
+                                  licenseState: event.target.value,
+                                });
+                              }}
+                            >
+                              {Object.entries(usStateNames)
+                                .sort(([, name1], [, name2]) =>
+                                  name1
+                                    .toUpperCase()
+                                    .localeCompare(name2.toUpperCase()),
+                                )
+                                .map(([abbr, name]) => (
+                                  <option key={abbr} value={abbr}>
+                                    {name}
+                                  </option>
+                                ))}
+                            </select>
+                          </div>
+                          {matchingPlateThumbnail && (
+                            <img
+                              src={matchingPlateThumbnail}
+                              alt="Detected license plate"
+                              style={{
+                                maxHeight: '5rem',
+                                maxWidth: '12rem',
+                                objectFit: 'contain',
+                              }}
+                            />
+                          )}
+                        </div>
+                        <div>{this.state.violationSummaryComponent}</div>
+                        <div>{this.state.vehicleInfoComponent}</div>
+                      </label>
+
+                      <label htmlFor="typeofcomplaint">
+                        Type:{' '}
+                        <select
+                          value={this.state.typeofcomplaint}
+                          name="typeofcomplaint"
+                          onChange={this.handleInputChange}
+                        >
+                          {this.props.typeofcomplaintValues.map(
+                            typeofcomplaint => (
+                              <option
+                                key={typeofcomplaint}
+                                value={typeofcomplaint}
+                              >
+                                {typeofcomplaint}
                               </option>
-                            ))}
+                            ),
+                          )}
                         </select>
-                      </div>
-                      {matchingPlateThumbnail && (
-                        <img
-                          src={matchingPlateThumbnail}
-                          alt="Detected license plate"
+                      </label>
+
+                      <label htmlFor="where">
+                        Where: {this.state.addressProvenance}
+                        <br />
+                        <button
+                          type="button"
+                          name="where"
+                          onClick={() => this.setState({ isMapOpen: true })}
                           style={{
-                            maxHeight: '5rem',
-                            maxWidth: '12rem',
-                            objectFit: 'contain',
+                            width: '100%',
+                          }}
+                        >
+                          {this.state.formatted_address
+                            .split(', ')
+                            .slice(0, 2)
+                            .join(', ')}
+                        </button>
+                      </label>
+
+                      <Modal
+                        parentSelector={() =>
+                          document.querySelector(`.${homeStyles.root}`) ||
+                          document.body
+                        }
+                        isOpen={this.state.isMapOpen}
+                        onRequestClose={() =>
+                          this.setState({ isMapOpen: false })
+                        }
+                        style={{
+                          content: {
+                            padding: 0,
+                          },
+                        }}
+                      >
+                        <MyMapComponent
+                          key="map"
+                          position={{
+                            lat: this.state.latitude,
+                            lng: this.state.longitude,
+                          }}
+                          onRef={mapRef => {
+                            this.mapRef = mapRef;
+                          }}
+                          onCenterChanged={() => {
+                            const latitude = this.mapRef.getCenter().lat();
+                            const longitude = this.mapRef.getCenter().lng();
+                            this.setCoords({
+                              latitude,
+                              longitude,
+                              addressProvenance: '(manually set)',
+                            });
+                          }}
+                          onDragStart={() => {
+                            this.isDragging = true;
+                          }}
+                          onDragEnd={() => {
+                            this.isDragging = false;
+                          }}
+                          onSearchBoxMounted={this.handleSearchBoxMounted}
+                          onSearchInputMounted={Home.handleSearchInputMounted}
+                          onPlacesChanged={() => {
+                            const places = this.searchBox.getPlaces();
+
+                            const nextMarkers = places.map(place => ({
+                              position: place.geometry.location,
+                            }));
+                            const { latitude, longitude } =
+                              nextMarkers.length > 0
+                                ? {
+                                    latitude: nextMarkers[0].position.lat(),
+                                    longitude: nextMarkers[0].position.lng(),
+                                  }
+                                : this.state;
+
+                            this.setCoords({
+                              latitude,
+                              longitude,
+                              addressProvenance: '(manually set)',
+                            });
                           }}
                         />
-                      )}
-                    </div>
-                    <div>{this.state.violationSummaryComponent}</div>
-                    <div>{this.state.vehicleInfoComponent}</div>
-                  </label>
 
-                  <label htmlFor="typeofcomplaint">
-                    Type:{' '}
-                    <select
-                      value={this.state.typeofcomplaint}
-                      name="typeofcomplaint"
-                      onChange={this.handleInputChange}
-                    >
-                      {this.props.typeofcomplaintValues.map(typeofcomplaint => (
-                        <option key={typeofcomplaint} value={typeofcomplaint}>
-                          {typeofcomplaint}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label htmlFor="where">
-                    Where: {this.state.addressProvenance}
-                    <br />
-                    <button
-                      type="button"
-                      name="where"
-                      onClick={() => this.setState({ isMapOpen: true })}
-                      style={{
-                        width: '100%',
-                      }}
-                    >
-                      {this.state.formatted_address
-                        .split(', ')
-                        .slice(0, 2)
-                        .join(', ')}
-                    </button>
-                  </label>
-
-                  <Modal
-                    parentSelector={() =>
-                      document.querySelector(`.${homeStyles.root}`) ||
-                      document.body
-                    }
-                    isOpen={this.state.isMapOpen}
-                    onRequestClose={() => this.setState({ isMapOpen: false })}
-                    style={{
-                      content: {
-                        padding: 0,
-                      },
-                    }}
-                  >
-                    <MyMapComponent
-                      key="map"
-                      position={{
-                        lat: this.state.latitude,
-                        lng: this.state.longitude,
-                      }}
-                      onRef={mapRef => {
-                        this.mapRef = mapRef;
-                      }}
-                      onCenterChanged={() => {
-                        const latitude = this.mapRef.getCenter().lat();
-                        const longitude = this.mapRef.getCenter().lng();
-                        this.setCoords({
-                          latitude,
-                          longitude,
-                          addressProvenance: '(manually set)',
-                        });
-                      }}
-                      onSearchBoxMounted={ref => {
-                        this.searchBox = ref;
-                      }}
-                      onPlacesChanged={() => {
-                        const places = this.searchBox.getPlaces();
-
-                        const nextMarkers = places.map(place => ({
-                          position: place.geometry.location,
-                        }));
-                        const { latitude, longitude } =
-                          nextMarkers.length > 0
-                            ? {
-                                latitude: nextMarkers[0].position.lat(),
-                                longitude: nextMarkers[0].position.lng(),
-                              }
-                            : this.state;
-
-                        this.setCoords({
-                          latitude,
-                          longitude,
-                          addressProvenance: '(manually set)',
-                        });
-                      }}
-                    />
-
-                    <button
-                      type="button"
-                      style={{
-                        float: 'left',
-                      }}
-                      onClick={() => {
-                        geolocate()
-                          .then(
-                            ({
-                              coords: { latitude, longitude },
-                              ipProvenance = 'device',
-                            }) => {
-                              this.setCoords({
-                                latitude,
-                                longitude,
-                                addressProvenance: `(from ${ipProvenance}: ${latitude}, ${longitude})`,
+                        <button
+                          type="button"
+                          style={{
+                            float: 'left',
+                          }}
+                          onClick={() => {
+                            geolocate()
+                              .then(
+                                ({
+                                  coords: { latitude, longitude },
+                                  ipProvenance = 'device',
+                                }) => {
+                                  this.setCoords({
+                                    latitude,
+                                    longitude,
+                                    addressProvenance: `(from ${ipProvenance}: ${latitude}, ${longitude})`,
+                                  });
+                                },
+                              )
+                              .catch(err => {
+                                Home.notifyError(err.message);
+                                console.error(err);
                               });
-                            },
-                          )
-                          .catch(err => {
-                            Home.notifyError(err.message);
-                            console.error(err);
-                          });
-                      }}
-                    >
-                      Use current location
-                    </button>
+                          }}
+                        >
+                          Use current location
+                        </button>
 
-                    <button
-                      type="button"
-                      onClick={() => this.setState({ isMapOpen: false })}
-                      style={{
-                        float: 'right',
-                      }}
-                    >
-                      Close
-                    </button>
-                  </Modal>
+                        <button
+                          type="button"
+                          onClick={() => this.setState({ isMapOpen: false })}
+                          style={{
+                            float: 'right',
+                          }}
+                        >
+                          Close
+                        </button>
+                      </Modal>
 
-                  <PlatePickerModal
-                    isOpen={this.state.platePickerModalOpen}
-                    results={this.state.platePickerResults}
-                    onSelectPlate={({ plate, licenseState }) => {
-                      this.setLicensePlate({ plate, licenseState });
-                      this.setState({ platePickerModalOpen: false });
-                    }}
-                    onClose={() =>
-                      this.setState({ platePickerModalOpen: false })
-                    }
-                  />
+                      <label htmlFor="CreateDate">
+                        When:{' '}
+                        <input
+                          required
+                          type="datetime-local"
+                          value={this.state.CreateDate}
+                          name="CreateDate"
+                          onChange={this.handleInputChange}
+                        />
+                      </label>
 
-                  <label htmlFor="CreateDate">
-                    When:{' '}
-                    <input
-                      required
-                      type="datetime-local"
-                      value={this.state.CreateDate}
-                      name="CreateDate"
-                      onChange={this.handleInputChange}
-                    />
-                  </label>
+                      <label htmlFor="reportDescription">
+                        Description:{' '}
+                        <textarea
+                          value={this.state.reportDescription}
+                          name="reportDescription"
+                          onChange={this.handleInputChange}
+                          autoComplete="off"
+                        />
+                      </label>
 
-                  <label htmlFor="reportDescription">
-                    Description:{' '}
-                    <textarea
-                      value={this.state.reportDescription}
-                      name="reportDescription"
-                      onChange={this.handleInputChange}
-                      autoComplete="off"
-                    />
-                  </label>
-
-                  <label htmlFor="can_be_shared_publicly">
-                    <input
-                      id="can_be_shared_publicly"
-                      type="checkbox"
-                      checked={this.state.can_be_shared_publicly}
-                      name="can_be_shared_publicly"
-                      onChange={this.handleInputChange}
-                    />{' '}
-                    Allow the photos/videos, description, category, and location
-                    to be publicly displayed
-                  </label>
-
-                  {this.state.isSubmitting ? (
-                    <progress
-                      max={this.state.submitProgressMax}
-                      value={this.state.submitProgressValue}
-                      style={{
-                        width: '100%',
-                      }}
-                    >
-                      {this.state.submitProgressValue}/
-                      {this.state.submitProgressMax}
-                    </progress>
-                  ) : (
-                    <button
-                      type="submit"
-                      disabled={
-                        this.state.isSubmitting || !this.state.coordsAreInNyc
-                      }
-                      style={{
-                        width: '100%',
-                      }}
-                    >
-                      Submit
-                    </button>
+                      {this.state.isSubmitting ? (
+                        <progress
+                          max={this.state.submitProgressMax}
+                          value={this.state.submitProgressValue}
+                          style={{
+                            width: '100%',
+                          }}
+                        >
+                          {this.state.submitProgressValue}/
+                          {this.state.submitProgressMax}
+                        </progress>
+                      ) : (
+                        <button
+                          type="submit"
+                          disabled={
+                            this.state.isSubmitting ||
+                            !this.state.coordsAreInNyc
+                          }
+                          style={{
+                            width: '100%',
+                          }}
+                        >
+                          Submit
+                        </button>
+                      )}
+                    </React.Fragment>
                   )}
                 </fieldset>
               </form>
@@ -2241,7 +2777,7 @@ class Home extends React.Component {
 
             <br />
 
-            {this.isLoggedIn() && !this.state.isEditProfileOpen && (
+            {this.isLoggedIn() && !isSettingsPanelOpen && (
               <details
                 onToggle={evt => {
                   const isPreviousSubmissionsOpen = evt.currentTarget.open;
@@ -2268,41 +2804,21 @@ class Home extends React.Component {
                 </summary>
 
                 {this.state.isPreviousSubmissionsOpen && (
-                  <>
-                    {this.state.hasLoadedPreviousSubmissions &&
-                      !this.state.isPreviousSubmissionsLoading && (
-                        <label
-                          htmlFor="isLoadPreviousSubmissionsEnabled"
-                          style={{ display: 'block', marginBottom: '1rem' }}
-                        >
-                          <input
-                            id="isLoadPreviousSubmissionsEnabled"
-                            type="checkbox"
-                            checked={
-                              this.state.isLoadPreviousSubmissionsEnabled
-                            }
-                            name="isLoadPreviousSubmissionsEnabled"
-                            onChange={this.handleInputChange}
-                          />{' '}
-                          Load previous submissions immediately next time
-                        </label>
-                      )}
-                    <PreviousSubmissionsList
-                      submissions={this.state.submissions}
-                      onDeleteSubmission={this.onDeleteSubmission}
-                      isLoading={this.state.isPreviousSubmissionsLoading}
-                      hasLoadedPreviousSubmissions={
-                        this.state.hasLoadedPreviousSubmissions
-                      }
-                    />
-                  </>
+                  <PreviousSubmissionsList
+                    submissions={this.state.submissions}
+                    onDeleteSubmission={this.onDeleteSubmission}
+                    isLoading={this.state.isPreviousSubmissionsLoading}
+                    hasLoadedPreviousSubmissions={
+                      this.state.hasLoadedPreviousSubmissions
+                    }
+                  />
                 )}
               </details>
             )}
 
             <div style={{ float: 'right' }}>
               <a
-                href="/electricitibikes"
+                href="/submissions-map"
                 style={{
                   background: 'black',
                   border: '1em solid black',
@@ -2310,8 +2826,8 @@ class Home extends React.Component {
                   textDecoration: 'none',
                 }}
               >
-                <span role="img" aria-label="high voltage">
-                  ⚡
+                <span role="img" aria-label="world map">
+                  🗺️
                 </span>
               </a>
             </div>
@@ -2339,13 +2855,13 @@ class Home extends React.Component {
 Home.propTypes = {
   typeofcomplaintValues: PropTypes.arrayOf(PropTypes.string).isRequired,
   boroughBoundariesFeatureCollection: PropTypes.object.isRequired,
-  localStorageKey: PropTypes.string,
   commitHash: PropTypes.string,
+  initialState: PropTypes.object,
 };
 
 Home.defaultProps = {
-  localStorageKey: undefined,
   commitHash: undefined,
+  initialState: null,
 };
 
 const MyMapComponentPure = props => {
@@ -2353,7 +2869,10 @@ const MyMapComponentPure = props => {
     position,
     onRef,
     onCenterChanged,
+    onDragStart,
+    onDragEnd,
     onSearchBoxMounted,
+    onSearchInputMounted,
     onPlacesChanged,
   } = props;
 
@@ -2363,7 +2882,13 @@ const MyMapComponentPure = props => {
       center={position}
       ref={onRef}
       onCenterChanged={onCenterChanged}
-      options={{ mapTypeControl: false, gestureHandling: 'greedy' }}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      options={{
+        mapTypeControl: false,
+        zoomControl: true,
+        gestureHandling: 'greedy',
+      }}
     >
       <Marker position={position} />
       <SearchBox
@@ -2378,6 +2903,7 @@ const MyMapComponentPure = props => {
         }}
       >
         <input
+          ref={onSearchInputMounted}
           type="text"
           placeholder="Search..."
           style={{
@@ -2407,8 +2933,22 @@ MyMapComponentPure.propTypes = {
 
   onRef: PropTypes.func.isRequired,
   onCenterChanged: PropTypes.func.isRequired,
+  onDragStart: PropTypes.func.isRequired,
+  onDragEnd: PropTypes.func.isRequired,
   onSearchBoxMounted: PropTypes.func.isRequired,
+  onSearchInputMounted: PropTypes.func.isRequired,
   onPlacesChanged: PropTypes.func.isRequired,
+};
+
+// recompose@0.26.0 and react-google-maps@9.4.5 (both unmaintained) call
+// the deprecated `React.createFactory()` when the map HOCs are composed
+// below, logging a warning once per page load. React implements
+// `createFactory` as `createElement.bind(null, type)` plus the `.type`
+// property, so reimplement it here without the deprecation warning.
+React.createFactory = type => {
+  const factory = React.createElement.bind(null, type);
+  factory.type = type;
+  return factory;
 };
 
 const MyMapComponent = compose(
@@ -2424,8 +2964,4 @@ const MyMapComponent = compose(
   withGoogleMap,
 )(MyMapComponentPure);
 
-export default withStyles(
-  marx,
-  homeStyles,
-  toastifyStyles,
-)(withLocalStorage(Home));
+export default withStyles(marx, homeStyles, toastifyStyles)(Home);

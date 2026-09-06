@@ -45,9 +45,10 @@ class Html extends React.Component {
           <meta name="description" content={description} />
           <meta name="viewport" content="width=device-width, initial-scale=1" />
           <meta name="theme-color" content="#008000" />
-          {scripts.map(script => (
-            <link key={script} rel="preload" href={script} as="script" />
-          ))}
+          {process.env.NODE_ENV === 'production' &&
+            scripts.map(script => (
+              <link key={script} rel="preload" href={script} as="script" />
+            ))}
           <link rel="manifest" href="/site.webmanifest" />
           <link rel="apple-touch-icon" href="/icon.png" />
           {styles.map(style => (
@@ -82,14 +83,16 @@ class Html extends React.Component {
               defer
             />
           )}
-          <script
-            dangerouslySetInnerHTML={{
-              __html: `if ('serviceWorker' in navigator) {
+          {process.env.NODE_ENV === 'production' && (
+            <script
+              dangerouslySetInnerHTML={{
+                __html: `if ('serviceWorker' in navigator) {
                   // sw.js can literally be empty, but must exist
                   navigator.serviceWorker.register('/sw.js');
                 }`,
-            }}
-          />
+              }}
+            />
+          )}
         </body>
       </html>
     );

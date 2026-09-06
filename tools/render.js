@@ -8,7 +8,6 @@
  */
 
 import path from 'path';
-import fetch from 'node-fetch';
 import { writeFile, makeDir } from './lib/fs.js';
 import runServer from './runServer.js';
 
@@ -23,7 +22,6 @@ import runServer from './runServer.js';
 // ];
 const routes = [
   '/',
-  '/electricitibikes',
   '/login',
   '/register',
   '/about',

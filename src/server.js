@@ -9,24 +9,26 @@
 
 import path from 'path';
 import assert from 'assert';
+import crypto from 'crypto';
 import { execSync } from 'child_process';
 import express from 'express';
+import { rateLimit } from 'express-rate-limit';
 import forceSsl from 'force-ssl-heroku';
 import compression from 'compression';
-import nodeFetch from 'node-fetch';
 import React from 'react';
 import ReactDOM from 'react-dom/server';
 import PrettyError from 'pretty-error';
 import Parse from 'parse/node';
-import FileType from 'file-type/browser';
+import cookie from 'cookie';
 import multer from 'multer';
 import stringify from 'json-stringify-safe';
 import StyleContext from 'isomorphic-style-loader/StyleContext';
 
-import { isImage, isVideo } from './isImage.js';
-import { validateLocation, processValidation } from './geoclient.js';
+import { geosearch } from './geoclient.js';
 import getVehicleType from './getVehicleType.js';
 import srlookup from './srlookup.js';
+import getSubmissions from './getSubmissions.js';
+import createSubmission from './createSubmission.js';
 
 import App from './components/App.js';
 import Html from './components/Html.js';
@@ -38,6 +40,7 @@ import router from './router.js';
 import chunks from './chunk-manifest.json'; // eslint-disable-line import/no-unresolved
 import config from './config.js';
 import readLicenseViaALPR from './alpr.js';
+import { readAttachment, writeAttachment } from './attachmentStore.js';
 
 require('dotenv').config();
 
@@ -66,33 +69,6 @@ if (commitHash === 'unknown') {
   } catch (e) {
     console.warn('Could not determine git commit hash:', e.message);
   }
-}
-
-// Ping the app periodically to prevent Heroku eco tier dyno from sleeping
-// Only runs on Heroku (same detection logic as heroku-self-ping)
-const isHeroku =
-  'HEROKU' in process.env ||
-  ('DYNO' in process.env && process.env.HOME === '/app');
-
-if (isHeroku) {
-  const herokuSelfPingUrl = config.api.serverUrl;
-  const herokuSelfPingInterval = 20 * 60 * 1000; // 20 minutes
-  const herokuSelfPing = () => {
-    console.info(`Pinging ${herokuSelfPingUrl}...`);
-    nodeFetch(herokuSelfPingUrl)
-      .then(res => {
-        if (res.ok) {
-          console.info('herokuSelfPing successful');
-        } else {
-          console.warn(`herokuSelfPing failed with status ${res.status}`);
-        }
-      })
-      .catch(err => {
-        console.error('herokuSelfPing failed:', err.message);
-      });
-  };
-  herokuSelfPing(); // ping immediately on startup
-  setInterval(herokuSelfPing, herokuSelfPingInterval);
 }
 
 // http://docs.parseplatform.org/js/guide/#getting-started
@@ -235,62 +211,15 @@ app.use('/saveUser', (req, res) => {
     .catch(handlePromiseRejection(res));
 });
 
-app.use('/api/categories', (req, res) => {
-  const Category = Parse.Object.extend('Category');
-  const query = new Parse.Query(Category);
-  query
-    .find()
-    .then(results => {
-      const categories = results.map(({ id, attributes }) => ({
-        objectId: id,
-        ...attributes,
-      }));
-      res.json({ categories });
-    })
-    .catch(handlePromiseRejection(res));
-});
-
-app.use('/api/validate_location', (req, res) => {
+app.use('/api/geosearch', (req, res) => {
   const { lat, long } = req.body;
-  validateLocation({ lat, long })
+  geosearch({ lat, long })
     .then(body => res.json(body))
     .catch(handlePromiseRejection(res));
 });
-
-app.use('/api/process_validation', (req, res) => {
-  const { lat, long } = req.body;
-  processValidation({ lat, long })
-    .then(body => res.json(body))
-    .catch(handlePromiseRejection(res));
-});
-
-async function getSubmissions(req) {
-  return saveUser(req.body).then(user => {
-    const Submission = Parse.Object.extend('submission');
-
-    const usernameQuery = new Parse.Query(Submission);
-    // Search by "Username" (email address) to show submissions made by all
-    // users with the same email, since the web and mobile clients create
-    // separate users
-    usernameQuery.equalTo('Username', user.get('username'));
-    usernameQuery.descending('timeofreport');
-    usernameQuery.limit(Number.MAX_SAFE_INTEGER);
-
-    // Also search by "email" since submissions from iOS clients don't always have this set
-    const emailQuery = new Parse.Query(Submission);
-    emailQuery.equalTo('email', user.get('username'));
-    emailQuery.descending('timeofreport');
-    emailQuery.limit(Number.MAX_SAFE_INTEGER);
-
-    const query = Parse.Query.or(usernameQuery, emailQuery);
-    query.descending('timeofreport');
-    query.limit(Number.MAX_SAFE_INTEGER);
-    return query.find();
-  });
-}
 
 app.use('/submissions', (req, res) => {
-  getSubmissions(req)
+  getSubmissions({ req, saveUser })
     .then(async results => {
       const Task = Parse.Object.extend('tasks');
       const Submission = Parse.Object.extend('submission');
@@ -329,7 +258,7 @@ app.use('/submissions', (req, res) => {
 
 app.use('/api/deleteSubmission', (req, res) => {
   const { objectId } = req.body;
-  getSubmissions(req)
+  getSubmissions({ req, saveUser })
     .then(submissions => {
       const submission = submissions.find(sub => sub.id === objectId);
       assert(submission); // TODO make it obvious that this is necessary
@@ -378,10 +307,36 @@ app.use('/requestPasswordReset', (req, res) => {
     .catch(handlePromiseRejection(res));
 });
 
+app.use(
+  '/api/uploadAttachment',
+  rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    limit: 30, // max 30 uploads per window per IP (5 submissions × 6 files each)
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+  }),
+  upload.single('attachmentData'),
+  async (req, res) => {
+    const { email, password } = req.body;
+
+    try {
+      await logIn({ email, password });
+    } catch (error) {
+      handlePromiseRejection(res)(error);
+      return;
+    }
+
+    const { buffer } = req.file;
+    const id = crypto.createHash('sha256').update(buffer).digest('hex');
+    await writeAttachment(id, buffer);
+    res.json({ id });
+  },
+);
+
 app.use('/submit', (req, res) => {
   // Call upload.array directly to intercept errors and respond with JSON, see the following:
   // https://github.com/expressjs/multer/tree/80ee2f52432cc0c81c93b03c6b0b448af1f626e5#error-handling
-  upload.array('attachmentData[]')(req, res, error => {
+  upload.array('attachmentData[]')(req, res, async error => {
     if (error) {
       // Make error.message enumerable so it gets sent to the client
       const { message } = error;
@@ -414,117 +369,57 @@ app.use('/submit', (req, res) => {
     const latitude = Number(latitudeString);
     const longitude = Number(longitudeString);
 
-    const attachmentData = req.files;
+    const { attachmentIds: attachmentIdsJson } = req.body;
+    let attachmentData;
+    try {
+      if (attachmentIdsJson) {
+        const parsedIds = JSON.parse(attachmentIdsJson);
+        if (
+          !Array.isArray(parsedIds) ||
+          !parsedIds.every(id => typeof id === 'string')
+        ) {
+          throw { message: 'Invalid attachmentIds format' }; // eslint-disable-line no-throw-literal
+        }
+        attachmentData = await Promise.all(
+          parsedIds.map(async id => {
+            const buffer = await readAttachment(id);
+            if (!buffer) {
+              const message = `Attachment not found; please re-add your files and try again`;
+              throw { message }; // eslint-disable-line no-throw-literal
+            }
+            return { buffer };
+          }),
+        );
+      } else {
+        attachmentData = req.files;
+      }
+    } catch (attachmentError) {
+      handlePromiseRejection(res)(attachmentError);
+      return;
+    }
 
-    const timeofreport = new Date(CreateDate);
-    const timeofreported = timeofreport;
-
-    saveUser({
+    createSubmission({
+      saveUser,
       email,
       password,
       FirstName,
       LastName,
       Phone,
       testify,
+
+      plate,
+      licenseState,
+      typeofreport,
+      typeofcomplaint,
+      reportDescription,
+      can_be_shared_publicly, // eslint-disable-line camelcase
+      latitude,
+      longitude,
+      formatted_address, // eslint-disable-line camelcase
+      CreateDate,
+      attachmentData,
+      versionNumber: Number(HEROKU_RELEASE_VERSION.slice(1)),
     })
-      .then(async user => {
-        // make sure all required fields are present
-        Object.entries({
-          plate,
-          licenseState,
-          typeofcomplaint,
-          latitude,
-          longitude,
-          CreateDate,
-        }).forEach(([key, value]) => {
-          if (!value) {
-            throw { message: `${key} is required` }; // eslint-disable-line no-throw-literal
-          }
-        });
-
-        const timezone = process.env.TZ;
-        process.env.TZ = 'America/New_York';
-        if (timeofreport.valueOf() > Date.now()) {
-          const message = `Timestamp cannot be in the future (submitted time: ${timeofreport}, actual time: ${new Date()})`;
-          process.env.TZ = timezone;
-          throw { message }; // eslint-disable-line no-throw-literal
-        }
-
-        const Submission = Parse.Object.extend('submission');
-        const submission = new Submission();
-        submission.set({
-          user,
-
-          FirstName,
-          LastName,
-          Phone,
-          testify,
-
-          Username: email,
-
-          typeofreport,
-          selectedReport: typeofreport === 'complaint' ? 1 : 0,
-          colorTaxi: 'Black', // see https://reportedcab.slack.com/messages/C852Q265V/p1528474895000562
-          medallionNo: plate,
-          license: plate, // https://github.com/josephfrazier/Reported-Web/issues/23
-          state: licenseState, // https://github.com/josephfrazier/Reported-Web/issues/23
-          typeofcomplaint,
-          passenger: false,
-          locationNumber: 1,
-          latitude: latitude.toString(),
-          longitude: longitude.toString(),
-          latitude1: latitude,
-          longitude1: longitude,
-          location: new Parse.GeoPoint({ latitude, longitude }),
-          loc1_address: formatted_address, // eslint-disable-line camelcase
-          timeofreport,
-          timeofreported,
-          reportDescription,
-          can_be_shared_publicly, // eslint-disable-line camelcase
-          status: 0,
-          operating_system: 'web',
-          version_number: Number(HEROKU_RELEASE_VERSION.slice(1)),
-          reqnumber: 'N/A until submitted to 311',
-        });
-        submission.setACL(new Parse.ACL(user));
-
-        // upload attachments
-        // http://docs.parseplatform.org/js/guide/#creating-a-parsefile
-
-        const attachmentsWithFormats = await Promise.all(
-          attachmentData.map(async ({ buffer: attachmentBuffer }) => ({
-            attachmentBuffer,
-            ext: (await FileType.fromBuffer(attachmentBuffer)).ext,
-          })),
-        );
-
-        const images = attachmentsWithFormats.filter(isImage);
-        const videos = attachmentsWithFormats.filter(isVideo);
-
-        await Promise.all([
-          ...images
-            .slice(0, 3)
-            .map(async ({ attachmentBuffer, ext }, index) => {
-              const key = `photoData${index}`;
-              const file = new Parse.File(`${key}.${ext}`, {
-                base64: attachmentBuffer.toString('base64'),
-              });
-              await file.save();
-              submission.set(key, file);
-            }),
-          ...videos
-            .slice(0, 3)
-            .map(async ({ attachmentBuffer, ext }, index) => {
-              const key = `videoData${index}`;
-              const file = new Parse.File(`${key}.${ext}`, {
-                base64: attachmentBuffer.toString('base64'),
-              });
-              await file.save();
-              submission.set(key, file.url());
-            }),
-        ]);
-        return submission.save(null);
-      })
       .then(submission => {
         // Unwrap encoded Date objects into ISO strings
         // before: { __type: 'Date', iso: '2018-05-26T23:17:22.000Z' }
@@ -643,6 +538,7 @@ app.get('/api/submissions-in-polygon', (req, res) => {
   const query = new Parse.Query(Submission);
   query.withinPolygon('location', polygonCoords);
   query.equalTo('can_be_shared_publicly', true);
+  query.notEqualTo('license', 'TEST');
   query.limit(POLYGON_RESULT_LIMIT);
   query.select(POLYGON_FIELDS);
 
@@ -665,6 +561,23 @@ app.get('/api/submissions-in-polygon', (req, res) => {
 });
 
 //
+// Firefox with the React DevTools browser extension installed injects
+// `installHook.js` into the page, then tries to fetch the script's source
+// map relative to the page's origin (`/installHook.js.map`). Without this
+// route, that request falls through to the SSR catch-all below and gets a
+// 404 page, filling the browser console with:
+//   Source map error: Error: request failed with status 404
+// Serve a valid empty source map to silence it, as suggested in:
+// https://github.com/facebook/react/issues/32339
+// -----------------------------------------------------------------------------
+app.get('/installHook.js.map', (req, res) => {
+  res.type('application/json');
+  res.send(
+    '{"version":3,"file":"installHook.js","sources":["installHook.js"],"sourcesContent":[""],"mappings":""}',
+  );
+});
+
+//
 // Register server-side rendering middleware
 // -----------------------------------------------------------------------------
 app.get('*', async (req, res, next) => {
@@ -679,10 +592,13 @@ app.get('*', async (req, res, next) => {
     };
 
     // Universal HTTP client
-    const fetch = createFetch(nodeFetch, {
+    const fetch = createFetch(globalThis.fetch, {
       baseUrl: config.api.serverUrl,
       cookie: req.headers.cookie,
     });
+
+    // Parse cookies from the request header into a plain object
+    const cookies = cookie.parse(req.headers.cookie || '');
 
     // Global (context) variables that can be easily accessed from any React component
     // https://facebook.github.io/react/docs/context.html
@@ -690,6 +606,7 @@ app.get('*', async (req, res, next) => {
       insertCss,
       fetch,
       commitHash,
+      cookies,
       // The twins below are wild, be careful!
       pathname: req.path,
       query: req.query,

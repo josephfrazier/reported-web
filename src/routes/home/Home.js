@@ -85,13 +85,17 @@ const setHomeStateCookie = (state, maxAge) => {
   });
 };
 
-const debouncedGeosearch = debounce(async ({ latitude, longitude }) => {
-  const { data } = await axios.post('/api/geosearch', {
-    lat: latitude,
-    long: longitude,
-  });
-  return data;
-}, 500);
+const debouncedGeosearch = debounce(
+  async ({ latitude, longitude, address }) => {
+    const { data } = await axios.post('/api/geosearch', {
+      lat: latitude,
+      long: longitude,
+      address,
+    });
+    return data;
+  },
+  500,
+);
 
 const howsmydrivingApiUrl = ({ plate, licenseState }) =>
   `https://api.howsmydrivingny.nyc/api/v1/?plate=${plate}:${licenseState}`;
@@ -1159,7 +1163,9 @@ class Home extends React.Component {
   };
 
   setCoords = (
-    { latitude, longitude, addressProvenance } = { addressProvenance: '' },
+    { latitude, longitude, address, addressProvenance } = {
+      addressProvenance: '',
+    },
     { warnOnGeosearchFailure = true, fromMap = false } = {},
   ) => {
     // A locked place stays where the user put it. The photos, the GPS and the
@@ -1220,19 +1226,24 @@ class Home extends React.Component {
     // come up more than once in a session -- moving the map off a curb and
     // back, for one. What was looked up before can be shown without asking
     // geosearch again.
-    const cachedAddress = this.geosearchAddressCache.get({
-      latitude,
-      longitude,
-    });
-    if (cachedAddress !== undefined) {
-      this.setState({
-        formatted_address: cachedAddress,
+    // A selected search result must reach geosearch so it can be preferred
+    // over the BBL-derived result, so skip the coordinate-only cache when
+    // an address was selected.
+    if (!address) {
+      const cachedAddress = this.geosearchAddressCache.get({
+        latitude,
+        longitude,
       });
-      toast.dismiss('geosearch-warning');
-      return;
+      if (cachedAddress !== undefined) {
+        this.setState({
+          formatted_address: cachedAddress,
+        });
+        toast.dismiss('geosearch-warning');
+        return;
+      }
     }
 
-    debouncedGeosearch({ latitude, longitude })
+    debouncedGeosearch({ latitude, longitude, address })
       .then(data => {
         const { properties } = data.features[0];
 
@@ -1243,15 +1254,22 @@ class Home extends React.Component {
           this.state.latitude === latitude &&
           this.state.longitude === longitude
         ) {
-          const address = formatGeosearchAddress(properties);
+          const formattedAddress = formatGeosearchAddress(properties);
           // Only a response that is still current is known to be for these
           // coordinates: debounce() resolves every pending call with the last
           // call's response, so the calls this guard discards are carrying
           // some other location's address and must not be filed under this
-          // key.
-          this.geosearchAddressCache.set({ latitude, longitude, address });
+          // key. A selected-address result is filed under no key, since the
+          // cache serves coordinate-only lookups.
+          if (!address) {
+            this.geosearchAddressCache.set({
+              latitude,
+              longitude,
+              address: formattedAddress,
+            });
+          }
           this.setState({
-            formatted_address: address,
+            formatted_address: formattedAddress,
           });
           toast.dismiss('geosearch-warning');
         }
@@ -3699,17 +3717,24 @@ class Home extends React.Component {
                                 // `getPlace()` also returns a geometry-less result
                                 // when the user types text without picking a
                                 // prediction, so leave the map where it is then.
-                                const location =
-                                  this.autocomplete.getPlace()?.geometry
-                                    ?.location;
+                                const place = this.autocomplete.getPlace();
+                                const location = place?.geometry?.location;
                                 if (!location) {
                                   return;
                                 }
+
+                                // Keep the address the user selected from the
+                                // search results, e.g. "127 Bergen Street", so
+                                // that the matching geosearch feature is
+                                // preferred over the top reverse result
+                                const address =
+                                  place?.name || place?.formatted_address;
 
                                 this.setCoords(
                                   {
                                     latitude: location.lat(),
                                     longitude: location.lng(),
+                                    address,
                                     addressProvenance: '(manually set)',
                                   },
                                   { fromMap: true },

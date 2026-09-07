@@ -4,10 +4,11 @@
 
 import { geosearch, selectCanonicalFeature } from './geoclient.js';
 
-const feature = ({ name, bbl }) => ({
+const feature = ({ name, bbl, layer = 'venue' }) => ({
   properties: {
     name,
     addendum: { pad: { bbl } },
+    layer,
   },
 });
 
@@ -84,6 +85,60 @@ describe('selectCanonicalFeature', () => {
     expect(result).toBeUndefined();
     expect(getPadAddressForBbl).not.toHaveBeenCalled();
   });
+
+  test('prefers the feature matching the selected search result over the PAD address', async () => {
+    const features = [
+      feature({ name: '127 BERGAN STREET', bbl: '3001940042' }),
+      feature({ name: '146 HOYT STREET', bbl: '3001940042' }),
+      feature({ name: '127 BERGEN STREET', bbl: '3001940042' }),
+    ];
+
+    const result = await selectCanonicalFeature(
+      features,
+      getPadAddressForBbl,
+      '127 Bergen St',
+    );
+
+    expect(getPadAddressForBbl).not.toHaveBeenCalled();
+    expect(result.properties.name).toBe('127 BERGEN STREET');
+  });
+
+  test('uses the PAD address when the selected search result matches no feature', async () => {
+    const features = [
+      feature({ name: '127 BERGAN STREET', bbl: '3001940042' }),
+      feature({ name: '146 HOYT STREET', bbl: '3001940042' }),
+      feature({ name: '127 BERGEN STREET', bbl: '3001940042' }),
+    ];
+
+    const result = await selectCanonicalFeature(
+      features,
+      getPadAddressForBbl,
+      '999 Nowhere St',
+    );
+
+    expect(getPadAddressForBbl).toHaveBeenCalledWith('3001940042');
+    expect(result.properties.name).toBe('146 HOYT STREET');
+  });
+
+  test('ignores features on non-address layers when matching the selected search result', async () => {
+    const features = [
+      feature({
+        name: '127 BERGEN STREET',
+        bbl: '3001940042',
+        layer: 'locality',
+      }),
+      feature({ name: '127 BERGEN STREET', bbl: '3001940042' }),
+    ];
+
+    const result = await selectCanonicalFeature(
+      features,
+      getPadAddressForBbl,
+      '127 Bergen St',
+    );
+
+    expect(getPadAddressForBbl).not.toHaveBeenCalled();
+    expect(result.properties.layer).toBe('venue');
+  });
 });
 
 describe('geosearch', () => {
@@ -94,6 +149,16 @@ describe('geosearch', () => {
     });
 
     expect(result.features[0].properties.name).toBe('146 HOYT STREET');
+  });
+
+  test('returns 127 BERGEN STREET when the selected address is 127 Bergen St', async () => {
+    const result = await geosearch({
+      lat: 40.686051,
+      long: -73.988426,
+      address: '127 Bergen St',
+    });
+
+    expect(result.features[0].properties.name).toBe('127 BERGEN STREET');
   });
 
   test('returns the right object around the Empire State Building', async () => {

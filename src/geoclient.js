@@ -1,6 +1,8 @@
 import axios from 'axios';
 import mem from 'mem';
 
+import normalizeAddress from './normalizeAddress.js';
+
 const GEOSEARCH_URL = 'https://geosearch.planninglabs.nyc/v2/reverse';
 const PAD_URL = 'https://data.cityofnewyork.us/resource/64uk-42ks.json';
 
@@ -22,14 +24,44 @@ const getPadAddress = mem(
   },
 );
 
+// Geosearch results that carry an address use the venue and address layers;
+// excluding the others (e.g. locality) prevents matching e.g. "Brooklyn"
+// against a borough result when the user selected a neighborhood.
+const ADDRESS_LAYERS = ['venue', 'address'];
+
+const selectFeatureMatchingAddress = (features, selectedAddress) => {
+  const normalizedSelectedAddress = normalizeAddress(selectedAddress);
+  return features.find(
+    feature =>
+      ADDRESS_LAYERS.includes(feature.properties.layer) &&
+      normalizeAddress(feature.properties.name) === normalizedSelectedAddress,
+  );
+};
+
 // Geosearch can return several results for the same point that all share a
 // BBL, e.g. corner lots have an address on each street, and some street
-// names are misspelled (BERGAN vs BERGEN). Prefer the result matching the
-// PAD's official address for that BBL, falling back to the top result.
-export async function selectCanonicalFeature(features, getPadAddressForBbl) {
+// names are misspelled (BERGAN vs BERGEN). When the user selected a search
+// result, prefer the feature matching the selected address, since the user
+// explicitly chose it; otherwise prefer the result matching the PAD's
+// official address for the top result's BBL. Fall back to the top result.
+export async function selectCanonicalFeature(
+  features,
+  getPadAddressForBbl,
+  selectedAddress,
+) {
   const [firstFeature] = features;
   if (!firstFeature) {
     return undefined;
+  }
+
+  if (selectedAddress) {
+    const matchingFeature = selectFeatureMatchingAddress(
+      features,
+      selectedAddress,
+    );
+    if (matchingFeature) {
+      return matchingFeature;
+    }
   }
 
   const bbl = firstFeature.properties.addendum?.pad?.bbl;
@@ -58,7 +90,7 @@ export async function selectCanonicalFeature(features, getPadAddressForBbl) {
   );
 }
 
-export async function geosearch({ lat, long }) {
+export async function geosearch({ lat, long, address }) {
   const { data } = await axios.get(GEOSEARCH_URL, {
     params: {
       'point.lat': lat,
@@ -73,7 +105,11 @@ export async function geosearch({ lat, long }) {
     return data;
   }
 
-  const feature = await selectCanonicalFeature(data.features, getPadAddress);
+  const feature = await selectCanonicalFeature(
+    data.features,
+    getPadAddress,
+    address,
+  );
 
   return {
     ...data,

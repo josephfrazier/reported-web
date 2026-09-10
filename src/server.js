@@ -9,7 +9,6 @@
 
 import path from 'path';
 import assert from 'assert';
-import crypto from 'crypto';
 import { execSync } from 'child_process';
 import express from 'express';
 import { rateLimit } from 'express-rate-limit';
@@ -29,6 +28,7 @@ import getVehicleType from './getVehicleType.js';
 import srlookup from './srlookup.js';
 import getSubmissions from './getSubmissions.js';
 import createSubmission from './createSubmission.js';
+import uploadAttachment from './uploadAttachment.js';
 import { logIn, saveUser } from './users.js';
 
 import App from './components/App.js';
@@ -41,7 +41,7 @@ import router from './router.js';
 import chunks from './chunk-manifest.json'; // eslint-disable-line import/no-unresolved
 import config from './config.js';
 import readLicenseViaALPR from './alpr.js';
-import { readAttachment, writeAttachment } from './attachmentStore.js';
+import { readAttachment } from './attachmentStore.js';
 
 require('dotenv').config();
 
@@ -252,16 +252,14 @@ app.use(
   async (req, res) => {
     const { email, password } = req.body;
 
+    let id;
     try {
-      await logIn({ email, password });
+      id = await uploadAttachment({ email, password, buffer: req.file.buffer });
     } catch (error) {
       handlePromiseRejection(res)(error);
       return;
     }
 
-    const { buffer } = req.file;
-    const id = crypto.createHash('sha256').update(buffer).digest('hex');
-    await writeAttachment(id, buffer);
     res.json({ id });
   },
 );

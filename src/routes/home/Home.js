@@ -233,6 +233,81 @@ function getLicenseStateFromPlateResult(result) {
   }
 }
 
+// The overlay coordinates for a plate result, as percentages of the
+// attachment's rendered size, or null when the result/plate data lacks what
+// positioning needs. Shared between renderPlateOverlays (which positions the
+// overlay buttons) and findPlateResultAtClick (which hit-tests clicks that
+// were recorded before the overlays existed), so a pending click is matched
+// against exactly where the overlay would have been.
+//
+// `box` is in pixels of the image src/alpr.js uploaded to Plate
+// Recognizer, so `uploadWidth`/`uploadHeight` are the denominators that
+// turn it into a fraction of the picture. Percentages are
+// scale-invariant, so that fraction is right however large the browser
+// renders the original file -- do NOT reach for the <img>'s
+// naturalWidth/naturalHeight, which is the pre-downscale size.
+//
+// image_width/image_height are only a fallback for plate data cached
+// before uploadWidth existed. They are NOT interchangeable: Plate
+// Recognizer resizes uploads before processing and reports the resized
+// size (a 2048x2731 upload comes back as 1919x2560), so dividing by them
+// stretches every percentage ~6.7% down and to the right.
+function plateResultBoxPercentages({ result, attachmentPlateData }) {
+  const { box } = result;
+  const {
+    image_width: imageWidth,
+    image_height: imageHeight,
+    uploadWidth,
+    uploadHeight,
+  } = attachmentPlateData || {};
+  const boxWidth = uploadWidth || imageWidth;
+  const boxHeight = uploadHeight || imageHeight;
+  if (!box || !boxWidth || !boxHeight) {
+    return null;
+  }
+  const left = (box.xmin / boxWidth) * 100;
+  const top = (box.ymin / boxHeight) * 100;
+  const width = ((box.xmax - box.xmin) / boxWidth) * 100;
+  const height = ((box.ymax - box.ymin) / boxHeight) * 100;
+  return {
+    left,
+    top,
+    width,
+    height,
+    // The rendered overlay spans [left, left+width] x [top, top+height] of
+    // the wrapper, so hit-test against those bounds rather than recomputing
+    // the far edges from the raw box, which can differ by a float rounding
+    // from where the overlay actually renders.
+    right: left + width,
+    bottom: top + height,
+  };
+}
+
+// Find the detected plate whose overlay would cover a click at the given
+// percentage coordinates, matching how renderPlateOverlays positions them.
+// Overlays render in results order, so the LAST matching result is the one
+// drawn on top and the one an overlay click would have hit.
+function findPlateResultAtClick({ attachmentPlateData, click }) {
+  const { x, y } = click;
+  const matchingResults = (attachmentPlateData?.results || []).filter(
+    result => {
+      if (!result.plate) {
+        return false;
+      }
+      const boxPercentages = plateResultBoxPercentages({
+        result,
+        attachmentPlateData,
+      });
+      if (!boxPercentages) {
+        return false;
+      }
+      const { left, top, right, bottom } = boxPercentages;
+      return x >= left && x <= right && y >= top && y <= bottom;
+    },
+  );
+  return matchingResults[matchingResults.length - 1];
+}
+
 const urlRegex = /(https?:\/\/\S+)/;
 
 // Turn bare URLs in a string into clickable React <a> elements.
@@ -693,6 +768,12 @@ class Home extends React.Component {
       submissions: [],
       addressProvenance: '',
 
+      // Per-attachment plate-recognizer responses, keyed by attachment name.
+      // The value is the response data, or null once the extraction has
+      // settled without results: the key's presence alone then says "no
+      // overlays will ever exist for this attachment", which stops clicks
+      // from being recorded (see handleAttachmentClick). A missing key means
+      // the extraction is still pending.
       plateDataByAttachmentName: {},
 
       isAuthModalOpen: false,
@@ -714,6 +795,10 @@ class Home extends React.Component {
     this.initialStatePerSubmission = initialStatePerSubmission;
     this.initialStatePersistent = initialStatePersistent;
     this.isDragging = false;
+    // Clicks on attachments recorded while their ALPR results are pending,
+    // keyed by attachment name, in the same percentage coordinates the
+    // overlays use. See handleAttachmentClick/findPlateResultAtClick.
+    this.pendingPlateClicks = {};
     this.plateLookupCache = new Map();
     this.plateRef = React.createRef();
     this.plateLabelRef = React.createRef();
@@ -986,29 +1071,12 @@ class Home extends React.Component {
 
   renderPlateOverlays = ({ attachmentPlateData }) =>
     attachmentPlateData?.results?.map(result => {
-      const { box } = result;
       const plate = result.plate?.toUpperCase();
-      // `box` is in pixels of the image src/alpr.js uploaded to Plate
-      // Recognizer, so `uploadWidth`/`uploadHeight` are the denominators that
-      // turn it into a fraction of the picture. Percentages are
-      // scale-invariant, so that fraction is right however large the browser
-      // renders the original file -- do NOT reach for the <img>'s
-      // naturalWidth/naturalHeight, which is the pre-downscale size.
-      //
-      // image_width/image_height are only a fallback for plate data cached
-      // before uploadWidth existed. They are NOT interchangeable: Plate
-      // Recognizer resizes uploads before processing and reports the resized
-      // size (a 2048x2731 upload comes back as 1919x2560), so dividing by them
-      // stretches every percentage ~6.7% down and to the right.
-      const {
-        image_width: imageWidth,
-        image_height: imageHeight,
-        uploadWidth,
-        uploadHeight,
-      } = attachmentPlateData;
-      const boxWidth = uploadWidth || imageWidth;
-      const boxHeight = uploadHeight || imageHeight;
-      if (!box || !plate || !boxWidth || !boxHeight) {
+      const boxPercentages = plateResultBoxPercentages({
+        result,
+        attachmentPlateData,
+      });
+      if (!boxPercentages || !plate) {
         return null;
       }
       const licenseState = getLicenseStateFromPlateResult(result);
@@ -1016,13 +1084,13 @@ class Home extends React.Component {
       return (
         <button
           type="button"
-          key={`${plate}-${box.xmin}-${box.ymin}`}
+          key={`${plate}-${result.box.xmin}-${result.box.ymin}`}
           className={homeStyles['plate-overlay']}
           style={{
-            left: `${(box.xmin / boxWidth) * 100}%`,
-            top: `${(box.ymin / boxHeight) * 100}%`,
-            width: `${((box.xmax - box.xmin) / boxWidth) * 100}%`,
-            height: `${((box.ymax - box.ymin) / boxHeight) * 100}%`,
+            left: `${boxPercentages.left}%`,
+            top: `${boxPercentages.top}%`,
+            width: `${boxPercentages.width}%`,
+            height: `${boxPercentages.height}%`,
           }}
           aria-label={`Select license plate ${plate}`}
           onClick={() => {
@@ -1044,6 +1112,38 @@ class Home extends React.Component {
         </button>
       );
     });
+
+  // A click on an attachment whose ALPR results aren't back yet can't hit an
+  // overlay, because overlays only exist once results arrive. Remember the
+  // click as a percentage of the attachment's rendered size, so that when
+  // results DO arrive, handleAttachmentData can select the plate under the
+  // click as if its overlay had already been there.
+  //
+  // Clicks when ALPR is disabled or the extraction has already settled are
+  // ignored: the former never produce overlays, a settled extraction either
+  // already renders overlays (whose buttons select the plate themselves and,
+  // as siblings of the <a> this handler lives on, don't reach it) or failed
+  // so overlays will never exist for this attachment. Both settled outcomes
+  // leave a key in plateDataByAttachmentName (the data, or null on failure),
+  // so the key's presence is the settled marker.
+  handleAttachmentClick = ({ attachmentName, event }) => {
+    if (
+      !this.state.isAlprEnabled ||
+      this.state.plateDataByAttachmentName[attachmentName] !== undefined
+    ) {
+      return;
+    }
+
+    // Stop the surrounding <a href> from opening the attachment in a new
+    // tab: the click is an attempt to select a plate, not to view the file.
+    event.preventDefault();
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    this.pendingPlateClicks[attachmentName] = {
+      x: ((event.clientX - rect.left) / rect.width) * 100,
+      y: ((event.clientY - rect.top) / rect.height) * 100,
+    };
+  };
 
   setLicensePlate = ({ plate, licenseState }) => {
     licenseState = licenseState || this.state.licenseState; // eslint-disable-line no-param-reassign
@@ -1303,7 +1403,24 @@ class Home extends React.Component {
                 password: this.state.password,
               })
                 .then(result => {
-                  if (
+                  const pendingClick =
+                    this.pendingPlateClicks[attachmentFile.name];
+                  const clickedResult =
+                    pendingClick &&
+                    findPlateResultAtClick({
+                      attachmentPlateData: result.allPlateData,
+                      click: pendingClick,
+                    });
+                  if (clickedResult) {
+                    // The user clicked this attachment before its overlays
+                    // existed; select the plate they clicked on, as if they
+                    // had clicked its overlay.
+                    this.setLicensePlate({
+                      plate: clickedResult.plate?.toUpperCase(),
+                      licenseState:
+                        getLicenseStateFromPlateResult(clickedResult),
+                    });
+                  } else if (
                     this.state.plate === '' &&
                     document.activeElement !== this.plateRef.current
                   ) {
@@ -1320,7 +1437,26 @@ class Home extends React.Component {
                   }));
                 })
                 .finally(() => {
-                  this.setState({ isAlprLoading: false });
+                  // The pending click has been resolved, or the results
+                  // failed/were empty so it never can be. Either way it must
+                  // not leak into a later resolution.
+                  delete this.pendingPlateClicks[attachmentFile.name];
+                  this.setState(state => ({
+                    isAlprLoading: false,
+                    // Mark the extraction settled even when it produced no
+                    // data: a null entry means "no overlays will ever exist
+                    // for this attachment", and its key's presence stops
+                    // clicks from being recorded. The success path above
+                    // stores the real data instead, so leave that in place.
+                    plateDataByAttachmentName: state.plateDataByAttachmentName[
+                      attachmentFile.name
+                    ]
+                      ? state.plateDataByAttachmentName
+                      : {
+                          ...state.plateDataByAttachmentName,
+                          [attachmentFile.name]: null,
+                        },
+                  }));
                 }),
               extractDate({
                 attachmentFile,
@@ -1641,7 +1777,8 @@ class Home extends React.Component {
     let bestPlateCropDataUrl = null;
     let bestResolution = -1;
     for (const data of Object.values(this.state.plateDataByAttachmentName)) {
-      for (const result of data.results || []) {
+      // Entries whose extraction settled without results are null.
+      for (const result of data?.results || []) {
         if (
           result.plate?.toUpperCase() === this.state.plate?.toUpperCase() &&
           result.plateCropDataUrl
@@ -2318,6 +2455,12 @@ class Home extends React.Component {
                         violationSummaryComponent: null,
                         reportDescription: '',
                       }));
+                      // Pending clicks were recorded against attachments that
+                      // no longer exist; a late-resolving extraction must not
+                      // select a plate from them. (plateDataByAttachmentName
+                      // was reset above, so files re-added under the same
+                      // names record clicks.)
+                      this.pendingPlateClicks = {};
                       this.setLicensePlate({ plate: '', licenseState: 'NY' });
                       this.setCoords({
                         latitude: defaultLatitude,
@@ -2405,6 +2548,12 @@ class Home extends React.Component {
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   style={{ display: 'block' }}
+                                  onClick={event =>
+                                    this.handleAttachmentClick({
+                                      attachmentName: name,
+                                      event,
+                                    })
+                                  }
                                 >
                                   {isImg ? (
                                     <img
@@ -2452,6 +2601,14 @@ class Home extends React.Component {
                                   background: 'white',
                                 }}
                                 onClick={() => {
+                                  // A pending click on a deleted attachment
+                                  // must not select a plate when that
+                                  // attachment's extraction resolves. Its
+                                  // plateDataByAttachmentName entry is
+                                  // omitted below, so a different file
+                                  // re-added under the same name still
+                                  // records clicks.
+                                  delete this.pendingPlateClicks[name];
                                   this.setState(state => {
                                     const attachmentData =
                                       state.attachmentData.filter(

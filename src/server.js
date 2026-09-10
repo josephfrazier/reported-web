@@ -27,6 +27,7 @@ import { geosearch } from './geoclient.js';
 import getVehicleType from './getVehicleType.js';
 import srlookup from './srlookup.js';
 import getSubmissions from './getSubmissions.js';
+import getSubmissionsWithTasks from './getSubmissionsWithTasks.js';
 import createSubmission from './createSubmission.js';
 import uploadAttachment from './uploadAttachment.js';
 import { logIn, saveUser } from './users.js';
@@ -152,37 +153,7 @@ app.use('/api/geosearch', (req, res) => {
 });
 
 app.use('/submissions', (req, res) => {
-  getSubmissions({ req, saveUser })
-    .then(async results => {
-      const Task = Parse.Object.extend('tasks');
-      const Submission = Parse.Object.extend('submission');
-      const submissionPointers = results.map(({ id }) =>
-        Submission.createWithoutData(id),
-      );
-
-      const taskQuery = new Parse.Query(Task);
-      taskQuery.containedIn('submission', submissionPointers);
-      taskQuery.limit(Number.MAX_SAFE_INTEGER);
-      const allTasks = await taskQuery.find();
-
-      const tasksBySubmissionId = {};
-      allTasks.forEach(task => {
-        const subId = task.get('submission').id;
-        if (!tasksBySubmissionId[subId]) {
-          tasksBySubmissionId[subId] = [];
-        }
-        tasksBySubmissionId[subId].push({
-          objectId: task.id,
-          ...task.attributes,
-        });
-      });
-
-      return results.map(({ id, attributes }) => ({
-        objectId: id,
-        ...attributes,
-        tasks: tasksBySubmissionId[id] || [],
-      }));
-    })
+  getSubmissionsWithTasks({ req, saveUser })
     .then(submissions => {
       res.json({ submissions });
     })

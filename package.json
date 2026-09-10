@@ -49,7 +49,7 @@
     "global": "^4.3.2",
     "history": "^4.7.2",
     "image-extensions": "^1.1.0",
-    "isomorphic-style-loader": "^5.4.0",
+    "isomorphic-style-loader": "^6.0.0",
     "jsdom": "^26.1.0",
     "json-stringify-safe": "^5.0.1",
     "lodash.sortby": "^4.7.0",

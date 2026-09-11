@@ -9,7 +9,6 @@
 
 import path from 'path';
 import assert from 'assert';
-import crypto from 'crypto';
 import { execSync } from 'child_process';
 import express from 'express';
 import { rateLimit } from 'express-rate-limit';
@@ -28,7 +27,10 @@ import { geosearch } from './geoclient.js';
 import getVehicleType from './getVehicleType.js';
 import srlookup from './srlookup.js';
 import getSubmissions from './getSubmissions.js';
+import getSubmissionsWithTasks from './getSubmissionsWithTasks.js';
 import createSubmission from './createSubmission.js';
+import uploadAttachment from './uploadAttachment.js';
+import { logIn, saveUser } from './users.js';
 
 import App from './components/App.js';
 import Html from './components/Html.js';
@@ -40,7 +42,7 @@ import router from './router.js';
 import chunks from './chunk-manifest.json'; // eslint-disable-line import/no-unresolved
 import config from './config.js';
 import readLicenseViaALPR from './alpr.js';
-import { readAttachment, writeAttachment } from './attachmentStore.js';
+import { readAttachment } from './attachmentStore.js';
 
 require('dotenv').config();
 
@@ -131,79 +133,11 @@ const handlePromiseRejection = res => error => {
   res.status(500).json(JSON.parse(stringify({ error })));
 };
 
-async function logIn({ email, password }) {
-  // adapted from http://docs.parseplatform.org/js/guide/#signing-up
-  const user = new Parse.User();
-  const username = email;
-  const fields = {
-    username,
-    email,
-    password,
-  };
-  user.set(fields);
-
-  return user
-    .signUp(null)
-    .catch(() => Parse.User.logIn(username, password))
-    .then(userAgain => {
-      console.info({ user: userAgain });
-      if (!userAgain.get('emailVerified')) {
-        userAgain.set({ email }); // reset email to trigger a verification email
-        userAgain.save(null, {
-          // sessionToken must be manually passed in:
-          // https://github.com/parse-community/parse-server/issues/1729#issuecomment-218932566
-          sessionToken: userAgain.get('sessionToken'),
-        });
-        const message = `We just sent you an email with a link to confirm your address, please find and click that.`;
-        throw { message }; // eslint-disable-line no-throw-literal
-      }
-      return userAgain;
-    });
-}
-
 app.use('/api/logIn', (req, res) => {
   logIn(req.body)
     .then(user => res.json(user))
     .catch(handlePromiseRejection(res));
 });
-
-async function saveUser({
-  email,
-  password,
-  FirstName,
-  LastName,
-  Phone,
-  testify,
-}) {
-  // make sure all required fields are present
-  Object.entries({
-    FirstName,
-    LastName,
-    Phone,
-  }).forEach(([key, value]) => {
-    if (!value) {
-      throw { message: `${key} is required` }; // eslint-disable-line no-throw-literal
-    }
-  });
-
-  const useremail = email;
-  const fields = {
-    useremail,
-    FirstName,
-    LastName,
-    Phone,
-    testify,
-  };
-
-  return logIn({ email, password }).then(userAgain => {
-    userAgain.set(fields);
-    return userAgain.save(null, {
-      // sessionToken must be manually passed in:
-      // https://github.com/parse-community/parse-server/issues/1729#issuecomment-218932566
-      sessionToken: userAgain.get('sessionToken'),
-    });
-  });
-}
 
 app.use('/saveUser', (req, res) => {
   saveUser(req.body)
@@ -219,37 +153,7 @@ app.use('/api/geosearch', (req, res) => {
 });
 
 app.use('/submissions', (req, res) => {
-  getSubmissions({ req, saveUser })
-    .then(async results => {
-      const Task = Parse.Object.extend('tasks');
-      const Submission = Parse.Object.extend('submission');
-      const submissionPointers = results.map(({ id }) =>
-        Submission.createWithoutData(id),
-      );
-
-      const taskQuery = new Parse.Query(Task);
-      taskQuery.containedIn('submission', submissionPointers);
-      taskQuery.limit(Number.MAX_SAFE_INTEGER);
-      const allTasks = await taskQuery.find();
-
-      const tasksBySubmissionId = {};
-      allTasks.forEach(task => {
-        const subId = task.get('submission').id;
-        if (!tasksBySubmissionId[subId]) {
-          tasksBySubmissionId[subId] = [];
-        }
-        tasksBySubmissionId[subId].push({
-          objectId: task.id,
-          ...task.attributes,
-        });
-      });
-
-      return results.map(({ id, attributes }) => ({
-        objectId: id,
-        ...attributes,
-        tasks: tasksBySubmissionId[id] || [],
-      }));
-    })
+  getSubmissionsWithTasks({ req, saveUser })
     .then(submissions => {
       res.json({ submissions });
     })
@@ -319,16 +223,14 @@ app.use(
   async (req, res) => {
     const { email, password } = req.body;
 
+    let id;
     try {
-      await logIn({ email, password });
+      id = await uploadAttachment({ email, password, buffer: req.file.buffer });
     } catch (error) {
       handlePromiseRejection(res)(error);
       return;
     }
 
-    const { buffer } = req.file;
-    const id = crypto.createHash('sha256').update(buffer).digest('hex');
-    await writeAttachment(id, buffer);
     res.json({ id });
   },
 );

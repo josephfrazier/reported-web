@@ -169,5 +169,8 @@ describe('getSubmissionsWithTasks', () => {
       Username: username,
       tasks: [],
     });
+    expect(results[1].timeofreport).toEqual(
+      new Date('2026-09-03T14:00:00.000Z'),
+    );
   });
 });

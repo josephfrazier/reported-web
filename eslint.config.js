@@ -87,6 +87,7 @@ module.exports = [
       'src/users.test.js',
       'src/uploadAttachment.test.js',
       'src/getSubmissionsWithTasks.test.js',
+      'src/deleteSubmission.test.js',
     ],
     rules: {
       'import/no-unresolved': 'off',

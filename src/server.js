@@ -56,6 +56,7 @@ const {
   PARSE_JAVASCRIPT_KEY,
   PARSE_MASTER_KEY,
   PARSE_SERVER_URL,
+  SHOW_PARSE_SERVER_BANNER,
   HEROKU_RELEASE_VERSION,
   PLATERECOGNIZER_TOKEN,
   PLATERECOGNIZER_TOKEN_TWO,
@@ -76,6 +77,13 @@ if (commitHash === 'unknown') {
 Parse.initialize(PARSE_APP_ID, PARSE_JAVASCRIPT_KEY, PARSE_MASTER_KEY);
 Parse.Cloud.useMasterKey();
 Parse.serverURL = PARSE_SERVER_URL;
+
+// Whether to show the "NOT PRODUCTION" banner on the home page. Enabled via
+// the SHOW_PARSE_SERVER_BANNER config var, which app.json sets only for
+// Heroku review apps — so the decision is made by the deployment's
+// environment, never hardcoded here, and the banner always displays the
+// live PARSE_SERVER_URL config var.
+const showParseServerBanner = !!SHOW_PARSE_SERVER_BANNER;
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -459,6 +467,8 @@ app.get('*', async (req, res, next) => {
       insertCss,
       fetch,
       commitHash,
+      parseServerUrl: PARSE_SERVER_URL,
+      showParseServerBanner,
       cookies,
       // The twins below are wild, be careful!
       pathname: req.path,
@@ -496,6 +506,8 @@ app.get('*', async (req, res, next) => {
     data.app = {
       apiUrl: config.api.clientUrl,
       commitHash,
+      parseServerUrl: PARSE_SERVER_URL,
+      showParseServerBanner,
     };
 
     const html = ReactDOM.renderToStaticMarkup(<Html {...data} />);

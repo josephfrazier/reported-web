@@ -52,7 +52,7 @@ beforeAll(() => {
   };
 });
 
-function renderHome({ initialState, homeRef } = {}) {
+function renderHome({ initialState, homeRef, ...props } = {}) {
   return renderer.create(
     <StyleContext.Provider value={{ insertCss }}>
       <App context={{ fetch: () => {}, pathname: '' }}>
@@ -63,6 +63,7 @@ function renderHome({ initialState, homeRef } = {}) {
           boroughBoundariesFeatureCollection={
             boroughBoundariesFeatureCollection
           }
+          {...props}
         />
       </App>
     </StyleContext.Provider>,
@@ -178,6 +179,32 @@ describe('Home', () => {
 
   test('renders auth prompt and hides form when logged out', () => {
     const tree = renderHome();
+
+    expect(tree.toJSON()).toMatchSnapshot();
+
+    tree.unmount();
+  });
+
+  test('shows the Parse server banner when the server enables it', () => {
+    const parseServerUrl = 'https://reported-parse.webabot.com/parse';
+
+    const tree = renderHome({
+      parseServerUrl,
+      showParseServerBanner: true,
+    });
+
+    // findByProps throws if the banner isn't rendered
+    const banner = tree.root.findByProps({
+      className: 'non-production-banner',
+    });
+    expect(banner.children).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'code',
+          props: { children: parseServerUrl },
+        }),
+      ]),
+    );
 
     expect(tree.toJSON()).toMatchSnapshot();
 

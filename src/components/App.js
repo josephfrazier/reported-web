@@ -16,6 +16,8 @@ const ContextType = {
   pathname: PropTypes.string.isRequired,
   query: PropTypes.object,
   commitHash: PropTypes.string,
+  parseServerUrl: PropTypes.string,
+  showParseServerBanner: PropTypes.bool,
 };
 
 /**

@@ -14,7 +14,12 @@ import Layout from '../../components/Layout/Layout.js';
 import boroughBoundariesFeatureCollection from '../../boroughBoundaries.js';
 import categoriesData from './categories.json';
 
-async function action({ commitHash, cookies }) {
+async function action({
+  commitHash,
+  cookies,
+  parseServerUrl,
+  showParseServerBanner,
+}) {
   // The complaint categories haven't changed in Parse for years, so a
   // snapshot of them is bundled instead of fetched at render time.
   const typeofcomplaintValues = sortBy(
@@ -49,6 +54,8 @@ async function action({ commitHash, cookies }) {
             boroughBoundariesFeatureCollection
           }
           commitHash={commitHash}
+          parseServerUrl={parseServerUrl}
+          showParseServerBanner={showParseServerBanner}
           initialState={initialState}
         />
       </Layout>

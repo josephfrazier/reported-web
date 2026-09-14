@@ -1703,6 +1703,15 @@ class Home extends React.Component {
         }}
         disableClick
       >
+        {this.props.showParseServerBanner && (
+          <div role="alert" className={homeStyles['non-production-banner']}>
+            <span role="img" aria-label="warning">
+              ⚠️
+            </span>{' '}
+            NOT PRODUCTION — using Parse server:{' '}
+            <code>{this.props.parseServerUrl || '(unknown)'}</code>
+          </div>
+        )}
         <div className={homeStyles.container}>
           <main>
             <h1>
@@ -2856,11 +2865,15 @@ Home.propTypes = {
   typeofcomplaintValues: PropTypes.arrayOf(PropTypes.string).isRequired,
   boroughBoundariesFeatureCollection: PropTypes.object.isRequired,
   commitHash: PropTypes.string,
+  parseServerUrl: PropTypes.string,
+  showParseServerBanner: PropTypes.bool,
   initialState: PropTypes.object,
 };
 
 Home.defaultProps = {
   commitHash: undefined,
+  parseServerUrl: undefined,
+  showParseServerBanner: false,
   initialState: null,
 };
 

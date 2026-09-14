@@ -8,6 +8,8 @@ import { isImage, isVideo } from './isImage.js';
 // HTTP/multer/coercion glue. `saveUser` and `versionNumber` are injected
 // because they come from server.js's app configuration; the remaining params
 // are the form fields, already coerced to their final types by the handler.
+// Resolves to the submission as the client receives it: Dates unwrapped to
+// ISO strings and objectId included (see #788).
 const createSubmission = async ({
   saveUser,
   email,
@@ -138,7 +140,18 @@ const createSubmission = async ({
       submission.set(key, file.url());
     }),
   ]);
-  return submission.save(null);
+  await submission.save(null);
+
+  // Unwrap encoded Date objects into ISO strings
+  // before: { __type: 'Date', iso: '2018-05-26T23:17:22.000Z' }
+  // after: '2018-05-26T23:17:22.000Z'
+  const submissionValue = submission.toJSON();
+  submissionValue.timeofreport = submissionValue.timeofreport.iso;
+  submissionValue.timeofreported = submissionValue.timeofreported.iso;
+  // Explicitly include objectId so the client can pass it
+  // back for delete/cancel operations (see #788)
+  submissionValue.objectId = submission.id;
+  return submissionValue;
 };
 
 export default createSubmission;

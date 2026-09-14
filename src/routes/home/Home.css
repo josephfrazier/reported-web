@@ -28,6 +28,15 @@ summary {
   outline: none;
 }
 
+/* react-toastify leaves the toast body's `white-space` at the browser default,
+   which collapses the newlines in a multi-line message into spaces. `pre-line`
+   keeps them as line breaks (space runs still collapse, and long lines still
+   wrap), so a message can separate an addendum from the error with a blank
+   line. Single-line messages render exactly as before. */
+:global(.Toastify__toast-body) { /* stylelint-disable-line selector-class-pattern */
+  white-space: pre-line;
+}
+
 label {
   display: block;
   margin: 1em 0;

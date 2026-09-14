@@ -3222,3 +3222,162 @@ exports[`Home renders with undefined allPlateResults and photos 1`] = `
   />
 </div>
 `;
+
+exports[`Home shows the Parse server banner when the server enables it 1`] = `
+<div
+  aria-disabled={false}
+  className="root"
+  onClick={[Function]}
+  onDragEnter={[Function]}
+  onDragLeave={[Function]}
+  onDragOver={[Function]}
+  onDragStart={[Function]}
+  onDrop={[Function]}
+  style={
+    {
+      "bottom": 0,
+      "left": 0,
+      "overflowY": "scroll",
+      "position": "fixed",
+      "right": 0,
+      "top": 0,
+    }
+  }
+>
+  <div
+    className="non-production-banner"
+    role="alert"
+  >
+    <span
+      aria-label="warning"
+      role="img"
+    >
+      ⚠️
+    </span>
+     
+    NOT PRODUCTION — using Parse server:
+     
+    <code>
+      https://reported-parse.webabot.com/parse
+    </code>
+  </div>
+  <div
+    className="container"
+  >
+    <main>
+      <h1>
+        <a
+          href="https://reportedly.weebly.com/"
+          style={
+            {
+              "textDecoration": "underline",
+            }
+          }
+        >
+          Reported
+        </a>
+      </h1>
+      <div
+        className="Toastify"
+      />
+      <div
+        className="user-status-bar"
+      >
+        <div
+          className="user-greeting"
+        >
+          Not logged in
+        </div>
+        <div
+          className="user-actions"
+        >
+          <button
+            className="status-bar-btn"
+            onClick={[Function]}
+            type="button"
+          >
+            Log In
+          </button>
+          <button
+            className="status-bar-btn-primary"
+            onClick={[Function]}
+            type="button"
+          >
+            Sign Up
+          </button>
+        </div>
+      </div>
+      <div
+        className="auth-prompt"
+      >
+        <p>
+          Please
+           
+          <button
+            onClick={[Function]}
+            type="button"
+          >
+            log in
+          </button>
+           
+          or
+           
+          <button
+            onClick={[Function]}
+            type="button"
+          >
+            sign up
+          </button>
+           
+          to submit a report.
+        </p>
+      </div>
+      <br />
+      <div
+        style={
+          {
+            "float": "right",
+          }
+        }
+      >
+        <a
+          href="/submissions-map"
+          style={
+            {
+              "background": "black",
+              "border": "1em solid black",
+              "borderRadius": "2em",
+              "textDecoration": "none",
+            }
+          }
+        >
+          <span
+            aria-label="world map"
+            role="img"
+          >
+            🗺️
+          </span>
+        </a>
+      </div>
+    </main>
+  </div>
+  <input
+    autoComplete="off"
+    disabled={false}
+    multiple={true}
+    onChange={[Function]}
+    style={
+      {
+        "bottom": 0,
+        "left": 0,
+        "opacity": 0.00001,
+        "pointerEvents": "none",
+        "position": "absolute",
+        "right": 0,
+        "top": 0,
+      }
+    }
+    type="file"
+  />
+</div>
+`;

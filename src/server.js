@@ -302,10 +302,9 @@ app.use('/submit', (req, res) => {
       attachmentData,
       versionNumber: Number(HEROKU_RELEASE_VERSION.slice(1)),
     })
-      .then(submissionValue => {
-        console.info({ submission: submissionValue });
-
-        res.json({ submission: submissionValue });
+      .then(submission => {
+        console.info({ submission });
+        res.json({ submission });
       })
       .catch(handlePromiseRejection(res));
   });

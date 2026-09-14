@@ -198,7 +198,6 @@ describe('createSubmission', () => {
       Phone: '5551234567',
       testify: true,
     });
-    expect(submission.objectId).toBeDefined();
     expect(submission).toMatchObject({
       FirstName: 'Test',
       LastName: 'User',
@@ -231,17 +230,9 @@ describe('createSubmission', () => {
       className: '_User',
       objectId: user.id,
     });
-    expect(submission.timeofreport).toBe(params.CreateDate);
-  });
-
-  test('returns the submission as the client receives it: ISO Dates, objectId', async () => {
-    const params = validParams();
-    const submission = await createSubmission(params);
-
-    // The /submit handler responds with these unwrapped to ISO strings and
-    // objectId re-assigned from the saved id (see #788), so the client can
-    // pass it back on delete/cancel without relying on toJSON()'s encoding
-    // as an SDK implementation detail.
+    // Unwrapped from Parse's encoded Date ({ __type: 'Date', iso }) and
+    // re-assigned from the saved id (see #788), so the client can pass it
+    // back on delete/cancel without relying on toJSON()'s encoding.
     expect(submission.timeofreport).toBe(params.CreateDate);
     expect(submission.timeofreported).toBe(params.CreateDate);
     expect(submission.objectId).toEqual(expect.any(String));

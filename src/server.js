@@ -29,6 +29,7 @@ import getSubmissionsWithTasks from './getSubmissionsWithTasks.js';
 import deleteSubmission from './deleteSubmission.js';
 import createSubmission from './createSubmission.js';
 import uploadAttachment from './uploadAttachment.js';
+import getAttachmentData from './getAttachmentData.js';
 import { logIn, saveUser } from './users.js';
 
 import App from './components/App.js';
@@ -41,7 +42,6 @@ import router from './router.js';
 import chunks from './chunk-manifest.json'; // eslint-disable-line import/no-unresolved
 import config from './config.js';
 import readLicenseViaALPR from './alpr.js';
-import { readAttachment } from './attachmentStore.js';
 
 require('dotenv').config();
 
@@ -251,30 +251,12 @@ app.use('/submit', (req, res) => {
     const latitude = Number(latitudeString);
     const longitude = Number(longitudeString);
 
-    const { attachmentIds: attachmentIdsJson } = req.body;
     let attachmentData;
     try {
-      if (attachmentIdsJson) {
-        const parsedIds = JSON.parse(attachmentIdsJson);
-        if (
-          !Array.isArray(parsedIds) ||
-          !parsedIds.every(id => typeof id === 'string')
-        ) {
-          throw { message: 'Invalid attachmentIds format' }; // eslint-disable-line no-throw-literal
-        }
-        attachmentData = await Promise.all(
-          parsedIds.map(async id => {
-            const buffer = await readAttachment(id);
-            if (!buffer) {
-              const message = `Attachment not found; please re-add your files and try again`;
-              throw { message }; // eslint-disable-line no-throw-literal
-            }
-            return { buffer };
-          }),
-        );
-      } else {
-        attachmentData = req.files;
-      }
+      attachmentData = await getAttachmentData({
+        attachmentIdsJson: req.body.attachmentIds,
+        files: req.files,
+      });
     } catch (attachmentError) {
       handlePromiseRejection(res)(attachmentError);
       return;

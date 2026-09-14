@@ -187,7 +187,8 @@ describe('createSubmission', () => {
   });
 
   test('saves the form fields onto the submission, ACLed to the user', async () => {
-    const submission = await createSubmission(validParams());
+    const params = validParams();
+    const submission = await createSubmission(params);
 
     expect(saveUser).toHaveBeenCalledWith({
       email,
@@ -232,6 +233,7 @@ describe('createSubmission', () => {
     });
     expect(submission.toJSON().timeofreport).toMatchObject({
       __type: 'Date',
+      iso: params.CreateDate,
     });
   });
 

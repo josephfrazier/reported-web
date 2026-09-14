@@ -579,7 +579,7 @@ class Home extends React.Component {
 
         const isEndOfForm = message === 'Unexpected end of form';
         const addendum = isEndOfForm
-          ? '(Safari/iOS might be causing this, try a different browser/device)'
+          ? '\n\n(Safari or iOS might be causing this, try clearing cookies and site data, or try a different browser or device)'
           : '';
 
         Home.notifyError(

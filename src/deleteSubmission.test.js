@@ -9,6 +9,8 @@
 import net from 'net';
 
 import Parse from 'parse/node';
+import stringify from 'json-stringify-safe';
+
 import deleteSubmission from './deleteSubmission.js';
 
 const { MongoMemoryServer } = require('mongodb-memory-server');
@@ -150,13 +152,26 @@ describe('deleteSubmission', () => {
     await expect(
       callDeleteSubmission(otherUsersSubmission.id),
     ).rejects.toMatchObject({
-      code: 'ERR_ASSERTION',
-      expected: true,
+      message: 'the submission was not found or was not made by this user',
     });
 
     // The other user's submission is still there.
     const query = new Parse.Query(Submission);
     const stillThere = await query.get(otherUsersSubmission.id);
     expect(stillThere.id).toBe(otherUsersSubmission.id);
+  });
+
+  test('rejects a nonexistent submission id the same way', async () => {
+    const [someoneElsesError, nonexistentError] = await Promise.all([
+      callDeleteSubmission(otherUsersSubmission.id).catch(error => error),
+      callDeleteSubmission('aaaaaaaaaa').catch(error => error),
+    ]);
+
+    // A different response for nonexistent ids would let anyone confirm that
+    // someone else's objectId refers to a real submission, so both cases must
+    // look identical after handlePromiseRejection's stringify round-trip.
+    expect(JSON.parse(stringify({ error: nonexistentError }))).toEqual(
+      JSON.parse(stringify({ error: someoneElsesError })),
+    );
   });
 });

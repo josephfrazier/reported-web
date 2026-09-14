@@ -8,7 +8,6 @@
  */
 
 import path from 'path';
-import assert from 'assert';
 import { execSync } from 'child_process';
 import express from 'express';
 import { rateLimit } from 'express-rate-limit';
@@ -26,8 +25,8 @@ import StyleContext from 'isomorphic-style-loader/StyleContext';
 import { geosearch } from './geoclient.js';
 import getVehicleType from './getVehicleType.js';
 import srlookup from './srlookup.js';
-import getSubmissions from './getSubmissions.js';
 import getSubmissionsWithTasks from './getSubmissionsWithTasks.js';
+import deleteSubmission from './deleteSubmission.js';
 import createSubmission from './createSubmission.js';
 import uploadAttachment from './uploadAttachment.js';
 import { logIn, saveUser } from './users.js';
@@ -161,27 +160,8 @@ app.use('/submissions', (req, res) => {
 });
 
 app.use('/api/deleteSubmission', (req, res) => {
-  const { objectId } = req.body;
-  getSubmissions({ req, saveUser })
-    .then(submissions => {
-      const submission = submissions.find(sub => sub.id === objectId);
-      assert(submission); // TODO make it obvious that this is necessary
-      return submission
-        .destroy()
-        .catch(error => {
-          if (error.message === 'Object not found for delete.') {
-            console.info(
-              `/api/deleteSubmission: swallowing false Parse error "Object not found for delete."`,
-            );
-            return;
-          }
-
-          throw error;
-        })
-        .then(() => {
-          res.json({ objectId });
-        });
-    })
+  deleteSubmission({ req, saveUser })
+    .then(({ objectId }) => res.json({ objectId }))
     .catch(handlePromiseRejection(res));
 });
 

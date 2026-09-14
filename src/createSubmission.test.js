@@ -187,7 +187,8 @@ describe('createSubmission', () => {
   });
 
   test('saves the form fields onto the submission, ACLed to the user', async () => {
-    const submission = await createSubmission(validParams());
+    const params = validParams();
+    const submission = await createSubmission(params);
 
     expect(saveUser).toHaveBeenCalledWith({
       email,
@@ -197,8 +198,7 @@ describe('createSubmission', () => {
       Phone: '5551234567',
       testify: true,
     });
-    expect(submission.id).toBeDefined();
-    expect(submission.toJSON()).toMatchObject({
+    expect(submission).toMatchObject({
       FirstName: 'Test',
       LastName: 'User',
       Phone: '5551234567',
@@ -225,14 +225,17 @@ describe('createSubmission', () => {
       version_number: 123,
       reqnumber: 'N/A until submitted to 311',
     });
-    expect(submission.toJSON().user).toMatchObject({
+    expect(submission.user).toMatchObject({
       __type: 'Object',
       className: '_User',
       objectId: user.id,
     });
-    expect(submission.toJSON().timeofreport).toMatchObject({
-      __type: 'Date',
-    });
+    // Unwrapped from Parse's encoded Date ({ __type: 'Date', iso }) and
+    // re-assigned from the saved id (see #788), so the client can pass it
+    // back on delete/cancel without relying on toJSON()'s encoding.
+    expect(submission.timeofreport).toBe(params.CreateDate);
+    expect(submission.timeofreported).toBe(params.CreateDate);
+    expect(submission.objectId).toEqual(expect.any(String));
   });
 
   test('marks non-complaint reports differently via selectedReport', async () => {
@@ -240,7 +243,7 @@ describe('createSubmission', () => {
       validParams({ typeofreport: 'compliment' }),
     );
 
-    expect(submission.get('selectedReport')).toBe(0);
+    expect(submission.selectedReport).toBe(0);
   });
 
   test('rejects submissions missing a required field', async () => {
@@ -271,11 +274,11 @@ describe('createSubmission', () => {
 
     // The files controller prefixes stored file names with a hash, so match
     // the suffix instead of the exact name.
-    expect(submission.toJSON().photoData0).toMatchObject({
+    expect(submission.photoData0).toMatchObject({
       __type: 'File',
       name: expect.stringMatching(/_photoData0\.png$/),
     });
-    expect(submission.toJSON().videoData0).toEqual(
+    expect(submission.videoData0).toEqual(
       expect.stringContaining('videoData0.mp4'),
     );
   });
@@ -287,11 +290,10 @@ describe('createSubmission', () => {
       }),
     );
 
-    const json = submission.toJSON();
-    expect(json.photoData0).toBeDefined();
-    expect(json.photoData1).toBeDefined();
-    expect(json.photoData2).toBeDefined();
-    expect(json.photoData3).toBeUndefined();
-    expect(json.videoData0).toBeUndefined();
+    expect(submission.photoData0).toBeDefined();
+    expect(submission.photoData1).toBeDefined();
+    expect(submission.photoData2).toBeDefined();
+    expect(submission.photoData3).toBeUndefined();
+    expect(submission.videoData0).toBeUndefined();
   });
 });

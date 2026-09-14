@@ -303,19 +303,8 @@ app.use('/submit', (req, res) => {
       versionNumber: Number(HEROKU_RELEASE_VERSION.slice(1)),
     })
       .then(submission => {
-        // Unwrap encoded Date objects into ISO strings
-        // before: { __type: 'Date', iso: '2018-05-26T23:17:22.000Z' }
-        // after: '2018-05-26T23:17:22.000Z'
-        const submissionValue = submission.toJSON();
-        submissionValue.timeofreport = submissionValue.timeofreport.iso;
-        submissionValue.timeofreported = submissionValue.timeofreported.iso;
-        // Explicitly include objectId so the client can pass it
-        // back for delete/cancel operations (see #788)
-        submissionValue.objectId = submission.id;
-
-        console.info({ submission: submissionValue });
-
-        res.json({ submission: submissionValue });
+        console.info({ submission });
+        res.json({ submission });
       })
       .catch(handlePromiseRejection(res));
   });

@@ -290,11 +290,10 @@ describe('createSubmission', () => {
       }),
     );
 
-    const json = submission;
-    expect(json.photoData0).toBeDefined();
-    expect(json.photoData1).toBeDefined();
-    expect(json.photoData2).toBeDefined();
-    expect(json.photoData3).toBeUndefined();
-    expect(json.videoData0).toBeUndefined();
+    expect(submission.photoData0).toBeDefined();
+    expect(submission.photoData1).toBeDefined();
+    expect(submission.photoData2).toBeDefined();
+    expect(submission.photoData3).toBeUndefined();
+    expect(submission.videoData0).toBeUndefined();
   });
 });

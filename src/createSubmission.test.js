@@ -237,6 +237,21 @@ describe('createSubmission', () => {
     });
   });
 
+  test('leaves the response shaping to the handler: encoded Dates, objectId', async () => {
+    const submission = await createSubmission(validParams());
+
+    // server.js's /submit handler unwraps these into ISO strings before
+    // responding, and re-assigns objectId so the client can pass it back on
+    // delete/cancel (see #788) rather than relying on toJSON() to include
+    // it; the module itself just returns the submission as Parse
+    // serializes it.
+    expect(submission.toJSON().timeofreported).toEqual({
+      __type: 'Date',
+      iso: expect.any(String),
+    });
+    expect(submission.toJSON().objectId).toBe(submission.id);
+  });
+
   test('marks non-complaint reports differently via selectedReport', async () => {
     const submission = await createSubmission(
       validParams({ typeofreport: 'compliment' }),

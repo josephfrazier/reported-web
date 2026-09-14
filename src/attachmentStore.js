@@ -1,4 +1,5 @@
 import os from 'os';
+import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 
@@ -10,6 +11,12 @@ import path from 'path';
 export const ATTACHMENT_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 export const ATTACHMENT_ID_RE = /^[0-9a-f]{64}$/; // SHA-256 hex string
+
+// The id an attachment is known by: the SHA-256 hash of its bytes (which is
+// exactly what ATTACHMENT_ID_RE accepts), so identical uploads share a file.
+export function attachmentId(buffer) {
+  return crypto.createHash('sha256').update(buffer).digest('hex');
+}
 
 export function attachmentFilePath(id) {
   if (!ATTACHMENT_ID_RE.test(id)) {

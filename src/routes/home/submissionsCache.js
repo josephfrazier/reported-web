@@ -79,7 +79,7 @@ export const writeCachedSubmissions = submissions => {
 export const addCachedSubmission = submission => {
   const cached = readCachedSubmissions() || [];
   writeCachedSubmissions([
-    // A brand-new submission has no TLC/311 tasks yet, but /submissions
+    // A brand-new submission has no TLC/NYPD tasks yet, but /submissions
     // always includes the key, so include it to keep the same shape.
     { tasks: [], ...submission },
     ...cached.filter(

@@ -3,7 +3,7 @@ import Parse from 'parse/node';
 import getSubmissions from './getSubmissions.js';
 
 // getSubmissions() plus the tasks join the /submissions route performs, so
-// each submission comes back with its TLC/311 task records attached.
+// each submission comes back with its TLC/NYPD task records attached.
 // Extracted from server.js so the response shape has real-Parse coverage.
 export default async function getSubmissionsWithTasks({ req, saveUser }) {
   const results = await getSubmissions({ req, saveUser });

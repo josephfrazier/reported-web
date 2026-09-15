@@ -1,7 +1,7 @@
 /**
  * @jest-environment node
  *
- * Runs against a real Parse Server 2.8.4 (the version prod runs) backed by a
+ * Runs against a real Parse Server 9.4.0 (the version production runs) backed by a
  * real MongoDB 4.4 started in-memory by mongodb-memory-server, so the actual
  * sign-up/log-in semantics are exercised instead of a fake.
  */
@@ -12,8 +12,6 @@ import Parse from 'parse/node';
 import { logIn, saveUser } from './users.js';
 
 const { MongoMemoryServer } = require('mongodb-memory-server');
-// parse-server is deliberately installed on demand instead of being a project
-// dependency (see jest.globalSetup.js)
 const { ParseServer } = require('parse-server');
 
 // parse-server skips its cloud/URL verification (and test-unfriendly process
@@ -31,10 +29,8 @@ describe('users', () => {
   let verifiedUser;
 
   beforeAll(async () => {
-    // MongoDB 4.4 is the newest version whose wire protocol parse-server
-    // 2.8.4's bundled mongodb driver can talk to. Note: the binary must be
-    // downloaded once (mongodb-memory-server caches it), and on Ubuntu 24+
-    // mongod 4.4 needs libssl1.1 installed.
+    // Note: the binary must be downloaded once (mongodb-memory-server caches
+    // it), and on Ubuntu 24+ mongod 4.4 needs libssl1.1 installed.
     mongo = await MongoMemoryServer.create({ binary: { version: '4.4.14' } });
 
     // create() can resolve a moment before mongod accepts connections;
@@ -63,35 +59,30 @@ describe('users', () => {
       attemptConnection(resolve, reject, 0);
     });
 
-    parseServer = ParseServer.start(
-      {
-        databaseURI: mongo.getUri(),
-        appId: 'test-app',
-        masterKey: 'test-master',
-        // Only used as a placeholder; the client points at the real port.
-        serverURL: 'http://localhost/parse',
-        mountPath: '/parse',
-        port: 0,
-        verbose: false,
-      },
-      () => {},
-    );
-    await new Promise((resolve, reject) => {
-      parseServer.server.once('listening', resolve);
-      parseServer.server.once('error', reject);
+    // startApp() resolves once the HTTP server is listening, so no separate
+    // wait for the 'listening' event is needed.
+    parseServer = await ParseServer.startApp({
+      databaseURI: mongo.getUri(),
+      appId: 'test-app',
+      masterKey: 'test-master',
+      // Only used as a placeholder; the client points at the real port.
+      serverURL: 'http://localhost/parse',
+      mountPath: '/parse',
+      port: 0,
+      verbose: false,
     });
     // parse-server initializes its own nested parse SDK; ours needs it too.
-    // The master key is passed like prod's Parse.initialize() does, and
+    // The master key is passed like production's Parse.initialize() does, and
     // server.js's import-time useMasterKey() call is mirrored, so the
-    // modules under test see the master key on their requests like in prod.
+    // modules under test see the master key on their requests like in production.
     // (Only the master key lets parse-server accept an emailVerified update.)
     Parse.initialize('test-app', undefined, 'test-master');
     Parse.Cloud.useMasterKey();
     Parse.serverURL = `http://localhost:${parseServer.server.address().port}/parse`;
 
-    // Parse Server 2.8.4 leaves emailVerified unset on signUp, and logIn()
+    // Parse Server leaves emailVerified unset on signUp, and logIn()
     // throws its "check your email" error for such users, so create a
-    // verified user the way prod users end up verified.
+    // verified user the way production users end up verified.
     verifiedUser = new Parse.User();
     verifiedUser.setUsername(email);
     verifiedUser.set('email', email);
@@ -104,8 +95,8 @@ describe('users', () => {
   });
 
   afterAll(async () => {
-    await new Promise(resolve => parseServer.server.close(resolve));
-    parseServer.handleShutdown();
+    // handleShutdown() closes the HTTP server itself.
+    await parseServer.handleShutdown();
     await mongo.stop();
   });
 

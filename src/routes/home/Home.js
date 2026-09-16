@@ -132,6 +132,11 @@ const debouncedSavePersistentStateToCookie = debounce(self => {
 
 const defaultLatitude = 40.7128;
 const defaultLongitude = -74.006;
+// The reverse-geocoded address of the default coordinates, per geosearch
+// (see the `geosearch returns the right object` snapshot in
+// geoclient.test.js.snap). Hardcoded so the "Where" button doesn't depend
+// on geosearch being up before the user has picked a location.
+const defaultFormattedAddress = '254 Broadway, Manhattan';
 
 // adapted from https://www.bignerdranch.com/blog/dont-over-react/
 const urls = new WeakMap();
@@ -599,8 +604,8 @@ class Home extends React.Component {
     return toast.info(notificationContent);
   }
 
-  static notifyWarning(notificationContent) {
-    return toast.warn(notificationContent);
+  static notifyWarning(notificationContent, options) {
+    return toast.warn(notificationContent, options);
   }
 
   static notifyError(notificationContent) {
@@ -787,7 +792,9 @@ class Home extends React.Component {
     // browser permission prompt until after the user has logged in, so the
     // prompt appears in a trusted context rather than on first visit.
     if (this.state.loginSuccessful) {
-      this.geolocateAndSetCoords();
+      // Automatic at page load, so don't warn if geosearch is down; the
+      // post-login calls keep the warning.
+      this.geolocateAndSetCoords({ warnOnGeosearchFailure: false });
     }
 
     // Allow users to paste image data
@@ -895,7 +902,7 @@ class Home extends React.Component {
   // Request the browser's geolocation permission and update coordinates.
   // Deferred until after login so the permission prompt appears in a trusted
   // context rather than on the first page visit.
-  geolocateAndSetCoords = () =>
+  geolocateAndSetCoords = ({ warnOnGeosearchFailure = true } = {}) =>
     geolocate()
       .then(({ coords: { latitude, longitude }, ipProvenance = 'device' }) => {
         // if there's no attachments or a location couldn't be extracted, just use here
@@ -904,11 +911,14 @@ class Home extends React.Component {
           (this.state.latitude === defaultLatitude &&
             this.state.longitude === defaultLongitude)
         ) {
-          this.setCoords({
-            latitude,
-            longitude,
-            addressProvenance: `(from ${ipProvenance}: ${latitude}, ${longitude})`,
-          });
+          this.setCoords(
+            {
+              latitude,
+              longitude,
+              addressProvenance: `(from ${ipProvenance}: ${latitude}, ${longitude})`,
+            },
+            { warnOnGeosearchFailure },
+          );
         }
       })
       .catch(err => {
@@ -920,6 +930,7 @@ class Home extends React.Component {
 
   setCoords = (
     { latitude, longitude, addressProvenance } = { addressProvenance: '' },
+    { warnOnGeosearchFailure = true } = {},
   ) => {
     if (!latitude || !longitude) {
       console.error('latitude and/or longitude is missing');
@@ -955,13 +966,57 @@ class Home extends React.Component {
       coordsAreInNyc: true,
     });
 
-    debouncedGeosearch({ latitude, longitude }).then(data => {
-      const { properties } = data.features[0];
-
+    if (latitude === defaultLatitude && longitude === defaultLongitude) {
+      // The default coordinates are known in advance, so skip the geosearch
+      // network call entirely. Besides saving a request, this means a
+      // geosearch outage can't warn (or leave "Finding Address..." stuck)
+      // before the user has picked a location.
       this.setState({
-        formatted_address: formatGeosearchAddress(properties),
+        formatted_address: defaultFormattedAddress,
       });
-    });
+      return;
+    }
+
+    debouncedGeosearch({ latitude, longitude })
+      .then(data => {
+        const { properties } = data.features[0];
+
+        // Geosearch responses can arrive out of order (the debounce only
+        // coalesces calls less than 500ms apart), so ignore a response that
+        // isn't for the coordinates currently in state.
+        if (
+          this.state.latitude === latitude &&
+          this.state.longitude === longitude
+        ) {
+          this.setState({
+            formatted_address: formatGeosearchAddress(properties),
+          });
+          toast.dismiss('geosearch-warning');
+        }
+      })
+      .catch(err => {
+        // Geosearch can fail (e.g. when the service is down, or coordinates
+        // it can't resolve). The submission can still be created: the
+        // backend re-tries the address lookup when it sends the report to
+        // 311, and the text sent to 311 includes a Google Maps link to the
+        // lat/lng either way.
+        console.error(err);
+        if (
+          this.state.latitude === latitude &&
+          this.state.longitude === longitude
+        ) {
+          this.setState({ formatted_address: '' });
+          if (warnOnGeosearchFailure) {
+            Home.notifyWarning(
+              "We couldn't find the address right now, but you can still submit. The Description sent to 311 will include a Google Maps link to the location.",
+              // Reuse the same toast for repeated failures (e.g. while the
+              // user keeps moving the map), rather than stacking a new one
+              // each time.
+              { toastId: 'geosearch-warning' },
+            );
+          }
+        }
+      });
   };
 
   setCreateDate = ({

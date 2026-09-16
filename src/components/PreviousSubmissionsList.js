@@ -7,13 +7,30 @@ const objectMap = (obj, fn) =>
   Object.fromEntries(Object.entries(obj).map(([k, v], i) => [k, fn(v, k, i)]));
 
 class PreviousSubmissionsList extends React.Component {
-  shouldComponentUpdate(nextProps) {
+  constructor(props) {
+    super(props);
+
+    this.state = {
+      // react-csv's CSVLink computes its href (a blob URL) during render on
+      // the client, so rendering it during SSR/hydration produces an href=""
+      // on the server and a blob: URL on the client, causing a hydration
+      // mismatch warning. Render it only after the component mounts.
+      isMounted: false,
+    };
+  }
+
+  componentDidMount() {
+    this.setState({ isMounted: true });
+  }
+
+  shouldComponentUpdate(nextProps, nextState) {
     return (
       this.props.submissions !== nextProps.submissions ||
       this.props.onDeleteSubmission !== nextProps.onDeleteSubmission ||
       this.props.isLoading !== nextProps.isLoading ||
       this.props.hasLoadedPreviousSubmissions !==
-        nextProps.hasLoadedPreviousSubmissions
+        nextProps.hasLoadedPreviousSubmissions ||
+      this.state.isMounted !== nextState.isMounted
     );
   }
 
@@ -37,16 +54,18 @@ class PreviousSubmissionsList extends React.Component {
 
     return (
       <>
-        <CSVLink
-          separator="	"
-          data={submissions.map(submission =>
-            objectMap(submission, value =>
-              typeof value === 'object' ? JSON.stringify(value) : value,
-            ),
-          )}
-        >
-          Download as CSV
-        </CSVLink>
+        {this.state.isMounted && (
+          <CSVLink
+            separator="	"
+            data={submissions.map(submission =>
+              objectMap(submission, value =>
+                typeof value === 'object' ? JSON.stringify(value) : value,
+              ),
+            )}
+          >
+            Download as CSV
+          </CSVLink>
+        )}
         <ul>
           {submissions.map(submission => (
             <li key={submission.objectId}>

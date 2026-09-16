@@ -7,9 +7,10 @@
  * LICENSE.txt file in the root directory of this source tree.
  */
 
-import '@babel/polyfill';
 import React from 'react';
 import renderer from 'react-test-renderer';
+// jsdom doesn't provide the setImmediate global, so use Node's directly.
+import { setImmediate } from 'timers';
 import StyleContext from 'isomorphic-style-loader/StyleContext';
 import axios from 'axios';
 import { toast } from 'react-toastify';
@@ -51,7 +52,7 @@ beforeAll(() => {
   };
 });
 
-function renderHome({ initialState, homeRef } = {}) {
+function renderHome({ initialState, homeRef, ...props } = {}) {
   return renderer.create(
     <StyleContext.Provider value={{ insertCss }}>
       <App context={{ fetch: () => {}, pathname: '' }}>
@@ -62,6 +63,7 @@ function renderHome({ initialState, homeRef } = {}) {
           boroughBoundariesFeatureCollection={
             boroughBoundariesFeatureCollection
           }
+          {...props}
         />
       </App>
     </StyleContext.Provider>,
@@ -183,6 +185,32 @@ describe('Home', () => {
     tree.unmount();
   });
 
+  test('shows the Parse server banner when the server enables it', () => {
+    const parseServerUrl = 'https://reported-parse.webabot.com/parse';
+
+    const tree = renderHome({
+      parseServerUrl,
+      showParseServerBanner: true,
+    });
+
+    // findByProps throws if the banner isn't rendered
+    const banner = tree.root.findByProps({
+      className: 'non-production-banner',
+    });
+    expect(banner.children).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'code',
+          props: { children: parseServerUrl },
+        }),
+      ]),
+    );
+
+    expect(tree.toJSON()).toMatchSnapshot();
+
+    tree.unmount();
+  });
+
   test('handles geolocation and its ipapi fallback both failing', async () => {
     const geolocationStub = navigator.geolocation;
     navigator.geolocation = {
@@ -263,6 +291,49 @@ describe('Home', () => {
     expect(Modal.setAppElement).toHaveBeenCalledTimes(1);
 
     tree.unmount();
+  });
+
+  test('closes the map modal on Escape', () => {
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+    };
+
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ initialState, homeRef });
+    });
+    renderer.act(() => {
+      homeRef.current.setState({
+        attachmentData: [
+          new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }),
+        ],
+        isMapOpen: true,
+      });
+    });
+
+    const closeButton = tree.root.findAll(
+      node => node.type === 'button' && node.props.children === 'Close',
+    );
+    expect(closeButton).toHaveLength(1);
+
+    renderer.act(() => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    });
+
+    expect(homeRef.current.state.isMapOpen).toBe(false);
+    expect(
+      tree.root.findAll(
+        node => node.type === 'button' && node.props.children === 'Close',
+      ),
+    ).toHaveLength(0);
+
+    tree.unmount();
+    global.URL.createObjectURL = originalCreateObjectURL;
   });
 
   test('focuses the map search input once it is in the document', () => {
@@ -628,6 +699,245 @@ describe('Home', () => {
     axiosPost.mockRestore();
     toastWarn.mockRestore();
     tree.unmount();
+    global.URL.createObjectURL = originalCreateObjectURL;
+  });
+
+  test('skips geosearch for the default coordinates and leaves the address empty', async () => {
+    jest.useFakeTimers();
+
+    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+    const axiosPost = jest
+      .spyOn(axios, 'post')
+      .mockRejectedValue(new Error('Request failed with status code 503'));
+    const toastWarn = jest.spyOn(toast, 'warn').mockImplementation(() => null);
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ homeRef });
+    });
+
+    // The mount-time warmup uses the default coordinates, which are a
+    // fallback rather than a chosen location: no geosearch request should
+    // be made, no warning should appear even though geosearch would fail
+    // if it were called, and the address should stay empty so the "Where"
+    // button prompts the user to pick a location.
+    expect(axiosPost).not.toHaveBeenCalled();
+    expect(toastWarn).not.toHaveBeenCalled();
+    expect(homeRef.current.state.formatted_address).toBe('');
+
+    jest.useRealTimers();
+    axiosGet.mockRestore();
+    axiosPost.mockRestore();
+    toastWarn.mockRestore();
+    consoleError.mockRestore();
+    tree.unmount();
+  });
+
+  test('warns but still allows submitting when geosearch fails', async () => {
+    jest.useFakeTimers();
+
+    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+    const axiosPost = jest
+      .spyOn(axios, 'post')
+      .mockRejectedValue(new Error('Request failed with status code 503'));
+    const toastWarn = jest.spyOn(toast, 'warn').mockImplementation(() => null);
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ homeRef });
+    });
+
+    // The user picks a location; the geosearch for it is debounced, so let
+    // it fire and reject.
+    renderer.act(() => {
+      homeRef.current.setCoords({
+        latitude: 40.7129,
+        longitude: -74.0061,
+      });
+    });
+    await renderer.act(async () => {
+      jest.advanceTimersByTime(500);
+    });
+
+    expect(toastWarn).toHaveBeenCalledWith(
+      "We couldn't find the address right now, but you can still submit. The Description sent to 311 will include a Google Maps link to the location.",
+      { toastId: 'geosearch-warning' },
+    );
+    // The "Where" button should not claim the lookup is still in progress,
+    // and the submission can still proceed.
+    expect(homeRef.current.state.formatted_address).toBe('');
+    expect(homeRef.current.state.coordsAreInNyc).toBe(true);
+
+    jest.useRealTimers();
+    axiosGet.mockRestore();
+    axiosPost.mockRestore();
+    toastWarn.mockRestore();
+    consoleError.mockRestore();
+    tree.unmount();
+  });
+
+  test('ignores a geosearch failure for coordinates the user has moved on from', async () => {
+    jest.useFakeTimers();
+
+    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+    let rejectGeosearch;
+    const axiosPost = jest.spyOn(axios, 'post').mockImplementation(
+      () =>
+        new Promise((resolve, reject) => {
+          rejectGeosearch = reject;
+        }),
+    );
+    const toastWarn = jest.spyOn(toast, 'warn').mockImplementation(() => null);
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ homeRef });
+    });
+
+    // Let the geosearch for the first location fire, then move to different
+    // coordinates before its request fails.
+    renderer.act(() => {
+      homeRef.current.setCoords({
+        latitude: 40.7129,
+        longitude: -74.0061,
+      });
+    });
+    await renderer.act(async () => {
+      jest.advanceTimersByTime(500);
+    });
+    renderer.act(() => {
+      homeRef.current.setCoords({
+        latitude: 40.73,
+        longitude: -74.01,
+      });
+    });
+    await renderer.act(async () => {
+      rejectGeosearch(new Error('Request failed with status code 503'));
+    });
+
+    // The failure is for coordinates the user has moved on from, so it must
+    // not blank the newer lookup's in-progress address or warn about it.
+    expect(toastWarn).not.toHaveBeenCalled();
+    expect(homeRef.current.state.formatted_address).toBe('Finding Address...');
+
+    jest.useRealTimers();
+    axiosGet.mockRestore();
+    axiosPost.mockRestore();
+    toastWarn.mockRestore();
+    consoleError.mockRestore();
+    tree.unmount();
+  });
+
+  test('still submits when geosearch fails', async () => {
+    jest.useFakeTimers();
+
+    const initialState = {
+      email: 'test@example.com',
+      password: 'test-password',
+      loginSuccessful: true,
+    };
+
+    // The form fields (including the "Where" button) only render once a
+    // photo is attached, and rendering one calls URL.createObjectURL.
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+    // The submit success path scrolls to the top of the page; the rendered
+    // tree isn't attached to the jsdom document, so provide a stand-in.
+    const originalQuerySelector = document.querySelector;
+    document.querySelector = jest.fn(() => ({ scrollTo: jest.fn() }));
+
+    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+    const axiosPost = jest.spyOn(axios, 'post').mockImplementation(url => {
+      if (url === '/api/geosearch') {
+        return Promise.reject(new Error('Request failed with status code 503'));
+      }
+      return Promise.resolve({
+        data: {
+          submission: {
+            objectId: 'objectId123',
+            timeofreport: '2020-01-01T00:00:00.000Z',
+            timeofreported: '2020-01-01T00:00:00.000Z',
+          },
+        },
+      });
+    });
+    const toastWarn = jest.spyOn(toast, 'warn').mockImplementation(() => null);
+    const toastSuccess = jest
+      .spyOn(toast, 'success')
+      .mockImplementation(() => null);
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ initialState, homeRef });
+    });
+
+    // Let the mount-time geolocation resolve before the user picks a
+    // location; otherwise its default coordinates would overwrite theirs.
+    await renderer.act(async () => {});
+
+    // The user picks a location anyway (the map works without geosearch) and
+    // fills the form; geosearch still can't resolve the address.
+    renderer.act(() => {
+      homeRef.current.setCoords({
+        latitude: 40.7129,
+        longitude: -74.0061,
+      });
+      homeRef.current.setState({
+        plate: 'ABC123',
+        reportDescription: 'The address could not be found',
+        attachmentData: [
+          new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }),
+        ],
+        isAlprEnabled: false,
+        isReverseGeocodingEnabled: false,
+      });
+    });
+    await renderer.act(async () => {
+      jest.advanceTimersByTime(500);
+    });
+
+    // With no address resolved, the "Where" button should prompt the user to
+    // pick a location instead of showing empty text.
+    expect(tree.root.findByProps({ name: 'where' }).props.children).toBe(
+      'Click to choose address on map',
+    );
+
+    const form = tree.root
+      .findAllByType('form')
+      .find(formEl => typeof formEl.props.onSubmit === 'function');
+    await renderer.act(async () => {
+      await form.props.onSubmit({ preventDefault() {} });
+    });
+
+    expect(toastWarn).toHaveBeenCalled();
+    expect(axiosPost.mock.calls.some(([url]) => url === '/submit')).toBe(true);
+    expect(toastSuccess).toHaveBeenCalled();
+
+    jest.useRealTimers();
+    axiosGet.mockRestore();
+    axiosPost.mockRestore();
+    toastWarn.mockRestore();
+    toastSuccess.mockRestore();
+    consoleError.mockRestore();
+    tree.unmount();
+    document.querySelector = originalQuerySelector;
     global.URL.createObjectURL = originalCreateObjectURL;
   });
 
@@ -1085,7 +1395,71 @@ describe('Home', () => {
     tree.unmount();
   });
 
-  test('shows loading summary and auto-load checkbox when refreshing cached submissions', () => {
+  test('renders Preferences UI', () => {
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+    };
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ initialState, homeRef });
+    });
+    renderer.act(() => {
+      homeRef.current.setState({ isPreferencesOpen: true });
+    });
+
+    expect(tree.toJSON()).toMatchSnapshot();
+    expect(tree.root.findByProps({ name: 'isAlprEnabled' })).toBeTruthy();
+    expect(
+      tree.root.findByProps({ name: 'isReverseGeocodingEnabled' }),
+    ).toBeTruthy();
+    expect(
+      tree.root.findByProps({ name: 'isLoadPreviousSubmissionsEnabled' }),
+    ).toBeTruthy();
+    // Nothing from the Edit Profile form leaks into the Preferences panel,
+    // and the main submission form is hidden while the panel is open.
+    expect(tree.root.findAllByType('form')).toHaveLength(0);
+    expect(() => tree.root.findByProps({ name: 'FirstName' })).toThrow();
+
+    tree.unmount();
+  });
+
+  test('opens only one of Edit Profile/Preferences at a time', () => {
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+    };
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ initialState, homeRef });
+    });
+
+    const preferencesButton = tree.root.findAll(
+      node => node.type === 'button' && node.props.children === 'Preferences',
+    )[0];
+    renderer.act(() => {
+      preferencesButton.props.onClick();
+    });
+    expect(homeRef.current.state.isPreferencesOpen).toBe(true);
+    expect(homeRef.current.state.isEditProfileOpen).toBe(false);
+
+    const editProfileButton = tree.root.findAll(
+      node => node.type === 'button' && node.props.children === 'Edit Profile',
+    )[0];
+    renderer.act(() => {
+      editProfileButton.props.onClick();
+    });
+    expect(homeRef.current.state.isEditProfileOpen).toBe(true);
+    expect(homeRef.current.state.isPreferencesOpen).toBe(false);
+
+    tree.unmount();
+  });
+
+  test('shows loading summary when refreshing cached submissions', () => {
     const initialState = {
       email: 'test@example.com',
       loginSuccessful: true,
@@ -1105,9 +1479,6 @@ describe('Home', () => {
     expect(homeRef.current.getPreviousSubmissionsSummary()).toBe(
       'at least 2, loading more...',
     );
-    expect(
-      tree.root.findByProps({ id: 'isLoadPreviousSubmissionsEnabled' }),
-    ).toBeTruthy();
 
     renderer.act(() => {
       homeRef.current.setState({ isPreviousSubmissionsLoading: false });

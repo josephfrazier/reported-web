@@ -579,7 +579,7 @@ class Home extends React.Component {
 
         const isEndOfForm = message === 'Unexpected end of form';
         const addendum = isEndOfForm
-          ? '(Safari/iOS might be causing this, try a different browser/device)'
+          ? '\n\n(Safari or iOS might be causing this, try clearing cookies and site data, or try a different browser or device)'
           : '';
 
         Home.notifyError(
@@ -599,8 +599,8 @@ class Home extends React.Component {
     return toast.info(notificationContent);
   }
 
-  static notifyWarning(notificationContent) {
-    return toast.warn(notificationContent);
+  static notifyWarning(notificationContent, options) {
+    return toast.warn(notificationContent, options);
   }
 
   static notifyError(notificationContent) {
@@ -698,6 +698,7 @@ class Home extends React.Component {
       isAuthModalOpen: false,
       authModalTab: 'login',
       isEditProfileOpen: false,
+      isPreferencesOpen: false,
       authError: null,
     };
 
@@ -786,7 +787,9 @@ class Home extends React.Component {
     // browser permission prompt until after the user has logged in, so the
     // prompt appears in a trusted context rather than on first visit.
     if (this.state.loginSuccessful) {
-      this.geolocateAndSetCoords();
+      // Automatic at page load, so don't warn if geosearch is down; the
+      // post-login calls keep the warning.
+      this.geolocateAndSetCoords({ warnOnGeosearchFailure: false });
     }
 
     // Allow users to paste image data
@@ -817,6 +820,11 @@ class Home extends React.Component {
       return confirmationMessage; // Webkit, Safari, Chrome etc.
     });
 
+    // react-modal only handles Escape when focus is inside the modal
+    // content, but the map modal's Google Maps search box captures focus,
+    // so listen at the document level instead.
+    document.addEventListener('keydown', this.handleDocumentKeyDown);
+
     this.forceUpdate(); // force "Create/Edit User" fields to render persisted value after load
 
     if (this.state.isLoadPreviousSubmissionsEnabled) {
@@ -845,6 +853,10 @@ class Home extends React.Component {
         if (ref.current) ref.current.focus();
       });
     }
+  }
+
+  componentWillUnmount() {
+    document.removeEventListener('keydown', this.handleDocumentKeyDown);
   }
 
   onDeleteSubmission = ({ objectId }) => {
@@ -885,7 +897,7 @@ class Home extends React.Component {
   // Request the browser's geolocation permission and update coordinates.
   // Deferred until after login so the permission prompt appears in a trusted
   // context rather than on the first page visit.
-  geolocateAndSetCoords = () =>
+  geolocateAndSetCoords = ({ warnOnGeosearchFailure = true } = {}) =>
     geolocate()
       .then(({ coords: { latitude, longitude }, ipProvenance = 'device' }) => {
         // if there's no attachments or a location couldn't be extracted, just use here
@@ -894,11 +906,14 @@ class Home extends React.Component {
           (this.state.latitude === defaultLatitude &&
             this.state.longitude === defaultLongitude)
         ) {
-          this.setCoords({
-            latitude,
-            longitude,
-            addressProvenance: `(from ${ipProvenance}: ${latitude}, ${longitude})`,
-          });
+          this.setCoords(
+            {
+              latitude,
+              longitude,
+              addressProvenance: `(from ${ipProvenance}: ${latitude}, ${longitude})`,
+            },
+            { warnOnGeosearchFailure },
+          );
         }
       })
       .catch(err => {
@@ -910,6 +925,7 @@ class Home extends React.Component {
 
   setCoords = (
     { latitude, longitude, addressProvenance } = { addressProvenance: '' },
+    { warnOnGeosearchFailure = true } = {},
   ) => {
     if (!latitude || !longitude) {
       console.error('latitude and/or longitude is missing');
@@ -945,13 +961,58 @@ class Home extends React.Component {
       coordsAreInNyc: true,
     });
 
-    debouncedGeosearch({ latitude, longitude }).then(data => {
-      const { properties } = data.features[0];
-
+    if (latitude === defaultLatitude && longitude === defaultLongitude) {
+      // The default coordinates are a fallback, not a location the user
+      // chose — submissions are rejected at these coordinates anyway. Skip
+      // the geosearch network call entirely and leave the address empty, so
+      // the "Where" button prompts the user to choose a location on the map
+      // (and a geosearch outage can't warn before they've picked one).
       this.setState({
-        formatted_address: formatGeosearchAddress(properties),
+        formatted_address: '',
       });
-    });
+      return;
+    }
+
+    debouncedGeosearch({ latitude, longitude })
+      .then(data => {
+        const { properties } = data.features[0];
+
+        // Geosearch responses can arrive out of order (the debounce only
+        // coalesces calls less than 500ms apart), so ignore a response that
+        // isn't for the coordinates currently in state.
+        if (
+          this.state.latitude === latitude &&
+          this.state.longitude === longitude
+        ) {
+          this.setState({
+            formatted_address: formatGeosearchAddress(properties),
+          });
+          toast.dismiss('geosearch-warning');
+        }
+      })
+      .catch(err => {
+        // Geosearch can fail (e.g. when the service is down, or coordinates
+        // it can't resolve). The submission can still be created: the
+        // backend re-tries the address lookup when it sends the report to
+        // 311, and the text sent to 311 includes a Google Maps link to the
+        // lat/lng either way.
+        console.error(err);
+        if (
+          this.state.latitude === latitude &&
+          this.state.longitude === longitude
+        ) {
+          this.setState({ formatted_address: '' });
+          if (warnOnGeosearchFailure) {
+            Home.notifyWarning(
+              "We couldn't find the address right now, but you can still submit. The Description sent to 311 will include a Google Maps link to the location.",
+              // Reuse the same toast for repeated failures (e.g. while the
+              // user keeps moving the map), rather than stacking a new one
+              // each time.
+              { toastId: 'geosearch-warning' },
+            );
+          }
+        }
+      });
   };
 
   setCreateDate = ({
@@ -1249,6 +1310,12 @@ class Home extends React.Component {
               );
               return data.id;
             })();
+            // The submit handler awaits this promise (catching failures so
+            // it can fall back to sending the files directly), so it can sit
+            // unhandled until then. Attach a no-op catch so the test runner
+            // and the browser console don't flag the rejection in the
+            // meantime.
+            uploadPromise.catch(() => {});
             fileUploadPromises.set(attachmentFile, uploadPromise);
           }
         });
@@ -1433,6 +1500,12 @@ class Home extends React.Component {
     this.setState({ isAuthModalOpen: false, authError: null });
   };
 
+  handleDocumentKeyDown = event => {
+    if (event.key === 'Escape' && this.state.isMapOpen) {
+      this.setState({ isMapOpen: false });
+    }
+  };
+
   switchAuthTab = tab => {
     this.setState({
       authModalTab: tab,
@@ -1530,6 +1603,7 @@ class Home extends React.Component {
         testify: false,
         submissions: [],
         isEditProfileOpen: false,
+        isPreferencesOpen: false,
         hasLoadedPreviousSubmissions: false,
         loginSuccessful: false,
       },
@@ -1661,6 +1735,8 @@ class Home extends React.Component {
   render() {
     const matchingPlateThumbnail = this.findMatchingPlateThumbnail();
     const previousSubmissionsSummary = this.getPreviousSubmissionsSummary();
+    const isSettingsPanelOpen =
+      this.state.isEditProfileOpen || this.state.isPreferencesOpen;
 
     return (
       <Dropzone
@@ -1678,6 +1754,15 @@ class Home extends React.Component {
         }}
         disableClick
       >
+        {this.props.showParseServerBanner && (
+          <div role="alert" className={homeStyles['non-production-banner']}>
+            <span role="img" aria-label="warning">
+              ⚠️
+            </span>{' '}
+            NOT PRODUCTION — using Parse server:{' '}
+            <code>{this.props.parseServerUrl || '(unknown)'}</code>
+          </div>
+        )}
         <div className={homeStyles.container}>
           <main>
             <h1>
@@ -1729,10 +1814,23 @@ class Home extends React.Component {
                       onClick={() =>
                         this.setState(state => ({
                           isEditProfileOpen: !state.isEditProfileOpen,
+                          isPreferencesOpen: false,
                         }))
                       }
                     >
                       {this.state.isEditProfileOpen ? 'Cancel' : 'Edit Profile'}
+                    </button>
+                    <button
+                      type="button"
+                      className={homeStyles['status-bar-btn']}
+                      onClick={() =>
+                        this.setState(state => ({
+                          isPreferencesOpen: !state.isPreferencesOpen,
+                          isEditProfileOpen: false,
+                        }))
+                      }
+                    >
+                      {this.state.isPreferencesOpen ? 'Cancel' : 'Preferences'}
                     </button>
                     <button
                       type="button"
@@ -1818,6 +1916,19 @@ class Home extends React.Component {
                     I&apos;m willing to testify at a hearing, which can be done
                     by phone.
                   </label>
+
+                  <label htmlFor="can_be_shared_publicly">
+                    <input
+                      id="can_be_shared_publicly"
+                      type="checkbox"
+                      checked={this.state.can_be_shared_publicly}
+                      name="can_be_shared_publicly"
+                      onChange={this.handleInputChange}
+                    />{' '}
+                    Allow the photos/videos, description, category, and location
+                    to be publicly displayed
+                  </label>
+
                   <button
                     type="submit"
                     className={homeStyles['auth-submit-btn']}
@@ -1828,6 +1939,49 @@ class Home extends React.Component {
                   </button>
                 </fieldset>
               </form>
+            )}
+
+            {/* Preferences (shown inline when toggled). Unlike the Edit
+                Profile form above, nothing here needs saving: these toggles
+                affect only how the page behaves, not what is submitted, so
+                they persist to the cookie as they change. */}
+            {this.state.isPreferencesOpen && (
+              <div className={homeStyles['edit-profile-section']}>
+                <h3>Preferences</h3>
+
+                <label htmlFor="isAlprEnabled">
+                  <input
+                    id="isAlprEnabled"
+                    type="checkbox"
+                    checked={this.state.isAlprEnabled}
+                    name="isAlprEnabled"
+                    onChange={this.handleInputChange}
+                  />{' '}
+                  Automatically read license plates from pictures/videos
+                </label>
+
+                <label htmlFor="isReverseGeocodingEnabled">
+                  <input
+                    id="isReverseGeocodingEnabled"
+                    type="checkbox"
+                    checked={this.state.isReverseGeocodingEnabled}
+                    name="isReverseGeocodingEnabled"
+                    onChange={this.handleInputChange}
+                  />{' '}
+                  Automatically read addresses from pictures/videos
+                </label>
+
+                <label htmlFor="isLoadPreviousSubmissionsEnabled">
+                  <input
+                    id="isLoadPreviousSubmissionsEnabled"
+                    type="checkbox"
+                    checked={this.state.isLoadPreviousSubmissionsEnabled}
+                    name="isLoadPreviousSubmissionsEnabled"
+                    onChange={this.handleInputChange}
+                  />{' '}
+                  Load previous submissions on page load
+                </label>
+              </div>
             )}
 
             {/* Auth Modal */}
@@ -2115,7 +2269,7 @@ class Home extends React.Component {
                 </p>
               </div>
             )}
-            {this.isLoggedIn() && !this.state.isEditProfileOpen && (
+            {this.isLoggedIn() && !isSettingsPanelOpen && (
               <form
                 onSubmit={async e => {
                   e.preventDefault();
@@ -2272,28 +2426,6 @@ class Home extends React.Component {
                   </FileReaderInput>
 
                   <div style={{ clear: 'both' }} />
-
-                  <label htmlFor="isAlprEnabled">
-                    <input
-                      id="isAlprEnabled"
-                      type="checkbox"
-                      checked={this.state.isAlprEnabled}
-                      name="isAlprEnabled"
-                      onChange={this.handleInputChange}
-                    />{' '}
-                    Automatically read license plates from pictures/videos
-                  </label>
-
-                  <label htmlFor="isReverseGeocodingEnabled">
-                    <input
-                      id="isReverseGeocodingEnabled"
-                      type="checkbox"
-                      checked={this.state.isReverseGeocodingEnabled}
-                      name="isReverseGeocodingEnabled"
-                      onChange={this.handleInputChange}
-                    />{' '}
-                    Automatically read addresses from pictures/videos
-                  </label>
 
                   {this.state.attachmentData.length > 0 && (
                     <React.Fragment>
@@ -2543,9 +2675,11 @@ class Home extends React.Component {
                           }}
                         >
                           {this.state.formatted_address
-                            .split(', ')
-                            .slice(0, 2)
-                            .join(', ')}
+                            ? this.state.formatted_address
+                                .split(', ')
+                                .slice(0, 2)
+                                .join(', ')
+                            : 'Click to choose address on map'}
                         </button>
                       </label>
 
@@ -2672,18 +2806,6 @@ class Home extends React.Component {
                         />
                       </label>
 
-                      <label htmlFor="can_be_shared_publicly">
-                        <input
-                          id="can_be_shared_publicly"
-                          type="checkbox"
-                          checked={this.state.can_be_shared_publicly}
-                          name="can_be_shared_publicly"
-                          onChange={this.handleInputChange}
-                        />{' '}
-                        Allow the photos/videos, description, category, and
-                        location to be publicly displayed
-                      </label>
-
                       {this.state.isSubmitting ? (
                         <progress
                           max={this.state.submitProgressMax}
@@ -2717,7 +2839,7 @@ class Home extends React.Component {
 
             <br />
 
-            {this.isLoggedIn() && !this.state.isEditProfileOpen && (
+            {this.isLoggedIn() && !isSettingsPanelOpen && (
               <details
                 onToggle={evt => {
                   const isPreviousSubmissionsOpen = evt.currentTarget.open;
@@ -2744,33 +2866,14 @@ class Home extends React.Component {
                 </summary>
 
                 {this.state.isPreviousSubmissionsOpen && (
-                  <>
-                    {/* Also show this while cached submissions are being
-                        refreshed in the background. */}
-                    {this.state.hasLoadedPreviousSubmissions && (
-                      <label
-                        htmlFor="isLoadPreviousSubmissionsEnabled"
-                        style={{ display: 'block', marginBottom: '1rem' }}
-                      >
-                        <input
-                          id="isLoadPreviousSubmissionsEnabled"
-                          type="checkbox"
-                          checked={this.state.isLoadPreviousSubmissionsEnabled}
-                          name="isLoadPreviousSubmissionsEnabled"
-                          onChange={this.handleInputChange}
-                        />{' '}
-                        Load previous submissions immediately next time
-                      </label>
-                    )}
-                    <PreviousSubmissionsList
-                      submissions={this.state.submissions}
-                      onDeleteSubmission={this.onDeleteSubmission}
-                      isLoading={this.state.isPreviousSubmissionsLoading}
-                      hasLoadedPreviousSubmissions={
-                        this.state.hasLoadedPreviousSubmissions
-                      }
-                    />
-                  </>
+                  <PreviousSubmissionsList
+                    submissions={this.state.submissions}
+                    onDeleteSubmission={this.onDeleteSubmission}
+                    isLoading={this.state.isPreviousSubmissionsLoading}
+                    hasLoadedPreviousSubmissions={
+                      this.state.hasLoadedPreviousSubmissions
+                    }
+                  />
                 )}
               </details>
             )}
@@ -2815,11 +2918,15 @@ Home.propTypes = {
   typeofcomplaintValues: PropTypes.arrayOf(PropTypes.string).isRequired,
   boroughBoundariesFeatureCollection: PropTypes.object.isRequired,
   commitHash: PropTypes.string,
+  parseServerUrl: PropTypes.string,
+  showParseServerBanner: PropTypes.bool,
   initialState: PropTypes.object,
 };
 
 Home.defaultProps = {
   commitHash: undefined,
+  parseServerUrl: undefined,
+  showParseServerBanner: false,
   initialState: null,
 };
 
@@ -2897,6 +3004,17 @@ MyMapComponentPure.propTypes = {
   onSearchBoxMounted: PropTypes.func.isRequired,
   onSearchInputMounted: PropTypes.func.isRequired,
   onPlacesChanged: PropTypes.func.isRequired,
+};
+
+// recompose@0.26.0 and react-google-maps@9.4.5 (both unmaintained) call
+// the deprecated `React.createFactory()` when the map HOCs are composed
+// below, logging a warning once per page load. React implements
+// `createFactory` as `createElement.bind(null, type)` plus the `.type`
+// property, so reimplement it here without the deprecation warning.
+React.createFactory = type => {
+  const factory = React.createElement.bind(null, type);
+  factory.type = type;
+  return factory;
 };
 
 const MyMapComponent = compose(

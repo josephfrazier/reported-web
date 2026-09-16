@@ -35,6 +35,8 @@ const context = {
     baseUrl: window.App.apiUrl,
   }),
   commitHash: window.App.commitHash,
+  parseServerUrl: window.App.parseServerUrl,
+  showParseServerBanner: window.App.showParseServerBanner,
   cookies,
 };
 

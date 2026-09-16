@@ -8,8 +8,6 @@
  */
 
 import path from 'path';
-import assert from 'assert';
-import crypto from 'crypto';
 import { execSync } from 'child_process';
 import express from 'express';
 import { rateLimit } from 'express-rate-limit';
@@ -19,16 +17,20 @@ import React from 'react';
 import ReactDOM from 'react-dom/server';
 import PrettyError from 'pretty-error';
 import Parse from 'parse/node';
-import { detectFromBuffer } from 'mime-bytes/file-type-detector';
 import cookie from 'cookie';
 import multer from 'multer';
 import stringify from 'json-stringify-safe';
 import StyleContext from 'isomorphic-style-loader/StyleContext';
 
-import { isImage, isVideo } from './isImage.js';
 import { geosearch } from './geoclient.js';
 import getVehicleType from './getVehicleType.js';
 import srlookup from './srlookup.js';
+import getSubmissionsWithTasks from './getSubmissionsWithTasks.js';
+import deleteSubmission from './deleteSubmission.js';
+import createSubmission from './createSubmission.js';
+import uploadAttachment from './uploadAttachment.js';
+import getAttachmentData from './getAttachmentData.js';
+import { logIn, saveUser } from './users.js';
 
 import App from './components/App.js';
 import Html from './components/Html.js';
@@ -40,7 +42,6 @@ import router from './router.js';
 import chunks from './chunk-manifest.json'; // eslint-disable-line import/no-unresolved
 import config from './config.js';
 import readLicenseViaALPR from './alpr.js';
-import { readAttachment, writeAttachment } from './attachmentStore.js';
 
 require('dotenv').config();
 
@@ -55,6 +56,7 @@ const {
   PARSE_JAVASCRIPT_KEY,
   PARSE_MASTER_KEY,
   PARSE_SERVER_URL,
+  SHOW_PARSE_SERVER_BANNER,
   HEROKU_RELEASE_VERSION,
   PLATERECOGNIZER_TOKEN,
   PLATERECOGNIZER_TOKEN_TWO,
@@ -75,6 +77,13 @@ if (commitHash === 'unknown') {
 Parse.initialize(PARSE_APP_ID, PARSE_JAVASCRIPT_KEY, PARSE_MASTER_KEY);
 Parse.Cloud.useMasterKey();
 Parse.serverURL = PARSE_SERVER_URL;
+
+// Whether to show the "NOT PRODUCTION" banner on the home page. Enabled via
+// the SHOW_PARSE_SERVER_BANNER config var, which app.json sets only for
+// Heroku review apps — so the decision is made by the deployment's
+// environment, never hardcoded here, and the banner always displays the
+// live PARSE_SERVER_URL config var.
+const showParseServerBanner = !!SHOW_PARSE_SERVER_BANNER;
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -131,79 +140,11 @@ const handlePromiseRejection = res => error => {
   res.status(500).json(JSON.parse(stringify({ error })));
 };
 
-async function logIn({ email, password }) {
-  // adapted from http://docs.parseplatform.org/js/guide/#signing-up
-  const user = new Parse.User();
-  const username = email;
-  const fields = {
-    username,
-    email,
-    password,
-  };
-  user.set(fields);
-
-  return user
-    .signUp(null)
-    .catch(() => Parse.User.logIn(username, password))
-    .then(userAgain => {
-      console.info({ user: userAgain });
-      if (!userAgain.get('emailVerified')) {
-        userAgain.set({ email }); // reset email to trigger a verification email
-        userAgain.save(null, {
-          // sessionToken must be manually passed in:
-          // https://github.com/parse-community/parse-server/issues/1729#issuecomment-218932566
-          sessionToken: userAgain.get('sessionToken'),
-        });
-        const message = `We just sent you an email with a link to confirm your address, please find and click that.`;
-        throw { message }; // eslint-disable-line no-throw-literal
-      }
-      return userAgain;
-    });
-}
-
 app.use('/api/logIn', (req, res) => {
   logIn(req.body)
     .then(user => res.json(user))
     .catch(handlePromiseRejection(res));
 });
-
-async function saveUser({
-  email,
-  password,
-  FirstName,
-  LastName,
-  Phone,
-  testify,
-}) {
-  // make sure all required fields are present
-  Object.entries({
-    FirstName,
-    LastName,
-    Phone,
-  }).forEach(([key, value]) => {
-    if (!value) {
-      throw { message: `${key} is required` }; // eslint-disable-line no-throw-literal
-    }
-  });
-
-  const useremail = email;
-  const fields = {
-    useremail,
-    FirstName,
-    LastName,
-    Phone,
-    testify,
-  };
-
-  return logIn({ email, password }).then(userAgain => {
-    userAgain.set(fields);
-    return userAgain.save(null, {
-      // sessionToken must be manually passed in:
-      // https://github.com/parse-community/parse-server/issues/1729#issuecomment-218932566
-      sessionToken: userAgain.get('sessionToken'),
-    });
-  });
-}
 
 app.use('/saveUser', (req, res) => {
   saveUser(req.body)
@@ -218,63 +159,8 @@ app.use('/api/geosearch', (req, res) => {
     .catch(handlePromiseRejection(res));
 });
 
-async function getSubmissions(req) {
-  return saveUser(req.body).then(user => {
-    const Submission = Parse.Object.extend('submission');
-
-    const usernameQuery = new Parse.Query(Submission);
-    // Search by "Username" (email address) to show submissions made by all
-    // users with the same email, since the web and mobile clients create
-    // separate users
-    usernameQuery.equalTo('Username', user.get('username'));
-    usernameQuery.descending('timeofreport');
-    usernameQuery.limit(Number.MAX_SAFE_INTEGER);
-
-    // Also search by "email" since submissions from iOS clients don't always have this set
-    const emailQuery = new Parse.Query(Submission);
-    emailQuery.equalTo('email', user.get('username'));
-    emailQuery.descending('timeofreport');
-    emailQuery.limit(Number.MAX_SAFE_INTEGER);
-
-    const query = Parse.Query.or(usernameQuery, emailQuery);
-    query.descending('timeofreport');
-    query.limit(Number.MAX_SAFE_INTEGER);
-    return query.find();
-  });
-}
-
 app.use('/submissions', (req, res) => {
-  getSubmissions(req)
-    .then(async results => {
-      const Task = Parse.Object.extend('tasks');
-      const Submission = Parse.Object.extend('submission');
-      const submissionPointers = results.map(({ id }) =>
-        Submission.createWithoutData(id),
-      );
-
-      const taskQuery = new Parse.Query(Task);
-      taskQuery.containedIn('submission', submissionPointers);
-      taskQuery.limit(Number.MAX_SAFE_INTEGER);
-      const allTasks = await taskQuery.find();
-
-      const tasksBySubmissionId = {};
-      allTasks.forEach(task => {
-        const subId = task.get('submission').id;
-        if (!tasksBySubmissionId[subId]) {
-          tasksBySubmissionId[subId] = [];
-        }
-        tasksBySubmissionId[subId].push({
-          objectId: task.id,
-          ...task.attributes,
-        });
-      });
-
-      return results.map(({ id, attributes }) => ({
-        objectId: id,
-        ...attributes,
-        tasks: tasksBySubmissionId[id] || [],
-      }));
-    })
+  getSubmissionsWithTasks({ req, saveUser })
     .then(submissions => {
       res.json({ submissions });
     })
@@ -282,27 +168,8 @@ app.use('/submissions', (req, res) => {
 });
 
 app.use('/api/deleteSubmission', (req, res) => {
-  const { objectId } = req.body;
-  getSubmissions(req)
-    .then(submissions => {
-      const submission = submissions.find(sub => sub.id === objectId);
-      assert(submission); // TODO make it obvious that this is necessary
-      return submission
-        .destroy()
-        .catch(error => {
-          if (error.message === 'Object not found for delete.') {
-            console.info(
-              `/api/deleteSubmission: swallowing false Parse error "Object not found for delete."`,
-            );
-            return;
-          }
-
-          throw error;
-        })
-        .then(() => {
-          res.json({ objectId });
-        });
-    })
+  deleteSubmission({ req, saveUser })
+    .then(({ objectId }) => res.json({ objectId }))
     .catch(handlePromiseRejection(res));
 });
 
@@ -344,16 +211,14 @@ app.use(
   async (req, res) => {
     const { email, password } = req.body;
 
+    let id;
     try {
-      await logIn({ email, password });
+      id = await uploadAttachment({ email, password, buffer: req.file.buffer });
     } catch (error) {
       handlePromiseRejection(res)(error);
       return;
     }
 
-    const { buffer } = req.file;
-    const id = crypto.createHash('sha256').update(buffer).digest('hex');
-    await writeAttachment(id, buffer);
     res.json({ id });
   },
 );
@@ -394,158 +259,42 @@ app.use('/submit', (req, res) => {
     const latitude = Number(latitudeString);
     const longitude = Number(longitudeString);
 
-    const { attachmentIds: attachmentIdsJson } = req.body;
     let attachmentData;
     try {
-      if (attachmentIdsJson) {
-        const parsedIds = JSON.parse(attachmentIdsJson);
-        if (
-          !Array.isArray(parsedIds) ||
-          !parsedIds.every(id => typeof id === 'string')
-        ) {
-          throw { message: 'Invalid attachmentIds format' }; // eslint-disable-line no-throw-literal
-        }
-        attachmentData = await Promise.all(
-          parsedIds.map(async id => {
-            const buffer = await readAttachment(id);
-            if (!buffer) {
-              const message = `Attachment not found; please re-add your files and try again`;
-              throw { message }; // eslint-disable-line no-throw-literal
-            }
-            return { buffer };
-          }),
-        );
-      } else {
-        attachmentData = req.files;
-      }
+      attachmentData = await getAttachmentData({
+        attachmentIdsJson: req.body.attachmentIds,
+        files: req.files,
+      });
     } catch (attachmentError) {
       handlePromiseRejection(res)(attachmentError);
       return;
     }
 
-    const timeofreport = new Date(CreateDate);
-    const timeofreported = timeofreport;
-
-    saveUser({
+    createSubmission({
+      saveUser,
       email,
       password,
       FirstName,
       LastName,
       Phone,
       testify,
+
+      plate,
+      licenseState,
+      typeofreport,
+      typeofcomplaint,
+      reportDescription,
+      can_be_shared_publicly, // eslint-disable-line camelcase
+      latitude,
+      longitude,
+      formatted_address, // eslint-disable-line camelcase
+      CreateDate,
+      attachmentData,
+      versionNumber: Number(HEROKU_RELEASE_VERSION.slice(1)),
     })
-      .then(async user => {
-        // make sure all required fields are present
-        Object.entries({
-          plate,
-          licenseState,
-          typeofcomplaint,
-          latitude,
-          longitude,
-          CreateDate,
-        }).forEach(([key, value]) => {
-          if (!value) {
-            throw { message: `${key} is required` }; // eslint-disable-line no-throw-literal
-          }
-        });
-
-        const timezone = process.env.TZ;
-        process.env.TZ = 'America/New_York';
-        if (timeofreport.valueOf() > Date.now()) {
-          const message = `Timestamp cannot be in the future (submitted time: ${timeofreport}, actual time: ${new Date()})`;
-          process.env.TZ = timezone;
-          throw { message }; // eslint-disable-line no-throw-literal
-        }
-
-        const Submission = Parse.Object.extend('submission');
-        const submission = new Submission();
-        submission.set({
-          user,
-
-          FirstName,
-          LastName,
-          Phone,
-          testify,
-
-          Username: email,
-
-          typeofreport,
-          selectedReport: typeofreport === 'complaint' ? 1 : 0,
-          colorTaxi: 'Black', // see https://reportedcab.slack.com/messages/C852Q265V/p1528474895000562
-          medallionNo: plate,
-          license: plate, // https://github.com/josephfrazier/Reported-Web/issues/23
-          state: licenseState, // https://github.com/josephfrazier/Reported-Web/issues/23
-          typeofcomplaint,
-          passenger: false,
-          locationNumber: 1,
-          latitude: latitude.toString(),
-          longitude: longitude.toString(),
-          latitude1: latitude,
-          longitude1: longitude,
-          location: new Parse.GeoPoint({ latitude, longitude }),
-          loc1_address: formatted_address, // eslint-disable-line camelcase
-          timeofreport,
-          timeofreported,
-          reportDescription,
-          can_be_shared_publicly, // eslint-disable-line camelcase
-          status: 0,
-          operating_system: 'web',
-          version_number: Number(HEROKU_RELEASE_VERSION.slice(1)),
-          reqnumber: 'N/A until submitted to 311',
-        });
-        submission.setACL(new Parse.ACL(user));
-
-        // upload attachments
-        // http://docs.parseplatform.org/js/guide/#creating-a-parsefile
-
-        const attachmentsWithFormats = await Promise.all(
-          attachmentData.map(async ({ buffer: attachmentBuffer }) => ({
-            attachmentBuffer,
-            ext: (await detectFromBuffer(attachmentBuffer))?.name || 'jpg',
-          })),
-        );
-
-        const images = attachmentsWithFormats.filter(isImage);
-        const videos = attachmentsWithFormats.filter(isVideo);
-
-        await Promise.all([
-          ...images
-            .slice(0, 3)
-            .map(async ({ attachmentBuffer, ext }, index) => {
-              const key = `photoData${index}`;
-              const file = new Parse.File(`${key}.${ext}`, {
-                base64: attachmentBuffer.toString('base64'),
-              });
-              await file.save();
-              submission.set(key, file);
-            }),
-          ...videos
-            .slice(0, 3)
-            .map(async ({ attachmentBuffer, ext }, index) => {
-              const key = `videoData${index}`;
-              const file = new Parse.File(`${key}.${ext}`, {
-                base64: attachmentBuffer.toString('base64'),
-              });
-              await file.save();
-              submission.set(key, file.url());
-            }),
-        ]);
-        return submission.save(null);
-      })
       .then(submission => {
-        // Unwrap encoded Date objects into ISO strings
-        // before: { __type: 'Date', iso: '2018-05-26T23:17:22.000Z' }
-        // after: '2018-05-26T23:17:22.000Z'
-        const submissionValue = submission.toJSON();
-        submissionValue.timeofreport = submissionValue.timeofreport.iso;
-        submissionValue.timeofreported = submissionValue.timeofreported.iso;
-        // Explicitly include objectId so the client can pass it
-        // back for delete/cancel operations (see #788)
-        submissionValue.objectId = submission.id;
-
-        console.info({ submission: submissionValue });
-
-        res.json({ submission: submissionValue });
+        console.info({ submission });
+        res.json({ submission });
       })
       .catch(handlePromiseRejection(res));
   });
@@ -673,6 +422,23 @@ app.get('/api/submissions-in-polygon', (req, res) => {
 });
 
 //
+// Firefox with the React DevTools browser extension installed injects
+// `installHook.js` into the page, then tries to fetch the script's source
+// map relative to the page's origin (`/installHook.js.map`). Without this
+// route, that request falls through to the SSR catch-all below and gets a
+// 404 page, filling the browser console with:
+//   Source map error: Error: request failed with status 404
+// Serve a valid empty source map to silence it, as suggested in:
+// https://github.com/facebook/react/issues/32339
+// -----------------------------------------------------------------------------
+app.get('/installHook.js.map', (req, res) => {
+  res.type('application/json');
+  res.send(
+    '{"version":3,"file":"installHook.js","sources":["installHook.js"],"sourcesContent":[""],"mappings":""}',
+  );
+});
+
+//
 // Register server-side rendering middleware
 // -----------------------------------------------------------------------------
 app.get('*', async (req, res, next) => {
@@ -701,6 +467,8 @@ app.get('*', async (req, res, next) => {
       insertCss,
       fetch,
       commitHash,
+      parseServerUrl: PARSE_SERVER_URL,
+      showParseServerBanner,
       cookies,
       // The twins below are wild, be careful!
       pathname: req.path,
@@ -738,6 +506,8 @@ app.get('*', async (req, res, next) => {
     data.app = {
       apiUrl: config.api.clientUrl,
       commitHash,
+      parseServerUrl: PARSE_SERVER_URL,
+      showParseServerBanner,
     };
 
     const html = ReactDOM.renderToStaticMarkup(<Html {...data} />);

@@ -16,14 +16,21 @@ jobs:
           ref: ${{ github.event.pull_request.head.ref }}
           repository: ${{ github.event.pull_request.head.repo.full_name }}
 
-      - name: Use Node.js 24.12.0
+      - name: Use Node.js 24.20.0
         uses: actions/setup-node@v7
         with:
-          node-version: 24.12.0
+          node-version: 24.20.0
 
       - run: curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.22.19
       - run: echo "$HOME/.yarn/bin" >> "$GITHUB_PATH"
       - run: yarn
+
+      # The mongod 4.4 binary that mongodb-memory-server downloads for the
+      # getSubmissions test needs libssl1.1, which the runner's Ubuntu doesn't ship.
+      - name: Install libssl1.1
+        run: |
+          wget -q https://archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2_amd64.deb
+          sudo dpkg -i libssl1.1_1.1.1f-1ubuntu2_amd64.deb
 
       - name: Run yarn fix
         run: yarn fix

@@ -1,7 +1,9 @@
+import crypto from 'crypto';
 import fs from 'fs';
 import {
   ATTACHMENT_TTL_MS,
   attachmentFilePath,
+  attachmentId,
   readAttachment,
   writeAttachment,
 } from './attachmentStore.js';
@@ -38,6 +40,16 @@ describe('attachmentStore', () => {
     expect(() => attachmentFilePath(id.slice(0, -1))).toThrow(
       'Invalid attachment id',
     );
+  });
+
+  test('names attachments by the SHA-256 hash of their bytes', () => {
+    const buffer = Buffer.from('photo bytes');
+
+    expect(attachmentId(buffer)).toBe(
+      crypto.createHash('sha256').update(buffer).digest('hex'),
+    );
+    // ...and the id is in the form the file-path validation accepts.
+    expect(() => attachmentFilePath(attachmentId(buffer))).not.toThrow();
   });
 
   test('deletes attachments once the TTL has elapsed', async () => {

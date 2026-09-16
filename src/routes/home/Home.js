@@ -132,11 +132,6 @@ const debouncedSavePersistentStateToCookie = debounce(self => {
 
 const defaultLatitude = 40.7128;
 const defaultLongitude = -74.006;
-// The reverse-geocoded address of the default coordinates, per geosearch
-// (see the `geosearch returns the right object` snapshot in
-// geoclient.test.js.snap). Hardcoded so the "Where" button doesn't depend
-// on geosearch being up before the user has picked a location.
-const defaultFormattedAddress = '254 Broadway, Manhattan';
 
 // adapted from https://www.bignerdranch.com/blog/dont-over-react/
 const urls = new WeakMap();
@@ -967,12 +962,13 @@ class Home extends React.Component {
     });
 
     if (latitude === defaultLatitude && longitude === defaultLongitude) {
-      // The default coordinates are known in advance, so skip the geosearch
-      // network call entirely. Besides saving a request, this means a
-      // geosearch outage can't warn (or leave "Finding Address..." stuck)
-      // before the user has picked a location.
+      // The default coordinates are a fallback, not a location the user
+      // chose — submissions are rejected at these coordinates anyway. Skip
+      // the geosearch network call entirely and leave the address empty, so
+      // the "Where" button prompts the user to choose a location on the map
+      // (and a geosearch outage can't warn before they've picked one).
       this.setState({
-        formatted_address: defaultFormattedAddress,
+        formatted_address: '',
       });
       return;
     }

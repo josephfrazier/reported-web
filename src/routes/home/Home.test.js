@@ -702,7 +702,7 @@ describe('Home', () => {
     global.URL.createObjectURL = originalCreateObjectURL;
   });
 
-  test('hardcodes the address for the default coordinates instead of calling geosearch', async () => {
+  test('skips geosearch for the default coordinates and leaves the address empty', async () => {
     jest.useFakeTimers();
 
     const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
@@ -720,14 +720,14 @@ describe('Home', () => {
       tree = renderHome({ homeRef });
     });
 
-    // The mount-time warmup uses the default coordinates, whose address is
-    // hardcoded: no geosearch request should be made, and no warning should
-    // appear even though geosearch would fail if it were called.
+    // The mount-time warmup uses the default coordinates, which are a
+    // fallback rather than a chosen location: no geosearch request should
+    // be made, no warning should appear even though geosearch would fail
+    // if it were called, and the address should stay empty so the "Where"
+    // button prompts the user to pick a location.
     expect(axiosPost).not.toHaveBeenCalled();
     expect(toastWarn).not.toHaveBeenCalled();
-    expect(homeRef.current.state.formatted_address).toBe(
-      '254 Broadway, Manhattan',
-    );
+    expect(homeRef.current.state.formatted_address).toBe('');
 
     jest.useRealTimers();
     axiosGet.mockRestore();

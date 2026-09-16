@@ -849,6 +849,11 @@ describe('Home', () => {
       loginSuccessful: true,
     };
 
+    // The form fields (including the "Where" button) only render once a
+    // photo is attached, and rendering one calls URL.createObjectURL.
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
     // The submit success path scrolls to the top of the page; the rendered
     // tree isn't attached to the jsdom document, so provide a stand-in.
     const originalQuerySelector = document.querySelector;
@@ -897,6 +902,9 @@ describe('Home', () => {
       homeRef.current.setState({
         plate: 'ABC123',
         reportDescription: 'The address could not be found',
+        attachmentData: [
+          new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }),
+        ],
         isAlprEnabled: false,
         isReverseGeocodingEnabled: false,
       });
@@ -904,6 +912,12 @@ describe('Home', () => {
     await renderer.act(async () => {
       jest.advanceTimersByTime(500);
     });
+
+    // With no address resolved, the "Where" button should prompt the user to
+    // pick a location instead of showing empty text.
+    expect(tree.root.findByProps({ name: 'where' }).props.children).toBe(
+      'Click to choose address on map',
+    );
 
     const form = tree.root
       .findAllByType('form')
@@ -924,6 +938,7 @@ describe('Home', () => {
     consoleError.mockRestore();
     tree.unmount();
     document.querySelector = originalQuerySelector;
+    global.URL.createObjectURL = originalCreateObjectURL;
   });
 
   test('restores cached vehicle/violations results when re-selecting a previously-looked-up plate', async () => {

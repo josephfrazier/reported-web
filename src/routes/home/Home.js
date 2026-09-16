@@ -2679,9 +2679,11 @@ class Home extends React.Component {
                           }}
                         >
                           {this.state.formatted_address
-                            .split(', ')
-                            .slice(0, 2)
-                            .join(', ')}
+                            ? this.state.formatted_address
+                                .split(', ')
+                                .slice(0, 2)
+                                .join(', ')
+                            : 'Click to choose address on map'}
                         </button>
                       </label>
 

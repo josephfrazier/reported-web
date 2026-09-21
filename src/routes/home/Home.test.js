@@ -18,6 +18,10 @@ import Modal from 'react-modal';
 import App from '../../components/App.js';
 import Home from './Home.js';
 import boroughBoundariesFeatureCollection from '../../boroughBoundaries.js';
+import {
+  readCachedSubmissions,
+  writeCachedSubmissions,
+} from './submissionsCache.js';
 
 jest.mock('react-modal', () =>
   Object.assign(({ children, isOpen }) => (isOpen ? children : null), {
@@ -1488,6 +1492,49 @@ describe('Home', () => {
     tree.unmount();
   });
 
+  test('drops a deleted submission from the cached submissions', async () => {
+    localStorage.clear();
+    writeCachedSubmissions([
+      { objectId: 'deleted-submission' },
+      { objectId: 'kept-submission' },
+    ]);
+
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+    };
+
+    const homeRef = React.createRef();
+    const tree = renderHome({ initialState, homeRef });
+    renderer.act(() => {
+      homeRef.current.setState({
+        submissions: [
+          { objectId: 'deleted-submission' },
+          { objectId: 'kept-submission' },
+        ],
+      });
+    });
+
+    const confirm = jest.spyOn(window, 'confirm').mockReturnValue(true);
+    const axiosPost = jest.spyOn(axios, 'post').mockResolvedValue({ data: {} });
+
+    await renderer.act(async () => {
+      homeRef.current.onDeleteSubmission({ objectId: 'deleted-submission' });
+      await new Promise(resolve => setImmediate(resolve));
+    });
+
+    // The cache must lose it too, or it would reappear on the next page load
+    // until the background fetch replaces the cached list.
+    expect(readCachedSubmissions()).toEqual([{ objectId: 'kept-submission' }]);
+    expect(homeRef.current.state.submissions).toEqual([
+      { objectId: 'kept-submission' },
+    ]);
+
+    confirm.mockRestore();
+    axiosPost.mockRestore();
+    tree.unmount();
+  });
+
   test('keeps the caret in place when typing a letter into the middle of the plate', () => {
     const { homeRef, plateInput, cleanup } = renderPlateInput();
 
@@ -1748,6 +1795,58 @@ describe('Home', () => {
       expect(submitBody.get('attachmentData[]')).toBe(photo);
 
       expect(homeRef.current.state.attachmentData).toEqual([]);
+
+      cleanup();
+    });
+
+    test('caches the new submission so it survives into the next page load', async () => {
+      localStorage.clear();
+      const photo = new File(['photo'], 'photo.jpg', { type: 'image/jpeg' });
+      const { submit, cleanup } = await renderWithFiles({ files: [photo] });
+      await submit();
+
+      expect(readCachedSubmissions()).toEqual([
+        {
+          objectId: 'objectId123',
+          timeofreport: '2020-01-01T00:00:00.000Z',
+          timeofreported: '2020-01-01T00:00:00.000Z',
+          // /submissions always includes the key, so the cached entry does too.
+          tasks: [],
+        },
+      ]);
+
+      cleanup();
+    });
+
+    test('caches the new submission ahead of the ones already cached', async () => {
+      localStorage.clear();
+      writeCachedSubmissions([{ objectId: 'olderSubmission' }]);
+
+      const photo = new File(['photo'], 'photo.jpg', { type: 'image/jpeg' });
+      const { submit, cleanup } = await renderWithFiles({ files: [photo] });
+      await submit();
+
+      expect(readCachedSubmissions().map(({ objectId }) => objectId)).toEqual([
+        'objectId123',
+        'olderSubmission',
+      ]);
+
+      cleanup();
+    });
+
+    test('does not cache anything when the submit request fails', async () => {
+      localStorage.clear();
+      const photo = new File(['photo'], 'photo.jpg', { type: 'image/jpeg' });
+      const { axiosPost, submit, cleanup } = await renderWithFiles({
+        files: [photo],
+      });
+      axiosPost.mockImplementation(() =>
+        Promise.reject(new Error('submit failed')),
+      );
+
+      await submit();
+
+      expect(readCachedSubmissions()).toBeNull();
 
       cleanup();
     });

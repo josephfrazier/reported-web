@@ -10,8 +10,7 @@
     ">1%",
     "last 4 versions",
     "Firefox ESR",
-    "not ie <= 11",
-    "not ie_mob <= 11"
+    "not dead"
   ],
   "resolutions": {
     "parse/ws": "^7.5.13",

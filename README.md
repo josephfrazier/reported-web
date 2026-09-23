@@ -37,7 +37,8 @@ yarn mongo-stop # Stops MongoDB
 
 ## `Unexpected end of form` errors
 
-These have been seen a few times from a couple users, seemingly limited to iOS, but on both Safari and Chrome.
+These have been seen a few times from a couple users, mostly limited to iOS (on both Safari and Chrome),
+but I have seen it myself on Android Firefox at least once (see [Slack context](https://reportedcab.slack.com/archives/C9VNM3DL4/p1788125345566229?thread_ts=1783902255.721759&cid=C9VNM3DL4)).
 Chrome on iOS has worked at least once for an affected user, but not consistently.
 So far, my recommendation for this error is to use a non-iOS device.
 

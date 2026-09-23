@@ -511,9 +511,9 @@
     <p class="eyebrow">Implementation plan · reported-web</p>
     <h1>Semi-Automatic Mode</h1>
     <p class="standfirst">
-      Upload a folder of photos covering many violations at once. The app runs ALPR and
-      reverse-geocoding over the whole batch, groups the photos into violations, and then
-      walks you through them one at a time — form pre-filled, ready to submit.
+      Upload a folder of photos — or just a pile of loose files — covering many violations at
+      once. The app runs ALPR and reverse-geocoding over the whole batch, groups the photos into
+      violations, and then walks you through them one at a time — form pre-filled, ready to submit.
     </p>
 
     <dl class="meta">
@@ -538,6 +538,7 @@
           </thead>
           <tbody>
             <tr><td>Entry point</td><td>Toggle in Preferences, persisted alongside <code>isReverseGeocodingEnabled</code></td></tr>
+            <tr><td>Photo input</td><td>A folder pick, a loose multi-file pick, or a drag-and-drop — all equally supported</td></tr>
             <tr><td>Grouping signals</td><td>EXIF time <em>and</em> GPS <em>and</em> ALPR plate</td></tr>
             <tr><td>Thresholds</td><td class="num">Δt ≤ 5000 ms · distance ≤ 30 m</td></tr>
             <tr><td>Plate's role</td><td>May <strong>split</strong> a time+GPS cluster</td></tr>
@@ -562,6 +563,7 @@
             <tr><td>After Submit</td><td>Auto-advances to the next violation</td></tr>
             <tr><td>ALPR concurrency</td><td>Capped at 3 in flight</td></tr>
             <tr><td>Queue controls</td><td>Skip and delete a group</td></tr>
+            <tr><td>Input while the mode is on</td><td>Every pick and drop feeds the batch; the single-violation flow is the toggle-off behaviour</td></tr>
           </tbody>
         </table>
       </div>
@@ -856,19 +858,47 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
     <section id="ui">
       <h2>Interface</h2>
 
-      <h3>Folder picker</h3>
+      <h3>Ways in</h3>
       <p>
-        A plain hidden <code>&lt;input type="file" multiple webkitdirectory&gt;</code> read from
-        <code>event.target.files</code> — not the existing <code>FileReaderInput</code>. That
-        component is used with <code>as="buffer"</code>, which reads every selected file's contents
-        into memory; for a folder of forty photos that is a great deal of buffering before ALPR has
-        even started. (For the record, it <em>would</em> accept <code>webkitdirectory</code> — it
-        spreads unknown props onto the real input — it is the buffering that rules it out.)
+        Three inputs feed the same batch, so photos can arrive however they happen to be sitting on
+        disk — in a directory of their own, loose in a camera roll, or dragged straight from a file
+        manager:
+      </p>
+      <ul>
+        <li>
+          <strong>Add a folder</strong> —
+          <code>&lt;input type="file" multiple webkitdirectory&gt;</code>
+        </li>
+        <li>
+          <strong>Add photos</strong> — a plain <code>&lt;input type="file" multiple&gt;</code>, with
+          no parent directory required
+        </li>
+        <li>
+          <strong>Drag and drop</strong> — the page is already wrapped in a <code>Dropzone</code>,
+          so dropped files can feed the batch too
+        </li>
+      </ul>
+      <p>
+        All three read <code>event.target.files</code> directly rather than going through the
+        existing <code>FileReaderInput</code>. That component is used with <code>as="buffer"</code>,
+        which reads every selected file's contents into memory; across forty photos that is a great
+        deal of buffering before ALPR has even started. (For the record it <em>would</em> accept
+        <code>webkitdirectory</code> — it spreads unknown props onto the real input — it is the
+        buffering that rules it out.)
       </p>
       <p>
-        Keeping the existing multi-select button alongside it means a handful of photos can still be
-        added the old way.
+        Picks accumulate, so a folder and then a few stragglers make up one batch. Selection order
+        does not matter: grouping sorts by EXIF time, never by the order files arrived in.
       </p>
+
+      <div class="note">
+        <span class="note__label">What the toggle changes</span>
+        <p>
+          With the mode on, every one of these routes feeds the batch. The single-violation flow is
+          what the toggle-off state gives you. Because a folder pick, a loose multi-select and a drop
+          all take the same path, there is never a question of which flow a given pick lands in.
+        </p>
+      </div>
 
       <h3>During the batch</h3>
       <p>
@@ -979,7 +1009,7 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
           with its own test, so repeated lookups stop re-hitting NYC Planning Labs.
         </li>
         <li>
-          <strong>The wiring.</strong> Batch state, folder input, the one-shot processing pass, the
+          <strong>The wiring.</strong> Batch state, the three photo inputs, the one-shot processing pass, the
           queue, load-next, the picker and auto-advance in <code>Home.js</code>, plus the
           <code>Home.test.js</code> coverage.
         </li>

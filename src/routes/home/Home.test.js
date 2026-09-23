@@ -13,6 +13,7 @@ import renderer from 'react-test-renderer';
 import { setImmediate } from 'timers';
 import StyleContext from 'isomorphic-style-loader/StyleContext';
 import axios from 'axios';
+import exifr from 'exifr/dist/full.umd.js';
 import { toast } from 'react-toastify';
 import Modal from 'react-modal';
 import App from '../../components/App.js';
@@ -24,6 +25,14 @@ jest.mock('react-modal', () =>
     setAppElement: jest.fn(),
   }),
 );
+
+// jest.spyOn can't replace exifr's exports: the module's properties are
+// read-only under Jest (they are writable when it is required from Node
+// directly). The semi-automatic mode tests set the two functions they need.
+jest.mock('exifr/dist/full.umd.js', () => ({
+  __esModule: true,
+  default: { gps: jest.fn(), parse: jest.fn() },
+}));
 
 require('timezone-mock').register('US/Eastern');
 require('jest-mock-now')();
@@ -1820,6 +1829,389 @@ describe('Home', () => {
       expect(submitBody.get('attachmentData[]')).toBe(photo);
 
       expect(homeRef.current.state.attachmentData).toEqual([]);
+
+      cleanup();
+    });
+  });
+
+  describe('semi-automatic mode', () => {
+    // A JPEG `size` bytes long. The header is what mime-bytes'
+    // detectFromBuffer() reads to call the file an image, and the length is
+    // what identifies the photo further in: the ALPR request carries the
+    // bytes, not the file name, so the mocked route tells them apart by size.
+    const jpeg = ({ name, size }) =>
+      new File(
+        [
+          new Uint8Array([
+            0xff,
+            0xd8,
+            0xff,
+            0xe0,
+            ...new Array(size - 4).fill(0),
+          ]),
+        ],
+        name,
+        { type: 'image/jpeg' },
+      );
+
+    const plateResult = ({ plate, candidates = [] }) => ({
+      plate,
+      score: 0.9,
+      candidates,
+      box: { xmin: 400, ymin: 400, xmax: 500, ymax: 500 },
+      // The overlay's box is in the pixel space of the uploaded image, so the
+      // frame's own dimensions come back with the results.
+      region: { code: 'us-ny' },
+      vehicle: { box: { xmin: 300, ymin: 300, xmax: 600, ymax: 600 } },
+    });
+
+    // One ALPR response per photo, keyed by its byte length: what it read, and
+    // the size of the frame the box is in. Two photos of one medallion plate
+    // (the candidates are what fold them together), a different car at the same
+    // curb, and one more a minute later.
+    const plateResultsForSize = size => {
+      const resultsBySize = {
+        4: [
+          plateResult({
+            plate: 't696817c',
+            candidates: [{ plate: 't6968i7c', score: 0.4 }],
+          }),
+        ],
+        5: [
+          plateResult({
+            plate: 't6968i7c',
+            candidates: [{ plate: 't696817c', score: 0.6 }],
+          }),
+        ],
+        6: [plateResult({ plate: 'lda8765' })],
+        7: [plateResult({ plate: 'k73jau' })],
+      };
+
+      return {
+        results: resultsBySize[size],
+        uploadWidth: 1000,
+        uploadHeight: 1000,
+      };
+    };
+
+    // When each photo was shot, keyed by byte length: a second apart, a second
+    // apart again, then a minute later — far enough that the last one groups on
+    // its own.
+    const createDatesBySize = {
+      4: '2024-01-01T12:00:00.000Z',
+      5: '2024-01-01T12:00:01.000Z',
+      6: '2024-01-01T12:00:02.000Z',
+      7: '2024-01-01T12:01:00.000Z',
+    };
+
+    // Renders the form as a logged-in user with semi-automatic mode on, adds
+    // the given files through the same entry point the folder and loose-file
+    // inputs (and the drop and paste handlers) use, and lets the batch pass
+    // finish. Returns the spied axios so the tests can count ALPR and geosearch
+    // requests, and helpers that drive the rendered batch UI.
+    async function renderBatchWithFiles(files) {
+      const initialState = {
+        email: 'test@example.com',
+        password: 'test-password',
+        loginSuccessful: true,
+      };
+
+      const originalCreateObjectURL = global.URL.createObjectURL;
+      global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+      // The submit success path scrolls to the top of the page; the rendered
+      // tree isn't attached to the jsdom document, so provide a stand-in.
+      const originalQuerySelector = document.querySelector;
+      document.querySelector = jest.fn(() => ({ scrollTo: jest.fn() }));
+
+      const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+      const axiosPost = jest
+        .spyOn(axios, 'post')
+        .mockImplementation((url, body) => {
+          if (url === '/platerecognizer') {
+            const { size } = body.get('attachmentFile');
+            return Promise.resolve({ data: plateResultsForSize(size) });
+          }
+          if (url === '/api/geosearch') {
+            return Promise.resolve({
+              data: {
+                features: [
+                  {
+                    properties: {
+                      housenumber: '123',
+                      street: 'Main St',
+                      borough: 'Manhattan',
+                    },
+                  },
+                ],
+              },
+            });
+          }
+          if (url === '/api/uploadAttachment') {
+            return Promise.resolve({
+              data: { id: `uploaded-${body.get('attachmentData').name}` },
+            });
+          }
+          return Promise.resolve({
+            data: {
+              submission: {
+                objectId: 'objectId123',
+                timeofreport: '2020-01-01T00:00:00.000Z',
+                timeofreported: '2020-01-01T00:00:00.000Z',
+              },
+            },
+          });
+        });
+      const toastSuccess = jest
+        .spyOn(toast, 'success')
+        .mockImplementation(() => null);
+      const toastWarn = jest
+        .spyOn(toast, 'warn')
+        .mockImplementation(() => null);
+      const toastError = jest
+        .spyOn(toast, 'error')
+        .mockImplementation(() => null);
+      const consoleError = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
+
+      let tree;
+      const homeRef = React.createRef();
+      renderer.act(() => {
+        tree = renderHome({ initialState, homeRef });
+      });
+      renderer.act(() => {
+        homeRef.current.setState({ isSemiAutomaticMode: true });
+      });
+
+      if (files.length > 0) {
+        await renderer.act(async () => {
+          await homeRef.current.addFilesToBatch(files);
+          // Let the extraction pipeline settle so it doesn't touch state after
+          // the tree is unmounted.
+          await new Promise(resolve => setImmediate(resolve));
+          await new Promise(resolve => setImmediate(resolve));
+        });
+      }
+
+      const findButton = text =>
+        tree.root
+          .findAllByType('button')
+          .find(({ children }) => children.includes(text));
+
+      return {
+        homeRef,
+        axiosPost,
+        toastWarn,
+        platerecognizerCalls: () =>
+          axiosPost.mock.calls.filter(([url]) => url === '/platerecognizer'),
+        geosearchCalls: () =>
+          axiosPost.mock.calls.filter(([url]) => url === '/api/geosearch'),
+        clickButton: text =>
+          renderer.act(() => {
+            findButton(text).props.onClick();
+          }),
+        // Tick or untick one photo in a loaded group's attachment picker, by
+        // the photo's name, the way its checkbox does.
+        toggleAttachment: (name, checked) => {
+          const label = tree.root
+            .findAllByType('label')
+            .find(({ children }) => children.includes(name));
+          renderer.act(() => {
+            label.findByType('input').props.onChange({ target: { checked } });
+          });
+        },
+        submit: () => {
+          const form = tree.root
+            .findAllByType('form')
+            .find(formEl => typeof formEl.props.onSubmit === 'function');
+          return renderer.act(async () => {
+            await form.props.onSubmit({ preventDefault() {} });
+          });
+        },
+        cleanup: () => {
+          tree.unmount();
+          axiosGet.mockRestore();
+          axiosPost.mockRestore();
+          toastSuccess.mockRestore();
+          toastWarn.mockRestore();
+          toastError.mockRestore();
+          consoleError.mockRestore();
+          document.querySelector = originalQuerySelector;
+          global.URL.createObjectURL = originalCreateObjectURL;
+        },
+      };
+    }
+
+    test('groups the batch, looks each place up once, and loads a violation from what it extracted', async () => {
+      const photos = [
+        jpeg({ name: 'a.jpg', size: 4 }),
+        jpeg({ name: 'b.jpg', size: 5 }),
+        jpeg({ name: 'c.jpg', size: 6 }),
+        jpeg({ name: 'd.jpg', size: 7 }),
+      ];
+
+      // Every photo carries the same GPS, so the batch's lookups all land on
+      // one address.
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const {
+        homeRef,
+        platerecognizerCalls,
+        geosearchCalls,
+        clickButton,
+        submit,
+        cleanup,
+      } = await renderBatchWithFiles(photos);
+
+      const { batchViolations } = homeRef.current.state;
+      expect(batchViolations).toHaveLength(3);
+      expect(batchViolations.map(v => [v.plate, v.photos.length])).toEqual([
+        ['T696817C', 2],
+        ['LDA8765', 1],
+        ['K73JAU', 1],
+      ]);
+
+      // One ALPR request per photo, and one geosearch request for the whole
+      // batch: every violation is at the same coordinates, so the memo serves
+      // the second and third lookups.
+      expect(platerecognizerCalls()).toHaveLength(4);
+      expect(geosearchCalls()).toHaveLength(1);
+
+      clickButton('Load next violation');
+
+      const { state } = homeRef.current;
+      expect(state.currentViolationIndex).toBe(0);
+      expect(state.plate).toBe('T696817C');
+      expect(state.licenseState).toBe('NY');
+      // The group's photos, in capture order.
+      expect(state.attachmentData).toHaveLength(2);
+      expect(state.attachmentData[0]).toBe(photos[0]);
+      expect(state.attachmentData[1]).toBe(photos[1]);
+      expect(state.latitude).toBe(40.7129);
+      expect(state.longitude).toBe(-74.0061);
+      // From the batch's geocode, not a fresh request.
+      expect(state.formatted_address).toBe('123 Main St, Manhattan');
+      // 2024-01-01T12:00:00Z, less the -05:00 offset the camera recorded.
+      expect(state.CreateDate).toBe('2024-01-01T07:00');
+
+      // Loading a violation re-uses what the batch already extracted:
+      // neither ALPR nor geosearch is asked again.
+      expect(platerecognizerCalls()).toHaveLength(4);
+      expect(geosearchCalls()).toHaveLength(1);
+
+      await submit();
+
+      // The submitted violation leaves the queue, and the next one loads in
+      // its place rather than leaving an empty form behind.
+      const afterSubmit = homeRef.current.state;
+      expect(afterSubmit.batchViolations).toHaveLength(2);
+      expect(afterSubmit.currentViolationIndex).toBe(0);
+      expect(afterSubmit.plate).toBe('LDA8765');
+      expect(afterSubmit.attachmentData).toHaveLength(1);
+      expect(afterSubmit.attachmentData[0]).toBe(photos[2]);
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    test('attaches at most 3 pictures and 3 videos of a group, and swaps them in and out', async () => {
+      const pictures = ['p1', 'p2', 'p3', 'p4'].map(
+        name => new File(['picture'], `${name}.jpg`, { type: 'image/jpeg' }),
+      );
+      const videos = ['v1', 'v2', 'v3', 'v4'].map(
+        name => new File(['video'], `${name}.mp4`, { type: 'video/mp4' }),
+      );
+      const photos = [...pictures, ...videos].map(file => ({
+        file,
+        name: file.name,
+      }));
+      const violation = {
+        photos,
+        plate: 'T696817C',
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs: 1704110400000,
+      };
+
+      const { homeRef, toastWarn, clickButton, toggleAttachment, cleanup } =
+        await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        // The batch resolves this location before the user gets to it, which is
+        // what keeps loading a violation from asking geosearch again.
+        homeRef.current.geosearchAddressCache.set({
+          latitude: 40.7129,
+          longitude: -74.0061,
+          address: '123 Main St, Manhattan',
+        });
+        homeRef.current.setState({
+          batchPhotos: photos,
+          batchViolations: [violation],
+        });
+      });
+      clickButton('Load next violation');
+
+      const attachmentNames = () =>
+        homeRef.current.state.attachmentData.map(file => file.name);
+
+      // The first three pictures and the first three videos, in capture order.
+      expect(attachmentNames()).toEqual([
+        'p1.jpg',
+        'p2.jpg',
+        'p3.jpg',
+        'v1.mp4',
+        'v2.mp4',
+        'v3.mp4',
+      ]);
+
+      // A fourth picture is refused rather than attached and then silently
+      // dropped: createSubmission.js keeps only images.slice(0, 3).
+      toggleAttachment('p4.jpg', true);
+      expect(attachmentNames()).toEqual([
+        'p1.jpg',
+        'p2.jpg',
+        'p3.jpg',
+        'v1.mp4',
+        'v2.mp4',
+        'v3.mp4',
+      ]);
+      expect(toastWarn.mock.calls[0][0]).toBe(
+        'A report can include at most 3 pictures. Uncheck one to swap it in.',
+      );
+
+      // Unticking a picture frees its slot, and the fourth takes it — keeping
+      // the group's own order rather than moving to the end.
+      toggleAttachment('p1.jpg', false);
+      toggleAttachment('p4.jpg', true);
+      expect(attachmentNames()).toEqual([
+        'p2.jpg',
+        'p3.jpg',
+        'p4.jpg',
+        'v1.mp4',
+        'v2.mp4',
+        'v3.mp4',
+      ]);
+
+      // Videos have the same cap as pictures.
+      toggleAttachment('v4.mp4', true);
+      expect(attachmentNames()).toEqual([
+        'p2.jpg',
+        'p3.jpg',
+        'p4.jpg',
+        'v1.mp4',
+        'v2.mp4',
+        'v3.mp4',
+      ]);
+      expect(toastWarn.mock.calls[1][0]).toBe(
+        'A report can include at most 3 videos. Uncheck one to swap it in.',
+      );
 
       cleanup();
     });

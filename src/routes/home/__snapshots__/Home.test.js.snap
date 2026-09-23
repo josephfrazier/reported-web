@@ -785,6 +785,19 @@ exports[`Home renders Preferences UI 1`] = `
            
           Load previous submissions on page load
         </label>
+        <label
+          htmlFor="isSemiAutomaticMode"
+        >
+          <input
+            checked={false}
+            id="isSemiAutomaticMode"
+            name="isSemiAutomaticMode"
+            onChange={[Function]}
+            type="checkbox"
+          />
+           
+          Add a batch of pictures/videos, then review each violation
+        </label>
       </div>
       <br />
       <div

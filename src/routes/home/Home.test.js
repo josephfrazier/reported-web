@@ -840,6 +840,78 @@ describe('Home', () => {
     tree.unmount();
   });
 
+  test('reuses a reverse-geocoded address instead of asking geosearch again', async () => {
+    jest.useFakeTimers();
+
+    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+    const axiosPost = jest.spyOn(axios, 'post').mockResolvedValue({
+      data: {
+        features: [
+          {
+            properties: {
+              housenumber: '123',
+              street: 'Main St',
+              borough: 'Manhattan',
+            },
+          },
+        ],
+      },
+    });
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ homeRef });
+    });
+
+    const firstLocation = { latitude: 40.7129, longitude: -74.0061 };
+    const secondLocation = { latitude: 40.73, longitude: -74.01 };
+
+    renderer.act(() => {
+      homeRef.current.setCoords(firstLocation);
+    });
+    await renderer.act(async () => {
+      jest.advanceTimersByTime(500);
+    });
+
+    expect(axiosPost).toHaveBeenCalledTimes(1);
+    expect(homeRef.current.state.formatted_address).toBe(
+      '123 Main St, Manhattan',
+    );
+    expect(homeRef.current.geosearchAddressCache.get(firstLocation)).toBe(
+      '123 Main St, Manhattan',
+    );
+
+    // Somewhere else, so a lookup that isn't memoized still goes out.
+    renderer.act(() => {
+      homeRef.current.setCoords(secondLocation);
+    });
+    await renderer.act(async () => {
+      jest.advanceTimersByTime(500);
+    });
+    expect(axiosPost).toHaveBeenCalledTimes(2);
+
+    // Back to the first location. Batch mode geocodes every violation before
+    // the user loads one, so returning to a location it already resolved must
+    // fill the field from the memo rather than re-asking geosearch.
+    renderer.act(() => {
+      homeRef.current.setCoords(firstLocation);
+    });
+    await renderer.act(async () => {
+      jest.advanceTimersByTime(500);
+    });
+
+    expect(axiosPost).toHaveBeenCalledTimes(2);
+    expect(homeRef.current.state.formatted_address).toBe(
+      '123 Main St, Manhattan',
+    );
+
+    jest.useRealTimers();
+    axiosGet.mockRestore();
+    axiosPost.mockRestore();
+    tree.unmount();
+  });
+
   test('still submits when geosearch fails', async () => {
     jest.useFakeTimers();
 

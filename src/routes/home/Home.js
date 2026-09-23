@@ -50,6 +50,7 @@ import homeStyles from './Home.css';
 
 import PreviousSubmissionsList from '../../components/PreviousSubmissionsList.js';
 import formatGeosearchAddress from '../../formatGeosearchAddress.js';
+import createGeosearchAddressCache from '../../geosearchAddressCache.js';
 import { isImage, isVideo } from '../../isImage.js';
 import getNycTimezoneOffset from '../../timezone.js';
 import { isPointInNycMemoized } from '../../isPointInNyc.js';
@@ -715,6 +716,12 @@ class Home extends React.Component {
     this.initialStatePersistent = initialStatePersistent;
     this.isDragging = false;
     this.plateLookupCache = new Map();
+    // Addresses already reverse-geocoded for this page's coordinates, so a
+    // second lookup for the same place (revisiting a location, or loading a
+    // violation the batch already geocoded) skips the network call. Per
+    // instance, like plateLookupCache: a shared one would serve this render's
+    // addresses to the next request's.
+    this.geosearchAddressCache = createGeosearchAddressCache();
     this.plateRef = React.createRef();
     this.plateLabelRef = React.createRef();
     this.loginEmailRef = React.createRef();
@@ -973,6 +980,22 @@ class Home extends React.Component {
       return;
     }
 
+    // An address is a function of coordinates alone, so one already looked up
+    // for this page can be shown without asking geosearch again. Batch mode
+    // geocodes every violation before the user reviews them, so this is what
+    // makes loading one instant rather than another round trip.
+    const cachedAddress = this.geosearchAddressCache.get({
+      latitude,
+      longitude,
+    });
+    if (cachedAddress !== undefined) {
+      this.setState({
+        formatted_address: cachedAddress,
+      });
+      toast.dismiss('geosearch-warning');
+      return;
+    }
+
     debouncedGeosearch({ latitude, longitude })
       .then(data => {
         const { properties } = data.features[0];
@@ -984,8 +1007,15 @@ class Home extends React.Component {
           this.state.latitude === latitude &&
           this.state.longitude === longitude
         ) {
+          const address = formatGeosearchAddress(properties);
+          // Only a response that is still current is known to be for these
+          // coordinates: debounce() resolves every pending call with the last
+          // call's response, so the calls this guard discards are carrying
+          // some other location's address and must not be filed under this
+          // key.
+          this.geosearchAddressCache.set({ latitude, longitude, address });
           this.setState({
-            formatted_address: formatGeosearchAddress(properties),
+            formatted_address: address,
           });
           toast.dismiss('geosearch-warning');
         }

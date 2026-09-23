@@ -140,6 +140,24 @@ const handlePromiseRejection = res => error => {
   res.status(500).json(JSON.parse(stringify({ error })));
 };
 
+// Busboy reports "Unexpected end of form" when a multipart body ends before
+// its closing boundary, which is what browsers have been sending when they
+// drop an upload's body (see the "Unexpected end of form" section of the
+// README). The error alone doesn't say which route it came from or what the
+// client claimed it was sending, so log the facts that identify those cases:
+// a `contentLength` of 0 means the body never arrived at all.
+const logTruncatedMultipartBody = (error, req) => {
+  if (error.message !== 'Unexpected end of form') {
+    return;
+  }
+  console.error('Multipart body ended early:', {
+    url: req.originalUrl,
+    contentLength: req.headers['content-length'],
+    transferEncoding: req.headers['transfer-encoding'],
+    userAgent: req.headers['user-agent'],
+  });
+};
+
 app.use('/api/logIn', (req, res) => {
   logIn(req.body)
     .then(user => res.json(user))
@@ -228,6 +246,7 @@ app.use('/submit', (req, res) => {
   // https://github.com/expressjs/multer/tree/80ee2f52432cc0c81c93b03c6b0b448af1f626e5#error-handling
   upload.array('attachmentData[]')(req, res, async error => {
     if (error) {
+      logTruncatedMultipartBody(error, req);
       // Make error.message enumerable so it gets sent to the client
       const { message } = error;
       handlePromiseRejection(res)({ ...error, message });
@@ -527,6 +546,7 @@ pe.skipPackage('express');
 
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
+  logTruncatedMultipartBody(err, req);
   console.error(pe.render(err));
   const html = ReactDOM.renderToStaticMarkup(
     <Html

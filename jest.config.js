@@ -94,12 +94,27 @@ module.exports = {
   // timers: // [string]
 
   transform: {
-    '\\.(js|jsx|mjs)$': '<rootDir>/node_modules/babel-jest',
-    '^(?!.*\\.(js|jsx|json|css|less|styl|scss|sass|sss)$)':
+    '\\.(js|jsx|mjs|cjs)$': '<rootDir>/node_modules/babel-jest',
+    '^(?!.*\\.(js|jsx|mjs|cjs|json|css|less|styl|scss|sass|sss)$)':
       '<rootDir>/tools/lib/fileTransformer.js',
   },
 
-  // transformIgnorePatterns: // [array<string>]
+  // Jest skips transforming node_modules by default. jsdom 30 depends on
+  // several packages that ship ESM only — Node's own `require(esm)` hides that
+  // everywhere else, but Jest's runtime cannot load them, so babel-jest has to
+  // transform them:
+  //   jsdom -> html-encoding-sniffer -> @exodus/bytes
+  //   jsdom -> parse5 -> entities
+  //   jsdom -> @asamuzakjp/dom-selector, @asamuzakjp/css-color -> @csstools/*
+  //   jsdom -> css-tree
+  // The lookahead exempts a package by name wherever it sits, which matters for
+  // the nested copies yarn installs under jsdom and @asamuzakjp/css-color.
+  // Keep this list in sync with jsdom's ESM-only dependencies when bumping it.
+  transformIgnorePatterns: [
+    '/node_modules/(?!.*(?:@asamuzakjp|@csstools|@exodus\\/bytes|css-tree|entities|parse5)/)',
+    '\\.pnp\\.[^\\/]+$',
+  ],
+
   // unmockedModulePathPatterns: // [array<string>]
 
   verbose: true, // [boolean]

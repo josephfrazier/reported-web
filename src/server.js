@@ -150,7 +150,7 @@ const logTruncatedMultipartBody = (error, req) => {
   if (error.message !== 'Unexpected end of form') {
     return;
   }
-  console.error('Multipart body ended early:', {
+  console.error('Multipart body ended early: ("Unexpected end of form")', {
     url: req.originalUrl,
     contentLength: req.headers['content-length'],
     transferEncoding: req.headers['transfer-encoding'],

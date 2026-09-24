@@ -88,14 +88,14 @@ What to tell an affected user: remove and re-add the photos/videos before submit
 again — reusing a selection that already failed keeps failing — or use a device that
 isn't on the affected browser version.
 
-Worth checking while looking at this: `/api/uploadAttachment`'s rate limiter keys on
-`req.ip`, and `src/config.js` defaults `trust proxy` to `'loopback'`, which trusts
-`X-Forwarded-For` only from a loopback peer. Heroku's router isn't one, so unless
-`TRUST_PROXY` is set on Heroku, every request carries the router's private address as
-`req.ip` and all users share one 30-per-15-minutes bucket. Background uploads then fail
-(silently, since the client only logs those) and each submission falls back to re-sending
-every file through `/submit` — the route that shows this error. `TRUST_PROXY=uniquelocal`
-covers the router's private address.
+One related thing: `/api/uploadAttachment`'s rate limiter (30 per 15 minutes) keys on
+`req.ip`, and Heroku's router is not a loopback peer. `src/config.js` therefore trusts
+`X-Forwarded-For` from `uniquelocal` as well as from loopback, so `req.ip` is the client's
+address and each user gets their own bucket. With `loopback` alone, `req.ip` was the
+router's address for everyone, so background uploads failed (silently, since the client
+only logs those) and each submission fell back to re-sending every file through
+`/submit` — the route that shows this error. A carrier's NAT still puts many users behind
+one address, so the bucket is per address, not per person.
 
 ## Context on `localStorage` use (w.r.t performance concerns about lag/delay/slowness/latency when typing)
 

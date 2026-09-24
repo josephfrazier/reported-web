@@ -18,7 +18,14 @@ module.exports = {
   port: process.env.PORT || 3000,
 
   // https://expressjs.com/en/guide/behind-proxies.html
-  trustProxy: process.env.TRUST_PROXY || 'loopback',
+  // Heroku's router is not a loopback peer, so trusting loopback alone made
+  // `req.ip` the router's address for every request, which collapsed the
+  // `/api/uploadAttachment` rate limit into one bucket shared by all users
+  // (see the "Unexpected end of form" section of the README). `uniquelocal`
+  // covers the private ranges the router connects from. The value is a list
+  // of addresses and ranges, not a count of proxy hops, because it arrives as
+  // a string: `TRUST_PROXY=1` would be read as a host named "1".
+  trustProxy: process.env.TRUST_PROXY || 'loopback,uniquelocal',
 
   // API Gateway
   api: {

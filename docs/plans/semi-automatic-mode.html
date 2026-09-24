@@ -1,0 +1,1045 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Semi-Automatic Mode</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=Public+Sans:wght@400;500;600&amp;display=swap">
+<style>
+  /* ---------------------------------------------------------------
+     Tokens — light palette is the base; dark redefines only tokens.
+     --------------------------------------------------------------- */
+  :root {
+    --paper:      #fbfcfd;
+    --surface:    #ffffff;
+    --surface-2:  #f2f6fa;
+    --ink:        #141920;
+    --ink-soft:   #3d4855;
+    --muted:      #5b6878;
+    --line:       #dde4ec;
+    --line-soft:  #eaf0f6;
+
+    --accent:      #0074c2;
+    --accent-deep: #005a97;
+    --accent-tint: #e8f2fb;
+    --accent-line: #b6d8f2;
+
+    --warn:      #9a5b00;
+    --warn-tint: #fdf4e3;
+    --warn-line: #f0d9ae;
+    --crit:      #b3261e;
+    --crit-tint: #fdeceb;
+    --good:      #1a7f4b;
+    --good-tint: #e9f6ee;
+
+    --font-display: 'Archivo', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    --font-body: 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+    --step--1: 0.8125rem;
+    --step-0:  1rem;
+    --step-1:  1.125rem;
+    --step-2:  1.375rem;
+    --step-3:  1.75rem;
+    --step-4:  2.25rem;
+
+    --radius: 6px;
+    --rail: 13.5rem;
+    color-scheme: light;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:      #10141a;
+      --surface:    #161b23;
+      --surface-2:  #1c222c;
+      --ink:        #e7edf4;
+      --ink-soft:   #c2ccd8;
+      --muted:      #8e9aa9;
+      --line:       #2a323d;
+      --line-soft:  #222933;
+
+      --accent:      #5eb0e8;
+      --accent-deep: #8cc8f2;
+      --accent-tint: #14293a;
+      --accent-line: #2c4f6d;
+
+      --warn:      #e0a94a;
+      --warn-tint: #2b2313;
+      --warn-line: #55431f;
+      --crit:      #f08c85;
+      --crit-tint: #2e1917;
+      --good:      #6cc48f;
+      --good-tint: #14271c;
+
+      color-scheme: dark;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper:      #10141a;
+    --surface:    #161b23;
+    --surface-2:  #1c222c;
+    --ink:        #e7edf4;
+    --ink-soft:   #c2ccd8;
+    --muted:      #8e9aa9;
+    --line:       #2a323d;
+    --line-soft:  #222933;
+
+    --accent:      #5eb0e8;
+    --accent-deep: #8cc8f2;
+    --accent-tint: #14293a;
+    --accent-line: #2c4f6d;
+
+    --warn:      #e0a94a;
+    --warn-tint: #2b2313;
+    --warn-line: #55431f;
+    --crit:      #f08c85;
+    --crit-tint: #2e1917;
+    --good:      #6cc48f;
+    --good-tint: #14271c;
+
+    color-scheme: dark;
+  }
+
+  /* ---------------------------------------------------------------
+     Base
+     --------------------------------------------------------------- */
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding-inline: max(16px, env(safe-area-inset-left), env(safe-area-inset-right));
+    padding-block: 0 max(3rem, env(safe-area-inset-bottom));
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: var(--step-0);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: var(--accent-deep); }
+  a:focus-visible,
+  summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+
+  code, kbd, .mono { font-family: var(--font-mono); }
+
+  code {
+    font-size: 0.86em;
+    background: var(--surface-2);
+    border: 1px solid var(--line-soft);
+    border-radius: 4px;
+    padding: 0.08em 0.34em;
+    /* Inline identifiers must be free to wrap: a long one like
+       normalizedCenterDistance(box, uploadWidth, uploadHeight) with nowrap
+       pushes the line box past the gutter and scrolls the whole page. */
+    overflow-wrap: break-word;
+  }
+
+  pre {
+    margin: 0 0 1.25rem;
+    padding: 0.9rem 1rem;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    font-size: 0.8rem;
+    line-height: 1.55;
+  }
+
+  pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: inherit;
+    white-space: pre;
+  }
+
+  /* A plate string: the subject's own material. */
+  .plate {
+    font-family: var(--font-mono);
+    font-size: 0.84em;
+    letter-spacing: 0.03em;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    padding: 0.1em 0.4em;
+    white-space: nowrap;
+  }
+  .plate--win { border-color: var(--accent-line); color: var(--accent-deep); font-weight: 500; }
+  .plate--var { color: var(--muted); border-style: dashed; }
+
+  /* ---------------------------------------------------------------
+     Shell
+     --------------------------------------------------------------- */
+  .shell {
+    max-width: 76rem;
+    margin-inline: auto;
+    display: grid;
+    grid-template-columns: var(--rail) minmax(0, 1fr);
+    gap: 3.5rem;
+    align-items: start;
+    padding-block-start: 2.5rem;
+  }
+
+  .rail { position: sticky; top: 2rem; }
+
+  .rail__label {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.11em;
+    color: var(--muted);
+    font-weight: 600;
+    margin: 0 0 0.7rem;
+  }
+
+  .rail ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-left: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+  }
+
+  .rail a {
+    display: block;
+    padding: 0.24rem 0 0.24rem 0.85rem;
+    margin-left: -1px;
+    border-left: 2px solid transparent;
+    color: var(--muted);
+    text-decoration: none;
+    font-size: var(--step--1);
+    line-height: 1.35;
+  }
+  .rail a:hover { color: var(--ink); border-left-color: var(--line); }
+
+  .doc { min-width: 0; max-width: 68ch; }
+
+  /* ---------------------------------------------------------------
+     Masthead
+     --------------------------------------------------------------- */
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent-deep);
+    margin: 0 0 0.75rem;
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-size: var(--step-4);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+    margin: 0 0 0.85rem;
+    text-wrap: balance;
+  }
+
+  .standfirst {
+    font-size: var(--step-1);
+    color: var(--ink-soft);
+    margin: 0 0 1.5rem;
+    max-width: 60ch;
+  }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1.5rem;
+    padding-block: 0.85rem;
+    border-block: 1px solid var(--line);
+    margin-bottom: 2.75rem;
+    font-size: var(--step--1);
+  }
+  .meta div { display: flex; gap: 0.5rem; align-items: baseline; }
+  .meta dt {
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    font-size: 0.66rem;
+    font-weight: 600;
+  }
+  .meta dd { margin: 0; font-family: var(--font-mono); font-size: 0.78rem; }
+
+  /* ---------------------------------------------------------------
+     Sections
+     --------------------------------------------------------------- */
+  section { margin-block-end: 3rem; scroll-margin-top: 1.5rem; }
+
+  h2 {
+    font-family: var(--font-display);
+    font-size: var(--step-3);
+    line-height: 1.2;
+    letter-spacing: -0.015em;
+    font-weight: 600;
+    margin: 0 0 1rem;
+    padding-block-start: 1.6rem;
+    border-top: 1px solid var(--line);
+    text-wrap: balance;
+  }
+
+  h3 {
+    font-family: var(--font-display);
+    font-size: var(--step-1);
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    margin: 2rem 0 0.6rem;
+    text-wrap: balance;
+  }
+
+  h4 {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin: 1.6rem 0 0.5rem;
+  }
+
+  p { margin: 0 0 1rem; }
+  p:last-child { margin-bottom: 0; }
+
+  ul, ol { margin: 0 0 1rem; padding-left: 1.3rem; }
+  li { margin-bottom: 0.35rem; }
+  li:last-child { margin-bottom: 0; }
+
+  strong { font-weight: 600; }
+
+  /* ---------------------------------------------------------------
+     Tables
+     --------------------------------------------------------------- */
+  .scroll { overflow-x: auto; margin: 0 0 1.25rem; }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: var(--step--1);
+  }
+
+  th, td {
+    text-align: left;
+    padding: 0.55rem 0.8rem;
+    border-bottom: 1px solid var(--line-soft);
+    vertical-align: top;
+  }
+
+  thead th {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+  }
+
+  tbody tr:last-child td { border-bottom: none; }
+
+  td.num, th.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* Grouped-rows worked example: tint + a chip carry the grouping. */
+  tr[data-v] td { background: var(--surface); }
+  tr[data-v="1"] td:first-child { box-shadow: inset 3px 0 var(--accent); }
+  tr[data-v="2"] td:first-child { box-shadow: inset 3px 0 var(--good); }
+  tr[data-v="3"] td:first-child { box-shadow: inset 3px 0 var(--warn); }
+  tr[data-v] + tr[data-v] td { border-top: none; }
+
+  .chip {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    padding: 0.1rem 0.42rem;
+    border-radius: 100px;
+    border: 1px solid transparent;
+    white-space: nowrap;
+  }
+  .chip--1 { background: var(--accent-tint); border-color: var(--accent-line); color: var(--accent-deep); }
+  .chip--2 { background: var(--good-tint); border-color: var(--good); color: var(--good); }
+  .chip--3 { background: var(--warn-tint); border-color: var(--warn-line); color: var(--warn); }
+  .chip--none { background: var(--surface-2); border-color: var(--line); color: var(--muted); }
+
+  /* ---------------------------------------------------------------
+     Callouts & lists
+     --------------------------------------------------------------- */
+  .note {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius);
+    padding: 1rem 1.15rem;
+    margin: 0 0 1.25rem;
+    font-size: var(--step--1);
+  }
+  .note > :last-child { margin-bottom: 0; }
+  .note__label {
+    display: block;
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    color: var(--accent-deep);
+    margin-bottom: 0.45rem;
+  }
+
+  .note--warn { border-left-color: var(--warn); background: var(--warn-tint); }
+  .note--warn .note__label { color: var(--warn); }
+
+  /* Numbered passes / commits: the content genuinely is a sequence. */
+  .sequence { list-style: none; padding: 0; margin: 0 0 1.25rem; counter-reset: seq; }
+  .sequence > li {
+    counter-increment: seq;
+    position: relative;
+    padding-left: 2.4rem;
+    margin-bottom: 0.9rem;
+  }
+  .sequence > li::before {
+    content: counter(seq, decimal-leading-zero);
+    position: absolute;
+    left: 0;
+    top: 0.05rem;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--accent-deep);
+    background: var(--accent-tint);
+    border: 1px solid var(--accent-line);
+    border-radius: 4px;
+    padding: 0.1rem 0.34rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .sequence > li :last-child { margin-bottom: 0; }
+
+  .chain {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1.25rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    align-items: center;
+    font-size: var(--step--1);
+  }
+  .chain li {
+    margin: 0;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 100px;
+    padding: 0.22rem 0.7rem;
+  }
+  .chain li:not(:last-child)::after {
+    content: "→";
+    color: var(--muted);
+    margin-left: 0.7rem;
+    margin-right: -0.35rem;
+  }
+  .chain li:last-child { border-color: var(--accent-line); background: var(--accent-tint); }
+
+  .risk { list-style: none; padding: 0; margin: 0 0 1.25rem; }
+  .risk > li {
+    border-top: 1px solid var(--line-soft);
+    padding: 0.75rem 0;
+    margin: 0;
+    font-size: var(--step--1);
+  }
+  .risk > li:first-child { border-top: none; padding-top: 0; }
+  .risk b { display: block; color: var(--ink); font-size: var(--step-0); font-weight: 600; margin-bottom: 0.15rem; }
+
+  footer {
+    border-top: 1px solid var(--line);
+    padding-top: 1.25rem;
+    margin-top: 1rem;
+    font-size: var(--step--1);
+    color: var(--muted);
+  }
+  footer p { margin-bottom: 0.4rem; }
+
+  /* ---------------------------------------------------------------
+     Narrow
+     --------------------------------------------------------------- */
+  @media (max-width: 860px) {
+    .shell { grid-template-columns: minmax(0, 1fr); gap: 0; padding-block-start: 1.75rem; }
+    .rail { position: static; margin-bottom: 2rem; }
+    .rail ol { flex-direction: row; flex-wrap: wrap; border-left: none; gap: 0.4rem; }
+    .rail a {
+      border-left: none;
+      border: 1px solid var(--line);
+      border-radius: 100px;
+      padding: 0.2rem 0.7rem;
+      background: var(--surface);
+    }
+    .doc { max-width: none; }
+    h1 { font-size: var(--step-3); }
+    h2 { font-size: var(--step-2); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <nav class="rail" aria-label="Contents">
+    <p class="rail__label">Contents</p>
+    <ol>
+      <li><a href="#decisions">Decisions</a></li>
+      <li><a href="#grouping">Grouping algorithm</a></li>
+      <li><a href="#caching">Caching</a></li>
+      <li><a href="#module">Module &amp; state</a></li>
+      <li><a href="#ui">Interface</a></li>
+      <li><a href="#tests">Tests</a></li>
+      <li><a href="#risks">Risks</a></li>
+      <li><a href="#commits">Implementation</a></li>
+    </ol>
+  </nav>
+
+  <main class="doc">
+
+    <p class="eyebrow">Implementation plan · reported-web</p>
+    <h1>Semi-Automatic Mode</h1>
+    <p class="standfirst">
+      Upload a folder of photos — or just a pile of loose files — covering many violations at
+      once. The app runs ALPR and reverse-geocoding over the whole batch, groups the photos into
+      violations, and then walks you through them one at a time — form pre-filled, ready to submit.
+    </p>
+
+    <dl class="meta">
+      <div><dt>Status</dt><dd>designed, not built</dd></div>
+      <div><dt>Written</dt><dd>2026-09-23</dd></div>
+      <div><dt>Base</dt><dd>ba141241</dd></div>
+      <div><dt>Commits</dt><dd>3 planned</dd></div>
+    </dl>
+
+    <!-- ============================ DECISIONS ============================ -->
+    <section id="decisions">
+      <h2>Decisions</h2>
+      <p>
+        Every choice below was settled explicitly. The last group is a set of defaults that
+        have not been challenged — flag any that look wrong before building.
+      </p>
+
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr><th>Decision</th><th>Choice</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Entry point</td><td>Toggle in Preferences, persisted alongside <code>isReverseGeocodingEnabled</code></td></tr>
+            <tr><td>Photo input</td><td>A folder pick, a loose multi-file pick, or a drag-and-drop — all equally supported</td></tr>
+            <tr><td>Grouping signals</td><td>EXIF time <em>and</em> GPS <em>and</em> ALPR plate</td></tr>
+            <tr><td>Thresholds</td><td class="num">Δt ≤ 5000 ms · distance ≤ 30 m</td></tr>
+            <tr><td>Plate's role</td><td>May <strong>split</strong> a time+GPS cluster</td></tr>
+            <tr><td>OCR variants</td><td>Folded via ALPR <code>candidates</code> sets</td></tr>
+            <tr><td>Violation time &amp; location</td><td>From the <strong>earliest</strong> photo in the group</td></tr>
+            <tr><td>More than 3 photos</td><td>Checkbox picker, first 3 pre-selected</td></tr>
+            <tr><td>Reload mid-batch</td><td>Everything is lost — in-memory only</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h4>Assumed defaults</h4>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr><th>Case</th><th>Behaviour</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Photo with no GPS</td><td>Links on time alone — Android strips GPS (issue&nbsp;#751)</td></tr>
+            <tr><td>Photo with no EXIF time</td><td>Falls back to file last-modified, sorts last</td></tr>
+            <tr><td>Group with no plate read</td><td>Still created, flagged for manual entry</td></tr>
+            <tr><td>After Submit</td><td>Auto-advances to the next violation</td></tr>
+            <tr><td>ALPR concurrency</td><td>Capped at 3 in flight</td></tr>
+            <tr><td>Queue controls</td><td>Skip and delete a group</td></tr>
+            <tr><td>Input while the mode is on</td><td>Every pick and drop feeds the batch; the single-violation flow is the toggle-off behaviour</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============================ GROUPING ============================ -->
+    <section id="grouping">
+      <h2>Grouping algorithm</h2>
+      <p>
+        A new pure module, <code>src/groupAttachmentsByViolation.js</code>, so the whole
+        algorithm is unit-testable without React. In goes one record per processed photo;
+        out comes one record per violation.
+      </p>
+
+      <pre class="scroll"><code>in:  [{ file, name, createDateMs, latitude, longitude,
+        plateResults, uploadWidth, uploadHeight }]
+out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</code></pre>
+
+      <h3>The four passes</h3>
+      <ol class="sequence">
+        <li>
+          <strong>Sort</strong> photos by capture time, so everything downstream can assume
+          chronological order. Missing timestamps fall back to file last-modified and sort last.
+        </li>
+        <li>
+          <strong>Cluster by time and place.</strong> Union two photos when
+          <span class="mono">Δt ≤ 5000 ms</span> <em>and</em> the haversine distance between them is
+          <span class="mono">≤ 30 m</span>. A photo with no GPS links on time alone. Connected
+          components become candidate violations.
+        </li>
+        <li>
+          <strong>Vote the plate, then split on it.</strong> Fold OCR variants together, count how
+          many photos contain each plate, and take the winner. Photos containing it become a
+          violation; the remainder is recursed on. This is what stops two cars photographed
+          back-to-back from merging into one report.
+        </li>
+        <li>
+          <strong>Adopt orphans.</strong> Photos with no plate read at all join whichever
+          sub-cluster is nearest in capture time, so a blurry shot still rides along with its
+          violation. Finally, sort the violations earliest-first.
+        </li>
+      </ol>
+
+      <h3>Choosing the plate</h3>
+      <p>Each tie-break is applied only if the one before it is still tied:</p>
+      <ol class="chain">
+        <li>Most photos</li>
+        <li>Most central</li>
+        <li><span class="mono">^T\d{6}C$</span></li>
+        <li>Highest score</li>
+      </ol>
+      <p>
+        <em>Most central</em> means the smallest mean normalised distance between the plate's box
+        centre and the frame centre, across the photos it appears in. Boxes arrive in the uploaded
+        image's pixel space, and <code>alpr.js</code> already attaches <code>uploadWidth</code> and
+        <code>uploadHeight</code> to the response — normalising against those lets a 4096-wide and a
+        2048-wide photo be compared fairly. The medallion pattern survives as an extra tie-break,
+        preserving the intent of issue&nbsp;#584.
+      </p>
+
+      <div class="note">
+        <span class="note__label">Why variants must be folded</span>
+        <p>
+          The checked-in ALPR snapshot reads one medallion four different ways in a single image.
+          Counting exact strings, that is four plates with one photo each — so a two-photo
+          violation would look like two violations sharing no plate, and the vote that picks the
+          plate would have nothing to pick.
+        </p>
+        <p style="margin-top:0.6rem">
+          <span class="plate plate--win">t696817c</span>
+          <span class="plate plate--var">t6968i7c</span>
+          <span class="plate plate--var">t696b17c</span>
+          <span class="plate plate--var">t696bi7c</span>
+        </p>
+        <p style="margin-top:0.6rem">
+          Plate Recognizer hands back its own ranked alternatives in <code>candidates</code>, so
+          folding is a union-find over plate strings whose edges come from candidate-set
+          intersection — no invented edit distance. Note only the clean read matches
+          <span class="mono">^T\d{6}C$</span>, which is exactly why that pattern cannot be the
+          primary signal.
+        </p>
+      </div>
+
+      <h3>Worked example</h3>
+      <p>
+        Six photos from one walk down a block. Photos&nbsp;1–3 are the same medallion read three
+        ways; 4–5 are a second car; 6 is a shot where ALPR failed.
+      </p>
+
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr>
+              <th class="num">#</th>
+              <th class="num">EXIF time</th>
+              <th class="num">Δt</th>
+              <th class="num">From prev.</th>
+              <th>Plate read</th>
+              <th>Violation</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr data-v="1">
+              <td class="num">1</td><td class="num">08:14:02</td><td class="num">—</td><td class="num">—</td>
+              <td><span class="plate plate--win">t696817c</span></td>
+              <td><span class="chip chip--1">V1</span></td>
+            </tr>
+            <tr data-v="1">
+              <td class="num">2</td><td class="num">08:14:06</td><td class="num">4 s</td><td class="num">3 m</td>
+              <td><span class="plate plate--var">t6968i7c</span></td>
+              <td><span class="chip chip--1">V1</span></td>
+            </tr>
+            <tr data-v="1">
+              <td class="num">3</td><td class="num">08:14:11</td><td class="num">5 s</td><td class="num">2 m</td>
+              <td><span class="plate plate--win">t696817c</span></td>
+              <td><span class="chip chip--1">V1</span></td>
+            </tr>
+            <tr data-v="2">
+              <td class="num">4</td><td class="num">08:14:29</td><td class="num">18 s</td><td class="num">144 m</td>
+              <td><span class="plate plate--win">lda8765</span></td>
+              <td><span class="chip chip--2">V2</span></td>
+            </tr>
+            <tr data-v="2">
+              <td class="num">5</td><td class="num">08:14:33</td><td class="num">4 s</td><td class="num">2 m</td>
+              <td><span class="plate plate--win">lda8765</span></td>
+              <td><span class="chip chip--2">V2</span></td>
+            </tr>
+            <tr data-v="3">
+              <td class="num">6</td><td class="num">08:16:40</td><td class="num">127 s</td><td class="num">154 m</td>
+              <td><span class="chip chip--none">none</span></td>
+              <td><span class="chip chip--3">V3</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>
+        Photo&nbsp;3 → 4 breaks on both signals at once (18&nbsp;s, 144&nbsp;m), so V2 opens
+        regardless of plates. Photo&nbsp;6 → V3 breaks on both as well, and having no plate at all
+        it is flagged rather than discarded. Within V1 the three readings fold into one plate with
+        three photos — the majority it wins is <span class="mono">t696817c</span>, the clean read
+        and the only one matching the medallion pattern.
+      </p>
+
+      <div class="note note--warn">
+        <span class="note__label">Order of operations matters</span>
+        <p>
+          Clustering runs <em>before</em> the plate vote, and the plate vote runs <em>before</em>
+          the split. The plate cannot merge two clusters that time and place kept apart — it only
+          ever divides. That keeps the rule one-directional and avoids the obvious circularity of
+          using a plate both to define a group and to be chosen from it.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================ CACHING ============================ -->
+    <section id="caching">
+      <h2>Caching</h2>
+      <p>
+        The assumption that ALPR results are already cached is <strong>half right</strong>, and the
+        half that is wrong is the half that matters.
+      </p>
+
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr><th>Result</th><th>Today</th><th>Needed</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>ALPR</td>
+              <td><code>attachmentPlateCache</code>, a <code>WeakMap</code> keyed on the <code>File</code> object (Home.js:225)</td>
+              <td><strong>Nothing new.</strong> The queue holds the same <code>File</code> objects, so hits are automatic</td>
+            </tr>
+            <tr>
+              <td>Reverse geocode</td>
+              <td>None. <code>setCoords</code> re-queries on every call; the debounce coalesces bursts but stores nothing</td>
+              <td>A small <span class="mono">"lat,long" → address</span> memo</td>
+            </tr>
+            <tr>
+              <td>Server side</td>
+              <td>Nothing. Both endpoints call through unconditionally</td>
+              <td>Nothing — but see the note on content hashes</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>
+        Because the ALPR cache keys on object identity rather than content, it only helps while the
+        same <code>File</code> objects are alive. A batch queue holds them for its whole run, which
+        is why no new ALPR caching is required — but a page reload loses everything, matching the
+        decision above.
+      </p>
+
+      <h3>Geocode once per violation, not per photo</h3>
+      <p>
+        An address is a function of coordinates alone. Today a batch taken at one curb costs one
+        identical lookup per photo; grouping first means one. This also gives the progress indicator
+        its second stage, which is what the batch was asked to show in the first place.
+      </p>
+
+      <div class="note">
+        <span class="note__label">A ready-made key, if results ever need to persist</span>
+        <p>
+          Every upload already gets a SHA-256 of its bytes (<code>attachmentId</code>), and identical
+          uploads share a temp file. Nothing consults that hash for results today — the bytes go to
+          Plate Recognizer again even when the hash matches. If reload-survival is ever revisited,
+          that hash is the key to build on.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================ MODULE ============================ -->
+    <section id="module">
+      <h2>Module &amp; state</h2>
+
+      <h3>New file</h3>
+      <p>
+        <code>src/groupAttachmentsByViolation.js</code> plus a colocated
+        <code>src/groupAttachmentsByViolation.test.js</code>, following the repo's habit of
+        extracting logic into small pure modules with direct tests.
+      </p>
+      <p>Two helpers live alongside it:</p>
+      <ul>
+        <li><code>haversineMeters(a, b)</code> — distance between two coordinates</li>
+        <li><code>normalizedCenterDistance(box, uploadWidth, uploadHeight)</code> — how far a plate sits from the frame centre</li>
+      </ul>
+
+      <h3>New state on <code>Home</code></h3>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr><th>Key</th><th>Holds</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>isSemiAutomaticMode</code></td><td>Persisted preference, next to <code>isReverseGeocodingEnabled</code> (Home.js:674)</td></tr>
+            <tr><td><code>batchPhotos</code></td><td>One record per photo, with its extraction results</td></tr>
+            <tr><td><code>batchViolations</code></td><td>Grouped output, in earliest-first order</td></tr>
+            <tr><td><code>batchProgress</code></td><td><code>{ stage, completed, total }</code></td></tr>
+            <tr><td><code>currentViolationIndex</code></td><td>Where the walk-through has reached</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="note note--warn">
+        <span class="note__label">Do not reuse <code>handleAttachmentData</code></span>
+        <p>
+          It re-runs extraction over the <em>entire</em> attachment array on every add
+          (Home.js:1323). Pointed at a batch, that re-walks every photo each time a violation is
+          loaded. The batch needs its own one-shot pass.
+        </p>
+      </div>
+
+      <h3>Two existing functions to get right</h3>
+      <ul>
+        <li>
+          <strong><code>fetchPlateResults</code></strong> — the batch must use this, because it
+          returns the <em>full</em> response including every <code>results[]</code> entry and is the
+          function the <code>WeakMap</code> already wraps.
+        </li>
+        <li>
+          <strong><code>extractPlate</code></strong> — deliberately <em>not</em> used by the batch.
+          It collapses each photo to a single plate and prefers the medallion pattern, which
+          discards exactly the multi-plate data the grouping needs. The single-violation flow keeps
+          its current behaviour.
+        </li>
+      </ul>
+
+      <h3>Submitting a violation</h3>
+      <p>
+        <code>getPerSubmissionState()</code> already returns precisely the per-submission fields —
+        <code>plate</code>, <code>licenseState</code>, <code>latitude</code>, <code>longitude</code>,
+        <code>coordsAreInNyc</code>, <code>formatted_address</code>, <code>CreateDate</code>,
+        <code>typeofcomplaint</code>, <code>reportDescription</code>,
+        <code>can_be_shared_publicly</code> — and is already wired into the submit payload. Loading a
+        violation sets them through the existing <code>setLicensePlate</code>,
+        <code>setCreateDate</code> and <code>setCoords</code>.
+      </p>
+      <p>
+        Worth knowing: the name reads backwards. This repo's bundled <code>object.omit</code> (v3)
+        treats its predicate as a <strong>keep</strong> filter, so despite saying <em>omit</em> the
+        helper returns only those keys.
+      </p>
+      <p>
+        <code>typeofcomplaint</code> is never auto-filled from a photo — it stays manual, as does
+        <code>reportDescription</code>.
+      </p>
+    </section>
+
+    <!-- ============================ UI ============================ -->
+    <section id="ui">
+      <h2>Interface</h2>
+
+      <h3>Ways in</h3>
+      <p>
+        Three inputs feed the same batch, so photos can arrive however they happen to be sitting on
+        disk — in a directory of their own, loose in a camera roll, or dragged straight from a file
+        manager:
+      </p>
+      <ul>
+        <li>
+          <strong>Add a folder</strong> —
+          <code>&lt;input type="file" multiple webkitdirectory&gt;</code>
+        </li>
+        <li>
+          <strong>Add photos</strong> — a plain <code>&lt;input type="file" multiple&gt;</code>, with
+          no parent directory required
+        </li>
+        <li>
+          <strong>Drag and drop</strong> — the page is already wrapped in a <code>Dropzone</code>,
+          so dropped files can feed the batch too
+        </li>
+      </ul>
+      <p>
+        All three read <code>event.target.files</code> directly rather than going through the
+        existing <code>FileReaderInput</code>. That component is used with <code>as="buffer"</code>,
+        which reads every selected file's contents into memory; across a whole folder that is a
+        great deal of buffering before ALPR has even started. (For the record it <em>would</em>
+        accept
+        <code>webkitdirectory</code> — it spreads unknown props onto the real input — it is the
+        buffering that rules it out.)
+      </p>
+      <p>
+        Picks accumulate, so a folder and then a few stragglers make up one batch. Selection order
+        does not matter: grouping sorts by EXIF time, never by the order files arrived in.
+      </p>
+
+      <div class="note">
+        <span class="note__label">What the toggle changes</span>
+        <p>
+          With the mode on, every one of these routes feeds the batch. The single-violation flow is
+          what the toggle-off state gives you. Because a folder pick, a loose multi-select and a drop
+          all take the same path, there is never a question of which flow a given pick lands in.
+        </p>
+      </div>
+
+      <h3>During the batch</h3>
+      <p>
+        An inline <code>&lt;progress&gt;</code> bar on the form, with counts, stepping through
+        ALPR → grouping → geocoding. No modal: the batch is long-running and the user should be able
+        to see the page while it works.
+      </p>
+
+      <h3>The queue</h3>
+      <p>
+        A list of found violations, each showing its time, plate, photo count and flags. A
+        <strong>Load next violation</strong> button loads one into the form: its photos appear as
+        thumbnails with the usual plate overlays, and the fields fill from cached results.
+        Submit then advances automatically.
+      </p>
+
+      <h3>Groups over three photos</h3>
+      <p>
+        The picker shows every photo in the group with checkboxes and the first three selected. It
+        must enforce <strong>3 images <em>and</em> 3 videos</strong>, because that is the server's
+        real limit — <code>createSubmission.js</code> takes <code>images.slice(0, 3)</code> and
+        <code>videos.slice(0, 3)</code> and drops the rest <em>without an error</em>. Today the only
+        hint is the button label, and the dropzone enforces nothing at all.
+      </p>
+    </section>
+
+    <!-- ============================ TESTS ============================ -->
+    <section id="tests">
+      <h2>Tests</h2>
+      <p>
+        The algorithm gets direct unit tests; the flow is exercised through the existing Home
+        harness.
+      </p>
+      <ul>
+        <li>
+          <code>groupAttachmentsByViolation.test.js</code> — variant folding, plate-driven splitting,
+          both thresholds, and each fallback (no GPS, no time, no plate).
+        </li>
+        <li>
+          <code>Home.test.js</code> — reusing the <code>renderWithFiles</code> harness to assert that
+          violations are found, that loading one fills the fields from cache, that
+          <strong>no second <code>/platerecognizer</code> call fires</strong>, and that Submit
+          advances.
+        </li>
+      </ul>
+      <p>
+        The best fixture is already checked in. The ALPR snapshot holds exactly the variant case that
+        would break a naive exact-match vote, so a test built on it fails loudly if folding
+        regresses.
+      </p>
+      <div class="note">
+        <span class="note__label">Running them</span>
+        <p>
+          Use <code>yarn test:no-flaky</code> for the full non-network suite. The ALPR, geoclient,
+          srlookup and getVehicleType suites all call live services; run those only deliberately,
+          and always through <code>yarn test</code>, never <code>npx jest</code> — the
+          <code>-r dotenv/config</code> in the yarn script is the only thing loading credentials, so
+          under <code>npx</code> they fail misleadingly.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================ RISKS ============================ -->
+    <section id="risks">
+      <h2>Risks</h2>
+      <ul class="risk">
+        <li>
+          <b>Rate limits and quota</b>
+          Two different limits, pulling in opposite directions.
+          <span class="mono">POST /platerecognizer</span> carries <em>no</em> server-side rate
+          limit, so a batch of N photos is N ALPR calls fired in parallel; the concurrency cap is
+          politeness, not enforcement, so check the account's own Plate Recognizer quota before
+          running a large batch. <code>/api/uploadAttachment</code> is the opposite — capped at
+          <strong>30 uploads per 15 minutes per IP</strong> (<code>server.js</code>: 5 submissions
+          × 6 files each). A batch larger than that exceeds the bucket, at which point the
+          background uploads fail and submitting falls back to sending the files themselves. That
+          fallback is correct but it means the pre-upload optimisation stops helping exactly when a
+          batch is large enough to need it.
+        </li>
+        <li>
+          <b>Silent 3 + 3 truncation</b>
+          Extras past three images and three videos vanish with no error. The picker has to enforce
+          this or photos disappear between review and submission.
+        </li>
+        <li>
+          <b>Violations outside NYC</b>
+          <code>coordsAreInNyc</code> gates the submit button. Those groups should be flagged in the
+          queue rather than discovered at Submit.
+        </li>
+        <li>
+          <b>Repeated duplicate warnings</b>
+          Reports from one batch resemble each other, so the existing duplicate-submission warning
+          will likely fire over and over as the queue is walked.
+        </li>
+        <li>
+          <b>Videos in scope</b>
+          Supported today (frame-0 grab for ALPR) and assumed included. Say so if they should be
+          excluded from the batch.
+        </li>
+      </ul>
+    </section>
+
+    <!-- ============================ COMMITS ============================ -->
+    <section id="commits">
+      <h2>Implementation</h2>
+      <p>Three commits, in this order — the algorithm is pure and independently reviewable before any UI touches it.</p>
+      <ol class="sequence">
+        <li>
+          <strong>The module.</strong> <code>groupAttachmentsByViolation.js</code> and its tests.
+          Pure, no React, no UI.
+        </li>
+        <li>
+          <strong>The geocode memo.</strong> A <span class="mono">"lat,long" → address</span> cache,
+          with its own test, so repeated lookups stop re-hitting NYC Planning Labs.
+        </li>
+        <li>
+          <strong>The wiring.</strong> Batch state, the three photo inputs, the one-shot processing pass, the
+          queue, load-next, the picker and auto-advance in <code>Home.js</code>, plus the
+          <code>Home.test.js</code> coverage.
+        </li>
+      </ol>
+      <p>
+        Per the repo's conventions: run <code>yarn fix</code> before committing, create new commits
+        rather than amending, and use markdown backticks around identifiers in commit messages.
+      </p>
+    </section>
+
+    <footer>
+      <p>
+        Written 2026-09-23 against <span class="mono">ba141241</span>. Line references are to
+        <code>src/routes/home/Home.js</code> unless another path is given.
+      </p>
+      <p>
+        Regenerate by re-reading that file, <code>src/alpr.js</code>,
+        <code>src/createSubmission.js</code> and <code>src/attachmentStore.js</code>.
+      </p>
+    </footer>
+
+  </main>
+</div>
+
+</body>
+</html>

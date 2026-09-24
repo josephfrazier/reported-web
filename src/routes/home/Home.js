@@ -50,6 +50,8 @@ import homeStyles from './Home.css';
 
 import PreviousSubmissionsList from '../../components/PreviousSubmissionsList.js';
 import formatGeosearchAddress from '../../formatGeosearchAddress.js';
+import createGeosearchAddressCache from '../../geosearchAddressCache.js';
+import groupAttachmentsByViolation from '../../groupAttachmentsByViolation.js';
 import { isImage, isVideo } from '../../isImage.js';
 import getNycTimezoneOffset from '../../timezone.js';
 import { isPointInNycMemoized } from '../../isPointInNyc.js';
@@ -76,13 +78,15 @@ const setHomeStateCookie = (value, maxAge) => {
   });
 };
 
-const debouncedGeosearch = debounce(async ({ latitude, longitude }) => {
+const fetchGeosearchAddress = async ({ latitude, longitude }) => {
   const { data } = await axios.post('/api/geosearch', {
     lat: latitude,
     long: longitude,
   });
   return data;
-}, 500);
+};
+
+const debouncedGeosearch = debounce(fetchGeosearchAddress, 500);
 
 const howsmydrivingApiUrl = ({ plate, licenseState }) =>
   `https://api.howsmydrivingny.nyc/api/v1/?plate=${plate}:${licenseState}`;
@@ -452,6 +456,96 @@ async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
   }
 }
 
+// Batch mode's ALPR calls run through a pool of this size. Plate Recognizer
+// has no rate limit of its own (unlike /api/uploadAttachment), so the cap is
+// politeness rather than enforcement: a forty-photo folder must not become
+// forty simultaneous uploads, each holding its own copies of the image
+// buffers.
+const BATCH_ALPR_CONCURRENCY = 3;
+
+// Run `worker` over `items`, at most `limit` at a time, and return the results
+// in the order the items were given.
+async function mapWithConcurrency({ items, limit, worker }) {
+  const results = new Array(items.length);
+  let nextIndex = 0;
+
+  const runNext = async () => {
+    const index = nextIndex;
+    nextIndex += 1;
+    if (index >= items.length) {
+      return;
+    }
+    results[index] = await worker(items[index], index);
+    await runNext();
+  };
+
+  await Promise.all(
+    Array.from({ length: Math.min(limit, items.length) }, runNext),
+  );
+
+  return results;
+}
+
+// `extractDate` returns `{ millisecondsSinceEpoch, offset }` for a picture but
+// a bare number for a video: `extractLocationDateFromVideo` returns the two
+// together, and `extractDate` hands back only the time, which leaves the
+// single-violation flow's `setCreateDate` destructuring with two undefineds
+// and an Invalid Date. The batch normalises both shapes to the milliseconds it
+// sorts and groups on, keeping the offset for when the violation is loaded.
+function normalizeExtractedDate(extractedDate) {
+  if (Number.isFinite(extractedDate)) {
+    return { createDateMs: extractedDate };
+  }
+  if (Number.isFinite(extractedDate?.millisecondsSinceEpoch)) {
+    return {
+      createDateMs: extractedDate.millisecondsSinceEpoch,
+      createDateOffset: extractedDate.offset,
+    };
+  }
+  return {};
+}
+
+// What to attach for a violation with more photos than one report can carry:
+// the first three pictures and the first three videos, in the violation's own
+// (capture) order. createSubmission.js takes `images.slice(0, 3)` and
+// `videos.slice(0, 3)` and drops the rest without an error, so anything
+// outside those caps would disappear between review and submission.
+function defaultBatchSelection(photos) {
+  const selected = new Set();
+  let pictures = 0;
+  let videos = 0;
+
+  photos.forEach(photo => {
+    const ext = fileExtension(photo.name);
+    if (isImage({ ext }) && pictures < 3) {
+      pictures += 1;
+      selected.add(photo);
+    } else if (isVideo({ ext }) && videos < 3) {
+      videos += 1;
+      selected.add(photo);
+    }
+  });
+
+  return photos.filter(photo => selected.has(photo));
+}
+
+// A violation is only geocodable, and only loadable as a location, when every
+// coordinate it carries is a real number: extractLocation can hand back NaN
+// for a photo whose EXIF has no GPS.
+const hasCoordinates = ({ latitude, longitude } = {}) =>
+  Number.isFinite(latitude) && Number.isFinite(longitude);
+
+const BATCH_STAGE_LABELS = {
+  alpr: 'Reading license plates',
+  grouping: 'Grouping photos',
+  geocoding: 'Looking up addresses',
+};
+
+const formatBatchViolationTime = createDateMs =>
+  Number.isFinite(createDateMs)
+    ? new Date(createDateMs).toLocaleString()
+    : 'unknown time';
+
 class Home extends React.Component {
   static getVehicleMakeLogoUrl({ vehicleMake }) {
     if (vehicleMake.toLowerCase() === 'nissan') {
@@ -686,10 +780,20 @@ class Home extends React.Component {
       isMapOpen: false,
       isPreviousSubmissionsOpen: false,
       loginSuccessful: false,
+      isSemiAutomaticMode: false,
     };
 
     const initialStatePerSession = {
       attachmentData: [],
+
+      // Semi-automatic mode: one record per photo the user has picked (in the
+      // order they picked them), the violations those photos group into
+      // (earliest first), the stage the batch is currently working through,
+      // and the index of the violation loaded into the form.
+      batchPhotos: [],
+      batchViolations: [],
+      batchProgress: null,
+      currentViolationIndex: -1,
 
       isAlprLoading: false,
       isPasswordRevealed: false,
@@ -725,6 +829,17 @@ class Home extends React.Component {
     this.initialStatePersistent = initialStatePersistent;
     this.isDragging = false;
     this.plateLookupCache = new Map();
+    // Addresses already reverse-geocoded for this page's coordinates, so a
+    // second lookup for the same place (revisiting a location, or loading a
+    // violation the batch already geocoded) skips the network call. Per
+    // instance, like plateLookupCache: a shared one would serve this render's
+    // addresses to the next request's.
+    this.geosearchAddressCache = createGeosearchAddressCache();
+    // Serialises batch passes: picks accumulate, and each pass must see the
+    // results of the one before it (see addFilesToBatch).
+    this.batchQueue = Promise.resolve();
+    this.batchFolderInputRef = React.createRef();
+    this.batchPhotosInputRef = React.createRef();
     this.plateRef = React.createRef();
     this.plateLabelRef = React.createRef();
     this.loginEmailRef = React.createRef();
@@ -812,6 +927,14 @@ class Home extends React.Component {
         .filter(file => !!file);
 
       if (attachmentData.length === 0) {
+        return;
+      }
+
+      // Pasting is one more route for photos to arrive by, so in batch mode it
+      // feeds the batch like a pick or a drop does; with the mode off it is
+      // the single-violation flow's, as before.
+      if (this.state.isSemiAutomaticMode) {
+        this.addFilesToBatch(attachmentData);
         return;
       }
 
@@ -983,6 +1106,22 @@ class Home extends React.Component {
       return;
     }
 
+    // An address is a function of coordinates alone, so one already looked up
+    // for this page can be shown without asking geosearch again. Batch mode
+    // geocodes every violation before the user reviews them, so this is what
+    // makes loading one instant rather than another round trip.
+    const cachedAddress = this.geosearchAddressCache.get({
+      latitude,
+      longitude,
+    });
+    if (cachedAddress !== undefined) {
+      this.setState({
+        formatted_address: cachedAddress,
+      });
+      toast.dismiss('geosearch-warning');
+      return;
+    }
+
     debouncedGeosearch({ latitude, longitude })
       .then(data => {
         const { properties } = data.features[0];
@@ -994,8 +1133,15 @@ class Home extends React.Component {
           this.state.latitude === latitude &&
           this.state.longitude === longitude
         ) {
+          const address = formatGeosearchAddress(properties);
+          // Only a response that is still current is known to be for these
+          // coordinates: debounce() resolves every pending call with the last
+          // call's response, so the calls this guard discards are carrying
+          // some other location's address and must not be filed under this
+          // key.
+          this.geosearchAddressCache.set({ latitude, longitude, address });
           this.setState({
-            formatted_address: formatGeosearchAddress(properties),
+            formatted_address: address,
           });
           toast.dismiss('geosearch-warning');
         }
@@ -1300,38 +1446,42 @@ class Home extends React.Component {
     return this.handleAttachmentData({ attachmentData });
   };
 
+  // Start (or reuse) each file's background upload to /api/uploadAttachment,
+  // so that submitting sends attachment IDs instead of re-sending the bytes.
+  // The single-violation flow calls this for every pick; the batch calls it for
+  // the files it is about to process, so a violation can be submitted the same
+  // way.
+  startBackgroundUploads = attachmentData => {
+    attachmentData.forEach(attachmentFile => {
+      if (!fileUploadPromises.has(attachmentFile)) {
+        const uploadPromise = (async () => {
+          const formData = new FormData();
+          formData.append('email', this.state.email);
+          formData.append('password', this.state.password);
+          formData.append(
+            'attachmentData',
+            await inMemoryAttachment({ attachmentFile }),
+          );
+          const { data } = await axios.post('/api/uploadAttachment', formData);
+          return data.id;
+        })();
+        // The submit handler awaits this promise (catching failures so it can
+        // fall back to sending the files directly), so it can sit unhandled
+        // until then. Attach a no-op catch so the test runner and the browser
+        // console don't flag the rejection in the meantime.
+        uploadPromise.catch(() => {});
+        fileUploadPromises.set(attachmentFile, uploadPromise);
+      }
+    });
+  };
+
   handleAttachmentData = async ({ attachmentData }) => {
     this.setState(
       state => ({
         attachmentData: state.attachmentData.concat(attachmentData),
       }),
       async () => {
-        // Start background upload for each newly added file
-        attachmentData.forEach(attachmentFile => {
-          if (!fileUploadPromises.has(attachmentFile)) {
-            const uploadPromise = (async () => {
-              const formData = new FormData();
-              formData.append('email', this.state.email);
-              formData.append('password', this.state.password);
-              formData.append(
-                'attachmentData',
-                await inMemoryAttachment({ attachmentFile }),
-              );
-              const { data } = await axios.post(
-                '/api/uploadAttachment',
-                formData,
-              );
-              return data.id;
-            })();
-            // The submit handler awaits this promise (catching failures so
-            // it can fall back to sending the files directly), so it can sit
-            // unhandled until then. Attach a no-op catch so the test runner
-            // and the browser console don't flag the rejection in the
-            // meantime.
-            uploadPromise.catch(() => {});
-            fileUploadPromises.set(attachmentFile, uploadPromise);
-          }
-        });
+        this.startBackgroundUploads(attachmentData);
 
         const listsOfExtractions = await Promise.all(
           this.state.attachmentData.map(async (attachmentFile, index) => {
@@ -1438,6 +1588,404 @@ class Home extends React.Component {
         );
       },
     );
+  };
+
+  handleBatchFileInput = event => {
+    const attachmentData = [...event.target.files];
+    // Clear the input, so that picking the same file again still fires a
+    // change event.
+    event.target.value = ''; // eslint-disable-line no-param-reassign
+    this.addFilesToBatch(attachmentData);
+  };
+
+  // Add picked or dropped files to the batch. Only the new files go through
+  // extraction; the whole set is then regrouped, so a folder pick followed by
+  // a few stragglers is one batch rather than two.
+  addFilesToBatch = attachmentData => {
+    const files = [...attachmentData];
+
+    if (files.length === 0) {
+      return this.batchQueue;
+    }
+
+    // Chain the passes: two quick picks must not both regroup against the same
+    // starting list of photos. Nothing else writes batchPhotos, so each pass
+    // sees the one before it.
+    this.batchQueue = this.batchQueue.then(() =>
+      this.processBatchFiles(files).catch(err => {
+        console.error(err);
+        this.setState({ batchProgress: null });
+      }),
+    );
+
+    return this.batchQueue;
+  };
+
+  // The one-shot pass over newly picked files: extract each one, group
+  // everything picked so far into violations, then resolve their addresses.
+  //
+  // Deliberately not handleAttachmentData: that re-extracts the *entire*
+  // attachment array on every add, which pointed at a forty-photo folder means
+  // re-walking all forty photos each time the array grows.
+  processBatchFiles = async attachmentData => {
+    // The same background uploads the single-violation flow starts, so a
+    // violation from the queue can be submitted as attachment IDs.
+    this.startBackgroundUploads(attachmentData);
+
+    const newPhotos = attachmentData.map(attachmentFile => ({
+      file: attachmentFile,
+      name: attachmentFile.name,
+    }));
+
+    let completed = 0;
+    this.setState({
+      batchProgress: { stage: 'alpr', completed, total: newPhotos.length },
+    });
+
+    const extracted = await mapWithConcurrency({
+      items: newPhotos,
+      limit: BATCH_ALPR_CONCURRENCY,
+      worker: async photo => {
+        const result = await this.extractBatchPhotoData(photo);
+        completed += 1;
+        this.setState({
+          batchProgress: { stage: 'alpr', completed, total: newPhotos.length },
+        });
+        return result;
+      },
+    });
+
+    const { batchPhotos } = this.state;
+    const photos = batchPhotos.concat(extracted);
+
+    this.setState({
+      batchPhotos: photos,
+      batchProgress: { stage: 'grouping', completed: 0, total: 1 },
+    });
+
+    const violations = groupAttachmentsByViolation(photos);
+
+    // Flag each violation with whether it is inside the five boroughs, so the
+    // queue can say so up front rather than letting the user discover it when
+    // Submit is disabled. The module's records are left as they came back;
+    // `setCoords` re-derives the flag when a violation is loaded.
+    const lookup = new PolygonLookup(
+      this.props.boroughBoundariesFeatureCollection,
+    );
+    const flaggedViolations = violations.map(violation => ({
+      ...violation,
+      coordsAreInNyc: hasCoordinates(violation)
+        ? isPointInNycMemoized({
+            lookup,
+            end: {
+              latitude: violation.latitude,
+              longitude: violation.longitude,
+            },
+          })
+        : undefined,
+    }));
+
+    this.setState({
+      batchViolations: flaggedViolations,
+      batchProgress: {
+        stage: 'geocoding',
+        completed: 0,
+        total: flaggedViolations.length,
+      },
+    });
+
+    let geocoded = 0;
+    // One lookup at a time, and one per violation rather than per photo: a
+    // batch shot at one curb is dozens of identical lookups, and the memo
+    // serves every repeat after the first.
+    for (const violation of flaggedViolations) {
+      // eslint-disable-next-line no-await-in-loop -- sequential on purpose: see geocodeBatchViolation.
+      await this.geocodeBatchViolation(violation);
+      geocoded += 1;
+      this.setState({
+        batchProgress: {
+          stage: 'geocoding',
+          completed: geocoded,
+          total: flaggedViolations.length,
+        },
+      });
+    }
+
+    this.setState({ batchProgress: null });
+  };
+
+  // One photo's ALPR, date and location results. Runs once per file, and each
+  // extraction is allowed to fail on its own: a photo ALPR cannot read still
+  // groups on its time and place, and one whose EXIF is missing still has its
+  // plate read. Whatever came back empty shows up as a flag in the queue.
+  extractBatchPhotoData = async photo => {
+    const { file: attachmentFile } = photo;
+
+    let attachmentBuffer;
+    let attachmentArrayBuffer;
+    try {
+      ({ attachmentBuffer, attachmentArrayBuffer } = await blobToBuffer({
+        attachmentFile,
+      }));
+    } catch (err) {
+      console.error(err);
+      return photo;
+    }
+
+    const { name: ext } = (await detectFromBuffer(attachmentBuffer)) || {
+      name: 'jpg',
+    };
+
+    const [plateResults, extractedDate, location] = await Promise.all([
+      this.batchPlateResults({ attachmentFile, attachmentBuffer, ext }),
+      extractDate({ attachmentFile, attachmentArrayBuffer, ext }).catch(
+        () => undefined,
+      ),
+      extractLocation({
+        attachmentFile,
+        attachmentArrayBuffer,
+        ext,
+        isReverseGeocodingEnabled: this.state.isReverseGeocodingEnabled,
+      }).catch(() => undefined),
+    ]);
+
+    return {
+      ...photo,
+      plateResults,
+      uploadWidth: plateResults?.uploadWidth,
+      uploadHeight: plateResults?.uploadHeight,
+      ...normalizeExtractedDate(extractedDate),
+      latitude: location?.latitude,
+      longitude: location?.longitude,
+    };
+  };
+
+  // The full ALPR response, not extractPlate's collapsed single plate: the
+  // grouping needs every `results[]` entry and the `candidates` that fold OCR
+  // variants together, and extractPlate discards exactly those (it prefers the
+  // medallion, which is a tie-break here rather than a filter).
+  batchPlateResults = async ({ attachmentFile, attachmentBuffer, ext }) => {
+    if (this.state.isAlprEnabled === false) {
+      console.info('ALPR is disabled, skipping');
+      return undefined;
+    }
+
+    try {
+      return await fetchPlateResults({
+        attachmentFile,
+        attachmentBuffer,
+        ext,
+        email: this.state.email,
+        password: this.state.password,
+      });
+    } catch (err) {
+      console.error(err);
+      // A photo ALPR could not read still belongs to the batch: it groups by
+      // time and place, and the queue flags the group for manual entry.
+      return undefined;
+    }
+  };
+
+  // Resolve a violation's coordinates to an address, for the form to show when
+  // the user loads it.
+  geocodeBatchViolation = async violation => {
+    const { latitude, longitude } = violation;
+
+    if (!hasCoordinates(violation) || violation.coordsAreInNyc === false) {
+      return;
+    }
+
+    if (this.geosearchAddressCache.get({ latitude, longitude }) !== undefined) {
+      return;
+    }
+
+    try {
+      // Not debouncedGeosearch: debounce() resolves every pending call with
+      // the last call's response, so two lookups in flight at once -- this
+      // violation's and one the user started by moving the map -- would each
+      // file the other's address under their own coordinates.
+      const data = await fetchGeosearchAddress({ latitude, longitude });
+      const { properties } = data.features[0];
+      this.geosearchAddressCache.set({
+        latitude,
+        longitude,
+        address: formatGeosearchAddress(properties),
+      });
+    } catch (err) {
+      // Leave the memo empty rather than caching the failure: setCoords asks
+      // again when the user loads this violation, and geosearch being down
+      // must not stop the batch.
+      console.error(err);
+    }
+  };
+
+  // Load a violation into the form: its photos become the attachments, and
+  // the plate, time and location come from the batch's extraction results
+  // rather than from re-running it.
+  loadBatchViolation = index => {
+    const { batchViolations } = this.state;
+    const violation = batchViolations[index];
+
+    if (!violation) {
+      // Nothing (left) to load: leave the form empty rather than leaving the
+      // previous violation's photos under a cleared plate.
+      this.setState({
+        currentViolationIndex: -1,
+        attachmentData: [],
+        allPlateData: null,
+        plateDataByAttachmentName: {},
+      });
+      return;
+    }
+
+    // The overlays and the plate suggestions come from the same ALPR responses
+    // the single-violation flow puts here.
+    const plateDataByAttachmentName = {};
+    violation.photos.forEach(photo => {
+      if (photo.plateResults) {
+        plateDataByAttachmentName[photo.name] = photo.plateResults;
+      }
+    });
+
+    this.setState({
+      currentViolationIndex: index,
+      attachmentData: defaultBatchSelection(violation.photos).map(
+        photo => photo.file,
+      ),
+      allPlateData:
+        violation.photos.find(photo => photo.plateResults)?.plateResults ||
+        null,
+      plateDataByAttachmentName,
+    });
+
+    this.setLicensePlate({
+      plate: violation.plate,
+      licenseState: violation.licenseState,
+    });
+
+    const [earliest] = violation.photos;
+    this.setCreateDate({
+      millisecondsSinceEpoch: violation.createDateMs,
+      // The offset the camera recorded, as the single-violation flow uses.
+      // Videos have none (see normalizeExtractedDate).
+      ...(Number.isFinite(earliest.createDateOffset)
+        ? { offset: earliest.createDateOffset }
+        : {}),
+    });
+
+    if (hasCoordinates(violation)) {
+      this.setCoords({
+        latitude: violation.latitude,
+        longitude: violation.longitude,
+        addressProvenance: '(extracted from picture/video)',
+      });
+    } else {
+      // No photo in the group had coordinates (Android strips them from media
+      // shared through some apps, see issue #751). Start from the default
+      // location rather than inheriting the previous violation's address, and
+      // let the user place it on the map.
+      this.setCoords({
+        latitude: defaultLatitude,
+        longitude: defaultLongitude,
+      });
+    }
+  };
+
+  loadNextBatchViolation = () => {
+    // The loaded index is where the walk-through has reached, so "next" is
+    // whatever follows it — and the first violation when none is loaded.
+    this.loadBatchViolation(this.state.currentViolationIndex + 1);
+  };
+
+  // Move past a group without reporting it. It stays in the queue, so the user
+  // can come back to it by walking round again.
+  skipBatchViolation = index => {
+    this.loadBatchViolation(index + 1);
+  };
+
+  // Drop a group from the batch. Its photos go with it: regrouping the batch
+  // (the next pick does) must not bring back a violation the user deleted.
+  deleteBatchViolation = index => {
+    const { batchPhotos, batchViolations, currentViolationIndex } = this.state;
+    const violation = batchViolations[index];
+
+    if (!violation) {
+      return;
+    }
+
+    const removedPhotos = new Set(violation.photos);
+    const remainingViolations = batchViolations.filter((_, i) => i !== index);
+
+    this.setState(
+      {
+        batchViolations: remainingViolations,
+        batchPhotos: batchPhotos.filter(photo => !removedPhotos.has(photo)),
+        currentViolationIndex:
+          index < currentViolationIndex
+            ? currentViolationIndex - 1
+            : currentViolationIndex,
+      },
+      () => {
+        if (index === currentViolationIndex) {
+          this.loadBatchViolation(
+            Math.min(index, remainingViolations.length - 1),
+          );
+        }
+      },
+    );
+  };
+
+  // Take a violation out of the queue once it has been submitted, and load
+  // whatever took its index: the queue then always shows what is left to
+  // report.
+  advanceBatchAfterSubmit = () => {
+    const { batchViolations, currentViolationIndex } = this.state;
+    const remainingViolations = batchViolations.filter(
+      (_, index) => index !== currentViolationIndex,
+    );
+
+    this.setState({ batchViolations: remainingViolations }, () => {
+      this.loadBatchViolation(
+        Math.min(currentViolationIndex, remainingViolations.length - 1),
+      );
+    });
+  };
+
+  // Attach or detach one of a loaded violation's photos. A group of more than
+  // three photos is the picker's job: the first three pictures and the first
+  // three videos are attached on load, and this is how the user swaps one in
+  // or out. The cap is enforced here because createSubmission.js enforces it
+  // silently, by dropping whatever comes after the third.
+  toggleBatchPhoto = ({ violation, photo, checked }) => {
+    const { attachmentData } = this.state;
+    const selected = new Set(attachmentData);
+
+    if (checked) {
+      const wantPicture = isImage({ ext: fileExtension(photo.name) });
+      const selectedOfKind = attachmentData.filter(
+        file => isImage({ ext: fileExtension(file.name) }) === wantPicture,
+      );
+
+      if (selectedOfKind.length >= 3) {
+        Home.notifyWarning(
+          `A report can include at most 3 ${
+            wantPicture ? 'pictures' : 'videos'
+          }. Uncheck one to swap it in.`,
+        );
+        return;
+      }
+      selected.add(photo.file);
+    } else {
+      selected.delete(photo.file);
+    }
+
+    // Keep the attachments in the violation's own (capture) order, so a swap
+    // does not shuffle the report's photos.
+    this.setState({
+      attachmentData: violation.photos
+        .map(({ file }) => file)
+        .filter(file => selected.has(file)),
+    });
   };
 
   handleInputChange = event => {
@@ -1745,6 +2293,126 @@ class Home extends React.Component {
     }
   }
 
+  // The batch's own UI: which stage it is working through, the violations it
+  // found, and — for a group with more photos than one report can carry — the
+  // picker for choosing which of them to attach.
+  renderBatchStatus() {
+    const {
+      batchPhotos,
+      batchProgress,
+      batchViolations,
+      currentViolationIndex,
+    } = this.state;
+
+    if (batchPhotos.length === 0 && !batchProgress) {
+      return null;
+    }
+
+    const loadedViolation = batchViolations[currentViolationIndex];
+
+    return (
+      <React.Fragment>
+        {batchProgress && (
+          <div>
+            <progress
+              max={batchProgress.total}
+              value={batchProgress.completed}
+              style={{
+                width: '100%',
+              }}
+            >
+              {batchProgress.completed}/{batchProgress.total}
+            </progress>
+            <p>
+              {BATCH_STAGE_LABELS[batchProgress.stage]} (
+              {batchProgress.completed}/{batchProgress.total})
+            </p>
+          </div>
+        )}
+
+        {batchViolations.length > 0 && (
+          <div>
+            <h3>
+              Found {batchViolations.length} violation
+              {batchViolations.length === 1 ? '' : 's'}
+            </h3>
+            <button type="button" onClick={this.loadNextBatchViolation}>
+              Load next violation
+            </button>
+            <ul>
+              {batchViolations.map((violation, index) => {
+                const flags = [];
+                if (!hasCoordinates(violation)) {
+                  flags.push('no location — set it on the map');
+                } else if (violation.coordsAreInNyc === false) {
+                  flags.push('outside NYC');
+                }
+                if (violation.photos.length > 3) {
+                  flags.push('choose up to 3 to attach');
+                }
+
+                return (
+                  <li
+                    key={`${violation.createDateMs}-${violation.plate}-${violation.photos[0]?.name}`}
+                  >
+                    {index === currentViolationIndex ? '▸ ' : ''}
+                    {formatBatchViolationTime(violation.createDateMs)} —{' '}
+                    {violation.plate || '(no plate read)'} (
+                    {violation.photos.length} photo
+                    {violation.photos.length === 1 ? '' : 's'})
+                    {flags.length > 0 && ` — ${flags.join(', ')}`}{' '}
+                    <button
+                      type="button"
+                      onClick={() => this.skipBatchViolation(index)}
+                    >
+                      Skip
+                    </button>{' '}
+                    <button
+                      type="button"
+                      onClick={() => this.deleteBatchViolation(index)}
+                    >
+                      Delete
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+
+        {!batchProgress && batchViolations.length === 0 && (
+          <p>No violations left in the batch.</p>
+        )}
+
+        {loadedViolation && loadedViolation.photos.length > 3 && (
+          <div>
+            <p>
+              Pick up to 3 pictures and 3 videos to attach to this report (the
+              rest stay in the batch):
+            </p>
+            {loadedViolation.photos.map((photo, index) => (
+              <label key={photo.name} htmlFor={`batch-photo-${index}`}>
+                <input
+                  id={`batch-photo-${index}`}
+                  type="checkbox"
+                  checked={this.state.attachmentData.includes(photo.file)}
+                  onChange={event =>
+                    this.toggleBatchPhoto({
+                      violation: loadedViolation,
+                      photo,
+                      checked: event.target.checked,
+                    })
+                  }
+                />{' '}
+                {photo.name}
+              </label>
+            ))}
+          </div>
+        )}
+      </React.Fragment>
+    );
+  }
+
   render() {
     const matchingPlateThumbnail = this.findMatchingPlateThumbnail();
     const previousSubmissionsSummary = this.getPreviousSubmissionsSummary();
@@ -1755,7 +2423,13 @@ class Home extends React.Component {
       <Dropzone
         className={homeStyles.root}
         onDrop={attachmentData => {
-          this.handleAttachmentData({ attachmentData });
+          // With the mode on, every drop feeds the batch; the
+          // single-violation flow is what the toggle-off state gives you.
+          if (this.state.isSemiAutomaticMode) {
+            this.addFilesToBatch(attachmentData);
+          } else {
+            this.handleAttachmentData({ attachmentData });
+          }
         }}
         style={{
           position: 'fixed',
@@ -1993,6 +2667,17 @@ class Home extends React.Component {
                     onChange={this.handleInputChange}
                   />{' '}
                   Load previous submissions on page load
+                </label>
+
+                <label htmlFor="isSemiAutomaticMode">
+                  <input
+                    id="isSemiAutomaticMode"
+                    type="checkbox"
+                    checked={this.state.isSemiAutomaticMode}
+                    name="isSemiAutomaticMode"
+                    onChange={this.handleInputChange}
+                  />{' '}
+                  Add a batch of pictures/videos, then review each violation
                 </label>
               </div>
             )}
@@ -2408,6 +3093,15 @@ class Home extends React.Component {
                         latitude: defaultLatitude,
                         longitude: defaultLongitude,
                       });
+                      // Batch mode reports one violation at a time, so take
+                      // the submitted one out of the queue and load the next
+                      // rather than leaving the user at an empty form.
+                      if (
+                        this.state.isSemiAutomaticMode &&
+                        this.state.currentViolationIndex >= 0
+                      ) {
+                        this.advanceBatchAfterSubmit();
+                      }
                       Home.notifySuccess(
                         <React.Fragment>
                           <p>Thanks for your submission!</p>
@@ -2436,21 +3130,69 @@ class Home extends React.Component {
                 }}
               >
                 <fieldset disabled={this.state.isSubmitting}>
-                  <FileReaderInput
-                    multiple
-                    as="buffer"
-                    onChange={this.handleAttachmentInput}
-                    style={{
-                      float: 'left',
-                      margin: '1px',
-                    }}
-                  >
-                    <button type="button" style={{ whiteSpace: 'wrap' }}>
-                      Add pictures/videos (up to 3 each, 20MB max each)
-                    </button>
-                  </FileReaderInput>
+                  {this.state.isSemiAutomaticMode ? (
+                    <React.Fragment>
+                      {/* Both inputs read `event.target.files` directly rather
+                          than going through FileReaderInput: that component is
+                          used with `as="buffer"`, which reads every selected
+                          file's contents into memory, and across a forty-photo
+                          folder that is a great deal of buffering before ALPR
+                          has even started. */}
+                      <button
+                        type="button"
+                        style={{ float: 'left', margin: '1px' }}
+                        onClick={() =>
+                          this.batchFolderInputRef.current?.click()
+                        }
+                      >
+                        Add folder
+                      </button>
+                      <input
+                        ref={this.batchFolderInputRef}
+                        type="file"
+                        multiple
+                        webkitdirectory=""
+                        style={{ display: 'none' }}
+                        onChange={this.handleBatchFileInput}
+                      />
+
+                      <button
+                        type="button"
+                        style={{ float: 'left', margin: '1px' }}
+                        onClick={() =>
+                          this.batchPhotosInputRef.current?.click()
+                        }
+                      >
+                        Add pictures/videos
+                      </button>
+                      <input
+                        ref={this.batchPhotosInputRef}
+                        type="file"
+                        multiple
+                        accept="image/*,video/*"
+                        style={{ display: 'none' }}
+                        onChange={this.handleBatchFileInput}
+                      />
+                    </React.Fragment>
+                  ) : (
+                    <FileReaderInput
+                      multiple
+                      as="buffer"
+                      onChange={this.handleAttachmentInput}
+                      style={{
+                        float: 'left',
+                        margin: '1px',
+                      }}
+                    >
+                      <button type="button" style={{ whiteSpace: 'wrap' }}>
+                        Add pictures/videos (up to 3 each, 20MB max each)
+                      </button>
+                    </FileReaderInput>
+                  )}
 
                   <div style={{ clear: 'both' }} />
+
+                  {this.state.isSemiAutomaticMode && this.renderBatchStatus()}
 
                   {this.state.attachmentData.length > 0 && (
                     <React.Fragment>

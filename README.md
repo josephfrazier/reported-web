@@ -37,9 +37,65 @@ yarn mongo-stop # Stops MongoDB
 
 ## `Unexpected end of form` errors
 
-These have been seen a few times from a couple users, seemingly limited to iOS, but on both Safari and Chrome.
+These have been seen a few times from a couple users, mostly limited to iOS (on both Safari and Chrome),
+but I have seen it myself on Android Firefox at least once (on August 30, 2026: see [Slack context](https://reportedcab.slack.com/archives/C9VNM3DL4/p1788125345566229?thread_ts=1783902255.721759&cid=C9VNM3DL4)).
 Chrome on iOS has worked at least once for an affected user, but not consistently.
-So far, my recommendation for this error is to use a non-iOS device.
+The error turned out not to be ours: it's what `busboy` (the multipart parser behind
+`multer`) reports when a request's body ends before the closing boundary, i.e. when the
+browser sent an empty or truncated upload. The server then answers `/submit` with a
+`500` whose message is passed straight through to the "Error: Unexpected end of form"
+toast, which is why users see it.
+
+Two things make browsers do that:
+
+- **iOS/Safari 26.5.2 and later**: a multipart `FormData` upload containing a `File` from
+  a file input arrives with `Content-Length: 0` and no body at all. The page itself can
+  read the file fine; it's the process that puts the request on the wire that fails to.
+  This is [WebKit bug 319985](https://bugs.webkit.org/show_bug.cgi?id=319985) (duplicates
+  [#319396](https://bugs.webkit.org/show_bug.cgi?id=319396) and
+  [#320904](https://bugs.webkit.org/show_bug.cgi?id=320904)), still unfixed, and the
+  reporters measured ~3.4% of multipart POSTs failing on 26.5.2 versus none on 26.5 or
+  earlier. It explains the mostly-iOS pattern above, and why retrying keeps
+  failing until the file is re-selected.
+- **Service workers**: WebKit's root-cause analysis of #319396 points at a service worker
+  re-issuing an intercepted POST with `fetch(event.request)`, which drops the body
+  ([#319396 comment](https://bugs.webkit.org/show_bug.cgi?id=319396#c0)). Firefox has its
+  own request-body-through-a-service-worker bugs, and that's the likeliest way this
+  shows up outside iOS/WebKit.
+
+The September 2026 uptick has two causes: the WebKit regression shipped with Safari/iOS
+26.5.2 on 2026-06-29 and is still present in 26.6/26.7/27, so the share of affected users
+has been climbing as people update; and
+[#711](https://github.com/josephfrazier/reported-web/pull/711) (background uploads,
+2026-08-31) made each attachment upload twice (once in the background, once again through
+`/submit` when the first attempt fails), which doubles the chances of a hit until the
+first one succeeds.
+
+What we do about it:
+
+- `public/sw.js` only intercepts navigations, so no upload is re-issued through the
+  service worker.
+- Uploads send bytes the page has already read (`new File([...])` in
+  `inMemoryAttachment`) instead of the `File` from the file input, which is the
+  workaround the WebKit bug's reporters recommend. `/platerecognizer` already did this
+  with `blobUtil.arrayBufferToBlob`, so it should show fewer of these in the logs than
+  `/submit` and `/api/uploadAttachment` — a useful thing to check.
+- `src/server.js` logs `Multipart body ended early:` with the URL, `content-length`,
+  `transfer-encoding` and user agent, so Heroku logs tell the two cases above apart
+  (a `contentLength` of `0` from an iOS 26.5+ user agent is the WebKit one).
+
+What to tell an affected user: remove and re-add the photos/videos before submitting
+again — reusing a selection that already failed keeps failing — or use a device that
+isn't on the affected browser version.
+
+Worth checking while looking at this: `/api/uploadAttachment`'s rate limiter keys on
+`req.ip`, and `src/config.js` defaults `trust proxy` to `'loopback'`, which trusts
+`X-Forwarded-For` only from a loopback peer. Heroku's router isn't one, so unless
+`TRUST_PROXY` is set on Heroku, every request carries the router's private address as
+`req.ip` and all users share one 30-per-15-minutes bucket. Background uploads then fail
+(silently, since the client only logs those) and each submission falls back to re-sending
+every file through `/submit` — the route that shows this error. `TRUST_PROXY=uniquelocal`
+covers the router's private address.
 
 ## Context on `localStorage` use (w.r.t performance concerns about lag/delay/slowness/latency when typing)
 

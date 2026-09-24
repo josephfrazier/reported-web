@@ -13,6 +13,7 @@ import renderer from 'react-test-renderer';
 import { setImmediate } from 'timers';
 import StyleContext from 'isomorphic-style-loader/StyleContext';
 import axios from 'axios';
+import * as blobUtil from 'blob-util';
 import { toast } from 'react-toastify';
 import Modal from 'react-modal';
 import App from '../../components/App.js';
@@ -1682,10 +1683,24 @@ describe('Home', () => {
       );
       expect(uploadCalls).toHaveLength(2);
       uploadCalls.forEach(([, body], index) => {
+        const original = index === 0 ? photo : video;
+        const uploaded = body.get('attachmentData');
         expect(body.get('email')).toBe('test@example.com');
         expect(body.get('password')).toBe('test-password');
-        expect(body.get('attachmentData')).toBe(index === 0 ? photo : video);
+        // The upload carries a copy of the file's bytes, not the File from
+        // the file input: the network is handed a File whose contents are
+        // already in memory, since some browsers send an empty body for the
+        // original (see the "Unexpected end of form" section of the README).
+        expect(uploaded).not.toBe(original);
+        expect(uploaded.name).toBe(original.name);
+        expect(uploaded.type).toBe(original.type);
+        expect(uploaded.size).toBe(original.size);
       });
+      const [, firstUpload] = uploadCalls[0];
+      const uploadedBytes = await blobUtil.blobToArrayBuffer(
+        firstUpload.get('attachmentData'),
+      );
+      expect(Buffer.from(uploadedBytes)).toEqual(Buffer.from('photo'));
 
       // Nothing has been submitted yet: the uploads happen before the user
       // clicks Submit.
@@ -1745,7 +1760,12 @@ describe('Home', () => {
       expect(submitBody.get('attachmentIds')).toBeNull();
       // object-to-formdata serializes array items under `<name>[]`, which is
       // the field name the server's multer `upload.array` expects.
-      expect(submitBody.get('attachmentData[]')).toBe(photo);
+      const submitted = submitBody.get('attachmentData[]');
+      expect(submitted).not.toBe(photo);
+      expect(submitted.name).toBe(photo.name);
+      expect(submitted.type).toBe(photo.type);
+      const submittedBytes = await blobUtil.blobToArrayBuffer(submitted);
+      expect(Buffer.from(submittedBytes)).toEqual(Buffer.from('photo'));
 
       expect(homeRef.current.state.attachmentData).toEqual([]);
 

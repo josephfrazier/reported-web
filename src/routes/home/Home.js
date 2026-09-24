@@ -147,6 +147,16 @@ const getBlobUrl = blob => {
 // Tracks in-progress background upload promises keyed by File object
 const fileUploadPromises = new WeakMap();
 
+// Uploads send bytes this page has read itself rather than the File object
+// from the file input. Some browsers (iOS/Safari 26.5.2+, see the
+// "Unexpected end of form" section of the README) send an empty request body
+// when the process that puts an upload on the wire is the one that has to
+// read the file; reading it here first works around that.
+const inMemoryAttachment = async ({ attachmentFile }) => {
+  const bytes = await blobUtil.blobToArrayBuffer(attachmentFile);
+  return new File([bytes], attachmentFile.name, { type: attachmentFile.type });
+};
+
 const geolocate = () =>
   promisedLocation().catch(async () => {
     const { data } = await axios.get('https://ipapi.co/json');
@@ -1303,7 +1313,10 @@ class Home extends React.Component {
               const formData = new FormData();
               formData.append('email', this.state.email);
               formData.append('password', this.state.password);
-              formData.append('attachmentData', attachmentFile);
+              formData.append(
+                'attachmentData',
+                await inMemoryAttachment({ attachmentFile }),
+              );
               const { data } = await axios.post(
                 '/api/uploadAttachment',
                 formData,
@@ -2308,6 +2321,18 @@ class Home extends React.Component {
                     attachmentIds.length > 0 &&
                     attachmentIds.every(id => id !== null);
 
+                  // Falling back to the files themselves means sending them
+                  // again, so read them here rather than handing the network
+                  // the Files that came from the file input (see
+                  // inMemoryAttachment).
+                  const attachmentsToSubmit = !hasAllIds
+                    ? await Promise.all(
+                        this.state.attachmentData.map(attachmentFile =>
+                          inMemoryAttachment({ attachmentFile }),
+                        ),
+                      )
+                    : null;
+
                   axios
                     .post(
                       '/submit',
@@ -2322,7 +2347,7 @@ class Home extends React.Component {
                             }
                           : {
                               ...this.getPerSubmissionState(),
-                              attachmentData: this.state.attachmentData,
+                              attachmentData: attachmentsToSubmit,
                               CreateDate: new Date(
                                 this.state.CreateDate,
                               ).toISOString(),

@@ -55,7 +55,7 @@
     "history": "^4.7.2",
     "image-extensions": "^1.1.0",
     "isomorphic-style-loader": "^5.4.0",
-    "jsdom": "^26.1.0",
+    "jsdom": "^30.1.0",
     "json-stringify-safe": "^5.0.1",
     "lodash.sortby": "^4.7.0",
     "marx-css": "^3.0.3",

@@ -147,6 +147,16 @@ const getBlobUrl = blob => {
 // Tracks in-progress background upload promises keyed by File object
 const fileUploadPromises = new WeakMap();
 
+// Uploads send bytes this page has read itself rather than the File object
+// from the file input. Some browsers (iOS/Safari 26.5.2+, see the
+// "Unexpected end of form" section of the README) send an empty request body
+// when the process that puts an upload on the wire is the one that has to
+// read the file; reading it here first works around that.
+const inMemoryAttachment = async ({ attachmentFile }) => {
+  const bytes = await blobUtil.blobToArrayBuffer(attachmentFile);
+  return new File([bytes], attachmentFile.name, { type: attachmentFile.type });
+};
+
 const geolocate = () =>
   promisedLocation().catch(async () => {
     const { data } = await axios.get('https://ipapi.co/json');
@@ -599,8 +609,8 @@ class Home extends React.Component {
     return toast.info(notificationContent);
   }
 
-  static notifyWarning(notificationContent) {
-    return toast.warn(notificationContent);
+  static notifyWarning(notificationContent, options) {
+    return toast.warn(notificationContent, options);
   }
 
   static notifyError(notificationContent) {
@@ -787,7 +797,9 @@ class Home extends React.Component {
     // browser permission prompt until after the user has logged in, so the
     // prompt appears in a trusted context rather than on first visit.
     if (this.state.loginSuccessful) {
-      this.geolocateAndSetCoords();
+      // Automatic at page load, so don't warn if geosearch is down; the
+      // post-login calls keep the warning.
+      this.geolocateAndSetCoords({ warnOnGeosearchFailure: false });
     }
 
     // Allow users to paste image data
@@ -895,7 +907,7 @@ class Home extends React.Component {
   // Request the browser's geolocation permission and update coordinates.
   // Deferred until after login so the permission prompt appears in a trusted
   // context rather than on the first page visit.
-  geolocateAndSetCoords = () =>
+  geolocateAndSetCoords = ({ warnOnGeosearchFailure = true } = {}) =>
     geolocate()
       .then(({ coords: { latitude, longitude }, ipProvenance = 'device' }) => {
         // if there's no attachments or a location couldn't be extracted, just use here
@@ -904,11 +916,14 @@ class Home extends React.Component {
           (this.state.latitude === defaultLatitude &&
             this.state.longitude === defaultLongitude)
         ) {
-          this.setCoords({
-            latitude,
-            longitude,
-            addressProvenance: `(from ${ipProvenance}: ${latitude}, ${longitude})`,
-          });
+          this.setCoords(
+            {
+              latitude,
+              longitude,
+              addressProvenance: `(from ${ipProvenance}: ${latitude}, ${longitude})`,
+            },
+            { warnOnGeosearchFailure },
+          );
         }
       })
       .catch(err => {
@@ -920,6 +935,7 @@ class Home extends React.Component {
 
   setCoords = (
     { latitude, longitude, addressProvenance } = { addressProvenance: '' },
+    { warnOnGeosearchFailure = true } = {},
   ) => {
     if (!latitude || !longitude) {
       console.error('latitude and/or longitude is missing');
@@ -955,13 +971,58 @@ class Home extends React.Component {
       coordsAreInNyc: true,
     });
 
-    debouncedGeosearch({ latitude, longitude }).then(data => {
-      const { properties } = data.features[0];
-
+    if (latitude === defaultLatitude && longitude === defaultLongitude) {
+      // The default coordinates are a fallback, not a location the user
+      // chose — submissions are rejected at these coordinates anyway. Skip
+      // the geosearch network call entirely and leave the address empty, so
+      // the "Where" button prompts the user to choose a location on the map
+      // (and a geosearch outage can't warn before they've picked one).
       this.setState({
-        formatted_address: formatGeosearchAddress(properties),
+        formatted_address: '',
       });
-    });
+      return;
+    }
+
+    debouncedGeosearch({ latitude, longitude })
+      .then(data => {
+        const { properties } = data.features[0];
+
+        // Geosearch responses can arrive out of order (the debounce only
+        // coalesces calls less than 500ms apart), so ignore a response that
+        // isn't for the coordinates currently in state.
+        if (
+          this.state.latitude === latitude &&
+          this.state.longitude === longitude
+        ) {
+          this.setState({
+            formatted_address: formatGeosearchAddress(properties),
+          });
+          toast.dismiss('geosearch-warning');
+        }
+      })
+      .catch(err => {
+        // Geosearch can fail (e.g. when the service is down, or coordinates
+        // it can't resolve). The submission can still be created: the
+        // backend re-tries the address lookup when it sends the report to
+        // 311, and the text sent to 311 includes a Google Maps link to the
+        // lat/lng either way.
+        console.error(err);
+        if (
+          this.state.latitude === latitude &&
+          this.state.longitude === longitude
+        ) {
+          this.setState({ formatted_address: '' });
+          if (warnOnGeosearchFailure) {
+            Home.notifyWarning(
+              "We couldn't find the address right now, but you can still submit. The Description sent to 311 will include a Google Maps link to the location.",
+              // Reuse the same toast for repeated failures (e.g. while the
+              // user keeps moving the map), rather than stacking a new one
+              // each time.
+              { toastId: 'geosearch-warning' },
+            );
+          }
+        }
+      });
   };
 
   setCreateDate = ({
@@ -1252,7 +1313,10 @@ class Home extends React.Component {
               const formData = new FormData();
               formData.append('email', this.state.email);
               formData.append('password', this.state.password);
-              formData.append('attachmentData', attachmentFile);
+              formData.append(
+                'attachmentData',
+                await inMemoryAttachment({ attachmentFile }),
+              );
               const { data } = await axios.post(
                 '/api/uploadAttachment',
                 formData,
@@ -2257,6 +2321,18 @@ class Home extends React.Component {
                     attachmentIds.length > 0 &&
                     attachmentIds.every(id => id !== null);
 
+                  // Falling back to the files themselves means sending them
+                  // again, so read them here rather than handing the network
+                  // the Files that came from the file input (see
+                  // inMemoryAttachment).
+                  const attachmentsToSubmit = !hasAllIds
+                    ? await Promise.all(
+                        this.state.attachmentData.map(attachmentFile =>
+                          inMemoryAttachment({ attachmentFile }),
+                        ),
+                      )
+                    : null;
+
                   axios
                     .post(
                       '/submit',
@@ -2271,7 +2347,7 @@ class Home extends React.Component {
                             }
                           : {
                               ...this.getPerSubmissionState(),
-                              attachmentData: this.state.attachmentData,
+                              attachmentData: attachmentsToSubmit,
                               CreateDate: new Date(
                                 this.state.CreateDate,
                               ).toISOString(),
@@ -2624,9 +2700,11 @@ class Home extends React.Component {
                           }}
                         >
                           {this.state.formatted_address
-                            .split(', ')
-                            .slice(0, 2)
-                            .join(', ')}
+                            ? this.state.formatted_address
+                                .split(', ')
+                                .slice(0, 2)
+                                .join(', ')
+                            : 'Click to choose address on map'}
                         </button>
                       </label>
 

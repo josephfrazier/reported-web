@@ -83,6 +83,14 @@ Never squash the trio together: each step is independently reviewable, and the h
 ## Git push
 
 - **Do not try to `git push` to GitHub from the sandbox** — authentication is not configured and attempts will fail with "Invalid username or token." Instead, commit changes here and ask the user to push from their host.
+- **Create working branches with `--no-track`, and push them with an explicit destination:**
+
+  ```bash
+  git checkout -b my-branch --no-track origin/main
+  git push -u origin my-branch:refs/heads/my-branch
+  ```
+
+  `git checkout -b my-branch origin/main` records `branch.my-branch.merge = refs/heads/main`, so the new branch tracks `main` rather than a same-named branch. With `push.default = upstream` (or `tracking`) in the user's global config, which is not visible from the sandbox, `git push origin my-branch` then resolves its destination from that upstream and **tries to push onto `main`** — rejected here with `GH006: Protected branch update failed` because `main` is protected, but it would land on an unprotected branch. `--no-track` leaves the branch with no upstream, so a push defaults to the same name, and the explicit `:refs/heads/<name>` destination overrides `push.default` and records the correct tracking ref. To repair a branch created the old way, point its upstream at itself with `git config branch.<name>.merge refs/heads/<name>` (or `git branch --unset-upstream <name>`).
 
 ## Validation and CI gotchas
 

@@ -1897,6 +1897,24 @@ class Home extends React.Component {
     this.loadBatchViolation(this.state.currentViolationIndex + 1);
   };
 
+  // Jump straight to a violation by clicking it in the queue.
+  //
+  // Clicking the one already loaded is deliberately a no-op rather than a
+  // reload: loadBatchViolation resets the photo selection to the default, so
+  // reloading would silently discard whatever the user had swapped in with
+  // the picker. The guard has to live here rather than in
+  // loadBatchViolation, because deleteBatchViolation and
+  // advanceBatchAfterSubmit both legitimately load an index *equal* to
+  // currentViolationIndex — once the queue shifts, that index holds a
+  // different violation.
+  selectBatchViolation = index => {
+    if (index === this.state.currentViolationIndex) {
+      return;
+    }
+
+    this.loadBatchViolation(index);
+  };
+
   // Move past a group without reporting it. It stays in the queue, so the user
   // can come back to it by walking round again.
   skipBatchViolation = index => {
@@ -2355,12 +2373,24 @@ class Home extends React.Component {
                   <li
                     key={`${violation.createDateMs}-${violation.plate}-${violation.photos[0]?.name}`}
                   >
-                    {index === currentViolationIndex ? '▸ ' : ''}
-                    {formatBatchViolationTime(violation.createDateMs)} —{' '}
-                    {violation.plate || '(no plate read)'} (
-                    {violation.photos.length} photo
-                    {violation.photos.length === 1 ? '' : 's'})
-                    {flags.length > 0 && ` — ${flags.join(', ')}`}{' '}
+                    {/* The description is itself the load control, with Skip
+                        and Delete as siblings rather than nested inside it:
+                        nesting them would make a click on either bubble up
+                        and load the violation too. */}
+                    <button
+                      type="button"
+                      onClick={() => this.selectBatchViolation(index)}
+                      aria-current={
+                        index === currentViolationIndex ? 'true' : undefined
+                      }
+                    >
+                      {index === currentViolationIndex ? '▸ ' : ''}
+                      {formatBatchViolationTime(violation.createDateMs)} —{' '}
+                      {violation.plate || '(no plate read)'} (
+                      {violation.photos.length} photo
+                      {violation.photos.length === 1 ? '' : 's'})
+                      {flags.length > 0 && ` — ${flags.join(', ')}`}
+                    </button>{' '}
                     <button
                       type="button"
                       onClick={() => this.skipBatchViolation(index)}

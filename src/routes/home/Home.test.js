@@ -2031,6 +2031,17 @@ describe('Home', () => {
           renderer.act(() => {
             findButton(text).props.onClick();
           }),
+        // Load a violation by clicking its row in the queue. The row's label
+        // is the violation description, so match on the plate it contains;
+        // Skip and Delete are siblings rather than children, so they can't
+        // match.
+        clickQueueViolation: plate =>
+          renderer.act(() => {
+            tree.root
+              .findAllByType('button')
+              .find(({ children }) => children.join('').includes(plate))
+              .props.onClick();
+          }),
         // Tick or untick one photo in a loaded group's attachment picker, by
         // the photo's name, the way its checkbox does.
         toggleAttachment: (name, checked) => {
@@ -2134,6 +2145,54 @@ describe('Home', () => {
       expect(afterSubmit.plate).toBe('LDA8765');
       expect(afterSubmit.attachmentData).toHaveLength(1);
       expect(afterSubmit.attachmentData[0]).toBe(photos[2]);
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    test('loads a violation clicked in the queue, and ignores a click on the one already loaded', async () => {
+      const photos = [
+        jpeg({ name: 'a.jpg', size: 4 }),
+        jpeg({ name: 'b.jpg', size: 5 }),
+        jpeg({ name: 'c.jpg', size: 6 }),
+        jpeg({ name: 'd.jpg', size: 7 }),
+      ];
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, clickQueueViolation, cleanup } =
+        await renderBatchWithFiles(photos);
+
+      expect(homeRef.current.state.batchViolations).toHaveLength(3);
+
+      // Jump to the last violation, out of the queue's own order.
+      clickQueueViolation('K73JAU');
+      expect(homeRef.current.state.currentViolationIndex).toBe(2);
+      expect(homeRef.current.state.plate).toBe('K73JAU');
+      expect(homeRef.current.state.attachmentData).toEqual([photos[3]]);
+
+      // And back to the first.
+      clickQueueViolation('T696817C');
+      expect(homeRef.current.state.currentViolationIndex).toBe(0);
+      expect(homeRef.current.state.plate).toBe('T696817C');
+      expect(homeRef.current.state.attachmentData).toEqual([
+        photos[0],
+        photos[1],
+      ]);
+
+      // Clicking the loaded violation again must be a no-op. Loading resets
+      // the attachment selection to the group's default, so a reload here
+      // would silently undo a swap made with the picker -- stand in for one
+      // by leaving a single photo attached.
+      homeRef.current.setState({ attachmentData: [photos[0]] });
+      clickQueueViolation('T696817C');
+      expect(homeRef.current.state.currentViolationIndex).toBe(0);
+      expect(homeRef.current.state.attachmentData).toEqual([photos[0]]);
 
       exifr.gps.mockReset();
       exifr.parse.mockReset();

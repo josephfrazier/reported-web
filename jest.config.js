@@ -106,12 +106,14 @@ module.exports = {
   //   jsdom -> html-encoding-sniffer -> @exodus/bytes
   //   jsdom -> parse5 -> entities
   //   jsdom -> @asamuzakjp/dom-selector, @asamuzakjp/css-color -> @csstools/*
-  //   jsdom -> css-tree
   // The lookahead exempts a package by name wherever it sits, which matters for
   // the nested copies yarn installs under jsdom and @asamuzakjp/css-color.
+  // css-tree is deliberately absent: it ships both builds, and once babel-jest
+  // has converted its ESM importers to CommonJS they resolve its `require`
+  // condition, so its CommonJS build loads and needs no transform.
   // Keep this list in sync with jsdom's ESM-only dependencies when bumping it.
   transformIgnorePatterns: [
-    '/node_modules/(?!.*(?:@asamuzakjp|@csstools|@exodus\\/bytes|css-tree|entities|parse5)/)',
+    '/node_modules/(?!.*(?:@asamuzakjp|@csstools|@exodus\\/bytes|entities|parse5)/)',
     '\\.pnp\\.[^\\/]+$',
   ],
 

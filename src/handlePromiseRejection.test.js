@@ -34,9 +34,27 @@ describe('handlePromiseRejection', () => {
     handlePromiseRejection(res)(error);
 
     expect(res.statusCode).toBe(429);
-    // Only enumerable own properties survive into the body, which is why the
-    // status is there and the message is not.
-    expect(res.body).toEqual({ error: { status: 429 } });
+    expect(res.body).toEqual({
+      error: {
+        status: 429,
+        message: 'Plate Recognizer API error: 429 - {}',
+      },
+    });
+  });
+
+  test('includes the message, which JSON would otherwise drop', () => {
+    const res = fakeResponse();
+    const error = new Error('Plate Recognizer API error: 429 - {}');
+    error.status = 429;
+
+    // The premise: an Error's `message` is not an enumerable own property, so
+    // it does not survive a JSON round trip on its own -- which is why the
+    // body used to carry a bare `{"error":{"status":429}}`.
+    expect(JSON.parse(JSON.stringify(error))).not.toHaveProperty('message');
+
+    handlePromiseRejection(res)(error);
+
+    expect(res.body.error.message).toBe('Plate Recognizer API error: 429 - {}');
   });
 
   test('keeps other upstream statuses too', () => {
@@ -55,7 +73,7 @@ describe('handlePromiseRejection', () => {
     handlePromiseRejection(res)(new Error('something broke'));
 
     expect(res.statusCode).toBe(500);
-    expect(res.body).toEqual({ error: {} });
+    expect(res.body).toEqual({ error: { message: 'something broke' } });
   });
 
   // `status` is an ordinary property on an arbitrary object, so it cannot be

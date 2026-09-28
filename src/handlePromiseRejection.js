@@ -22,13 +22,21 @@ const isHttpStatus = value =>
 // did wrong.
 //
 // Only enumerable own properties survive the round trip into JSON, so an
-// Error's `message` and `stack` are not in the body -- `status` is, which is
-// what the client can act on. The whole error goes to the server log.
+// Error's `message` and `stack` are dropped by it -- `status` survives it by
+// being an ordinary assigned property. The message says *why* the request
+// failed, so it is put back explicitly rather than left out of the body.
+// `stack` stays out: it is server detail, and the whole error reaches the log
+// either way.
 const handlePromiseRejection = res => error => {
   console.error({ error });
+
+  const { message } = error ?? {};
+  const body =
+    message === undefined ? { error } : { error: { ...error, message } };
+
   res
     .status(isHttpStatus(error?.status) ? error.status : 500)
-    .json(JSON.parse(stringify({ error })));
+    .json(JSON.parse(stringify(body)));
 };
 
 export default handlePromiseRejection;

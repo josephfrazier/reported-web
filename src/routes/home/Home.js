@@ -2440,7 +2440,17 @@ class Home extends React.Component {
             <button type="button" onClick={this.loadNextBatchViolation}>
               Load next violation
             </button>
-            <ul>
+            {/* The list grows while the batch is still being read, and a list
+                that lengthens pushes everything under it -- the form for the
+                violation being reported -- down the page. Capping its height
+                and scrolling it inside keeps the form where the user left it
+                as violations arrive. */}
+            <ul
+              style={{
+                maxHeight: '16rem',
+                overflowY: 'auto',
+              }}
+            >
               {batchViolations.map((violation, index) => {
                 const flags = [];
                 if (!hasCoordinates(violation)) {

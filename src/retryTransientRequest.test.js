@@ -7,12 +7,9 @@ const failureWithStatus = status => {
 };
 
 describe('isRetryable', () => {
-  test.each([408, 425, 429, 500, 502, 503, 504])(
-    'repeats a %p',
-    status => {
-      expect(isRetryable(failureWithStatus(status))).toBe(true);
-    },
-  );
+  test.each([408, 425, 429, 500, 502, 503, 504])('repeats a %p', status => {
+    expect(isRetryable(failureWithStatus(status))).toBe(true);
+  });
 
   test.each([400, 401, 403, 404, 413, 422])(
     'does not repeat a %p, which would get the same answer',

@@ -2031,15 +2031,17 @@ describe('Home', () => {
           renderer.act(() => {
             findButton(text).props.onClick();
           }),
-        // Load a violation by clicking its row in the queue. The row's label
-        // is the violation description, so match on the plate it contains;
-        // Skip and Delete are siblings rather than children, so they can't
-        // match.
-        clickQueueViolation: plate =>
+        // Load a violation through the Load button on its queue row. Every
+        // row's button reads "Load", so find the row by the plate its
+        // description contains and take the Load button inside it.
+        clickQueueLoad: plate =>
           renderer.act(() => {
-            tree.root
+            const row = tree.root
+              .findAllByType('li')
+              .find(({ children }) => children.join('').includes(plate));
+            row
               .findAllByType('button')
-              .find(({ children }) => children.join('').includes(plate))
+              .find(({ children }) => children.includes('Load'))
               .props.onClick();
           }),
         // Tick or untick one photo in a loaded group's attachment picker, by
@@ -2151,7 +2153,7 @@ describe('Home', () => {
       cleanup();
     });
 
-    test('loads a violation clicked in the queue, and ignores a click on the one already loaded', async () => {
+    test('loads a violation from its Load button, and ignores it on the one already loaded', async () => {
       const photos = [
         jpeg({ name: 'a.jpg', size: 4 }),
         jpeg({ name: 'b.jpg', size: 5 }),
@@ -2165,19 +2167,19 @@ describe('Home', () => {
         OffsetTimeDigitized: '-05:00',
       }));
 
-      const { homeRef, clickQueueViolation, cleanup } =
+      const { homeRef, clickQueueLoad, cleanup } =
         await renderBatchWithFiles(photos);
 
       expect(homeRef.current.state.batchViolations).toHaveLength(3);
 
       // Jump to the last violation, out of the queue's own order.
-      clickQueueViolation('K73JAU');
+      clickQueueLoad('K73JAU');
       expect(homeRef.current.state.currentViolationIndex).toBe(2);
       expect(homeRef.current.state.plate).toBe('K73JAU');
       expect(homeRef.current.state.attachmentData).toEqual([photos[3]]);
 
       // And back to the first.
-      clickQueueViolation('T696817C');
+      clickQueueLoad('T696817C');
       expect(homeRef.current.state.currentViolationIndex).toBe(0);
       expect(homeRef.current.state.plate).toBe('T696817C');
       expect(homeRef.current.state.attachmentData).toEqual([
@@ -2185,12 +2187,12 @@ describe('Home', () => {
         photos[1],
       ]);
 
-      // Clicking the loaded violation again must be a no-op. Loading resets
-      // the attachment selection to the group's default, so a reload here
-      // would silently undo a swap made with the picker -- stand in for one
-      // by leaving a single photo attached.
+      // Loading the violation that is already loaded must be a no-op. Loading
+      // resets the attachment selection to the group's default, so a reload
+      // here would silently undo a swap made with the picker -- stand in for
+      // one by leaving a single photo attached.
       homeRef.current.setState({ attachmentData: [photos[0]] });
-      clickQueueViolation('T696817C');
+      clickQueueLoad('T696817C');
       expect(homeRef.current.state.currentViolationIndex).toBe(0);
       expect(homeRef.current.state.attachmentData).toEqual([photos[0]]);
 

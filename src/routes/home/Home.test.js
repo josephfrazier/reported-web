@@ -1929,7 +1929,7 @@ describe('Home', () => {
     // inputs (and the drop and paste handlers) use, and lets the batch pass
     // finish. Returns the spied axios so the tests can count ALPR and geosearch
     // requests, and helpers that drive the rendered batch UI.
-    async function renderBatchWithFiles(files) {
+    async function renderBatchWithFiles(files, { alprFailures = 0 } = {}) {
       const initialState = {
         email: 'test@example.com',
         password: 'test-password',
@@ -1944,11 +1944,22 @@ describe('Home', () => {
       const originalQuerySelector = document.querySelector;
       document.querySelector = jest.fn(() => ({ scrollTo: jest.fn() }));
 
+      let alprAttempts = 0;
+
       const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
       const axiosPost = jest
         .spyOn(axios, 'post')
         .mockImplementation((url, body) => {
           if (url === '/platerecognizer') {
+            // Refuse the first `alprFailures` attempts the way a rate limit
+            // does, so a test can watch the retry turn one into a plate read.
+            alprAttempts += 1;
+            if (alprAttempts <= alprFailures) {
+              const error = new Error('rate limited');
+              error.response = { status: 429 };
+              return Promise.reject(error);
+            }
+
             const { size } = body.get('attachmentFile');
             return Promise.resolve({ data: plateResultsForSize(size) });
           }
@@ -2249,6 +2260,33 @@ describe('Home', () => {
       ).toBe(true);
 
       expect(homeRef.current.state.batchProgress).toBeNull();
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    test('retries a rate-limited photo rather than leaving it with no plate read', async () => {
+      const photos = [jpeg({ name: 'a.jpg', size: 4 })];
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, platerecognizerCalls, cleanup } =
+        await renderBatchWithFiles(photos, { alprFailures: 1 });
+
+      // Two requests for one photo: the refused attempt and the retry that
+      // replaced it.
+      expect(platerecognizerCalls()).toHaveLength(2);
+
+      // And the retry is what the violation was built from, rather than the
+      // photo landing in the queue with nothing read.
+      const { batchViolations } = homeRef.current.state;
+      expect(batchViolations).toHaveLength(1);
+      expect(batchViolations[0].plate).toBe('T696817C');
 
       exifr.gps.mockReset();
       exifr.parse.mockReset();

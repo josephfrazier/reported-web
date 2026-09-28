@@ -56,6 +56,7 @@ import groupAttachmentsByViolation, {
   isViolationSettled,
 } from '../../groupAttachmentsByViolation.js';
 import { isImage, isVideo } from '../../isImage.js';
+import retryTransientRequest from '../../retryTransientRequest.js';
 import getNycTimezoneOffset from '../../timezone.js';
 import { isPointInNycMemoized } from '../../isPointInNyc.js';
 import vehicleTypeUrl from '../../vehicleTypeUrl.js';
@@ -333,7 +334,19 @@ async function fetchPlateResults({
     email,
     password,
   });
-  const { data } = await axios.post('/platerecognizer', formData);
+  // A batch sends one of these per photo, and Plate Recognizer rate limits
+  // that, so a 429 part-way through is expected rather than exceptional --
+  // and it is transient, which is the difference between a plate read and a
+  // photo the user has to type in by hand. The retry is here rather than
+  // inside the batch so the single-violation flow gets it too.
+  const data = await retryTransientRequest({
+    send: async () => (await axios.post('/platerecognizer', formData)).data,
+    onRetry: ({ attempt, error, retryInMs }) =>
+      console.info(
+        `/platerecognizer failed, retrying in ${retryInMs}ms (attempt ${attempt})`,
+        { error },
+      ),
+  });
 
   attachmentPlateCache.set(attachmentFile, data);
   return data;

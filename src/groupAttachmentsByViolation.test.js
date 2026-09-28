@@ -1,5 +1,6 @@
 import groupAttachmentsByViolation, {
   haversineMeters,
+  isViolationSettled,
   normalizedCenterDistance,
 } from './groupAttachmentsByViolation.js';
 
@@ -89,6 +90,65 @@ const alprSnapshotResults = [
     score: 1,
   },
 ];
+
+describe('isViolationSettled', () => {
+  const violationEndingAt = createDateMs => ({
+    photos: [buildPhoto({ createDateMs })],
+  });
+
+  test('is not settled while the frontier is still inside the linking window', () => {
+    const end = 1_000_000;
+
+    expect(
+      isViolationSettled({
+        violation: violationEndingAt(end),
+        frontierTimeMs: end + 5000,
+      }),
+    ).toBe(false);
+  });
+
+  test('settles once the frontier is past the window', () => {
+    const end = 1_000_000;
+
+    expect(
+      isViolationSettled({
+        violation: violationEndingAt(end),
+        frontierTimeMs: end + 5001,
+      }),
+    ).toBe(true);
+  });
+
+  test('is never settled when the frontier is the violation itself', () => {
+    // The batch's last violation: nothing has been read after it, so nothing
+    // has passed it, and it cannot settle on its own.
+    const end = 1_000_000;
+
+    expect(
+      isViolationSettled({
+        violation: violationEndingAt(end),
+        frontierTimeMs: end,
+      }),
+    ).toBe(false);
+  });
+
+  test('measures from the end of the group, not its start', () => {
+    // Two photos four seconds apart, so the group ends at the later one: a
+    // frontier five seconds past the *start* is still inside the window.
+    const violation = {
+      photos: [
+        buildPhoto({ createDateMs: 1_000_000 }),
+        buildPhoto({ createDateMs: 1_004_000 }),
+      ],
+    };
+
+    expect(isViolationSettled({ violation, frontierTimeMs: 1_005_000 })).toBe(
+      false,
+    );
+    expect(isViolationSettled({ violation, frontierTimeMs: 1_009_001 })).toBe(
+      true,
+    );
+  });
+});
 
 describe('haversineMeters', () => {
   test('is zero for a point and itself', () => {

@@ -2076,7 +2076,7 @@ describe('Home', () => {
       };
     }
 
-    test('groups the batch, looks each place up once, and loads a violation from what it extracted', async () => {
+    test('groups the batch, looks each place up once, and loads the first violation as it settles', async () => {
       const photos = [
         jpeg({ name: 'a.jpg', size: 4 }),
         jpeg({ name: 'b.jpg', size: 5 }),
@@ -2092,14 +2092,8 @@ describe('Home', () => {
         OffsetTimeDigitized: '-05:00',
       }));
 
-      const {
-        homeRef,
-        platerecognizerCalls,
-        geosearchCalls,
-        clickButton,
-        submit,
-        cleanup,
-      } = await renderBatchWithFiles(photos);
+      const { homeRef, platerecognizerCalls, geosearchCalls, submit, cleanup } =
+        await renderBatchWithFiles(photos);
 
       const { batchViolations } = homeRef.current.state;
       expect(batchViolations).toHaveLength(3);
@@ -2115,8 +2109,8 @@ describe('Home', () => {
       expect(platerecognizerCalls()).toHaveLength(4);
       expect(geosearchCalls()).toHaveLength(1);
 
-      clickButton('Load next violation');
-
+      // The first violation is loaded as soon as it settles, without waiting to
+      // be asked: nothing is clicked here.
       const { state } = homeRef.current;
       expect(state.currentViolationIndex).toBe(0);
       expect(state.plate).toBe('T696817C');
@@ -2195,6 +2189,66 @@ describe('Home', () => {
       clickQueueLoad('T696817C');
       expect(homeRef.current.state.currentViolationIndex).toBe(0);
       expect(homeRef.current.state.attachmentData).toEqual([photos[0]]);
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    test('publishes violations while the batch is still being read', async () => {
+      const photos = [
+        jpeg({ name: 'a.jpg', size: 4 }),
+        jpeg({ name: 'b.jpg', size: 5 }),
+        jpeg({ name: 'c.jpg', size: 6 }),
+        jpeg({ name: 'd.jpg', size: 7 }),
+      ];
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, cleanup } = await renderBatchWithFiles([]);
+
+      // Record what each publish pass left behind. `batchProgress` is still set
+      // for every pass but the last, so a pass that published anything is one
+      // the user would have seen the queue for before the batch finished.
+      const original = homeRef.current.publishBatchViolations;
+      const passes = [];
+      jest
+        .spyOn(homeRef.current, 'publishBatchViolations')
+        .mockImplementation(async options => {
+          const result = await original.call(homeRef.current, options);
+          passes.push({
+            stillReading: homeRef.current.state.batchProgress !== null,
+            violations: homeRef.current.state.batchViolations.length,
+          });
+          return result;
+        });
+
+      await renderer.act(async () => {
+        await homeRef.current.addFilesToBatch(photos);
+        // The per-photo passes are not awaited by the worker that starts them,
+        // so let anything still settling finish before asserting on it.
+        for (let i = 0; i < 5; i += 1) {
+          // eslint-disable-next-line no-await-in-loop -- one round per pending promise chain; the rounds are the point.
+          await new Promise(resolve => setImmediate(resolve));
+        }
+      });
+
+      // One pass per photo, plus the final one for whatever the gap rule could
+      // never settle on its own.
+      expect(passes).toHaveLength(photos.length + 1);
+      expect(passes.at(-1).violations).toBe(3);
+
+      // The point of the change: the queue was already non-empty while the bar
+      // was still up.
+      expect(
+        passes.some(pass => pass.stillReading && pass.violations > 0),
+      ).toBe(true);
+
+      expect(homeRef.current.state.batchProgress).toBeNull();
 
       exifr.gps.mockReset();
       exifr.parse.mockReset();

@@ -86,7 +86,7 @@ const hasCoordinates = ({ latitude, longitude }) =>
 // A capture time is the signal that orders a batch, but plenty of photos have
 // none -- EXIF stripped, or the file is a scan/screenshot. File last-modified
 // is the fallback those photos sort, cluster and report on instead.
-const effectiveTimeMs = ({ createDateMs, file }) =>
+export const effectiveTimeMs = ({ createDateMs, file }) =>
   Number.isFinite(createDateMs) ? createDateMs : file?.lastModified || 0;
 
 // Photos with a real capture time sort first and in order; photos without one
@@ -478,6 +478,24 @@ function buildViolation({ photos, plate, licenseState }) {
     longitude: located.longitude,
     createDateMs: effectiveTimeMs(earliest),
   };
+}
+
+// Whether a violation has stopped changing as more photos are processed.
+//
+// `linkPhotos` requires two photos to be within the linking window of each
+// other, so once the frontier -- the latest photo processed so far -- has moved
+// further than that window past a violation's end, no photo still to come can
+// reach back and join it. Photos are processed in modification-time order, so
+// everything still to come sorts at or after the frontier.
+//
+// The case this can be wrong is a file whose EXIF time disagrees with its
+// modification time by more than the window: sorting by modification time is a
+// proxy for capture order, and it is that proxy which makes the frontier a
+// trustworthy boundary.
+export function isViolationSettled({ violation, frontierTimeMs }) {
+  const end = Math.max(...violation.photos.map(effectiveTimeMs));
+
+  return frontierTimeMs - end > TIME_THRESHOLD_MS;
 }
 
 export default function groupAttachmentsByViolation(photos) {

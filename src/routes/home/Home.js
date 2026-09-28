@@ -51,7 +51,10 @@ import homeStyles from './Home.css';
 import PreviousSubmissionsList from '../../components/PreviousSubmissionsList.js';
 import formatGeosearchAddress from '../../formatGeosearchAddress.js';
 import createGeosearchAddressCache from '../../geosearchAddressCache.js';
-import groupAttachmentsByViolation from '../../groupAttachmentsByViolation.js';
+import groupAttachmentsByViolation, {
+  effectiveTimeMs,
+  isViolationSettled,
+} from '../../groupAttachmentsByViolation.js';
 import { isImage, isVideo } from '../../isImage.js';
 import getNycTimezoneOffset from '../../timezone.js';
 import { isPointInNycMemoized } from '../../isPointInNyc.js';
@@ -535,10 +538,11 @@ function defaultBatchSelection(photos) {
 const hasCoordinates = ({ latitude, longitude } = {}) =>
   Number.isFinite(latitude) && Number.isFinite(longitude);
 
+// Publishing is progressive, so reading plates is the only stage the bar has
+// to name: grouping and geocoding happen per violation as they are published,
+// and the queue appears underneath while that is still going on.
 const BATCH_STAGE_LABELS = {
   alpr: 'Reading license plates',
-  grouping: 'Grouping photos',
-  geocoding: 'Looking up addresses',
 };
 
 const formatBatchViolationTime = createDateMs =>
@@ -1621,49 +1625,111 @@ class Home extends React.Component {
     return this.batchQueue;
   };
 
-  // The one-shot pass over newly picked files: extract each one, group
-  // everything picked so far into violations, then resolve their addresses.
+  // The pass over newly picked files: read each one, publishing whatever
+  // grouping has settled as it goes, then publish the rest.
+  //
+  // Publishing is progressive, so the first violation can be reviewed while the
+  // rest of the batch is still being read. A violation settles once no photo
+  // still to come could join it (see isViolationSettled), and the last one can
+  // never settle on its own -- settling needs a later photo to pass it, and
+  // there is none -- so the final pass publishes everything that is left.
   //
   // Deliberately not handleAttachmentData: that re-extracts the *entire*
-  // attachment array on every add, which pointed at a forty-photo folder means
-  // re-walking all forty photos each time the array grows.
+  // attachment array on every add, which pointed at a whole folder means
+  // re-walking every photo each time the array grows.
   processBatchFiles = async attachmentData => {
     // The same background uploads the single-violation flow starts, so a
     // violation from the queue can be submitted as attachment IDs.
     this.startBackgroundUploads(attachmentData);
 
-    const newPhotos = attachmentData.map(attachmentFile => ({
-      file: attachmentFile,
-      name: attachmentFile.name,
-    }));
+    // Modification-time order, standing in for capture order: a photo's EXIF
+    // time is not known until it has been read, and violations are published
+    // from the front as they settle, so the earliest photos should be the first
+    // read. It is also the fallback grouping already uses for a photo with no
+    // EXIF date, so the two agree on what "earliest" means.
+    //
+    // The proxy can mislead when a file's modification time disagrees with its
+    // EXIF time by more than the linking window -- a folder copied after the
+    // fact -- and then a violation can be published before a photo that belongs
+    // to it. It is still grouped correctly, as a violation of its own, because
+    // publishing never reopens a settled group.
+    const newPhotos = attachmentData
+      .map(attachmentFile => ({
+        file: attachmentFile,
+        name: attachmentFile.name,
+      }))
+      .sort((a, b) => (a.file.lastModified || 0) - (b.file.lastModified || 0));
 
     let completed = 0;
     this.setState({
       batchProgress: { stage: 'alpr', completed, total: newPhotos.length },
     });
 
-    const extracted = await mapWithConcurrency({
+    await mapWithConcurrency({
       items: newPhotos,
       limit: BATCH_ALPR_CONCURRENCY,
       worker: async photo => {
         const result = await this.extractBatchPhotoData(photo);
         completed += 1;
-        this.setState({
-          batchProgress: { stage: 'alpr', completed, total: newPhotos.length },
-        });
+        this.setState(
+          state => ({
+            batchPhotos: state.batchPhotos.concat(result),
+            batchProgress: {
+              stage: 'alpr',
+              completed,
+              total: newPhotos.length,
+            },
+          }),
+          () => {
+            this.publishBatchViolations();
+          },
+        );
         return result;
       },
     });
 
-    const { batchPhotos } = this.state;
-    const photos = batchPhotos.concat(extracted);
+    await this.publishBatchViolations({ includeUnsettled: true });
 
-    this.setState({
-      batchPhotos: photos,
-      batchProgress: { stage: 'grouping', completed: 0, total: 1 },
-    });
+    this.setState({ batchProgress: null });
+  };
 
-    const violations = groupAttachmentsByViolation(photos);
+  // Publish whatever grouping can already settle, so the queue fills in and the
+  // first violation loads while the batch is still being read.
+  //
+  // Only photos with no published violation are grouped. A published violation
+  // settled before it was published, so nothing read since can have changed it,
+  // and leaving its photos out of the grouping is what keeps it -- and the
+  // index the queue is pointing at -- exactly as it was. That is the "freeze
+  // the one you are on" rule: the loaded violation never shifts or re-forms
+  // under the form.
+  //
+  // Each violation is geocoded before it is published, so loading one always
+  // finds the batch's lookup in the memo instead of starting its own.
+  publishBatchViolations = async ({ includeUnsettled = false } = {}) => {
+    const { batchPhotos, batchViolations } = this.state;
+
+    const publishedPhotos = new Set(
+      batchViolations.flatMap(violation =>
+        violation.photos.map(photo => photo.name),
+      ),
+    );
+    const unpublished = batchPhotos.filter(
+      photo => !publishedPhotos.has(photo.name),
+    );
+
+    if (unpublished.length === 0) {
+      return;
+    }
+
+    const frontierTimeMs = Math.max(...batchPhotos.map(effectiveTimeMs));
+    const settled = groupAttachmentsByViolation(unpublished).filter(
+      violation =>
+        includeUnsettled || isViolationSettled({ violation, frontierTimeMs }),
+    );
+
+    if (settled.length === 0) {
+      return;
+    }
 
     // Flag each violation with whether it is inside the five boroughs, so the
     // queue can say so up front rather than letting the user discover it when
@@ -1672,7 +1738,7 @@ class Home extends React.Component {
     const lookup = new PolygonLookup(
       this.props.boroughBoundariesFeatureCollection,
     );
-    const flaggedViolations = violations.map(violation => ({
+    const flagged = settled.map(violation => ({
       ...violation,
       coordsAreInNyc: hasCoordinates(violation)
         ? isPointInNycMemoized({
@@ -1685,33 +1751,42 @@ class Home extends React.Component {
         : undefined,
     }));
 
-    this.setState({
-      batchViolations: flaggedViolations,
-      batchProgress: {
-        stage: 'geocoding',
-        completed: 0,
-        total: flaggedViolations.length,
-      },
-    });
-
-    let geocoded = 0;
     // One lookup at a time, and one per violation rather than per photo: a
     // batch shot at one curb is dozens of identical lookups, and the memo
     // serves every repeat after the first.
-    for (const violation of flaggedViolations) {
+    for (const violation of flagged) {
       // eslint-disable-next-line no-await-in-loop -- sequential on purpose: see geocodeBatchViolation.
       await this.geocodeBatchViolation(violation);
-      geocoded += 1;
-      this.setState({
-        batchProgress: {
-          stage: 'geocoding',
-          completed: geocoded,
-          total: flaggedViolations.length,
-        },
-      });
     }
 
-    this.setState({ batchProgress: null });
+    this.setState(
+      state => {
+        // Photos finish three at a time, so two passes can overlap and both
+        // group the same unpublished photos. Reconciling against the state
+        // they are appended to, rather than the copy read at the top, is what
+        // stops a violation being published twice.
+        const published = new Set(
+          state.batchViolations.map(violation => violation.photos[0]?.name),
+        );
+
+        return {
+          batchViolations: state.batchViolations.concat(
+            flagged.filter(
+              violation => !published.has(violation.photos[0]?.name),
+            ),
+          ),
+        };
+      },
+      () => {
+        // Load the first violation without waiting to be asked, so the form is
+        // ready to submit as soon as there is something to submit. Only when
+        // nothing is loaded: a violation already being worked on must not be
+        // replaced because a later one arrived.
+        if (this.state.currentViolationIndex < 0) {
+          this.loadBatchViolation(0);
+        }
+      },
+    );
   };
 
   // One photo's ALPR, date and location results. Runs once per file, and each
@@ -1951,17 +2026,30 @@ class Home extends React.Component {
   // Take a violation out of the queue once it has been submitted, and load
   // whatever took its index: the queue then always shows what is left to
   // report.
+  //
+  // The photos go with it, as they do when a violation is deleted. Publishing
+  // re-groups the photos that no published violation has claimed, so leaving a
+  // submitted one's photos here would bring the violation back on the next
+  // pass.
   advanceBatchAfterSubmit = () => {
-    const { batchViolations, currentViolationIndex } = this.state;
+    const { batchPhotos, batchViolations, currentViolationIndex } = this.state;
+    const submitted = batchViolations[currentViolationIndex];
     const remainingViolations = batchViolations.filter(
       (_, index) => index !== currentViolationIndex,
     );
+    const submittedPhotos = new Set(submitted?.photos || []);
 
-    this.setState({ batchViolations: remainingViolations }, () => {
-      this.loadBatchViolation(
-        Math.min(currentViolationIndex, remainingViolations.length - 1),
-      );
-    });
+    this.setState(
+      {
+        batchViolations: remainingViolations,
+        batchPhotos: batchPhotos.filter(photo => !submittedPhotos.has(photo)),
+      },
+      () => {
+        this.loadBatchViolation(
+          Math.min(currentViolationIndex, remainingViolations.length - 1),
+        );
+      },
+    );
   };
 
   // Attach or detach one of a loaded violation's photos. A group of more than

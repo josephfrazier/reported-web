@@ -1929,7 +1929,20 @@ describe('Home', () => {
     // inputs (and the drop and paste handlers) use, and lets the batch pass
     // finish. Returns the spied axios so the tests can count ALPR and geosearch
     // requests, and helpers that drive the rendered batch UI.
-    async function renderBatchWithFiles(files, { alprFailures = 0 } = {}) {
+    async function renderBatchWithFiles(
+      files,
+      {
+        alprFailures = 0,
+        // Answers a coordinate with its own address. The default mock answers
+        // every coordinate the same way, which cannot show a stale address:
+        // whichever one is on screen looks right.
+        addressAt = () => ({ housenumber: '123', street: 'Main St' }),
+        // Holds an ALPR response back by photo size, so a test can make a
+        // photo finish before one that was started earlier. Three concurrent
+        // requests do that on their own.
+        alprDelayMsBySize = {},
+      } = {},
+    ) {
       const initialState = {
         email: 'test@example.com',
         password: 'test-password',
@@ -1961,7 +1974,14 @@ describe('Home', () => {
             }
 
             const { size } = body.get('attachmentFile');
-            return Promise.resolve({ data: plateResultsForSize(size) });
+            const delayMs = alprDelayMsBySize[size] || 0;
+
+            return new Promise(resolve => {
+              setTimeout(
+                () => resolve({ data: plateResultsForSize(size) }),
+                delayMs,
+              );
+            });
           }
           if (url === '/api/geosearch') {
             return Promise.resolve({
@@ -1969,8 +1989,7 @@ describe('Home', () => {
                 features: [
                   {
                     properties: {
-                      housenumber: '123',
-                      street: 'Main St',
+                      ...addressAt(body),
                       borough: 'Manhattan',
                     },
                   },
@@ -2287,6 +2306,91 @@ describe('Home', () => {
       const { batchViolations } = homeRef.current.state;
       expect(batchViolations).toHaveLength(1);
       expect(batchViolations[0].plate).toBe('T696817C');
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    test('shows the address of the violation that was clicked, not the last one', async () => {
+      const photos = [
+        jpeg({ name: 'near.jpg', size: 4 }),
+        jpeg({ name: 'far.jpg', size: 7 }),
+      ];
+
+      // Two different places in Manhattan, a minute apart, so each photo is a
+      // violation of its own with its own address.
+      const gpsBySize = {
+        4: { latitude: 40.7129, longitude: -74.0061 },
+        7: { latitude: 40.758, longitude: -73.9855 },
+      };
+      exifr.gps.mockImplementation(
+        async arrayBuffer => gpsBySize[arrayBuffer.byteLength],
+      );
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, clickQueueLoad, cleanup } = await renderBatchWithFiles(
+        photos,
+        {
+          addressAt: ({ lat }) =>
+            lat === gpsBySize[4].latitude
+              ? { housenumber: '123', street: 'Main St' }
+              : { housenumber: '9', street: 'Elm St' },
+        },
+      );
+
+      expect(homeRef.current.state.batchViolations).toHaveLength(2);
+
+      // The first violation loads on its own, with the address for its place.
+      expect(homeRef.current.state.formatted_address).toBe(
+        '123 Main St, Manhattan',
+      );
+
+      // Clicking Load on the second has to bring its address with it.
+      clickQueueLoad('K73JAU');
+      expect(homeRef.current.state.formatted_address).toBe(
+        '9 Elm St, Manhattan',
+      );
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    test('keeps a violation together when its photos finish out of order', async () => {
+      const photos = [
+        jpeg({ name: 'a.jpg', size: 4 }),
+        jpeg({ name: 'b.jpg', size: 5 }),
+        jpeg({ name: 'c.jpg', size: 7 }),
+      ];
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      // `a` and `b` are one second apart and are one violation; `c` is a
+      // minute later and is its own. Holding `b` back makes `c` finish first,
+      // which is what three concurrent requests do on their own -- and `c` is
+      // a minute ahead, so treating it as the boundary would call the first
+      // violation final while `b` was still in flight.
+      const { homeRef, cleanup } = await renderBatchWithFiles(photos, {
+        alprDelayMsBySize: { 5: 30 },
+      });
+
+      expect(
+        homeRef.current.state.batchViolations.map(v => [
+          v.plate,
+          v.photos.length,
+        ]),
+      ).toEqual([
+        ['T696817C', 2],
+        ['K73JAU', 1],
+      ]);
 
       exifr.gps.mockReset();
       exifr.parse.mockReset();

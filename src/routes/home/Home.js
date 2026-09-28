@@ -502,6 +502,33 @@ async function mapWithConcurrency({ items, limit, worker }) {
   return results;
 }
 
+// The capture time of the last photo that, together with every photo before it,
+// has been read. Photos are read in modification-time order, so nothing still
+// to come carries an earlier capture time than this -- which is what makes it a
+// boundary that a violation can safely be called final against.
+//
+// It must be the end of a *contiguous* run, and not simply the latest photo
+// read. Three photos are read at once and they finish in whatever order the
+// network returns them, so the latest photo read can easily belong to a later
+// violation while an earlier one is still waiting for a photo of its own.
+// Taking the latest would settle that earlier violation early and publish it
+// with too few photos.
+//
+// `-Infinity` means nothing has been read yet, so nothing can settle.
+function batchFrontierTimeMs(readSoFar) {
+  let frontier = -Infinity;
+
+  for (const result of readSoFar) {
+    if (result === undefined) {
+      return frontier;
+    }
+
+    frontier = effectiveTimeMs(result);
+  }
+
+  return frontier;
+}
+
 // `extractDate` returns `{ millisecondsSinceEpoch, offset }` for a picture but
 // a bare number for a video: `extractLocationDateFromVideo` returns the two
 // together, and `extractDate` hands back only the time, which leaves the
@@ -1673,6 +1700,11 @@ class Home extends React.Component {
       }))
       .sort((a, b) => (a.file.lastModified || 0) - (b.file.lastModified || 0));
 
+    // One slot per photo, filled as each is read. The run of filled slots from
+    // the front is what the frontier comes from, so a photo finishing before
+    // one it follows cannot pull the boundary forward with it.
+    const readSoFar = new Array(newPhotos.length);
+
     let completed = 0;
     this.setState({
       batchProgress: { stage: 'alpr', completed, total: newPhotos.length },
@@ -1681,8 +1713,9 @@ class Home extends React.Component {
     await mapWithConcurrency({
       items: newPhotos,
       limit: BATCH_ALPR_CONCURRENCY,
-      worker: async photo => {
+      worker: async (photo, index) => {
         const result = await this.extractBatchPhotoData(photo);
+        readSoFar[index] = result;
         completed += 1;
         this.setState(
           state => ({
@@ -1694,7 +1727,9 @@ class Home extends React.Component {
             },
           }),
           () => {
-            this.publishBatchViolations();
+            this.publishBatchViolations({
+              frontierTimeMs: batchFrontierTimeMs(readSoFar),
+            });
           },
         );
         return result;
@@ -1718,7 +1753,12 @@ class Home extends React.Component {
   //
   // Each violation is geocoded before it is published, so loading one always
   // finds the batch's lookup in the memo instead of starting its own.
-  publishBatchViolations = async ({ includeUnsettled = false } = {}) => {
+  publishBatchViolations = async ({
+    includeUnsettled = false,
+    // No frontier means nothing is known to be final yet. That is the safe
+    // default: the pass publishes nothing rather than publishing too early.
+    frontierTimeMs = -Infinity,
+  } = {}) => {
     const { batchPhotos, batchViolations } = this.state;
 
     const publishedPhotos = new Set(
@@ -1734,7 +1774,6 @@ class Home extends React.Component {
       return;
     }
 
-    const frontierTimeMs = Math.max(...batchPhotos.map(effectiveTimeMs));
     const settled = groupAttachmentsByViolation(unpublished).filter(
       violation =>
         includeUnsettled || isViolationSettled({ violation, frontierTimeMs }),

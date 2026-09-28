@@ -36,7 +36,10 @@ export default async function retryTransientRequest({
   onRetry,
   sleep = sleepFor,
 }) {
-  for (let attempt = 1; ; attempt += 1) {
+  // Written as recursion rather than a loop so that the two awaits -- the
+  // request and the wait between attempts -- do not need a lint exemption to
+  // sit inside one. `mapWithConcurrency` in `Home.js` takes the same shape.
+  const attemptOnce = async attempt => {
     try {
       return await send();
     } catch (error) {
@@ -46,9 +49,11 @@ export default async function retryTransientRequest({
 
       const retryInMs = baseDelayMs * 2 ** (attempt - 1);
       onRetry?.({ attempt, error, retryInMs });
-
-      // eslint-disable-next-line no-await-in-loop -- waiting between attempts is the point.
       await sleep(retryInMs);
+
+      return attemptOnce(attempt + 1);
     }
-  }
+  };
+
+  return attemptOnce(1);
 }

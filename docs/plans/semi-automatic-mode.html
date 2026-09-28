@@ -743,18 +743,19 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         form.
       </p>
 
-      <h3>Order photos are read in</h3>
+      <h3>Dates first, then plates</h3>
       <p>
-        EXIF times are not known until a photo has been read, so "the earliest photos first" cannot
-        be arranged up front. Photos are read in <code>file.lastModified</code> order instead, which
-        stands in for capture order — and is the same fallback grouping already trusts for a photo
-        with no EXIF date, so the two agree on what <em>earliest</em> means.
+        The batch reads each photo twice. The first pass takes the date and the place out of the
+        file's own metadata: local work, no requests, so it is quick. The second reads plates, and
+        it runs in the order the first pass established.
       </p>
       <p>
-        It can mislead: a file whose modification time disagrees with its EXIF time by more than the
-        window, such as a folder copied after the fact, can be read after a photo it ought to
-        precede. The photo is still grouped correctly — as a violation of its own, since publishing
-        never reopens a settled group — but it may land in the queue out of capture order.
+        That order cannot come from the files' modification times. They stand in for capture time
+        only where the two agree, and on the batch that prompted this they did not: two photos of
+        one car were read either side of a photo from a different violation, so the car became two
+        reports. Sorting the batch by the date each photo actually carries is what makes the
+        boundary in the section above exact rather than probable — every photo not yet read sits at
+        or after it.
       </p>
     </section>
 
@@ -948,9 +949,9 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         batch is long-running and the user should be able to see the page while it works.
       </p>
       <p>
-        Reading plates is the only stage the bar names. Grouping and geocoding happen per violation
-        as it is published, so a bar stepping through three phases would no longer describe what is
-        happening — the queue filling in underneath is the progress for those.
+        The bar names the two passes over the files themselves — dates and places, then plates.
+        Grouping and geocoding happen per violation as it is published, so those are not stages of
+        their own; the queue filling in underneath is the progress for them.
       </p>
 
       <h3>The queue</h3>

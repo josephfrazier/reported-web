@@ -52,6 +52,7 @@ import PreviousSubmissionsList from '../../components/PreviousSubmissionsList.js
 import formatGeosearchAddress from '../../formatGeosearchAddress.js';
 import createGeosearchAddressCache from '../../geosearchAddressCache.js';
 import groupAttachmentsByViolation, {
+  effectiveTimeMs,
   isViolationSettled,
 } from '../../groupAttachmentsByViolation.js';
 import { isImage, isVideo } from '../../isImage.js';
@@ -501,6 +502,36 @@ async function mapWithConcurrency({ items, limit, worker }) {
   return results;
 }
 
+// The effective time of the last photo that, together with every photo before
+// it, has been read -- the boundary a violation can safely be called final
+// against.
+//
+// It has to be the end of a *contiguous* run rather than simply the latest
+// photo read: three photos are read at once and they finish in whatever order
+// the network returns them, so the latest photo read can belong to a later
+// violation while an earlier one still waits for a photo of its own.
+//
+// This is sound only because the plate pass runs in effective-time order, which
+// `processBatchFiles` arranges by reading every photo's date first. Every photo
+// not yet read therefore has an effective time at or after this one, so none of
+// them can reach back into a violation that ends more than the linking window
+// before it.
+//
+// `-Infinity` means nothing has been read yet, so nothing can settle.
+function batchFrontierTimeMs(readSoFar) {
+  let frontier = -Infinity;
+
+  for (const result of readSoFar) {
+    if (result === undefined) {
+      return frontier;
+    }
+
+    frontier = effectiveTimeMs(result);
+  }
+
+  return frontier;
+}
+
 // `extractDate` returns `{ millisecondsSinceEpoch, offset }` for a picture but
 // a bare number for a video: `extractLocationDateFromVideo` returns the two
 // together, and `extractDate` hands back only the time, which leaves the
@@ -550,10 +581,11 @@ function defaultBatchSelection(photos) {
 const hasCoordinates = ({ latitude, longitude } = {}) =>
   Number.isFinite(latitude) && Number.isFinite(longitude);
 
-// Publishing is progressive, so reading plates is the only stage the bar has
-// to name: grouping and geocoding happen per violation as they are published,
-// and the queue appears underneath while that is still going on.
+// Grouping and geocoding happen per violation as it is published, so the queue
+// appearing underneath is the progress for those. The bar names the two passes
+// over the files themselves.
 const BATCH_STAGE_LABELS = {
+  metadata: 'Reading dates and places',
   alpr: 'Reading license plates',
 };
 
@@ -1654,60 +1686,93 @@ class Home extends React.Component {
     // violation from the queue can be submitted as attachment IDs.
     this.startBackgroundUploads(attachmentData);
 
-    // Modification-time order, standing in for capture order: a photo's EXIF
-    // time is not known until it has been read, and violations are published
-    // from the front as they settle, so the earliest photos should be the first
-    // read. It is also the fallback grouping already uses for a photo with no
-    // EXIF date, so the two agree on what "earliest" means.
-    //
-    // The proxy can mislead when a file's modification time disagrees with its
-    // EXIF time by more than the linking window -- a folder copied after the
-    // fact -- and then a violation can be published before a photo that belongs
-    // to it. It is still grouped correctly, as a violation of its own, because
-    // publishing never reopens a settled group.
-    const newPhotos = attachmentData
-      .map(attachmentFile => ({
-        file: attachmentFile,
-        name: attachmentFile.name,
-      }))
-      .sort((a, b) => (a.file.lastModified || 0) - (b.file.lastModified || 0));
+    const newPhotos = attachmentData.map(attachmentFile => ({
+      file: attachmentFile,
+      name: attachmentFile.name,
+    }));
 
-    let completed = 0;
+    // Dates and places first, for the whole batch, before a single plate is
+    // read.
+    //
+    // That pass is local -- each file is read for its own metadata and nothing
+    // is sent anywhere -- so it is quick, and it is what puts the batch into
+    // capture order. The plate pass then runs in that order and publishes
+    // violations as they settle, which is sound because every photo still to
+    // come sits at or after the boundary (see batchFrontierTimeMs).
+    //
+    // The order could not come from file modification times. They stand in for
+    // capture time only where the two agree, and on the batch that prompted
+    // this they did not: two photos of one car were read either side of a photo
+    // from a different violation, so the car became two reports.
+    let read = 0;
     this.setState({
-      batchProgress: { stage: 'alpr', completed, total: newPhotos.length },
+      batchProgress: {
+        stage: 'metadata',
+        completed: 0,
+        total: newPhotos.length,
+      },
     });
 
-    await mapWithConcurrency({
+    const withMetadata = await mapWithConcurrency({
       items: newPhotos,
       limit: BATCH_ALPR_CONCURRENCY,
       worker: async photo => {
-        const result = await this.extractBatchPhotoData(photo);
-        completed += 1;
-        this.setState(state => ({
-          batchPhotos: state.batchPhotos.concat(result),
+        const result = await this.readBatchPhotoMetadata(photo);
+        read += 1;
+        this.setState({
           batchProgress: {
-            stage: 'alpr',
-            completed,
+            stage: 'metadata',
+            completed: read,
             total: newPhotos.length,
           },
-        }));
+        });
         return result;
       },
     });
 
-    // Publish once, now that every photo has been read.
-    //
-    // Publishing as the photos arrive needs to know which violations are
-    // already final, and that needs the capture times of the photos not read
-    // yet -- which nobody knows until they have been read. Modification time
-    // stands in for capture order only when the two agree, and on the batch
-    // that prompted this they did not: two photos of one car, a second apart,
-    // were read either side of a photo from a different violation, so the
-    // earlier one published on its own and the car became two reports.
-    //
-    // Reading the dates first, in a local pass before ALPR, would make the
-    // order sound. `isViolationSettled` is the rule that would then decide, and
-    // it is kept and tested for that.
+    const inCaptureOrder = [...withMetadata].sort(
+      (a, b) => effectiveTimeMs(a) - effectiveTimeMs(b),
+    );
+
+    // One slot per photo, filled as each is read. The unbroken run of filled
+    // slots from the front is where the boundary comes from, so a photo that
+    // finishes before one it follows cannot pull the boundary forward.
+    const readSoFar = new Array(inCaptureOrder.length);
+
+    let completed = 0;
+    this.setState({
+      batchProgress: { stage: 'alpr', completed, total: inCaptureOrder.length },
+    });
+
+    await mapWithConcurrency({
+      items: inCaptureOrder,
+      limit: BATCH_ALPR_CONCURRENCY,
+      worker: async (photo, index) => {
+        const result = await this.readBatchPhotoPlate(photo);
+        readSoFar[index] = result;
+        completed += 1;
+        this.setState(
+          state => ({
+            batchPhotos: state.batchPhotos.concat(result),
+            batchProgress: {
+              stage: 'alpr',
+              completed,
+              total: inCaptureOrder.length,
+            },
+          }),
+          () => {
+            this.publishBatchViolations({
+              frontierTimeMs: batchFrontierTimeMs(readSoFar),
+            });
+          },
+        );
+        return result;
+      },
+    });
+
+    // Whatever the boundary could never settle on its own, the last violation
+    // above all -- nothing follows it to pass it -- is published now that
+    // nothing is left to read.
     await this.publishBatchViolations({ includeUnsettled: true });
 
     this.setState({ batchProgress: null });
@@ -1825,11 +1890,15 @@ class Home extends React.Component {
     );
   };
 
-  // One photo's ALPR, date and location results. Runs once per file, and each
-  // extraction is allowed to fail on its own: a photo ALPR cannot read still
-  // groups on its time and place, and one whose EXIF is missing still has its
-  // plate read. Whatever came back empty shows up as a flag in the queue.
-  extractBatchPhotoData = async photo => {
+  // One photo's date and place, from its own metadata. Local work, with no
+  // network, which is what makes it affordable to do for the whole batch before
+  // a single plate is read -- and doing it first is what puts the batch into
+  // capture order.
+  //
+  // Each extraction is allowed to fail on its own: a photo with no EXIF still
+  // has a plate read, and one ALPR cannot read still groups on time and place.
+  // Whatever came back empty shows up as a flag in the queue.
+  readBatchPhotoMetadata = async photo => {
     const { file: attachmentFile } = photo;
 
     let attachmentBuffer;
@@ -1847,8 +1916,7 @@ class Home extends React.Component {
       name: 'jpg',
     };
 
-    const [plateResults, extractedDate, location] = await Promise.all([
-      this.batchPlateResults({ attachmentFile, attachmentBuffer, ext }),
+    const [extractedDate, location] = await Promise.all([
       extractDate({ attachmentFile, attachmentArrayBuffer, ext }).catch(
         () => undefined,
       ),
@@ -1862,12 +1930,40 @@ class Home extends React.Component {
 
     return {
       ...photo,
-      plateResults,
-      uploadWidth: plateResults?.uploadWidth,
-      uploadHeight: plateResults?.uploadHeight,
       ...normalizeExtractedDate(extractedDate),
       latitude: location?.latitude,
       longitude: location?.longitude,
+    };
+  };
+
+  // One photo's plate read: the network call, made once the metadata pass has
+  // settled what order the batch is in.
+  readBatchPhotoPlate = async photo => {
+    const { file: attachmentFile } = photo;
+
+    let attachmentBuffer;
+    try {
+      ({ attachmentBuffer } = await blobToBuffer({ attachmentFile }));
+    } catch (err) {
+      console.error(err);
+      return photo;
+    }
+
+    const { name: ext } = (await detectFromBuffer(attachmentBuffer)) || {
+      name: 'jpg',
+    };
+
+    const plateResults = await this.batchPlateResults({
+      attachmentFile,
+      attachmentBuffer,
+      ext,
+    });
+
+    return {
+      ...photo,
+      plateResults,
+      uploadWidth: plateResults?.uploadWidth,
+      uploadHeight: plateResults?.uploadHeight,
     };
   };
 

@@ -2374,6 +2374,72 @@ describe('Home', () => {
       cleanup();
     });
 
+    test('publishes violations while the batch is still being read', async () => {
+      const photos = [
+        jpeg({ name: 'a.jpg', size: 4 }),
+        jpeg({ name: 'b.jpg', size: 5 }),
+        jpeg({ name: 'c.jpg', size: 6 }),
+        jpeg({ name: 'd.jpg', size: 7 }),
+      ];
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, cleanup } = await renderBatchWithFiles([]);
+
+      // Record what each publish pass left behind. `batchProgress` is still set
+      // for every pass but the last, so a pass that published anything is one
+      // the user would have seen the queue for before the plates were done.
+      const original = homeRef.current.publishBatchViolations;
+      const passes = [];
+      jest
+        .spyOn(homeRef.current, 'publishBatchViolations')
+        .mockImplementation(async options => {
+          const result = await original.call(homeRef.current, options);
+          passes.push({
+            stillReading: homeRef.current.state.batchProgress !== null,
+            violations: homeRef.current.state.batchViolations.length,
+          });
+          return result;
+        });
+
+      await renderer.act(async () => {
+        await homeRef.current.addFilesToBatch(photos);
+        // The per-photo passes are not awaited by the worker that starts them,
+        // so let anything still settling finish before asserting on it.
+        for (let i = 0; i < 5; i += 1) {
+          // eslint-disable-next-line no-await-in-loop -- one round per pending promise chain; the rounds are the point.
+          await new Promise(resolve => setImmediate(resolve));
+        }
+      });
+
+      // The point of it: the queue was already non-empty while the bar was up.
+      expect(
+        passes.some(pass => pass.stillReading && pass.violations > 0),
+      ).toBe(true);
+
+      // And the dates-first pass is what keeps the grouping right, with the two
+      // photos a second apart staying together.
+      expect(
+        homeRef.current.state.batchViolations.map(v => [
+          v.plate,
+          v.photos.length,
+        ]),
+      ).toEqual([
+        ['T696817C', 2],
+        ['LDA8765', 1],
+        ['K73JAU', 1],
+      ]);
+      expect(homeRef.current.state.batchProgress).toBeNull();
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
     test('attaches at most 3 pictures and 3 videos of a group, and swaps them in and out', async () => {
       const pictures = ['p1', 'p2', 'p3', 'p4'].map(
         name => new File(['picture'], `${name}.jpg`, { type: 'image/jpeg' }),

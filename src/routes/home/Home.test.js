@@ -2225,66 +2225,6 @@ describe('Home', () => {
       cleanup();
     });
 
-    test('publishes violations while the batch is still being read', async () => {
-      const photos = [
-        jpeg({ name: 'a.jpg', size: 4 }),
-        jpeg({ name: 'b.jpg', size: 5 }),
-        jpeg({ name: 'c.jpg', size: 6 }),
-        jpeg({ name: 'd.jpg', size: 7 }),
-      ];
-
-      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
-      exifr.parse.mockImplementation(async arrayBuffer => ({
-        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
-        OffsetTimeDigitized: '-05:00',
-      }));
-
-      const { homeRef, cleanup } = await renderBatchWithFiles([]);
-
-      // Record what each publish pass left behind. `batchProgress` is still set
-      // for every pass but the last, so a pass that published anything is one
-      // the user would have seen the queue for before the batch finished.
-      const original = homeRef.current.publishBatchViolations;
-      const passes = [];
-      jest
-        .spyOn(homeRef.current, 'publishBatchViolations')
-        .mockImplementation(async options => {
-          const result = await original.call(homeRef.current, options);
-          passes.push({
-            stillReading: homeRef.current.state.batchProgress !== null,
-            violations: homeRef.current.state.batchViolations.length,
-          });
-          return result;
-        });
-
-      await renderer.act(async () => {
-        await homeRef.current.addFilesToBatch(photos);
-        // The per-photo passes are not awaited by the worker that starts them,
-        // so let anything still settling finish before asserting on it.
-        for (let i = 0; i < 5; i += 1) {
-          // eslint-disable-next-line no-await-in-loop -- one round per pending promise chain; the rounds are the point.
-          await new Promise(resolve => setImmediate(resolve));
-        }
-      });
-
-      // One pass per photo, plus the final one for whatever the gap rule could
-      // never settle on its own.
-      expect(passes).toHaveLength(photos.length + 1);
-      expect(passes.at(-1).violations).toBe(3);
-
-      // The point of the change: the queue was already non-empty while the bar
-      // was still up.
-      expect(
-        passes.some(pass => pass.stillReading && pass.violations > 0),
-      ).toBe(true);
-
-      expect(homeRef.current.state.batchProgress).toBeNull();
-
-      exifr.gps.mockReset();
-      exifr.parse.mockReset();
-      cleanup();
-    });
-
     test('retries a rate-limited photo rather than leaving it with no plate read', async () => {
       const photos = [jpeg({ name: 'a.jpg', size: 4 })];
 
@@ -2391,6 +2331,43 @@ describe('Home', () => {
         ['T696817C', 2],
         ['K73JAU', 1],
       ]);
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    test('lists the queue oldest first when photos arrive in more than one pick', async () => {
+      const early = jpeg({ name: 'early.jpg', size: 4 });
+      const late = jpeg({ name: 'late.jpg', size: 7 });
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      // `late.jpg` is shot a minute after `early.jpg` and is added first, so it
+      // is the violation published first. The queue still has to read oldest
+      // first, which means the later pick has to sort in front of it.
+      const { homeRef, cleanup } = await renderBatchWithFiles([late]);
+
+      expect(homeRef.current.state.plate).toBe('K73JAU');
+
+      await renderer.act(async () => {
+        await homeRef.current.addFilesToBatch([early]);
+        await new Promise(resolve => setImmediate(resolve));
+      });
+
+      expect(homeRef.current.state.batchViolations.map(v => v.plate)).toEqual([
+        'T696817C',
+        'K73JAU',
+      ]);
+
+      // The loaded violation is followed by identity, so the re-sort does not
+      // leave the form pointing at whichever violation took its index.
+      expect(homeRef.current.state.currentViolationIndex).toBe(1);
+      expect(homeRef.current.state.plate).toBe('K73JAU');
 
       exifr.gps.mockReset();
       exifr.parse.mockReset();

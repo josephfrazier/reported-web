@@ -52,7 +52,6 @@ import PreviousSubmissionsList from '../../components/PreviousSubmissionsList.js
 import formatGeosearchAddress from '../../formatGeosearchAddress.js';
 import createGeosearchAddressCache from '../../geosearchAddressCache.js';
 import groupAttachmentsByViolation, {
-  effectiveTimeMs,
   isViolationSettled,
 } from '../../groupAttachmentsByViolation.js';
 import { isImage, isVideo } from '../../isImage.js';
@@ -500,33 +499,6 @@ async function mapWithConcurrency({ items, limit, worker }) {
   );
 
   return results;
-}
-
-// The capture time of the last photo that, together with every photo before it,
-// has been read. Photos are read in modification-time order, so nothing still
-// to come carries an earlier capture time than this -- which is what makes it a
-// boundary that a violation can safely be called final against.
-//
-// It must be the end of a *contiguous* run, and not simply the latest photo
-// read. Three photos are read at once and they finish in whatever order the
-// network returns them, so the latest photo read can easily belong to a later
-// violation while an earlier one is still waiting for a photo of its own.
-// Taking the latest would settle that earlier violation early and publish it
-// with too few photos.
-//
-// `-Infinity` means nothing has been read yet, so nothing can settle.
-function batchFrontierTimeMs(readSoFar) {
-  let frontier = -Infinity;
-
-  for (const result of readSoFar) {
-    if (result === undefined) {
-      return frontier;
-    }
-
-    frontier = effectiveTimeMs(result);
-  }
-
-  return frontier;
 }
 
 // `extractDate` returns `{ millisecondsSinceEpoch, offset }` for a picture but
@@ -1700,11 +1672,6 @@ class Home extends React.Component {
       }))
       .sort((a, b) => (a.file.lastModified || 0) - (b.file.lastModified || 0));
 
-    // One slot per photo, filled as each is read. The run of filled slots from
-    // the front is what the frontier comes from, so a photo finishing before
-    // one it follows cannot pull the boundary forward with it.
-    const readSoFar = new Array(newPhotos.length);
-
     let completed = 0;
     this.setState({
       batchProgress: { stage: 'alpr', completed, total: newPhotos.length },
@@ -1713,46 +1680,49 @@ class Home extends React.Component {
     await mapWithConcurrency({
       items: newPhotos,
       limit: BATCH_ALPR_CONCURRENCY,
-      worker: async (photo, index) => {
+      worker: async photo => {
         const result = await this.extractBatchPhotoData(photo);
-        readSoFar[index] = result;
         completed += 1;
-        this.setState(
-          state => ({
-            batchPhotos: state.batchPhotos.concat(result),
-            batchProgress: {
-              stage: 'alpr',
-              completed,
-              total: newPhotos.length,
-            },
-          }),
-          () => {
-            this.publishBatchViolations({
-              frontierTimeMs: batchFrontierTimeMs(readSoFar),
-            });
+        this.setState(state => ({
+          batchPhotos: state.batchPhotos.concat(result),
+          batchProgress: {
+            stage: 'alpr',
+            completed,
+            total: newPhotos.length,
           },
-        );
+        }));
         return result;
       },
     });
 
+    // Publish once, now that every photo has been read.
+    //
+    // Publishing as the photos arrive needs to know which violations are
+    // already final, and that needs the capture times of the photos not read
+    // yet -- which nobody knows until they have been read. Modification time
+    // stands in for capture order only when the two agree, and on the batch
+    // that prompted this they did not: two photos of one car, a second apart,
+    // were read either side of a photo from a different violation, so the
+    // earlier one published on its own and the car became two reports.
+    //
+    // Reading the dates first, in a local pass before ALPR, would make the
+    // order sound. `isViolationSettled` is the rule that would then decide, and
+    // it is kept and tested for that.
     await this.publishBatchViolations({ includeUnsettled: true });
 
     this.setState({ batchProgress: null });
   };
 
-  // Publish whatever grouping can already settle, so the queue fills in and the
-  // first violation loads while the batch is still being read.
+  // Group the photos that no published violation has claimed, and add the
+  // violations to the queue.
   //
-  // Only photos with no published violation are grouped. A published violation
-  // settled before it was published, so nothing read since can have changed it,
-  // and leaving its photos out of the grouping is what keeps it -- and the
-  // index the queue is pointing at -- exactly as it was. That is the "freeze
-  // the one you are on" rule: the loaded violation never shifts or re-forms
-  // under the form.
+  // Only unclaimed photos are grouped. A published violation does not change,
+  // and leaving its photos out is what keeps it -- and the form loaded from it
+  // -- exactly as it was. `includeUnsettled` decides whether a violation has to
+  // look final to be published at all; see `isViolationSettled`.
   //
-  // Each violation is geocoded before it is published, so loading one always
-  // finds the batch's lookup in the memo instead of starting its own.
+  // Each violation is geocoded before it is published, so loading one finds
+  // the batch's lookup in the memo instead of starting its own.
   publishBatchViolations = async ({
     includeUnsettled = false,
     // No frontier means nothing is known to be final yet. That is the safe
@@ -1813,20 +1783,34 @@ class Home extends React.Component {
 
     this.setState(
       state => {
-        // Photos finish three at a time, so two passes can overlap and both
-        // group the same unpublished photos. Reconciling against the state
-        // they are appended to, rather than the copy read at the top, is what
-        // stops a violation being published twice.
         const published = new Set(
           state.batchViolations.map(violation => violation.photos[0]?.name),
         );
+        const added = flagged.filter(
+          violation => !published.has(violation.photos[0]?.name),
+        );
+
+        if (added.length === 0) {
+          return null;
+        }
+
+        // Oldest first, the way the batch was shot: the queue is walked in
+        // that order. Appending instead would list violations in whatever
+        // order they were published in.
+        const oldestFirst = state.batchViolations
+          .concat(added)
+          .sort((a, b) => a.createDateMs - b.createDateMs);
+
+        // Sorting moves rows, so an index no longer identifies the loaded
+        // violation. Follow it by identity instead: these are the same objects,
+        // only reordered.
+        const loaded = state.batchViolations[state.currentViolationIndex];
 
         return {
-          batchViolations: state.batchViolations.concat(
-            flagged.filter(
-              violation => !published.has(violation.photos[0]?.name),
-            ),
-          ),
+          batchViolations: oldestFirst,
+          currentViolationIndex: loaded
+            ? oldestFirst.indexOf(loaded)
+            : state.currentViolationIndex,
         };
       },
       () => {

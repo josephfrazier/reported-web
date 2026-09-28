@@ -513,14 +513,15 @@
     <p class="standfirst">
       Upload a folder of photos — or just a pile of loose files — covering many violations at
       once. The app runs ALPR and reverse-geocoding over the whole batch, groups the photos into
-      violations, and then walks you through them one at a time — form pre-filled, ready to submit.
+      violations, and starts walking you through them one at a time as soon as the first settles —
+      form pre-filled, ready to submit, while the rest of the photos are still being read.
     </p>
 
     <dl class="meta">
-      <div><dt>Status</dt><dd>designed, not built</dd></div>
+      <div><dt>Status</dt><dd>built</dd></div>
       <div><dt>Written</dt><dd>2026-09-23</dd></div>
+      <div><dt>Revised</dt><dd>2026-09-28</dd></div>
       <div><dt>Base</dt><dd>ba141241</dd></div>
-      <div><dt>Commits</dt><dd>3 planned</dd></div>
     </dl>
 
     <!-- ============================ DECISIONS ============================ -->
@@ -546,6 +547,8 @@
             <tr><td>Violation time &amp; location</td><td>From the <strong>earliest</strong> photo in the group</td></tr>
             <tr><td>More than 3 photos</td><td>Checkbox picker, first 3 pre-selected</td></tr>
             <tr><td>Reload mid-batch</td><td>Everything is lost — in-memory only</td></tr>
+            <tr><td>Publishing</td><td>Progressively, as each violation settles — not when the batch ends</td></tr>
+            <tr><td>First violation</td><td>Loaded into the form automatically, with no click</td></tr>
           </tbody>
         </table>
       </div>
@@ -564,6 +567,8 @@
             <tr><td>ALPR concurrency</td><td>Capped at 3 in flight</td></tr>
             <tr><td>Queue controls</td><td>Load any group, or delete it</td></tr>
             <tr><td>Input while the mode is on</td><td>Every pick and drop feeds the batch; the single-violation flow is the toggle-off behaviour</td></tr>
+            <tr><td>Order photos are read in</td><td><code>file.lastModified</code>, standing in for capture order</td></tr>
+            <tr><td>Submitted photos</td><td>Dropped from the batch, so re-grouping cannot resurrect the violation</td></tr>
           </tbody>
         </table>
       </div>
@@ -717,6 +722,40 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
           using a plate both to define a group and to be chosen from it.
         </p>
       </div>
+
+      <h3>When a violation is final</h3>
+      <p>
+        The queue fills in while the batch is still being read, which needs a rule for when a
+        violation has stopped changing. It is the linking window itself rather than a photo count:
+        since <code>linkPhotos</code> requires two photos to be within <span class="mono">5 s</span>
+        of each other, once the frontier — the latest photo read so far — has moved more than that
+        past a violation's end, nothing still to come can reach back and join it.
+        <code>isViolationSettled</code> is that test, exported and unit-tested on its own because it
+        is the whole trigger.
+      </p>
+      <p>
+        Two things follow from it. The batch's <strong>last</strong> violation can never settle on
+        its own — settling needs a later photo to pass it, and there is none — so a final pass
+        publishes whatever is left. And nothing needs freezing explicitly: a published violation
+        settled <em>before</em> it was published, so nothing read since can have changed it, and its
+        photos are left out of later grouping passes. That is what holds the queue's order, and the
+        index it is pointing at, still — the violation being worked on cannot shift underneath the
+        form.
+      </p>
+
+      <h3>Order photos are read in</h3>
+      <p>
+        EXIF times are not known until a photo has been read, so "the earliest photos first" cannot
+        be arranged up front. Photos are read in <code>file.lastModified</code> order instead, which
+        stands in for capture order — and is the same fallback grouping already trusts for a photo
+        with no EXIF date, so the two agree on what <em>earliest</em> means.
+      </p>
+      <p>
+        It can mislead: a file whose modification time disagrees with its EXIF time by more than the
+        window, such as a folder copied after the fact, can be read after a photo it ought to
+        precede. The photo is still grouped correctly — as a violation of its own, since publishing
+        never reopens a settled group — but it may land in the queue out of capture order.
+      </p>
     </section>
 
     <!-- ============================ CACHING ============================ -->
@@ -787,10 +826,12 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         <code>src/groupAttachmentsByViolation.test.js</code>, following the repo's habit of
         extracting logic into small pure modules with direct tests.
       </p>
-      <p>Two helpers live alongside it:</p>
+      <p>Four helpers live alongside it:</p>
       <ul>
         <li><code>haversineMeters(a, b)</code> — distance between two coordinates</li>
         <li><code>normalizedCenterDistance(box, uploadWidth, uploadHeight)</code> — how far a plate sits from the frame centre</li>
+        <li><code>effectiveTimeMs(photo)</code> — capture time, falling back to file last-modified, so grouping and the read order agree on <em>earliest</em></li>
+        <li><code>isViolationSettled({ violation, frontierTimeMs })</code> — whether a violation has stopped changing, which is what publishing waits for</li>
       </ul>
 
       <h3>New state on <code>Home</code></h3>
@@ -903,17 +944,29 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
 
       <h3>During the batch</h3>
       <p>
-        An inline <code>&lt;progress&gt;</code> bar on the form, with counts, stepping through
-        ALPR → grouping → geocoding. No modal: the batch is long-running and the user should be able
-        to see the page while it works.
+        An inline <code>&lt;progress&gt;</code> bar on the form, counting photos read. No modal: the
+        batch is long-running and the user should be able to see the page while it works.
+      </p>
+      <p>
+        Reading plates is the only stage the bar names. Grouping and geocoding happen per violation
+        as it is published, so a bar stepping through three phases would no longer describe what is
+        happening — the queue filling in underneath is the progress for those.
       </p>
 
       <h3>The queue</h3>
       <p>
-        A list of found violations, each showing its time, plate, photo count and flags. A
-        <strong>Load next violation</strong> button loads one into the form: its photos appear as
-        thumbnails with the usual plate overlays, and the fields fill from cached results.
-        Submit then advances automatically.
+        Violations appear as they settle rather than when the batch ends (see
+        <em>When a violation is final</em>), so reporting can start while the rest of the photos are
+        still being read. Each row shows its time, plate, photo count and flags, with a
+        <strong>Load</strong> button to open it and <strong>Delete</strong> to drop it —
+        <strong>Load next violation</strong> walks them in capture order.
+      </p>
+      <p>
+        The first violation loads itself, so the form is ready to submit without a click. Loading
+        one puts its photos in the form as thumbnails with the usual plate overlays, and fills the
+        fields from what the batch already extracted; Submit then advances automatically. Loading
+        the violation already loaded is a no-op rather than a reload, because loading resets the
+        attachment selection to the group's default and would discard a swap made with the picker.
       </p>
 
       <h3>Groups over three photos</h3>
@@ -939,10 +992,15 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
           both thresholds, and each fallback (no GPS, no time, no plate).
         </li>
         <li>
-          <code>Home.test.js</code> — reusing the <code>renderWithFiles</code> harness to assert that
-          violations are found, that loading one fills the fields from cache, that
-          <strong>no second <code>/platerecognizer</code> call fires</strong>, and that Submit
-          advances.
+          <code>Home.test.js</code> — driving the rendered batch UI to assert that violations are
+          found, that the first loads itself as it settles, that loading one fills the fields from
+          cache, that <strong>no second <code>/platerecognizer</code> call fires</strong>, and that
+          Submit advances.
+        </li>
+        <li>
+          Publishing — <code>isViolationSettled</code> is unit-tested at both edges of the window,
+          and it is worth watching what each publish pass left in state, since a pass that ran while
+          the progress bar was still up is the whole feature.
         </li>
       </ul>
       <p>
@@ -1016,7 +1074,7 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
           with its own test, so repeated lookups stop re-hitting NYC Planning Labs.
         </li>
         <li>
-          <strong>The wiring.</strong> Batch state, the three photo inputs, the one-shot processing pass, the
+          <strong>The wiring.</strong> Batch state, the three photo inputs, the progressive publishing pass, the
           queue, load-next, the picker and auto-advance in <code>Home.js</code>, plus the
           <code>Home.test.js</code> coverage.
         </li>
@@ -1029,8 +1087,10 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
 
     <footer>
       <p>
-        Written 2026-09-23 against <span class="mono">ba141241</span>. Line references are to
-        <code>src/routes/home/Home.js</code> unless another path is given.
+        Written 2026-09-23 against <span class="mono">ba141241</span>, revised 2026-09-28 to match
+        what was actually built. Line references are to <code>src/routes/home/Home.js</code> unless
+        another path is given, and are anchors from that commit rather than current ones — the file
+        has moved on since, so check them against the code rather than trusting them.
       </p>
       <p>
         Regenerate by re-reading that file, <code>src/alpr.js</code>,

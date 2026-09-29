@@ -1,0 +1,448 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Syne:wght@700;800&display=swap');
+
+:root {
+  --smap-bg: #f5f7fb;
+  --smap-surface: #fff;
+  --smap-surface2: #eef2f7;
+  --smap-border: #d7deea;
+  --smap-border2: #bcc7d8;
+  --smap-accent: #5a8c00;
+  --smap-text: #17202f;
+  --smap-muted: #5e6b81;
+  --smap-crosswalk: #d4ff4e;
+  --smap-bikelane: #4ecbff;
+  --smap-redlight: #ff6b35;
+  --smap-reckless: #f46;
+  --smap-illegal: #b87fff;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+.root {
+  background: var(--smap-bg);
+  color: var(--smap-text);
+  font-family: 'DM Mono', monospace;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── PASTE SCREEN ── */
+
+.pasteScreen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+  gap: 20px;
+}
+
+.pasteScreen h1 {
+  font-family: Syne, sans-serif;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--smap-accent);
+}
+
+/* ── TABS ── */
+
+.tabs {
+  display: flex;
+  border: 1px solid var(--smap-border2);
+  border-radius: 4px;
+  overflow: hidden;
+  width: 100%;
+  max-width: 640px;
+}
+
+.tab {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--smap-muted);
+  font-family: Syne, sans-serif;
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.tab:hover {
+  background: var(--smap-surface2);
+  color: var(--smap-text);
+}
+
+.tabActive {
+  background: var(--smap-accent);
+  color: #fff;
+}
+
+.tab + .tab {
+  border-left: 1px solid var(--smap-border2);
+}
+
+/* ── PANELS ── */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  max-width: 640px;
+}
+
+.pasteScreen p {
+  font-size: 0.7rem;
+  color: var(--smap-muted);
+  letter-spacing: 0.03em;
+  text-align: center;
+  max-width: 520px;
+  line-height: 1.75;
+}
+
+.pasteScreen p code {
+  color: var(--smap-text);
+  background: var(--smap-surface2);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 0.67rem;
+}
+
+.jsonInput {
+  width: 100%;
+  max-width: 640px;
+  height: 210px;
+  background: var(--smap-surface);
+  border: 1px solid var(--smap-border2);
+  border-radius: 4px;
+  color: var(--smap-text);
+  font-family: 'DM Mono', monospace;
+  font-size: 0.68rem;
+  padding: 14px;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.15s;
+  line-height: 1.55;
+}
+
+.jsonInput:focus {
+  border-color: var(--smap-accent);
+}
+
+.jsonInput::placeholder {
+  color: var(--smap-muted);
+  font-style: italic;
+}
+
+.errorMsg {
+  font-size: 0.67rem;
+  color: var(--smap-reckless);
+  letter-spacing: 0.03em;
+  max-width: 640px;
+}
+
+.loadBtn {
+  background: var(--smap-accent);
+  color: #fff;
+  border: none;
+  border-radius: 3px;
+  padding: 10px 30px;
+  font-family: Syne, sans-serif;
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+}
+
+.loadBtn:hover {
+  opacity: 0.85;
+  transform: translateY(-1px);
+}
+
+.loadBtn:active {
+  transform: translateY(0);
+}
+
+/* ── DRAW PANEL ── */
+
+.drawPanel {
+  flex: 1;
+  align-self: stretch;
+  max-width: none;
+  min-height: 0;
+}
+
+.pasteScreenDrawActive {
+  justify-content: flex-start;
+}
+
+.drawMap {
+  width: 100%;
+  height: 320px;
+  border: 1px solid var(--smap-border2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.drawMapExpanded {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+}
+
+.drawStatus {
+  font-size: 0.65rem;
+  color: var(--smap-muted);
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+
+/* ── MAP SCREEN ── */
+
+.mapScreen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.mapHeader {
+  padding: 11px 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-bottom: 1px solid var(--smap-border);
+  background: var(--smap-surface);
+  flex-shrink: 0;
+}
+
+.mapHeader h1 {
+  font-family: Syne, sans-serif;
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--smap-accent);
+  white-space: nowrap;
+}
+
+.countBadge {
+  font-size: 0.6rem;
+  color: var(--smap-muted);
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.legend {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-left: auto;
+  align-items: center;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.58rem;
+  color: var(--smap-muted);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.legendDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.resetBtn {
+  background: none;
+  border: 1px solid var(--smap-border2);
+  color: var(--smap-muted);
+  border-radius: 3px;
+  padding: 5px 11px;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.resetBtn:hover {
+  color: var(--smap-text);
+  border-color: var(--smap-text);
+}
+
+.photoFilter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.6rem;
+  color: var(--smap-muted);
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.photoFilter input {
+  accent-color: var(--smap-accent);
+  cursor: pointer;
+}
+
+.map {
+  flex: 1;
+}
+
+/* ── POPUP ── */
+
+.popup {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  width: 300px;
+  background: var(--smap-surface);
+  border: 1px solid var(--smap-border2);
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 18px 52px rgb(23 32 47 / 18%), 0 0 0 1px rgb(23 32 47 / 4%);
+  opacity: 0;
+  transform: translateY(8px) scale(0.96);
+  transition: opacity 0.13s, transform 0.13s;
+}
+
+.popupVisible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.popupPinned {
+  pointer-events: auto;
+  border-color: var(--smap-accent);
+  box-shadow: 0 18px 52px rgb(23 32 47 / 22%), 0 0 0 1px rgb(90 140 0 / 20%);
+}
+
+.popupHeader {
+  padding: 10px 30px 9px 12px;
+  background: var(--smap-bg);
+  border-bottom: 1px solid var(--smap-border);
+  position: relative;
+}
+
+.popupClose {
+  display: none;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: none;
+  border: 1px solid var(--smap-border2);
+  color: var(--smap-muted);
+  border-radius: 2px;
+  width: 18px;
+  height: 18px;
+  font-size: 11px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.1s, border-color 0.1s;
+  font-family: monospace;
+  line-height: 1;
+  padding: 0;
+}
+
+.popupClose:hover {
+  color: var(--smap-text);
+  border-color: var(--smap-text);
+}
+
+.popupPinned .popupClose {
+  display: flex;
+}
+
+.popupComplaint {
+  font-family: Syne, sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+
+.popupMeta {
+  font-size: 0.59rem;
+  color: var(--smap-muted);
+  line-height: 1.75;
+}
+
+.val {
+  color: var(--smap-text);
+}
+
+.popupPhotos {
+  display: flex;
+}
+
+.popupPhotos img {
+  flex: 1;
+  min-width: 0;
+  height: 136px;
+  object-fit: contain;
+  background: #f0f3f8;
+  display: block;
+  border-right: 1px solid var(--smap-border);
+}
+
+.popupPhotos img:last-child {
+  border-right: none;
+}
+
+.popupNoPhoto {
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.58rem;
+  color: var(--smap-muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-style: italic;
+}
+
+/* ── LEAFLET OVERRIDES ── */
+
+:global(.leaflet-container) {
+  background: #dfe6ef !important;
+}
+
+:global(.leaflet-control-attribution) {
+  background: rgb(255 255 255 / 92%) !important;
+  color: var(--smap-muted) !important;
+  font-family: 'DM Mono', monospace !important;
+  font-size: 9px !important;
+}
+
+:global(.leaflet-control-attribution a) {
+  color: var(--smap-muted) !important;
+}
+
+:global(.leaflet-control-zoom a) {
+  background: var(--smap-surface) !important;
+  color: var(--smap-text) !important;
+  border-color: var(--smap-border2) !important;
+  font-family: monospace !important;
+}

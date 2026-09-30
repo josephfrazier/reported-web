@@ -2603,7 +2603,7 @@ describe('Home', () => {
         createDateMs: 1704110400000,
       };
 
-      const { homeRef, clickButton, submit, cleanup } =
+      const { homeRef, clickQueueLoad, submit, cleanup } =
         await renderBatchWithFiles([]);
 
       renderer.act(() => {
@@ -2617,7 +2617,7 @@ describe('Home', () => {
           batchViolations: [violation],
         });
       });
-      clickButton('Load next violation');
+      clickQueueLoad('T696817C');
 
       // Only three pictures fit, so the fourth starts unattached.
       expect(
@@ -2670,7 +2670,7 @@ describe('Home', () => {
         createDateMs: 1704110400000,
       };
 
-      const { homeRef, toastWarn, clickButton, toggleAttachment, cleanup } =
+      const { homeRef, toastWarn, clickQueueLoad, toggleAttachment, cleanup } =
         await renderBatchWithFiles([]);
 
       renderer.act(() => {
@@ -2686,7 +2686,7 @@ describe('Home', () => {
           batchViolations: [violation],
         });
       });
-      clickButton('Load next violation');
+      clickQueueLoad('T696817C');
 
       const attachmentNames = () =>
         homeRef.current.state.attachmentData.map(file => file.name);

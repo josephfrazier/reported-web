@@ -987,9 +987,10 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
       <p>
         Violations appear as they settle rather than when the batch ends (see
         <em>When a violation is final</em>), so reporting can start while the rest of the photos are
-        still being read. Each row shows its time, plate, photo count and flags, with a
-        <strong>Load</strong> button to open it and <strong>Delete</strong> to drop it —
-        <strong>Load next violation</strong> walks them in capture order.
+        still being read. Each row shows its time, plate, photo count and flags, and clicking a
+        row's own text opens that violation; <strong>Delete</strong> drops a row. There is no
+        button to walk the queue in order, because Submit already advances to the next violation
+        and any row is one click away.
       </p>
       <p>
         The first violation loads itself, so the form is ready to submit without a click. Loading

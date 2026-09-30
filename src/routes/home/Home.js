@@ -2115,14 +2115,8 @@ class Home extends React.Component {
     }
   };
 
-  loadNextBatchViolation = () => {
-    // The loaded index is where the walk-through has reached, so "next" is
-    // whatever follows it — and the first violation when none is loaded.
-    this.loadBatchViolation(this.state.currentViolationIndex + 1);
-  };
-
-  // Load a violation picked by its Load button in the queue, so the order the
-  // batch was shot in is the default rather than the only way through it.
+  // Load a violation picked from the queue, so the order the batch was shot in
+  // is the default rather than the only way through it.
   //
   // Loading the one already loaded is deliberately a no-op rather than a
   // reload: loadBatchViolation resets the photo selection to the default, so
@@ -2665,9 +2659,6 @@ class Home extends React.Component {
               Found {batchViolations.length} violation
               {batchViolations.length === 1 ? '' : 's'}
             </h3>
-            <button type="button" onClick={this.loadNextBatchViolation}>
-              Load next violation
-            </button>{' '}
             {batchMergeSelection.length >= 2 && (
               <button type="button" onClick={this.mergeSelectedBatchViolations}>
                 {`Merge ${batchMergeSelection.length} selected`}

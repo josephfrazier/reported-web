@@ -2660,7 +2660,7 @@ class Home extends React.Component {
         )}
 
         {batchViolations.length > 0 && (
-          <div>
+          <div className={homeStyles['batch-queue']}>
             <h3>
               Found {batchViolations.length} violation
               {batchViolations.length === 1 ? '' : 's'}

@@ -167,8 +167,13 @@ const geolocate = () =>
     };
   });
 
-const jsDateToCreateDate = jsDate =>
-  jsDate.toISOString().replace(/:\d\d\..*/g, '');
+// The time a report is filed with, to the second.
+//
+// The seconds were stripped here until recently, which left every stored
+// report's time a minute wide. They belong to the report: its time is what it
+// is, and rounding it is not this function's job. Only the fraction of a second
+// goes.
+const jsDateToCreateDate = jsDate => jsDate.toISOString().replace(/\..*/g, '');
 
 async function blobToBuffer({ attachmentFile }) {
   console.time(`blobUtil.blobToArrayBuffer(${attachmentFile.name})`); // eslint-disable-line no-console
@@ -2815,7 +2820,13 @@ class Home extends React.Component {
                         <input
                           required
                           type="datetime-local"
-                          value={this.state.CreateDate}
+                          // Minutes, not the seconds the state carries. The
+                          // slice started as a workaround for an iOS picker
+                          // that refused a value carrying seconds (issue #11).
+                          // It stays on its own account: this is a field for a
+                          // person to nudge, and a phone's picker offers no
+                          // finer than a minute anyway.
+                          value={this.state.CreateDate.slice(0, 16)}
                           name="CreateDate"
                           onChange={this.handleInputChange}
                         />

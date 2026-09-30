@@ -2532,7 +2532,7 @@ describe('Home', () => {
 
       tickMerge('no plate read');
       tickMerge('T696817C');
-      clickButton('Merge 2 selected');
+      clickButton('Merge 2');
 
       const { batchViolations, batchMergeSelection } = homeRef.current.state;
 

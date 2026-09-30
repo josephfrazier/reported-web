@@ -395,6 +395,47 @@ input[type='search']::-webkit-search-cancel-button {
 }
 
 /*
+ * The queue's heading, with the merge button on the same line when two rows
+ * are ticked.
+ *
+ * The button rides on the heading's line rather than on one of its own. On a
+ * line of its own it pushed the whole list down the moment a second row was
+ * ticked, which moved the rows out from under the pointer.
+ */
+.batch-queue-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 16px 0 4px;
+}
+
+/* The heading's own margin would sit inside the flex line and hold the button
+   off the centre of the text beside it. */
+.batch-queue-heading h3 {
+  margin: 0;
+}
+
+/*
+ * The merge button, sized and worded to leave the heading's line alone.
+ *
+ * marx draws a button 42px tall and the heading's line is 34px (28px at a
+ * line-height of 1.2). A button taller than that line would set the line's
+ * height whenever it appeared. Trimming the padding and the line-height takes
+ * it to 29px.
+ *
+ * Width counts too, which is why the label reads "Merge 2" and not "Merge 2
+ * selected". Measured at 390px, the longer label pushed the heading onto two
+ * lines and the list down 33px, which is the jump this is here to stop. Check
+ * both widths before lengthening it.
+ */
+.batch-queue-merge {
+  flex: none;
+  margin-left: auto;
+  padding: 4px 12px;
+  line-height: 1.2;
+}
+
+/*
  * The batch's queue: its heading, its controls and its list of violations.
  *
  * The list is a window onto a batch that is still being read, and with no edge
@@ -402,9 +443,9 @@ input[type='search']::-webkit-search-cancel-button {
  * violation's photos below it. A hairline border gives it that edge. The
  * colour and the radius are the ones marx already draws its inputs with.
  *
- * The top padding is zero because the heading brings its own margin, which
- * cannot escape the border; that leaves the same 16px inside the top and the
- * bottom.
+ * The top padding is zero because the heading line brings its own margin,
+ * which cannot escape the border; that leaves the same 16px inside the top and
+ * the bottom.
  */
 .batch-queue {
   border: 1px solid rgb(0 0 0 / 12%);

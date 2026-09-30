@@ -2691,15 +2691,23 @@ class Home extends React.Component {
 
         {batchViolations.length > 0 && (
           <div className={homeStyles['batch-queue']}>
-            <h3>
-              Found {batchViolations.length} violation
-              {batchViolations.length === 1 ? '' : 's'}
-            </h3>
-            {batchMergeSelection.length >= 2 && (
-              <button type="button" onClick={this.mergeSelectedBatchViolations}>
-                {`Merge ${batchMergeSelection.length} selected`}
-              </button>
-            )}
+            {/* The merge button shares the heading's line so that its arrival
+                does not push the list down; see .batch-queue-merge. */}
+            <div className={homeStyles['batch-queue-heading']}>
+              <h3>
+                Found {batchViolations.length} violation
+                {batchViolations.length === 1 ? '' : 's'}
+              </h3>
+              {batchMergeSelection.length >= 2 && (
+                <button
+                  type="button"
+                  className={homeStyles['batch-queue-merge']}
+                  onClick={this.mergeSelectedBatchViolations}
+                >
+                  {`Merge ${batchMergeSelection.length}`}
+                </button>
+              )}
+            </div>
             {/* The list grows while the batch is still being read, and a list
                 that lengthens pushes everything under it -- the form for the
                 violation being reported -- down the page. Capping its height

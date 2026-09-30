@@ -857,9 +857,8 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         <code>src/groupAttachmentsByViolation.test.js</code>, following the repo's habit of
         extracting logic into small pure modules with direct tests.
       </p>
-      <p>Four helpers live alongside it:</p>
+      <p>Three helpers live alongside it:</p>
       <ul>
-        <li><code>haversineMeters(a, b)</code> — distance between two coordinates. Nothing in the grouping calls it now; it stays, with its tests, for a distance bound if one is ever wanted again</li>
         <li><code>normalizedCenterDistance(box, uploadWidth, uploadHeight)</code> — how far a plate sits from the frame centre</li>
         <li><code>effectiveTimeMs(photo)</code> — capture time, falling back to file last-modified, so grouping and the read order agree on <em>earliest</em></li>
         <li><code>isViolationSettled({ violation, frontierTimeMs })</code> — whether a violation has stopped changing, which is what publishing waits for</li>

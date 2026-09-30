@@ -1,5 +1,4 @@
 import groupAttachmentsByViolation, {
-  haversineMeters,
   isViolationSettled,
   normalizedCenterDistance,
 } from './groupAttachmentsByViolation.js';
@@ -148,35 +147,6 @@ describe('isViolationSettled', () => {
     expect(isViolationSettled({ violation, frontierTimeMs: 1_064_001 })).toBe(
       true,
     );
-  });
-});
-
-describe('haversineMeters', () => {
-  test('is zero for a point and itself', () => {
-    expect(
-      haversineMeters(
-        { latitude: BASE_LATITUDE, longitude: BASE_LONGITUDE },
-        { latitude: BASE_LATITUDE, longitude: BASE_LONGITUDE },
-      ),
-    ).toBe(0);
-  });
-
-  test('measures a degree of latitude as about 111km', () => {
-    expect(
-      haversineMeters(
-        { latitude: 0, longitude: 0 },
-        { latitude: 1, longitude: 0 },
-      ),
-    ).toBeCloseTo(111195, -2);
-  });
-
-  test('measures a degree of longitude at the equator as about 111km too', () => {
-    expect(
-      haversineMeters(
-        { latitude: 0, longitude: 0 },
-        { latitude: 0, longitude: 1 },
-      ),
-    ).toBeCloseTo(111195, -2);
   });
 });
 

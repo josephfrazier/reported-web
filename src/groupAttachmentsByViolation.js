@@ -48,30 +48,11 @@
 
 const TIME_THRESHOLD_MS = 60000;
 
-// Mean Earth radius (IUGG), the value most haversine implementations use.
-const EARTH_RADIUS_METERS = 6371008.8;
-
 // The medallion plate pattern, kept as a tie-break rather than a filter: only
 // the clean read of an OCR variant set matches it, so using it to pick a plate
 // would throw away the variants that make folding possible.
 // https://github.com/josephfrazier/reported-web/issues/584
 const MEDALLION_PLATE = /^T\d{6}C$/;
-
-const toRadians = degrees => (degrees * Math.PI) / 180;
-
-// Great-circle distance in meters between two `{ latitude, longitude }` pairs.
-export function haversineMeters(a, b) {
-  const deltaLatitude = toRadians(b.latitude - a.latitude);
-  const deltaLongitude = toRadians(b.longitude - a.longitude);
-  const h =
-    Math.sin(deltaLatitude / 2) ** 2 +
-    Math.cos(toRadians(a.latitude)) *
-      Math.cos(toRadians(b.latitude)) *
-      Math.sin(deltaLongitude / 2) ** 2;
-  // Rounding can push `h` a hair above 1 for (near-)antipodal points, which
-  // would make Math.sqrt(h) exceed 1 and Math.asin() return NaN.
-  return 2 * EARTH_RADIUS_METERS * Math.asin(Math.min(1, Math.sqrt(h)));
-}
 
 // How far a plate's box sits from the centre of the frame it was found in,
 // as a fraction of the frame's diagonal, or null when it cannot be computed.

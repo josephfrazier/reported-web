@@ -2167,24 +2167,35 @@ class Home extends React.Component {
   // whatever took its index: the queue then always shows what is left to
   // report.
   //
-  // The photos go with it, as they do when a violation is deleted. Publishing
-  // re-groups the photos that no published violation has claimed, so leaving a
-  // submitted one's photos here would bring the violation back on the next
-  // pass.
-  advanceBatchAfterSubmit = () => {
+  // Only the photos that went into the report leave the batch. A group of more
+  // than three photos cannot attach all of them, and the picker tells the user
+  // the rest stay in the batch -- so the ones left behind stay here, and the
+  // pass below gives them a violation of their own rather than dropping them
+  // without a word.
+  //
+  // Dropping the whole group instead is what the queue did before, and it made
+  // that promise false.
+  // `submittedFiles` arrives as an argument rather than being read from state:
+  // the submit handler clears `attachmentData` before it calls this, so by now
+  // the state no longer knows which photos went into the report.
+  advanceBatchAfterSubmit = submittedFiles => {
     const { batchPhotos, batchViolations, currentViolationIndex } = this.state;
-    const submitted = batchViolations[currentViolationIndex];
     const remainingViolations = batchViolations.filter(
       (_, index) => index !== currentViolationIndex,
     );
-    const submittedPhotos = new Set(submitted?.photos || []);
+    const submitted = new Set(submittedFiles);
 
     this.setState(
       {
         batchViolations: remainingViolations,
-        batchPhotos: batchPhotos.filter(photo => !submittedPhotos.has(photo)),
+        batchPhotos: batchPhotos.filter(photo => !submitted.has(photo.file)),
       },
       () => {
+        // Group the leftovers now. Publishing otherwise waits for the user to
+        // add another photo, which would leave a violation this one produced
+        // invisible until then -- and nothing on screen would say it was there.
+        this.publishBatchViolations({ includeUnsettled: true });
+
         this.loadBatchViolation(
           Math.min(currentViolationIndex, remainingViolations.length - 1),
         );
@@ -3330,6 +3341,9 @@ class Home extends React.Component {
                           2,
                         )}`,
                       );
+                      // Captured before the state is cleared below, because
+                      // the queue needs to know which photos this report used.
+                      const submittedFiles = this.state.attachmentData;
                       this.setState(state => ({
                         attachmentData: [],
                         submissions: [submission].concat(state.submissions),
@@ -3351,7 +3365,7 @@ class Home extends React.Component {
                         this.state.isSemiAutomaticMode &&
                         this.state.currentViolationIndex >= 0
                       ) {
-                        this.advanceBatchAfterSubmit();
+                        this.advanceBatchAfterSubmit(submittedFiles);
                       }
                       Home.notifySuccess(
                         <React.Fragment>

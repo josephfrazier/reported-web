@@ -2457,6 +2457,69 @@ describe('Home', () => {
       cleanup();
     });
 
+    test('gives the photos left out of a report a violation of their own', async () => {
+      const photos = ['p1', 'p2', 'p3', 'p4'].map(name => {
+        const file = new File(['picture'], `${name}.jpg`, {
+          type: 'image/jpeg',
+        });
+        return { file, name: file.name };
+      });
+      const violation = {
+        photos,
+        plate: 'T696817C',
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs: 1704110400000,
+      };
+
+      const { homeRef, clickButton, submit, cleanup } =
+        await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        homeRef.current.geosearchAddressCache.set({
+          latitude: 40.7129,
+          longitude: -74.0061,
+          address: '123 Main St, Manhattan',
+        });
+        homeRef.current.setState({
+          batchPhotos: photos,
+          batchViolations: [violation],
+        });
+      });
+      clickButton('Load next violation');
+
+      // Only three pictures fit, so the fourth starts unattached.
+      expect(
+        homeRef.current.state.attachmentData.map(file => file.name),
+      ).toEqual(['p1.jpg', 'p2.jpg', 'p3.jpg']);
+
+      await submit();
+
+      // The regroup happens off the submit's own path, so let it land.
+      await renderer.act(async () => {
+        for (let i = 0; i < 3; i += 1) {
+          // eslint-disable-next-line no-await-in-loop -- one round per pending promise chain.
+          await new Promise(resolve => setImmediate(resolve));
+        }
+      });
+
+      const { batchPhotos, batchViolations } = homeRef.current.state;
+
+      // Only the attached photos left the batch, which is what the picker
+      // promises when it says the rest stay.
+      expect(batchPhotos.map(photo => photo.name)).toEqual(['p4.jpg']);
+
+      // And the one left behind has a violation already, rather than waiting
+      // for the user to add another photo before it appears.
+      expect(batchViolations).toHaveLength(1);
+      expect(batchViolations[0].photos.map(photo => photo.name)).toEqual([
+        'p4.jpg',
+      ]);
+
+      cleanup();
+    });
+
     test('attaches at most 3 pictures and 3 videos of a group, and swaps them in and out', async () => {
       const pictures = ['p1', 'p2', 'p3', 'p4'].map(
         name => new File(['picture'], `${name}.jpg`, { type: 'image/jpeg' }),

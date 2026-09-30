@@ -339,3 +339,15 @@ input[type='search']::-webkit-search-cancel-button {
     align-items: stretch;
   }
 }
+
+/*
+ * The queue row whose violation is in the form.
+ *
+ * Cyan is this app's way of saying "this is the one in question" -- it is what
+ * the detected plate overlays use -- and a tinted row reads across a list more
+ * clearly than a marker at the start of the line did.
+ */
+.batch-violation-loaded {
+  background: rgb(0 200 255 / 20%);
+  box-shadow: inset 3px 0 0 rgb(0 200 255 / 90%);
+}

@@ -2682,6 +2682,10 @@ class Home extends React.Component {
               style={{
                 maxHeight: '16rem',
                 overflowY: 'auto',
+                // The rows are highlighted as whole rows, so they run the full
+                // width rather than sitting behind marx's list indent.
+                listStyle: 'none',
+                paddingLeft: 0,
               }}
             >
               {batchViolations.map((violation, index) => {
@@ -2697,9 +2701,20 @@ class Home extends React.Component {
 
                 const identity = violation.photos[0]?.name;
 
+                const isLoaded = index === currentViolationIndex;
+
                 return (
                   <li
                     key={`${violation.createDateMs}-${violation.plate}-${violation.photos[0]?.name}`}
+                    className={
+                      isLoaded
+                        ? homeStyles['batch-violation-loaded']
+                        : undefined
+                    }
+                    // The highlight is the visible marker; this is the one a
+                    // screen reader gets.
+                    aria-current={isLoaded ? 'true' : undefined}
+                    style={{ paddingLeft: '0.4rem' }}
                   >
                     {/* Ticking two of these is how a report the grouping split
                         in two is put back together; see
@@ -2712,7 +2727,6 @@ class Home extends React.Component {
                         violation.createDateMs,
                       )} — ${violation.plate || 'no plate read'}`}
                     />{' '}
-                    {index === currentViolationIndex ? '▸ ' : ''}
                     {formatBatchViolationTime(violation.createDateMs)} —{' '}
                     {violation.plate || '(no plate read)'} (
                     {violation.photos.length} photo

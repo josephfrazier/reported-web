@@ -175,8 +175,16 @@ const geolocate = () =>
     };
   });
 
-const jsDateToCreateDate = jsDate =>
-  jsDate.toISOString().replace(/:\d\d\..*/g, '');
+// Keep the seconds.
+//
+// They are what a batch groups on, and dropping them made every report's time
+// minute-precision. The strip that used to be here was for the `datetime-local`
+// input, not the data: iOS Safari rejects a value that carries seconds with
+// "enter a valid value" (see "Fix datetime-local input on iOS by removing
+// seconds", for issue #11). That constraint applies to what the input is given,
+// which is why the field is bound to the first 16 characters of this rather
+// than to all of it.
+const jsDateToCreateDate = jsDate => jsDate.toISOString().replace(/\..*/g, '');
 
 async function blobToBuffer({ attachmentFile }) {
   console.time(`blobUtil.blobToArrayBuffer(${attachmentFile.name})`); // eslint-disable-line no-console
@@ -3800,7 +3808,10 @@ class Home extends React.Component {
                         <input
                           required
                           type="datetime-local"
-                          value={this.state.CreateDate}
+                          // Minute precision, without the seconds this state
+                          // carries: iOS Safari rejects a `datetime-local`
+                          // value that has them.
+                          value={this.state.CreateDate.slice(0, 16)}
                           name="CreateDate"
                           onChange={this.handleInputChange}
                         />

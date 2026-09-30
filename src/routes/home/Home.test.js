@@ -2061,6 +2061,11 @@ describe('Home', () => {
           renderer.act(() => {
             findButton(text).props.onClick();
           }),
+        // What the CreateDate field is given. It has to stay minute-precision
+        // even though the state behind it carries seconds, because iOS Safari
+        // rejects a `datetime-local` value that has them.
+        createDateInputValue: () =>
+          tree.root.findByProps({ name: 'CreateDate' }).props.value,
         // Load a violation through the Load button on its queue row. Every
         // row's button reads "Load", so find the row by the plate its
         // description contains and take the Load button inside it.
@@ -2122,8 +2127,14 @@ describe('Home', () => {
         OffsetTimeDigitized: '-05:00',
       }));
 
-      const { homeRef, platerecognizerCalls, geosearchCalls, submit, cleanup } =
-        await renderBatchWithFiles(photos);
+      const {
+        homeRef,
+        platerecognizerCalls,
+        geosearchCalls,
+        createDateInputValue,
+        submit,
+        cleanup,
+      } = await renderBatchWithFiles(photos);
 
       const { batchViolations } = homeRef.current.state;
       expect(batchViolations).toHaveLength(3);
@@ -2154,7 +2165,13 @@ describe('Home', () => {
       // From the batch's geocode, not a fresh request.
       expect(state.formatted_address).toBe('123 Main St, Manhattan');
       // 2024-01-01T12:00:00Z, less the -05:00 offset the camera recorded.
-      expect(state.CreateDate).toBe('2024-01-01T07:00');
+      // Seconds and all: the EXIF time is 12:00:00Z, less the -05:00 the
+      // camera recorded. They are what the batch groups on, and the
+      // `datetime-local` field shows only the first 16 characters.
+      expect(state.CreateDate).toBe('2024-01-01T07:00:00');
+
+      // And the field itself still shows only minutes.
+      expect(createDateInputValue()).toBe('2024-01-01T07:00');
 
       // Loading a violation re-uses what the batch already extracted:
       // neither ALPR nor geosearch is asked again.

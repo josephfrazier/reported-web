@@ -460,18 +460,30 @@ function adoptOrphans({ orphans, groups }) {
 // be missing the very coordinates the report needs. Fall back to the earliest
 // photo that has them -- the group's own location, a few metres away at most,
 // rather than forcing the user to drop a pin for a violation already located.
+//
+// This is the rule for any set of photos, not just a whole violation: the
+// queue applies it again to the photos a report still holds after the user
+// drops one, which is why it is its own function.
+export function photosSummary(photos) {
+  const sorted = [...photos].sort(compareByCaptureTime);
+  const located = sorted.find(hasCoordinates) || sorted[0];
+
+  return {
+    photos: sorted,
+    createDateMs: effectiveTimeMs(sorted[0]),
+    latitude: located.latitude,
+    longitude: located.longitude,
+  };
+}
+
 function buildViolation({ photos, plate, licenseState }) {
-  const sortedPhotos = [...photos].sort(compareByCaptureTime);
-  const earliest = sortedPhotos[0];
-  const located = sortedPhotos.find(hasCoordinates) || earliest;
+  const { photos: sortedPhotos, ...timeAndPlace } = photosSummary(photos);
 
   return {
     photos: sortedPhotos,
     plate,
     licenseState,
-    latitude: located.latitude,
-    longitude: located.longitude,
-    createDateMs: effectiveTimeMs(earliest),
+    ...timeAndPlace,
   };
 }
 

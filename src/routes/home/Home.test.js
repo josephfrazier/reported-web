@@ -2619,11 +2619,20 @@ describe('Home', () => {
     });
 
     test('gives the photos left out of a report a violation of their own', async () => {
-      const photos = ['p1', 'p2', 'p3', 'p4'].map(name => {
+      // What the metadata pass hands back for each photo: the camera's own
+      // time and place. A violation takes its time and place from these, so a
+      // fixture without them describes a violation the app cannot build.
+      const photos = ['p1', 'p2', 'p3', 'p4'].map((name, index) => {
         const file = new File(['picture'], `${name}.jpg`, {
           type: 'image/jpeg',
         });
-        return { file, name: file.name };
+        return {
+          file,
+          name: file.name,
+          createDateMs: 1704110400000 + index * 1000,
+          latitude: 40.7129,
+          longitude: -74.0061,
+        };
       });
       const violation = {
         photos,
@@ -2681,6 +2690,176 @@ describe('Home', () => {
       cleanup();
     });
 
+    // A violation's time and place come from its earliest photo, so which
+    // photos the report holds decides both. These two tests are the pair: the
+    // form follows the photos until the user sets either by hand.
+    const fourPhotosApart = () =>
+      [0, 10, 20, 30].map((minutes, index) => {
+        const name = `p${index + 1}.jpg`;
+        const file = new File(['picture'], name, { type: 'image/jpeg' });
+        return {
+          file,
+          name,
+          createDateMs: Date.UTC(2024, 0, 1, 12, minutes, 0),
+          // The offset the camera recorded, so what the field shows is a
+          // plain UTC time rather than one shifted by this machine's zone.
+          createDateOffset: 0,
+          latitude: 40.7 + index / 100,
+          longitude: -74.0 - index / 100,
+        };
+      });
+
+    test('moves the time and place onto the photos the report still holds', async () => {
+      const photos = fourPhotosApart();
+      const violation = {
+        photos,
+        plate: 'T696817C',
+        licenseState: 'NY',
+        latitude: photos[0].latitude,
+        longitude: photos[0].longitude,
+        createDateMs: photos[0].createDateMs,
+      };
+
+      const {
+        homeRef,
+        clickQueueLoad,
+        createDateInputValue,
+        toggleAttachment,
+        cleanup,
+      } = await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        homeRef.current.geosearchAddressCache.set({
+          latitude: 40.7,
+          longitude: -74.0,
+          address: 'where the first photo was taken',
+        });
+        homeRef.current.geosearchAddressCache.set({
+          latitude: 40.71,
+          longitude: -74.01,
+          address: 'where the second photo was taken',
+        });
+        homeRef.current.setState({
+          batchPhotos: photos,
+          batchViolations: [violation],
+        });
+      });
+      clickQueueLoad('T696817C');
+
+      // The report describes the earliest photo of the four.
+      expect(homeRef.current.state.latitude).toBe(40.7);
+      expect(homeRef.current.state.longitude).toBe(-74.0);
+      expect(createDateInputValue()).toBe('2024-01-01T12:00');
+
+      // Drop it, and the report describes the next one instead.
+      toggleAttachment('p1.jpg', false);
+
+      expect(homeRef.current.state.latitude).toBe(40.71);
+      expect(homeRef.current.state.longitude).toBe(-74.01);
+      expect(createDateInputValue()).toBe('2024-01-01T12:10');
+
+      cleanup();
+    });
+
+    test('leaves a time and place the user set by hand alone', async () => {
+      const photos = fourPhotosApart();
+      const violation = {
+        photos,
+        plate: 'T696817C',
+        licenseState: 'NY',
+        latitude: photos[0].latitude,
+        longitude: photos[0].longitude,
+        createDateMs: photos[0].createDateMs,
+      };
+
+      const { homeRef, clickQueueLoad, toggleAttachment, cleanup } =
+        await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        homeRef.current.geosearchAddressCache.set({
+          latitude: 40.7,
+          longitude: -74.0,
+          address: 'where the first photo was taken',
+        });
+        homeRef.current.setState({
+          batchPhotos: photos,
+          batchViolations: [violation],
+        });
+      });
+      clickQueueLoad('T696817C');
+
+      // The user drags the pin and types a time: the two things the photos
+      // would otherwise decide.
+      renderer.act(() => {
+        homeRef.current.setState({
+          latitude: 40.9,
+          longitude: -73.9,
+          addressProvenance: '(manually set)',
+          CreateDate: '2024-01-01T09:00',
+        });
+      });
+
+      toggleAttachment('p1.jpg', false);
+
+      // Dropping a photo does not take either back off them.
+      expect(homeRef.current.state.latitude).toBe(40.9);
+      expect(homeRef.current.state.longitude).toBe(-73.9);
+      expect(homeRef.current.state.CreateDate).toBe('2024-01-01T09:00');
+
+      cleanup();
+    });
+
+    test('moves the time and place when the X takes a photo out', async () => {
+      const photos = fourPhotosApart();
+      const violation = {
+        photos,
+        plate: 'T696817C',
+        licenseState: 'NY',
+        latitude: photos[0].latitude,
+        longitude: photos[0].longitude,
+        createDateMs: photos[0].createDateMs,
+      };
+
+      const {
+        homeRef,
+        clickQueueLoad,
+        clickAttachmentDelete,
+        createDateInputValue,
+        cleanup,
+      } = await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        homeRef.current.geosearchAddressCache.set({
+          latitude: 40.7,
+          longitude: -74.0,
+          address: 'where the first photo was taken',
+        });
+        homeRef.current.geosearchAddressCache.set({
+          latitude: 40.71,
+          longitude: -74.01,
+          address: 'where the second photo was taken',
+        });
+        homeRef.current.setState({
+          batchPhotos: photos,
+          batchViolations: [violation],
+        });
+      });
+      clickQueueLoad('T696817C');
+
+      expect(homeRef.current.state.latitude).toBe(40.7);
+      expect(createDateInputValue()).toBe('2024-01-01T12:00');
+
+      // The X is the only way out of a report of three or fewer, and it makes
+      // the picker's promise: the report describes the photos that are left.
+      clickAttachmentDelete('p1.jpg');
+
+      expect(homeRef.current.state.latitude).toBe(40.71);
+      expect(homeRef.current.state.longitude).toBe(-74.01);
+      expect(createDateInputValue()).toBe('2024-01-01T12:10');
+
+      cleanup();
+    });
+
     // A group of three or fewer has no picker to untick, so the X is the only
     // way to leave one out of the report -- and it has to leave the same trail
     // the picker does.
@@ -2690,9 +2869,15 @@ describe('Home', () => {
     ])(
       'gives a photo discarded with the X a violation of its own (%s)',
       async (names, discarded) => {
-        const photos = names.map(name => {
+        const photos = names.map((name, index) => {
           const file = new File(['picture'], name, { type: 'image/jpeg' });
-          return { file, name, createDateMs: 1704110400000 };
+          return {
+            file,
+            name,
+            createDateMs: 1704110400000 + index * 1000,
+            latitude: 40.7129,
+            longitude: -74.0061,
+          };
         });
         const violation = {
           photos,

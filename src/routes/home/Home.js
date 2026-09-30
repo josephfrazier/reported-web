@@ -55,6 +55,7 @@ import groupAttachmentsByViolation, {
   effectiveTimeMs,
   isViolationSettled,
   mergeViolations,
+  photosSummary,
 } from '../../groupAttachmentsByViolation.js';
 import { isImage, isVideo } from '../../isImage.js';
 import retryTransientRequest from '../../retryTransientRequest.js';
@@ -186,6 +187,41 @@ const geolocate = () =>
 // which is why the field is bound to the first 16 characters of this rather
 // than to all of it.
 const jsDateToCreateDate = jsDate => jsDate.toISOString().replace(/\..*/g, '');
+
+// The CreateDate field's value for a moment, read in the offset it belongs to.
+// setCreateDate writes this, and applyPhotosTimeAndPlace compares against it,
+// which is how a time the photos gave is told from one the user typed.
+const createDateValue = ({ millisecondsSinceEpoch, offset }) => {
+  // Adjust date to local time
+  // https://stackoverflow.com/questions/674721/how-do-i-subtract-minutes-from-a-date-in-javascript
+  const MS_PER_MINUTE = 60000;
+  return jsDateToCreateDate(
+    new Date(millisecondsSinceEpoch - offset * MS_PER_MINUTE),
+  );
+};
+
+// The offset a photo's moment should be read in: the one the camera recorded,
+// or this device's when it recorded none. Videos carry none; see
+// normalizeExtractedDate.
+const photoOffset = ({ createDateOffset }) =>
+  Number.isFinite(createDateOffset)
+    ? createDateOffset
+    : new Date().getTimezoneOffset();
+
+// The CreateDate field's value for the time a set of photos gives: the moment
+// the earliest of them was taken. Undefined for no photos at all.
+const createDateForPhotos = photos => {
+  if (photos.length === 0) {
+    return undefined;
+  }
+
+  const summary = photosSummary(photos);
+
+  return createDateValue({
+    millisecondsSinceEpoch: summary.createDateMs,
+    offset: photoOffset(summary.photos[0]),
+  });
+};
 
 async function blobToBuffer({ attachmentFile }) {
   console.time(`blobUtil.blobToArrayBuffer(${attachmentFile.name})`); // eslint-disable-line no-console
@@ -589,6 +625,11 @@ function defaultBatchSelection(photos) {
 // for a photo whose EXIF has no GPS.
 const hasCoordinates = ({ latitude, longitude } = {}) =>
   Number.isFinite(latitude) && Number.isFinite(longitude);
+
+// What the form records as the origin of a location the photos gave it. The
+// map and the address field write their own words in its place, which is how
+// the queue tells a place that is still the photos' from one the user set.
+const EXTRACTED_FROM_PHOTOS = '(extracted from picture/video)';
 
 // Grouping and geocoding happen per violation as it is published, so the queue
 // appearing underneath is the progress for those. The bar names the two passes
@@ -1271,15 +1312,8 @@ class Home extends React.Component {
     millisecondsSinceEpoch,
     offset = new Date().getTimezoneOffset(),
   }) => {
-    // Adjust date to local time
-    // https://stackoverflow.com/questions/674721/how-do-i-subtract-minutes-from-a-date-in-javascript
-    const MS_PER_MINUTE = 60000;
-    const CreateDateJsLocal = new Date(
-      millisecondsSinceEpoch - offset * MS_PER_MINUTE,
-    );
-
     this.setState({
-      CreateDate: jsDateToCreateDate(CreateDateJsLocal),
+      CreateDate: createDateValue({ millisecondsSinceEpoch, offset }),
     });
   };
 
@@ -2082,6 +2116,61 @@ class Home extends React.Component {
   // Load a violation into the form: its photos become the attachments, and
   // the plate, time and location come from the batch's extraction results
   // rather than from re-running it.
+  // Put the time and the place a set of photos stands for into the form; see
+  // photosSummary for the rule.
+  //
+  // Loading a violation writes both outright, because both were that
+  // violation's to begin with. Dropping a photo from the report passes
+  // `previousPhotos`, the set it held before, and then each follows only while
+  // it is still what those photos gave: a time the user typed and a place they
+  // dragged the pin to are theirs, and outrank the derivation.
+  applyPhotosTimeAndPlace = (photos, { previousPhotos = null } = {}) => {
+    if (photos.length === 0) {
+      return;
+    }
+
+    const summary = photosSummary(photos);
+    const following = previousPhotos !== null;
+
+    // A time the user typed is recognisable: it no longer says what the photos
+    // it was taken from say. A previous set with nothing in it says nothing at
+    // all, so there is nothing of theirs to keep -- which is the case when a
+    // report had no photos attached.
+    const timeIsTheUsers =
+      following &&
+      previousPhotos.length > 0 &&
+      this.state.CreateDate !== createDateForPhotos(previousPhotos);
+
+    if (!timeIsTheUsers) {
+      this.setCreateDate({
+        millisecondsSinceEpoch: summary.createDateMs,
+        offset: photoOffset(summary.photos[0]),
+      });
+    }
+
+    if (following && this.state.addressProvenance !== EXTRACTED_FROM_PHOTOS) {
+      return;
+    }
+
+    if (hasCoordinates(summary)) {
+      this.setCoords({
+        latitude: summary.latitude,
+        longitude: summary.longitude,
+        addressProvenance: EXTRACTED_FROM_PHOTOS,
+      });
+    } else {
+      // No photo in the group had coordinates (Android strips them from media
+      // shared through some apps, see issue #751). Start from the default
+      // location rather than inheriting the previous violation's address, and
+      // let the user place it on the map.
+      this.setCoords({
+        latitude: defaultLatitude,
+        longitude: defaultLongitude,
+        addressProvenance: '',
+      });
+    }
+  };
+
   loadBatchViolation = index => {
     const { batchViolations } = this.state;
     const violation = batchViolations[index];
@@ -2123,32 +2212,7 @@ class Home extends React.Component {
       licenseState: violation.licenseState,
     });
 
-    const [earliest] = violation.photos;
-    this.setCreateDate({
-      millisecondsSinceEpoch: violation.createDateMs,
-      // The offset the camera recorded, as the single-violation flow uses.
-      // Videos have none (see normalizeExtractedDate).
-      ...(Number.isFinite(earliest.createDateOffset)
-        ? { offset: earliest.createDateOffset }
-        : {}),
-    });
-
-    if (hasCoordinates(violation)) {
-      this.setCoords({
-        latitude: violation.latitude,
-        longitude: violation.longitude,
-        addressProvenance: '(extracted from picture/video)',
-      });
-    } else {
-      // No photo in the group had coordinates (Android strips them from media
-      // shared through some apps, see issue #751). Start from the default
-      // location rather than inheriting the previous violation's address, and
-      // let the user place it on the map.
-      this.setCoords({
-        latitude: defaultLatitude,
-        longitude: defaultLongitude,
-      });
-    }
+    this.applyPhotosTimeAndPlace(violation.photos);
   };
 
   // Load a violation picked from the queue, so the order the batch was shot in
@@ -2339,11 +2403,81 @@ class Home extends React.Component {
 
     // Keep the attachments in the violation's own (capture) order, so a swap
     // does not shuffle the report's photos.
+    const attached = violation.photos.filter(({ file }) => selected.has(file));
+    const wasAttached = violation.photos.filter(({ file }) =>
+      attachmentData.includes(file),
+    );
+
     this.setState({
-      attachmentData: violation.photos
-        .map(({ file }) => file)
-        .filter(file => selected.has(file)),
+      attachmentData: attached.map(({ file }) => file),
     });
+
+    // The report's time and place come from the photos it holds, so dropping
+    // one moves them onto the photos that are left. Typed or dragged by hand,
+    // they stay where the user put them.
+    this.applyPhotosTimeAndPlace(attached, { previousPhotos: wasAttached });
+  };
+
+  // Take one photo out of the report, from the X on its thumbnail. This makes
+  // the same promise as unticking one in the picker, so it leaves the same
+  // trail: the report's time and place move onto the photos that are left.
+  removeAttachment = name => {
+    const before = this.state.attachmentData;
+
+    this.setState(
+      state => {
+        const attachmentData = state.attachmentData.filter(
+          file => file.name !== name,
+        );
+
+        if (attachmentData.length === 0) {
+          // Nothing is left to report, so there is no photo to take a time or
+          // a place from.
+          this.setCoords({
+            latitude: defaultLatitude,
+            longitude: defaultLongitude,
+          });
+          this.setCreateDate({
+            millisecondsSinceEpoch: Date.now(),
+          });
+          return {
+            attachmentData,
+            plate: '',
+            licenseState: 'NY',
+            allPlateData: null,
+            plateDataByAttachmentName: {},
+            vehicleInfoComponent: null,
+            violationSummaryComponent: null,
+          };
+        }
+
+        return {
+          attachmentData,
+          plateDataByAttachmentName: omit(
+            state.plateDataByAttachmentName,
+            name,
+          ),
+        };
+      },
+      () => {
+        // Only a batch violation knows what its photos carry, and only its own
+        // photos can be attached.
+        const { attachmentData, batchViolations, currentViolationIndex } =
+          this.state;
+        const violation = batchViolations[currentViolationIndex];
+
+        if (!violation) {
+          return;
+        }
+
+        const of = files =>
+          violation.photos.filter(({ file }) => files.includes(file));
+
+        this.applyPhotosTimeAndPlace(of(attachmentData), {
+          previousPhotos: of(before),
+        });
+      },
+    );
   };
 
   handleInputChange = event => {
@@ -3693,39 +3827,7 @@ class Home extends React.Component {
                                   right: 0,
                                   margin: '1px',
                                 }}
-                                onClick={() => {
-                                  this.setState(state => {
-                                    const attachmentData =
-                                      state.attachmentData.filter(
-                                        file => file.name !== name,
-                                      );
-                                    if (attachmentData.length === 0) {
-                                      this.setCoords({
-                                        latitude: defaultLatitude,
-                                        longitude: defaultLongitude,
-                                      });
-                                      this.setCreateDate({
-                                        millisecondsSinceEpoch: Date.now(),
-                                      });
-                                      return {
-                                        attachmentData,
-                                        plate: '',
-                                        licenseState: 'NY',
-                                        allPlateData: null,
-                                        plateDataByAttachmentName: {},
-                                        vehicleInfoComponent: null,
-                                        violationSummaryComponent: null,
-                                      };
-                                    }
-                                    return {
-                                      attachmentData,
-                                      plateDataByAttachmentName: omit(
-                                        state.plateDataByAttachmentName,
-                                        name,
-                                      ),
-                                    };
-                                  });
-                                }}
+                                onClick={() => this.removeAttachment(name)}
                               />
                             </div>
                           );

@@ -3082,7 +3082,8 @@ class Home extends React.Component {
                     name="isSemiAutomaticMode"
                     onChange={this.handleInputChange}
                   />{' '}
-                  Add a batch of pictures/videos, then review each violation
+                  Semiautomatic Mode: Add a batch of pictures/videos, then
+                  review each violation
                 </label>
               </div>
             )}

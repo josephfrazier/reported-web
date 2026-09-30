@@ -796,7 +796,7 @@ exports[`Home renders Preferences UI 1`] = `
             type="checkbox"
           />
            
-          Add a batch of pictures/videos, then review each violation
+          Semiautomatic Mode: Add a batch of pictures/videos, then review each violation
         </label>
       </div>
       <br />

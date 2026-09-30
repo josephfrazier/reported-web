@@ -2092,14 +2092,21 @@ describe('Home', () => {
               .find(({ children }) => children.join('').includes(plate))
               .props.onClick();
           }),
-        // Press Delete on the queue row whose description carries `plate`.
+        // Press the X on the queue row whose description carries `plate`. The
+        // control shows an emoji rather than a word, so it is found by the
+        // label it announces.
         clickRowDelete: plate =>
           renderer.act(() => {
             tree.root
               .findAllByType('button')
-              .find(({ children }) => children.join('').includes(plate))
-              .parent.findAllByType('button')
-              .find(({ children }) => children.includes('Delete'))
+              .find(({ props }) => {
+                const label = props['aria-label'];
+                return (
+                  typeof label === 'string' &&
+                  label.startsWith('Delete ') &&
+                  label.includes(plate)
+                );
+              })
               .props.onClick();
           }),
         // Tick or untick one photo in a loaded group's attachment picker, by

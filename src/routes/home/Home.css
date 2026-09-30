@@ -341,6 +341,21 @@ input[type='search']::-webkit-search-cancel-button {
 }
 
 /*
+ * A queue row: the merge box, the description, and the X that discards the
+ * violation.
+ *
+ * The row is a flex line so the X sits at the far end of it whatever the
+ * description's length, and so the row grows to the height of its controls
+ * rather than letting a tall button hang over the row below.
+ */
+.batch-violation-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding-left: 0.4rem;
+}
+
+/*
  * The queue row whose violation is in the form.
  *
  * Cyan is this app's way of saying "this is the one in question" -- it is what

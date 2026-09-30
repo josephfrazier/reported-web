@@ -603,6 +603,42 @@ const formatBatchViolationTime = createDateMs =>
     ? new Date(createDateMs).toLocaleString()
     : 'unknown time';
 
+// The X that discards a picture or a violation. It sits in the corner of an
+// attachment's thumbnail and at the far end of a queue row, and it is one
+// component so that it looks the same in both places.
+//
+// The caller positions it and says what it deletes. The label is on the button
+// rather than on the glyph, so that the button is the thing with a name and a
+// screen reader does not announce the emoji as well.
+const RemoveXButton = ({ label, onClick, style }) => (
+  <button
+    type="button"
+    aria-label={label}
+    style={{
+      padding: 0,
+      // Ubuntu Chrome shows the glyph black without this.
+      color: 'red',
+      background: 'white',
+      ...style,
+    }}
+    onClick={onClick}
+  >
+    <span aria-hidden="true">❌</span>
+  </button>
+);
+
+RemoveXButton.propTypes = {
+  label: PropTypes.string.isRequired,
+  onClick: PropTypes.func.isRequired,
+  style: PropTypes.objectOf(
+    PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  ),
+};
+
+RemoveXButton.defaultProps = {
+  style: undefined,
+};
+
 class Home extends React.Component {
   static getVehicleMakeLogoUrl({ vehicleMake }) {
     if (vehicleMake.toLowerCase() === 'nissan') {
@@ -2697,15 +2733,12 @@ class Home extends React.Component {
                 return (
                   <li
                     key={`${violation.createDateMs}-${violation.plate}-${violation.photos[0]?.name}`}
-                    className={
-                      isLoaded
-                        ? homeStyles['batch-violation-loaded']
-                        : undefined
-                    }
+                    className={`${homeStyles['batch-violation-row']}${
+                      isLoaded ? ` ${homeStyles['batch-violation-loaded']}` : ''
+                    }`}
                     // The highlight is the visible marker; this is the one a
                     // screen reader gets.
                     aria-current={isLoaded ? 'true' : undefined}
-                    style={{ paddingLeft: '0.4rem' }}
                   >
                     {/* Ticking two of these is how a report the grouping split
                         in two is put back together; see
@@ -2717,7 +2750,7 @@ class Home extends React.Component {
                       aria-label={`Merge ${formatBatchViolationTime(
                         violation.createDateMs,
                       )} — ${violation.plate || 'no plate read'}`}
-                    />{' '}
+                    />
                     {/* The description is the control that loads this
                         violation, so the thing you read is the thing you
                         click. Delete and the merge box are siblings rather
@@ -2733,13 +2766,16 @@ class Home extends React.Component {
                       {violation.photos.length} photo
                       {violation.photos.length === 1 ? '' : 's'})
                       {flags.length > 0 && ` — ${flags.join(', ')}`}
-                    </button>{' '}
-                    <button
-                      type="button"
-                      onClick={() => this.deleteBatchViolation(index)}
-                    >
-                      Delete
                     </button>
+                    <RemoveXButton
+                      label={`Delete ${formatBatchViolationTime(
+                        violation.createDateMs,
+                      )} — ${violation.plate || 'no plate read'}`}
+                      // The row is a flex line, so this pushes the X to the
+                      // far end of it.
+                      style={{ marginLeft: 'auto' }}
+                      onClick={() => this.deleteBatchViolation(index)}
+                    />
                   </li>
                 );
               })}
@@ -3637,16 +3673,13 @@ class Home extends React.Component {
                                 })}
                               </div>
 
-                              <button
-                                type="button"
+                              <RemoveXButton
+                                label="Delete photo/video"
                                 style={{
                                   position: 'absolute',
                                   top: 0,
                                   right: 0,
-                                  padding: 0,
                                   margin: '1px',
-                                  color: 'red', // Ubuntu Chrome shows black otherwise
-                                  background: 'white',
                                 }}
                                 onClick={() => {
                                   this.setState(state => {
@@ -3681,14 +3714,7 @@ class Home extends React.Component {
                                     };
                                   });
                                 }}
-                              >
-                                <span
-                                  role="img"
-                                  aria-label="Delete photo/video"
-                                >
-                                  ❌
-                                </span>
-                              </button>
+                              />
                             </div>
                           );
                         })}

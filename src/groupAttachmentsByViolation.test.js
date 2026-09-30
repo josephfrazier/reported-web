@@ -130,14 +130,17 @@ describe('mergeViolations', () => {
     expect(merged.plate).toBe('AAA111');
   });
 
-  test('takes the time and place from the earliest photo', () => {
+  test('takes the time from the earliest photo and the place from the last', () => {
     const [far] = groupAttachmentsByViolation([farShot]);
     const [near] = groupAttachmentsByViolation([closeup('aaa111')]);
 
     const merged = mergeViolations([far, near]);
 
+    // The far shot came first, so the report is of that moment...
     expect(merged.createDateMs).toBe(1_000_000);
-    expect(merged.latitude).toBe(latitudeMetersNorthOf(4));
+    // ...but the closeup is the later of the two, and its fix is the one the
+    // camera had settled on by then.
+    expect(merged.latitude).toBe(BASE_LATITUDE);
     expect(merged.longitude).toBe(BASE_LONGITUDE);
   });
 
@@ -441,10 +444,33 @@ describe('groupAttachmentsByViolation', () => {
 
     expect(violations).toHaveLength(1);
     expect(violations[0].photos).toEqual([located, stripped]);
-    // Nothing is known about where the earliest photo was taken, so the
-    // violation reports the earliest photo that does know.
+    // The stripped photo is the later of the two and says nothing about where
+    // it was taken, so the violation reports the latest photo that does know.
     expect(violations[0].latitude).toBe(BASE_LATITUDE);
     expect(violations[0].longitude).toBe(BASE_LONGITUDE);
+  });
+
+  test('lets the last fix in a group win, not the first', () => {
+    // A camera woken up for the shot can still be reporting the fix from
+    // wherever it was last used. The later reading is the one taken once the
+    // GPS had caught up with the car.
+    const stale = buildPhoto({
+      name: 'stale.jpg',
+      createDateMs: 1_000_000,
+      latitude: latitudeMetersNorthOf(40),
+    });
+    const settled = buildPhoto({
+      name: 'settled.jpg',
+      createDateMs: 1_010_000,
+      latitude: latitudeMetersNorthOf(1),
+    });
+
+    const [violation] = groupAttachmentsByViolation([stale, settled]);
+
+    expect(violation.latitude).toBe(latitudeMetersNorthOf(1));
+    // The time still comes from the start of the group: the report is of when
+    // the violation happened, not of when its last photo was taken.
+    expect(violation.createDateMs).toBe(1_000_000);
   });
 
   test('still splits photos with no GPS that are too far apart in time', () => {
@@ -713,8 +739,10 @@ describe('groupAttachmentsByViolation', () => {
     expect(first.createDateMs).toBe(startTime);
     expect(second.createDateMs).toBe(startTime + 27000);
     expect(third.createDateMs).toBe(startTime + 158000);
-    expect(first.latitude).toBe(BASE_LATITUDE);
-    expect(second.latitude).toBe(latitudeMetersNorthOf(149));
+    // The walk carries on down the block, so the last photo of each group is
+    // the furthest along, and its fix is the one the report takes.
+    expect(first.latitude).toBe(latitudeMetersNorthOf(5));
+    expect(second.latitude).toBe(latitudeMetersNorthOf(151));
   });
 
   test('leaves the caller’s photo array alone', () => {

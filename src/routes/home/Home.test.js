@@ -2693,21 +2693,39 @@ describe('Home', () => {
     // A violation's time and place come from its earliest photo, so which
     // photos the report holds decides both. These two tests are the pair: the
     // form follows the photos until the user sets either by hand.
+    // Four photos ten minutes apart, each somewhere new, so that which of them
+    // a value came from is readable off the value itself.
     const fourPhotosApart = () =>
-      [0, 10, 20, 30].map((minutes, index) => {
-        const name = `p${index + 1}.jpg`;
+      [
+        ['p1.jpg', 40.7, -74.0],
+        ['p2.jpg', 40.71, -74.01],
+        ['p3.jpg', 40.72, -74.02],
+        ['p4.jpg', 40.73, -74.03],
+      ].map(([name, latitude, longitude], index) => {
         const file = new File(['picture'], name, { type: 'image/jpeg' });
         return {
           file,
           name,
-          createDateMs: Date.UTC(2024, 0, 1, 12, minutes, 0),
+          createDateMs: Date.UTC(2024, 0, 1, 12, index * 10, 0),
           // The offset the camera recorded, so what the field shows is a
           // plain UTC time rather than one shifted by this machine's zone.
           createDateOffset: 0,
-          latitude: 40.7 + index / 100,
-          longitude: -74.0 - index / 100,
+          latitude,
+          longitude,
         };
       });
+
+    // The address each photo's coordinates resolve to, so that following the
+    // photos never asks the network.
+    const cacheAddresses = (homeRef, photos) => {
+      photos.forEach(photo => {
+        homeRef.current.geosearchAddressCache.set({
+          latitude: photo.latitude,
+          longitude: photo.longitude,
+          address: `where ${photo.name} was taken`,
+        });
+      });
+    };
 
     test('moves the time and place onto the photos the report still holds', async () => {
       const photos = fourPhotosApart();
@@ -2729,16 +2747,7 @@ describe('Home', () => {
       } = await renderBatchWithFiles([]);
 
       renderer.act(() => {
-        homeRef.current.geosearchAddressCache.set({
-          latitude: 40.7,
-          longitude: -74.0,
-          address: 'where the first photo was taken',
-        });
-        homeRef.current.geosearchAddressCache.set({
-          latitude: 40.71,
-          longitude: -74.01,
-          address: 'where the second photo was taken',
-        });
+        cacheAddresses(homeRef, photos);
         homeRef.current.setState({
           batchPhotos: photos,
           batchViolations: [violation],
@@ -2746,17 +2755,26 @@ describe('Home', () => {
       });
       clickQueueLoad('T696817C');
 
-      // The report describes the earliest photo of the four.
-      expect(homeRef.current.state.latitude).toBe(40.7);
-      expect(homeRef.current.state.longitude).toBe(-74.0);
+      // Four photos, and a report carries three, so the newest is left out.
+      // The time is the earliest attached photo's and the place is the latest
+      // attached photo's, which is the third.
       expect(createDateInputValue()).toBe('2024-01-01T12:00');
+      expect(homeRef.current.state.latitude).toBe(40.72);
+      expect(homeRef.current.state.longitude).toBe(-74.02);
 
-      // Drop it, and the report describes the next one instead.
-      toggleAttachment('p1.jpg', false);
+      // Dropping the newest moves the place back a photo, and leaves the time
+      // where it was: the report is still of the same moment.
+      toggleAttachment('p3.jpg', false);
 
+      expect(createDateInputValue()).toBe('2024-01-01T12:00');
       expect(homeRef.current.state.latitude).toBe(40.71);
       expect(homeRef.current.state.longitude).toBe(-74.01);
+
+      // Dropping the oldest is the other way round.
+      toggleAttachment('p1.jpg', false);
+
       expect(createDateInputValue()).toBe('2024-01-01T12:10');
+      expect(homeRef.current.state.latitude).toBe(40.71);
 
       cleanup();
     });
@@ -2829,16 +2847,7 @@ describe('Home', () => {
       } = await renderBatchWithFiles([]);
 
       renderer.act(() => {
-        homeRef.current.geosearchAddressCache.set({
-          latitude: 40.7,
-          longitude: -74.0,
-          address: 'where the first photo was taken',
-        });
-        homeRef.current.geosearchAddressCache.set({
-          latitude: 40.71,
-          longitude: -74.01,
-          address: 'where the second photo was taken',
-        });
+        cacheAddresses(homeRef, photos);
         homeRef.current.setState({
           batchPhotos: photos,
           batchViolations: [violation],
@@ -2846,15 +2855,21 @@ describe('Home', () => {
       });
       clickQueueLoad('T696817C');
 
-      expect(homeRef.current.state.latitude).toBe(40.7);
+      expect(homeRef.current.state.latitude).toBe(40.72);
       expect(createDateInputValue()).toBe('2024-01-01T12:00');
 
       // The X is the only way out of a report of three or fewer, and it makes
       // the picker's promise: the report describes the photos that are left.
+      // Dropping the newest moves the place back a photo...
+      clickAttachmentDelete('p3.jpg');
+
+      expect(homeRef.current.state.latitude).toBe(40.71);
+      expect(createDateInputValue()).toBe('2024-01-01T12:00');
+
+      // ...and dropping the oldest moves the time forward.
       clickAttachmentDelete('p1.jpg');
 
       expect(homeRef.current.state.latitude).toBe(40.71);
-      expect(homeRef.current.state.longitude).toBe(-74.01);
       expect(createDateInputValue()).toBe('2024-01-01T12:10');
 
       cleanup();

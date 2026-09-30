@@ -544,7 +544,8 @@
             <tr><td>Thresholds</td><td class="num">Δt ≤ 60 s, on time alone — see <em>Why distance went</em></td></tr>
             <tr><td>Plate's role</td><td>May <strong>split</strong> a time+GPS cluster</td></tr>
             <tr><td>OCR variants</td><td>Folded via ALPR <code>candidates</code> sets</td></tr>
-            <tr><td>Violation time &amp; location</td><td>From the <strong>earliest</strong> photo in the group</td></tr>
+            <tr><td>Violation time</td><td>From the <strong>earliest</strong> photo in the group</td></tr>
+            <tr><td>Violation location</td><td>From the <strong>latest</strong> photo that has a fix — see <em>Which photo gives the place</em></td></tr>
             <tr><td>More than 3 photos</td><td>Checkbox picker, first 3 pre-selected</td></tr>
             <tr><td>Reload mid-batch</td><td>Everything is lost — in-memory only</td></tr>
             <tr><td>Publishing</td><td>Progressively, as each violation settles — not when the batch ends</td></tr>
@@ -637,6 +638,28 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         The <span class="mono">60 s</span> window comes from the same measurement. Across 399 gaps
         inside one violation, <span class="mono">5 s</span> split 33 of them and
         <span class="mono">60 s</span> splits 2. The largest real gap was 180&nbsp;s.
+      </p>
+
+      <h3>Which photo gives the place</h3>
+      <p>
+        A report needs one time and one place, and they come from opposite ends of the group.
+      </p>
+      <p>
+        The <strong>time</strong> is the earliest photo's, because that is the moment the report
+        describes.
+      </p>
+      <p>
+        The <strong>place</strong> is the last photo's that carries a fix. A camera woken up for
+        the shot can still be reporting the fix from wherever it was last used, so the first
+        reading of a group is the one most likely to be stale, and the last is the one taken once
+        the GPS had caught up with the car. The time cannot follow the same way: a report is of
+        when the violation happened, not of when its last photo was taken.
+      </p>
+      <p>
+        This is the rule for any set of photos rather than for a whole violation only, and so it
+        lives in <code>photosSummary</code> rather than inside <code>buildViolation</code>. It runs
+        twice: once to build a violation, and again over the photos a report is holding whenever
+        the user changes which of them it holds.
       </p>
 
       <h3>Choosing the plate</h3>
@@ -1007,6 +1030,12 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         real limit — <code>createSubmission.js</code> takes <code>images.slice(0, 3)</code> and
         <code>videos.slice(0, 3)</code> and drops the rest <em>without an error</em>. Today the only
         hint is the button label, and the dropzone enforces nothing at all.
+      </p>
+      <p>
+        A report takes its time and place from the photos it is holding, so unticking one moves
+        both onto the photos that are left. The X on a thumbnail does the same, which matters
+        because a group of three or fewer has no picker at all. Either is left alone once the user
+        has set it by hand — a time typed into the field, or a place the pin was dragged to.
       </p>
     </section>
 

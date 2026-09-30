@@ -4,8 +4,9 @@
  * Semi-automatic mode runs ALPR, date and location extraction over a whole
  * batch of photos, then hands the results here. Grouping has to happen before
  * anything is filled in, because the form is filled in per violation rather
- * than per photo: several photos of one car are one report, and that report's
- * time and location come from its earliest photo.
+ * than per photo: several photos of one car are one report, and that report
+ * takes its time from its earliest photo and its location from the last one
+ * that has coordinates.
  *
  * Four passes, in this order (see docs/plans/semi-automatic-mode.html):
  *
@@ -453,20 +454,31 @@ function adoptOrphans({ orphans, groups }) {
   });
 }
 
-// The form needs one time and one place per violation, so take them from the
-// earliest photo in the group: it is the one the report describes.
+// The form needs one time and one place per violation, and they come from
+// opposite ends of the group.
 //
-// A photo with no GPS still clusters on time alone, so the earliest photo can
-// be missing the very coordinates the report needs. Fall back to the earliest
-// photo that has them -- the group's own location, a few metres away at most,
-// rather than forcing the user to drop a pin for a violation already located.
+// The time is the earliest photo's: that is the moment the report describes.
+//
+// The place is the last photo's that has one. A camera that has just been
+// woken up can report a fix from wherever it was last used, so the first
+// reading of a group is the one most likely to be stale, and the last is the
+// one taken once the GPS had caught up with the car. The time cannot follow
+// the same way, because a report is of when the violation happened rather than
+// of when its last photo was taken.
+//
+// A photo with no GPS still clusters on time alone, so the newest photos can
+// be missing the very coordinates the report needs. Fall back to the latest
+// that has them, rather than forcing the user to drop a pin for a violation
+// already located.
 //
 // This is the rule for any set of photos, not just a whole violation: the
 // queue applies it again to the photos a report still holds after the user
 // drops one, which is why it is its own function.
 export function photosSummary(photos) {
   const sorted = [...photos].sort(compareByCaptureTime);
-  const located = sorted.find(hasCoordinates) || sorted[0];
+  // Reversed on a copy: `sorted` is handed back below, and reverse() would
+  // turn the violation's own photos back to front.
+  const located = [...sorted].reverse().find(hasCoordinates) || sorted[0];
 
   return {
     photos: sorted,

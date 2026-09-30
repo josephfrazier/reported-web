@@ -2196,11 +2196,15 @@ class Home extends React.Component {
       }
     });
 
+    // What the report opens with. Its time and place are read from this rather
+    // than from the whole violation, because they describe the report -- and
+    // with a place taken from the last photo, the two differ: a group of four
+    // leaves its last photo out, and that is the one holding the newest fix.
+    const attached = defaultBatchSelection(violation.photos);
+
     this.setState({
       currentViolationIndex: index,
-      attachmentData: defaultBatchSelection(violation.photos).map(
-        photo => photo.file,
-      ),
+      attachmentData: attached.map(photo => photo.file),
       allPlateData:
         violation.photos.find(photo => photo.plateResults)?.plateResults ||
         null,
@@ -2212,7 +2216,7 @@ class Home extends React.Component {
       licenseState: violation.licenseState,
     });
 
-    this.applyPhotosTimeAndPlace(violation.photos);
+    this.applyPhotosTimeAndPlace(attached);
   };
 
   // Load a violation picked from the queue, so the order the batch was shot in

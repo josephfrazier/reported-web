@@ -2064,6 +2064,17 @@ describe('Home', () => {
         // The merge button on the heading's line. It is always rendered, and
         // disabled until two rows are ticked.
         mergeButton: () => findButton('Merge'),
+        // Press the X on an attachment's thumbnail: the control that discards
+        // a photo from the report rather than unticking it in the picker.
+        clickAttachmentDelete: name =>
+          renderer.act(() => {
+            tree.root
+              .findAllByType('img')
+              .find(({ props }) => props.alt === name)
+              .parent.parent.parent.findAllByType('button')
+              .find(({ props }) => props['aria-label'] === 'Delete photo/video')
+              .props.onClick();
+          }),
         // What the CreateDate field is given. It has to stay minute-precision
         // even though the state behind it carries seconds, because iOS Safari
         // rejects a `datetime-local` value that has them.
@@ -2669,6 +2680,85 @@ describe('Home', () => {
 
       cleanup();
     });
+
+    // A group of three or fewer has no picker to untick, so the X is the only
+    // way to leave one out of the report -- and it has to leave the same trail
+    // the picker does.
+    test.each([
+      [['p1.jpg', 'p2.jpg'], 'p2.jpg'],
+      [['p1.jpg', 'p2.jpg', 'p3.jpg'], 'p2.jpg'],
+    ])(
+      'gives a photo discarded with the X a violation of its own (%s)',
+      async (names, discarded) => {
+        const photos = names.map(name => {
+          const file = new File(['picture'], name, { type: 'image/jpeg' });
+          return { file, name, createDateMs: 1704110400000 };
+        });
+        const violation = {
+          photos,
+          plate: 'T696817C',
+          licenseState: 'NY',
+          latitude: 40.7129,
+          longitude: -74.0061,
+          createDateMs: 1704110400000,
+        };
+        const kept = names.filter(name => name !== discarded);
+
+        const {
+          homeRef,
+          clickQueueLoad,
+          clickAttachmentDelete,
+          submit,
+          cleanup,
+        } = await renderBatchWithFiles([]);
+
+        renderer.act(() => {
+          homeRef.current.geosearchAddressCache.set({
+            latitude: 40.7129,
+            longitude: -74.0061,
+            address: '123 Main St, Manhattan',
+          });
+          homeRef.current.setState({
+            batchPhotos: photos,
+            batchViolations: [violation],
+          });
+        });
+        clickQueueLoad('T696817C');
+
+        // Every one of them fits, so every one starts attached.
+        expect(
+          homeRef.current.state.attachmentData.map(file => file.name),
+        ).toEqual(names);
+
+        // The X discards one from the report.
+        clickAttachmentDelete(discarded);
+        expect(
+          homeRef.current.state.attachmentData.map(file => file.name),
+        ).toEqual(kept);
+
+        await submit();
+
+        await renderer.act(async () => {
+          for (let i = 0; i < 3; i += 1) {
+            // eslint-disable-next-line no-await-in-loop -- one round per pending promise chain.
+            await new Promise(resolve => setImmediate(resolve));
+          }
+        });
+
+        const { batchPhotos, batchViolations } = homeRef.current.state;
+
+        // The submitted photos have left the batch; the discarded one has not,
+        // because it was never in the report.
+        expect(batchPhotos.map(photo => photo.name)).toEqual([discarded]);
+
+        expect(batchViolations).toHaveLength(1);
+        expect(batchViolations[0].photos.map(photo => photo.name)).toEqual([
+          discarded,
+        ]);
+
+        cleanup();
+      },
+    );
 
     test('attaches at most 3 pictures and 3 videos of a group, and swaps them in and out', async () => {
       const pictures = ['p1', 'p2', 'p3', 'p4'].map(

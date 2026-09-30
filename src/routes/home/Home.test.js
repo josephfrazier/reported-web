@@ -2057,6 +2057,10 @@ describe('Home', () => {
           axiosPost.mock.calls.filter(([url]) => url === '/platerecognizer'),
         geosearchCalls: () =>
           axiosPost.mock.calls.filter(([url]) => url === '/api/geosearch'),
+        uploadAttachmentCalls: () =>
+          axiosPost.mock.calls.filter(
+            ([url]) => url === '/api/uploadAttachment',
+          ),
         clickButton: text =>
           renderer.act(() => {
             findButton(text).props.onClick();
@@ -2154,6 +2158,39 @@ describe('Home', () => {
         },
       };
     }
+
+    test('uploads the violation it loads, not the folder it came from', async () => {
+      const photos = [
+        jpeg({ name: 'a.jpg', size: 4 }),
+        jpeg({ name: 'b.jpg', size: 5 }),
+        jpeg({ name: 'c.jpg', size: 6 }),
+        jpeg({ name: 'd.jpg', size: 7 }),
+      ];
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, uploadAttachmentCalls, cleanup } =
+        await renderBatchWithFiles(photos);
+
+      const uploaded = uploadAttachmentCalls().map(
+        ([, body]) => body.get('attachmentData').name,
+      );
+
+      // Four photos went in and grouped into three violations. Only the one
+      // that loaded was uploaded, and only the photos its report holds: the
+      // rest of the folder is never sent anywhere.
+      expect(homeRef.current.state.batchViolations).toHaveLength(3);
+      expect(uploaded.length).toBeLessThan(photos.length);
+      expect(uploaded).toEqual(
+        homeRef.current.state.attachmentData.map(file => file.name),
+      );
+
+      cleanup();
+    });
 
     test('groups the batch, looks each place up once, and loads the first violation as it settles', async () => {
       const photos = [

@@ -1764,10 +1764,6 @@ class Home extends React.Component {
   // attachment array on every add, which pointed at a whole folder means
   // re-walking every photo each time the array grows.
   processBatchFiles = async attachmentData => {
-    // The same background uploads the single-violation flow starts, so a
-    // violation from the queue can be submitted as attachment IDs.
-    this.startBackgroundUploads(attachmentData);
-
     const newPhotos = attachmentData.map(attachmentFile => ({
       file: attachmentFile,
       name: attachmentFile.name,
@@ -2202,6 +2198,18 @@ class Home extends React.Component {
     // leaves its last photo out, and that is the one holding the newest fix.
     const attached = defaultBatchSelection(violation.photos);
 
+    // Upload this report's photos, so submitting can send attachment IDs rather
+    // than the bytes. Doing it here rather than when the folder is picked is
+    // what keeps the batch from uploading every file it was handed: a violation
+    // the user never opens is never uploaded, and opening one costs three
+    // requests instead of forty.
+    //
+    // `/api/uploadAttachment` allows 30 uploads per 15 minutes, a budget sized
+    // for "5 submissions x 6 files". A picked folder spends all of it at once,
+    // and every upload past the 30th is refused, quietly, leaving the submit to
+    // send the file itself.
+    this.startBackgroundUploads(attached.map(photo => photo.file));
+
     this.setState({
       currentViolationIndex: index,
       attachmentData: attached.map(photo => photo.file),
@@ -2401,6 +2409,10 @@ class Home extends React.Component {
         return;
       }
       selected.add(photo.file);
+      // A photo swapped in is one the report may be submitted with, so it needs
+      // the upload the ones loaded with the violation already had. The call is
+      // per file and skips the ones already under way.
+      this.startBackgroundUploads([photo.file]);
     } else {
       selected.delete(photo.file);
     }

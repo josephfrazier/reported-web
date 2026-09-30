@@ -2204,10 +2204,10 @@ class Home extends React.Component {
     // the user never opens is never uploaded, and opening one costs three
     // requests instead of forty.
     //
-    // `/api/uploadAttachment` allows 30 uploads per 15 minutes, a budget sized
-    // for "5 submissions x 6 files". A picked folder spends all of it at once,
-    // and every upload past the 30th is refused, quietly, leaving the submit to
-    // send the file itself.
+    // `/api/uploadAttachment` holds a client to a quarter of a gigabyte of
+    // unsubmitted attachments at a time, so a picked folder can spend the whole
+    // budget in one go. Every upload past it is refused, quietly, leaving the
+    // submit to send the file itself.
     this.startBackgroundUploads(attached.map(photo => photo.file));
 
     this.setState({

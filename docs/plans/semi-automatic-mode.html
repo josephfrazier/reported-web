@@ -1091,11 +1091,13 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
           limit, so a batch of N photos is N ALPR calls fired in parallel; the concurrency cap is
           politeness, not enforcement, so check the account's own Plate Recognizer quota before
           running a large batch. <code>/api/uploadAttachment</code> is the opposite — capped at
-          <strong>30 uploads per 15 minutes per IP</strong> (<code>server.js</code>: 5 submissions
-          × 6 files each). A batch larger than that exceeds the bucket, at which point the
+          <strong>a quarter of a gigabyte of unsubmitted attachments per IP</strong>, which a
+          submission releases as it consumes them (<code>attachmentBudget.js</code>). A client that
+          picks a folder and uploads every file in it exceeds that at once, at which point the
           background uploads fail and submitting falls back to sending the files themselves. That
-          fallback is correct but it means the pre-upload optimisation stops helping exactly when a
-          batch is large enough to need it.
+          fallback is correct, but it means the pre-upload optimisation stops helping exactly when
+          a batch is large enough to need it — so the queue uploads a report's photos when it loads
+          that report, not the folder it was picked from.
         </li>
         <li>
           <b>Silent 3 + 3 truncation</b>

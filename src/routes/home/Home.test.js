@@ -2066,6 +2066,22 @@ describe('Home', () => {
         // rejects a `datetime-local` value that has them.
         createDateInputValue: () =>
           tree.root.findByProps({ name: 'CreateDate' }).props.value,
+        // Tick a queue row's merge checkbox, found by the plate its label
+        // names.
+        tickMerge: text =>
+          renderer.act(() => {
+            tree.root
+              .findAllByType('input')
+              .find(({ props }) => {
+                const label = props['aria-label'];
+                return (
+                  typeof label === 'string' &&
+                  label.startsWith('Merge ') &&
+                  label.includes(text)
+                );
+              })
+              .props.onChange();
+          }),
         // Load a violation through the Load button on its queue row. Every
         // row's button reads "Load", so find the row by the plate its
         // description contains and take the Load button inside it.
@@ -2454,6 +2470,69 @@ describe('Home', () => {
 
       exifr.gps.mockReset();
       exifr.parse.mockReset();
+      cleanup();
+    });
+
+    test('merges the violations the user ticks together', async () => {
+      // The shape this exists for: a far shot with no plate read, three
+      // minutes before the closeup that names the car. The time window keeps
+      // them apart, and only the user knows they are one report.
+      const farAt = 1704108600000;
+      const nearAt = 1704110400000;
+      const photoAt = (name, createDateMs) => ({
+        file: new File(['picture'], name, { type: 'image/jpeg' }),
+        name,
+        createDateMs,
+      });
+      const farPhoto = photoAt('far.jpg', farAt);
+      const nearPhoto = photoAt('near.jpg', nearAt);
+      const photos = [farPhoto, nearPhoto];
+      const far = {
+        photos: [farPhoto],
+        plate: '',
+        licenseState: '',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs: farAt,
+      };
+      const near = {
+        photos: [nearPhoto],
+        plate: 'T696817C',
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs: nearAt,
+      };
+
+      const { homeRef, tickMerge, clickButton, cleanup } =
+        await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchPhotos: photos,
+          batchViolations: [far, near],
+        });
+      });
+
+      expect(homeRef.current.state.batchViolations).toHaveLength(2);
+
+      tickMerge('no plate read');
+      tickMerge('T696817C');
+      clickButton('Merge 2 selected');
+
+      const { batchViolations, batchMergeSelection } = homeRef.current.state;
+
+      expect(batchViolations).toHaveLength(1);
+      // The plate survives: the far shot had none to offer.
+      expect(batchViolations[0].plate).toBe('T696817C');
+      // Both photos, oldest first, and the earlier one's time.
+      expect(batchViolations[0].photos.map(photo => photo.name)).toEqual([
+        'far.jpg',
+        'near.jpg',
+      ]);
+      expect(batchViolations[0].createDateMs).toBe(farAt);
+      expect(batchMergeSelection).toEqual([]);
+
       cleanup();
     });
 

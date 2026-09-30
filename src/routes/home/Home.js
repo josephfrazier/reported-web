@@ -54,6 +54,7 @@ import createGeosearchAddressCache from '../../geosearchAddressCache.js';
 import groupAttachmentsByViolation, {
   effectiveTimeMs,
   isViolationSettled,
+  mergeViolations,
 } from '../../groupAttachmentsByViolation.js';
 import { isImage, isVideo } from '../../isImage.js';
 import retryTransientRequest from '../../retryTransientRequest.js';
@@ -850,6 +851,9 @@ class Home extends React.Component {
       batchViolations: [],
       batchProgress: null,
       currentViolationIndex: -1,
+      // The identities (first photo names) of the violations ticked for
+      // merging. Two at a time, which is all the queue offers a button for.
+      batchMergeSelection: [],
 
       isAlprLoading: false,
       isPasswordRevealed: false,
@@ -1786,6 +1790,29 @@ class Home extends React.Component {
     this.setState({ batchProgress: null });
   };
 
+  // Flag each violation with whether it is inside the five boroughs, so the
+  // queue can say so up front rather than letting the user discover it when
+  // Submit is disabled. The module's records are left as they came back;
+  // `setCoords` re-derives the flag when a violation is loaded.
+  withNycFlags = violations => {
+    const lookup = new PolygonLookup(
+      this.props.boroughBoundariesFeatureCollection,
+    );
+
+    return violations.map(violation => ({
+      ...violation,
+      coordsAreInNyc: hasCoordinates(violation)
+        ? isPointInNycMemoized({
+            lookup,
+            end: {
+              latitude: violation.latitude,
+              longitude: violation.longitude,
+            },
+          })
+        : undefined,
+    }));
+  };
+
   // Group the photos that no published violation has claimed, and add the
   // violations to the queue.
   //
@@ -1826,25 +1853,7 @@ class Home extends React.Component {
       return;
     }
 
-    // Flag each violation with whether it is inside the five boroughs, so the
-    // queue can say so up front rather than letting the user discover it when
-    // Submit is disabled. The module's records are left as they came back;
-    // `setCoords` re-derives the flag when a violation is loaded.
-    const lookup = new PolygonLookup(
-      this.props.boroughBoundariesFeatureCollection,
-    );
-    const flagged = settled.map(violation => ({
-      ...violation,
-      coordsAreInNyc: hasCoordinates(violation)
-        ? isPointInNycMemoized({
-            lookup,
-            end: {
-              latitude: violation.latitude,
-              longitude: violation.longitude,
-            },
-          })
-        : undefined,
-    }));
+    const flagged = this.withNycFlags(settled);
 
     // One lookup at a time, and one per violation rather than per photo: a
     // batch shot at one curb is dozens of identical lookups, and the memo
@@ -2129,6 +2138,73 @@ class Home extends React.Component {
     }
 
     this.loadBatchViolation(index);
+  };
+
+  // Tick or untick a violation for merging. Any number can be ticked; the
+  // button appears once there are two, because one is not a merge.
+  toggleBatchMergeSelection = identity => {
+    this.setState(state => ({
+      batchMergeSelection: state.batchMergeSelection.includes(identity)
+        ? state.batchMergeSelection.filter(entry => entry !== identity)
+        : state.batchMergeSelection.concat(identity),
+    }));
+  };
+
+  // Combine the ticked violations into one report.
+  //
+  // The grouping splits on time, and a photo taken to establish where a car is
+  // can sit minutes before the closeups that read its plate -- so the far shot
+  // becomes a violation of its own. Only the user knows the two are one report,
+  // which is why this does what they say instead of re-running the clusterer:
+  // that would split them straight back apart.
+  mergeSelectedBatchViolations = () => {
+    const { batchMergeSelection, batchViolations, currentViolationIndex } =
+      this.state;
+
+    // A violation's identity is its first photo, which is unique to it and
+    // survives the queue being re-sorted.
+    const identityOf = violation => violation.photos[0]?.name;
+    const chosen = batchMergeSelection
+      .map(identity => batchViolations.find(v => identityOf(v) === identity))
+      .filter(Boolean);
+
+    if (chosen.length < 2) {
+      return;
+    }
+
+    const chosenIdentities = new Set(chosen.map(identityOf));
+    const loaded = batchViolations[currentViolationIndex];
+    const loadedWasMerged = loaded && chosenIdentities.has(identityOf(loaded));
+
+    const [merged] = this.withNycFlags([mergeViolations(chosen)]);
+    const remaining = batchViolations.filter(
+      violation => !chosenIdentities.has(identityOf(violation)),
+    );
+
+    // The merged violation reports the earliest of the times, so sorting puts
+    // it where that time belongs rather than where either of them sat.
+    const sorted = remaining
+      .concat(merged)
+      .sort((a, b) => a.createDateMs - b.createDateMs);
+
+    this.setState(
+      {
+        batchViolations: sorted,
+        batchMergeSelection: [],
+        currentViolationIndex: loadedWasMerged
+          ? sorted.indexOf(merged)
+          : loaded
+            ? sorted.indexOf(loaded)
+            : currentViolationIndex,
+      },
+      () => {
+        if (loadedWasMerged) {
+          // The form is holding one of the two, so show it the merged report
+          // rather than leaving it on a violation that no longer exists.
+          this.loadBatchViolation(this.state.currentViolationIndex);
+        }
+      },
+    );
   };
 
   // Drop a group from the batch. Its photos go with it: regrouping the batch
@@ -2550,6 +2626,7 @@ class Home extends React.Component {
   // picker for choosing which of them to attach.
   renderBatchStatus() {
     const {
+      batchMergeSelection,
       batchPhotos,
       batchProgress,
       batchViolations,
@@ -2590,7 +2667,12 @@ class Home extends React.Component {
             </h3>
             <button type="button" onClick={this.loadNextBatchViolation}>
               Load next violation
-            </button>
+            </button>{' '}
+            {batchMergeSelection.length >= 2 && (
+              <button type="button" onClick={this.mergeSelectedBatchViolations}>
+                {`Merge ${batchMergeSelection.length} selected`}
+              </button>
+            )}
             {/* The list grows while the batch is still being read, and a list
                 that lengthens pushes everything under it -- the form for the
                 violation being reported -- down the page. Capping its height
@@ -2613,10 +2695,23 @@ class Home extends React.Component {
                   flags.push('choose up to 3 to attach');
                 }
 
+                const identity = violation.photos[0]?.name;
+
                 return (
                   <li
                     key={`${violation.createDateMs}-${violation.plate}-${violation.photos[0]?.name}`}
                   >
+                    {/* Ticking two of these is how a report the grouping split
+                        in two is put back together; see
+                        mergeSelectedBatchViolations. */}
+                    <input
+                      type="checkbox"
+                      checked={batchMergeSelection.includes(identity)}
+                      onChange={() => this.toggleBatchMergeSelection(identity)}
+                      aria-label={`Merge ${formatBatchViolationTime(
+                        violation.createDateMs,
+                      )} — ${violation.plate || 'no plate read'}`}
+                    />{' '}
                     {index === currentViolationIndex ? '▸ ' : ''}
                     {formatBatchViolationTime(violation.createDateMs)} —{' '}
                     {violation.plate || '(no plate read)'} (

@@ -1,5 +1,6 @@
 import groupAttachmentsByViolation, {
   isViolationSettled,
+  mergeViolations,
   normalizedCenterDistance,
 } from './groupAttachmentsByViolation.js';
 
@@ -89,6 +90,89 @@ const alprSnapshotResults = [
     score: 1,
   },
 ];
+
+describe('mergeViolations', () => {
+  // The shape this exists for: a far shot taken to establish where the car is,
+  // then closeups that read the plate three minutes later.
+  const farShot = buildPhoto({
+    name: 'far.jpg',
+    createDateMs: 1_000_000,
+    latitude: latitudeMetersNorthOf(4),
+    longitude: BASE_LONGITUDE,
+  });
+  const closeup = plate =>
+    buildPhoto({
+      name: 'close.jpg',
+      createDateMs: 1_180_000,
+      latitude: BASE_LATITUDE,
+      longitude: BASE_LONGITUDE,
+      plateResults: alprResponse({
+        results: [alprResult({ plate, box: CENTRED_BOX })],
+      }),
+    });
+
+  test('joins two violations that the time window kept apart', () => {
+    const reading = closeup('aaa111');
+
+    // Three minutes apart, so the grouping is right to keep them separate.
+    expect(groupAttachmentsByViolation([farShot, reading])).toHaveLength(2);
+
+    const [far] = groupAttachmentsByViolation([farShot]);
+    const [near] = groupAttachmentsByViolation([reading]);
+
+    const merged = mergeViolations([near, far]);
+
+    // One violation, oldest photo first, however the two arrive.
+    expect(merged.photos.map(photo => photo.name)).toEqual([
+      'far.jpg',
+      'close.jpg',
+    ]);
+    expect(merged.plate).toBe('AAA111');
+  });
+
+  test('takes the time and place from the earliest photo', () => {
+    const [far] = groupAttachmentsByViolation([farShot]);
+    const [near] = groupAttachmentsByViolation([closeup('aaa111')]);
+
+    const merged = mergeViolations([far, near]);
+
+    expect(merged.createDateMs).toBe(1_000_000);
+    expect(merged.latitude).toBe(latitudeMetersNorthOf(4));
+    expect(merged.longitude).toBe(BASE_LONGITUDE);
+  });
+
+  test('keeps the plate of whichever violation read one', () => {
+    // The far shot read nothing: it is the reason there are two violations and
+    // only one of them can name the car.
+    const [far] = groupAttachmentsByViolation([farShot]);
+    const [near] = groupAttachmentsByViolation([closeup('aaa111')]);
+
+    expect(mergeViolations([far, near]).plate).toBe('AAA111');
+    expect(mergeViolations([near, far]).plate).toBe('AAA111');
+  });
+
+  test('prefers the plate with more photos behind it when both read one', () => {
+    const twoPhotos = buildPhoto({
+      name: 'close-2.jpg',
+      createDateMs: 1_181_000,
+      latitude: BASE_LATITUDE,
+      longitude: BASE_LONGITUDE,
+      plateResults: alprResponse({
+        results: [alprResult({ plate: 'aaa111', box: CENTRED_BOX })],
+      }),
+    });
+    const [twoReadings] = groupAttachmentsByViolation([
+      closeup('aaa111'),
+      twoPhotos,
+    ]);
+    const [oneReading] = groupAttachmentsByViolation([closeup('bbb222')]);
+
+    const merged = mergeViolations([oneReading, twoReadings]);
+
+    expect(merged.plate).toBe('AAA111');
+    expect(merged.photos).toHaveLength(3);
+  });
+});
 
 describe('isViolationSettled', () => {
   const violationEndingAt = createDateMs => ({

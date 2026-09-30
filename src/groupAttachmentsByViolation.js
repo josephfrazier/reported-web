@@ -493,6 +493,33 @@ export function isViolationSettled({ violation, frontierTimeMs }) {
   return frontierTimeMs - end > TIME_THRESHOLD_MS;
 }
 
+// Combine violations the user says are one report.
+//
+// The grouping splits on time, and a photo taken to establish where a car is
+// can sit minutes before the closeups that read its plate -- so the far shot
+// forms a violation of its own. Only the user knows the two belong together,
+// which is why this combines what it is given instead of inferring anything.
+//
+// The photos are merged as they arrive: the clusterer deliberately does not run
+// again, because the whole reason these are two violations is that the time
+// window held them apart. Re-clustering would split them straight back.
+//
+// The plate comes from whichever violation read one, and from the one with more
+// photos behind it when both did -- the reading the user can see wins.
+export function mergeViolations(violations) {
+  const photos = violations.flatMap(violation => [...violation.photos]);
+
+  const [withPlate] = violations
+    .filter(violation => violation.plate)
+    .sort((a, b) => b.photos.length - a.photos.length);
+
+  return buildViolation({
+    photos,
+    plate: withPlate?.plate || '',
+    licenseState: withPlate?.licenseState || '',
+  });
+}
+
 export default function groupAttachmentsByViolation(photos) {
   const sorted = [...photos].sort(compareByCaptureTime);
   const violations = [];

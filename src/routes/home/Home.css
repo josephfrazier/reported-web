@@ -395,8 +395,7 @@ input[type='search']::-webkit-search-cancel-button {
 }
 
 /*
- * The queue's heading, with the merge button on the same line when two rows
- * are ticked.
+ * The queue's heading, with the merge button on the same line as it.
  *
  * The button rides on the heading's line rather than on one of its own. On a
  * line of its own it pushed the whole list down the moment a second row was
@@ -416,17 +415,22 @@ input[type='search']::-webkit-search-cancel-button {
 }
 
 /*
- * The merge button, sized and worded to leave the heading's line alone.
+ * The merge button, which does not change the heading's line by being there.
  *
- * marx draws a button 42px tall and the heading's line is 34px (28px at a
- * line-height of 1.2). A button taller than that line would set the line's
- * height whenever it appeared. Trimming the padding and the line-height takes
- * it to 29px.
+ * It is always rendered and merely disabled until two rows are ticked, so the
+ * heading draws the same line in every state and the list below it never
+ * moves. An earlier attempt rendered it only when it was usable and made it
+ * small enough to fit; that held only while the two happened to fit on one
+ * line, which at 390px left 4px to spare and turned on the fonts the browser
+ * chose.
  *
- * Width counts too, which is why the label reads "Merge 2" and not "Merge 2
- * selected". Measured at 390px, the longer label pushed the heading onto two
- * lines and the list down 33px, which is the jump this is here to stop. Check
- * both widths before lengthening it.
+ * The label stays one word for the same reason: a label that grew with the
+ * count could tip the heading onto a second line.
+ *
+ * The sizing is marx's button trimmed. marx draws one 42px tall and the
+ * heading's line is 34px (28px at a line-height of 1.2), so trimming the
+ * padding and the line-height keeps the button inside the line rather than
+ * setting its height.
  */
 .batch-queue-merge {
   flex: none;

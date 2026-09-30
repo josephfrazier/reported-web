@@ -2691,22 +2691,23 @@ class Home extends React.Component {
 
         {batchViolations.length > 0 && (
           <div className={homeStyles['batch-queue']}>
-            {/* The merge button shares the heading's line so that its arrival
-                does not push the list down; see .batch-queue-merge. */}
+            {/* The merge button holds its place on the heading's line at all
+                times, and is merely disabled until two rows are ticked. A
+                button that came and went would change the line, and the list
+                under it would move; see .batch-queue-merge. */}
             <div className={homeStyles['batch-queue-heading']}>
               <h3>
                 Found {batchViolations.length} violation
                 {batchViolations.length === 1 ? '' : 's'}
               </h3>
-              {batchMergeSelection.length >= 2 && (
-                <button
-                  type="button"
-                  className={homeStyles['batch-queue-merge']}
-                  onClick={this.mergeSelectedBatchViolations}
-                >
-                  {`Merge ${batchMergeSelection.length}`}
-                </button>
-              )}
+              <button
+                type="button"
+                className={homeStyles['batch-queue-merge']}
+                disabled={batchMergeSelection.length < 2}
+                onClick={this.mergeSelectedBatchViolations}
+              >
+                Merge
+              </button>
             </div>
             {/* The list grows while the batch is still being read, and a list
                 that lengthens pushes everything under it -- the form for the

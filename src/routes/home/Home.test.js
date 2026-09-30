@@ -2061,6 +2061,9 @@ describe('Home', () => {
           renderer.act(() => {
             findButton(text).props.onClick();
           }),
+        // The merge button on the heading's line. It is always rendered, and
+        // disabled until two rows are ticked.
+        mergeButton: () => findButton('Merge'),
         // What the CreateDate field is given. It has to stay minute-precision
         // even though the state behind it carries seconds, because iOS Safari
         // rejects a `datetime-local` value that has them.
@@ -2518,7 +2521,7 @@ describe('Home', () => {
         createDateMs: nearAt,
       };
 
-      const { homeRef, tickMerge, clickButton, cleanup } =
+      const { homeRef, tickMerge, clickButton, mergeButton, cleanup } =
         await renderBatchWithFiles([]);
 
       renderer.act(() => {
@@ -2530,9 +2533,19 @@ describe('Home', () => {
 
       expect(homeRef.current.state.batchViolations).toHaveLength(2);
 
+      // The button holds its place on the heading's line from the start, so
+      // that ticking a row cannot move the list. It is disabled until there
+      // are two rows to combine.
+      expect(mergeButton().props.disabled).toBe(true);
+
       tickMerge('no plate read');
+
+      // One is not a merge.
+      expect(mergeButton().props.disabled).toBe(true);
+
       tickMerge('T696817C');
-      clickButton('Merge 2');
+      expect(mergeButton().props.disabled).toBe(false);
+      clickButton('Merge');
 
       const { batchViolations, batchMergeSelection } = homeRef.current.state;
 

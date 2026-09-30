@@ -8,9 +8,9 @@ const METERS_PER_DEGREE_LATITUDE = 111320;
 const BASE_LATITUDE = 40.7128;
 const BASE_LONGITUDE = -74.006;
 
-// Roughly `meters` north of the base point. Only used to place photos well
-// inside or well outside the 30m threshold, never to hit it exactly: how many
-// degrees a metre is depends on the Earth-radius constant the module uses.
+// Roughly `meters` north of the base point. Only used to place photos a long
+// way apart, never to hit a boundary exactly: how many degrees a metre is
+// depends on the Earth-radius constant the module uses.
 const latitudeMetersNorthOf = meters =>
   BASE_LATITUDE + meters / METERS_PER_DEGREE_LATITUDE;
 
@@ -102,7 +102,7 @@ describe('isViolationSettled', () => {
     expect(
       isViolationSettled({
         violation: violationEndingAt(end),
-        frontierTimeMs: end + 5000,
+        frontierTimeMs: end + 60000,
       }),
     ).toBe(false);
   });
@@ -113,7 +113,7 @@ describe('isViolationSettled', () => {
     expect(
       isViolationSettled({
         violation: violationEndingAt(end),
-        frontierTimeMs: end + 5001,
+        frontierTimeMs: end + 60001,
       }),
     ).toBe(true);
   });
@@ -132,8 +132,9 @@ describe('isViolationSettled', () => {
   });
 
   test('measures from the end of the group, not its start', () => {
-    // Two photos four seconds apart, so the group ends at the later one: a
-    // frontier five seconds past the *start* is still inside the window.
+    // Two photos four seconds apart, so the group ends at the later one. A
+    // frontier thirty seconds past the *start* is only twenty-six past the
+    // end, which is still inside the window.
     const violation = {
       photos: [
         buildPhoto({ createDateMs: 1_000_000 }),
@@ -141,10 +142,10 @@ describe('isViolationSettled', () => {
       ],
     };
 
-    expect(isViolationSettled({ violation, frontierTimeMs: 1_005_000 })).toBe(
+    expect(isViolationSettled({ violation, frontierTimeMs: 1_030_000 })).toBe(
       false,
     );
-    expect(isViolationSettled({ violation, frontierTimeMs: 1_009_001 })).toBe(
+    expect(isViolationSettled({ violation, frontierTimeMs: 1_064_001 })).toBe(
       true,
     );
   });
@@ -295,7 +296,7 @@ describe('groupAttachmentsByViolation', () => {
     ]);
   });
 
-  test('links photos exactly 5000ms apart and splits them a millisecond later', () => {
+  test('links photos exactly 60s apart and splits them a millisecond later', () => {
     const startTime = Date.now();
     const reading = ({ name, createDateMs, plateResults }) =>
       buildPhoto({
@@ -305,9 +306,9 @@ describe('groupAttachmentsByViolation', () => {
         longitude: BASE_LONGITUDE,
         plateResults,
       });
-    // Two photos of the same car 5 seconds apart, which the plan's threshold
-    // links, and two 5001ms apart, which it does not. Integer milliseconds
-    // make the boundary exact, unlike the metres below.
+    // Two photos of the same car 60 seconds apart, which the threshold links,
+    // and two 60001ms apart, which it does not. Integer milliseconds make the
+    // boundary exact.
     const linked = [
       reading({
         name: 'a.jpg',
@@ -318,7 +319,7 @@ describe('groupAttachmentsByViolation', () => {
       }),
       reading({
         name: 'b.jpg',
-        createDateMs: startTime + 5000,
+        createDateMs: startTime + 60000,
         plateResults: alprResponse({
           results: [alprResult({ plate: 'aaa111', box: CENTRED_BOX })],
         }),
@@ -328,7 +329,7 @@ describe('groupAttachmentsByViolation', () => {
       linked[0],
       reading({
         name: 'c.jpg',
-        createDateMs: startTime + 5001,
+        createDateMs: startTime + 60001,
         plateResults: alprResponse({
           results: [alprResult({ plate: 'aaa111', box: CENTRED_BOX })],
         }),
@@ -339,7 +340,7 @@ describe('groupAttachmentsByViolation', () => {
     expect(groupAttachmentsByViolation(split)).toHaveLength(2);
   });
 
-  test('splits photos more than 30m apart, however close together they were shot', () => {
+  test('links photos at different places when they were shot together', () => {
     const startTime = Date.now();
     const reading = meters =>
       buildPhoto({
@@ -352,11 +353,13 @@ describe('groupAttachmentsByViolation', () => {
         }),
       });
 
-    const withinThreshold = [reading(0), reading(29)];
-    const beyondThreshold = [reading(0), reading(31)];
-
-    expect(groupAttachmentsByViolation(withinThreshold)).toHaveLength(1);
-    expect(groupAttachmentsByViolation(beyondThreshold)).toHaveLength(2);
+    // Place plays no part. Two photos taken in the same moment are one
+    // violation however far apart their coordinates claim to be: distances of
+    // hundreds of metres inside one violation are ordinary when the photos are
+    // taken from a bike, and a location fix can be wrong by more than that.
+    expect(
+      groupAttachmentsByViolation([reading(0), reading(800)]),
+    ).toHaveLength(1);
   });
 
   test('links a photo with no GPS on capture time alone', () => {
@@ -406,7 +409,7 @@ describe('groupAttachmentsByViolation', () => {
     expect(
       groupAttachmentsByViolation([
         stripped(startTime),
-        stripped(startTime + 20000),
+        stripped(startTime + 70000),
       ]),
     ).toHaveLength(2);
   });

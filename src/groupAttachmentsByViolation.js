@@ -11,10 +11,24 @@
  *
  *   1. Sort by capture time, so everything downstream can assume chronological
  *      order.
- *   2. Cluster by time and place: two photos link when they were taken within
- *      TIME_THRESHOLD_MS of each other and at most
- *      DISTANCE_THRESHOLD_METERS apart. Connected components of that relation
+ *   2. Cluster by time alone: two photos link when they were taken within
+ *      TIME_THRESHOLD_MS of each other. Connected components of that relation
  *      are the candidate violations.
+ *
+ * Time is the only geometric signal here, and both numbers come from measuring
+ * the reports themselves rather than from guessing.
+ *
+ * Distance was a second signal until it was measured. Of 385 gaps between two
+ * photos of one violation, 328 were at *identical* coordinates -- a phone
+ * reuses one location fix for shots taken seconds apart -- and most of the rest
+ * could not be told apart from GPS error: 4,739 m in 2 s, 1,798 m in 2 s, which
+ * nothing covers. A distance threshold could therefore only ever split a real
+ * violation, never separate two of them.
+ *
+ * 60 s comes from the same measurement. The largest gap between two photos of
+ * one violation was 180 s, and a 5 s window split 33 of 399 of them; 60 s
+ * splits 2. What a time window cannot separate, the plate does: two cars at one
+ * kerb are 0 m and a few seconds apart.
  *   3. Vote the plate, then split on it. Clustering deliberately runs first:
  *      a plate may only ever divide a cluster, never merge two, which keeps it
  *      from both defining a group and being chosen from it.
@@ -32,8 +46,7 @@
  *         latitude, longitude, createDateMs }]
  */
 
-const TIME_THRESHOLD_MS = 5000;
-const DISTANCE_THRESHOLD_METERS = 30;
+const TIME_THRESHOLD_MS = 60000;
 
 // Mean Earth radius (IUGG), the value most haversine implementations use.
 const EARTH_RADIUS_METERS = 6371008.8;
@@ -103,23 +116,22 @@ function compareByCaptureTime(a, b) {
   return effectiveTimeMs(a) - effectiveTimeMs(b);
 }
 
+// Two photos belong to the same violation when they were taken close together
+// in time. Place deliberately plays no part -- see the note at the top of the
+// module for why it cannot.
+//
+// A photo with no capture time uses its file's modification time, which is what
+// `effectiveTimeMs` resolves. Android strips GPS from media shared through some
+// apps (https://github.com/josephfrazier/reported-web/issues/751), which no
+// longer matters here: coordinates were never the fallback, they were the
+// second half of the test, and that half has gone.
 function linkPhotos(a, b) {
-  if (Math.abs(effectiveTimeMs(a) - effectiveTimeMs(b)) > TIME_THRESHOLD_MS) {
-    return false;
-  }
-  // Android strips GPS from media shared through some apps, so a photo with no
-  // coordinates still links on capture time alone. Both sides have to have
-  // coordinates for distance to mean anything.
-  // https://github.com/josephfrazier/reported-web/issues/751
-  if (!hasCoordinates(a) || !hasCoordinates(b)) {
-    return true;
-  }
-  return haversineMeters(a, b) <= DISTANCE_THRESHOLD_METERS;
+  return Math.abs(effectiveTimeMs(a) - effectiveTimeMs(b)) <= TIME_THRESHOLD_MS;
 }
 
 // Connected components of `linkPhotos`, oldest first (the input is already
 // sorted by capture time, and Map preserves insertion order).
-function clusterByTimeAndPlace(photos) {
+function clusterByTime(photos) {
   const parents = photos.map((photo, index) => index);
   const find = index => {
     let root = index;
@@ -136,10 +148,12 @@ function clusterByTimeAndPlace(photos) {
     }
   };
 
-  // Every pair, not just neighbours: two shots 5 seconds apart are one cluster
-  // even when a third photo between them breaks the chain. Batches are tens of
-  // photos, so the quadratic scan is not worth an early exit that the
-  // timestamp-less tier would invalidate anyway.
+  // Every pair, not just neighbours. The two are equivalent now that time is
+  // the only test -- with the photos in time order, two that link are joined by
+  // everything between them, since each of those sits inside the same window --
+  // so a single pass over neighbours would do. The scan is left as it is
+  // because it is already written and tested, and a batch is only tens of
+  // photos.
   for (let i = 0; i < photos.length; i += 1) {
     for (let j = i + 1; j < photos.length; j += 1) {
       if (linkPhotos(photos[i], photos[j])) {
@@ -502,7 +516,7 @@ export default function groupAttachmentsByViolation(photos) {
   const sorted = [...photos].sort(compareByCaptureTime);
   const violations = [];
 
-  clusterByTimeAndPlace(sorted).forEach(cluster => {
+  clusterByTime(sorted).forEach(cluster => {
     const { groups, orphans } = splitCluster(cluster);
 
     if (groups.length === 0) {

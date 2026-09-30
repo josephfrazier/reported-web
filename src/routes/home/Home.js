@@ -167,15 +167,12 @@ const geolocate = () =>
     };
   });
 
-// Keep the seconds.
+// The time a report is filed with, to the second.
 //
-// They are what a batch groups on, and dropping them made every report's time
-// minute-precision. The strip that used to be here was for the `datetime-local`
-// input, not the data: iOS Safari rejects a value that carries seconds with
-// "enter a valid value" (see "Fix datetime-local input on iOS by removing
-// seconds", for issue #11). That constraint applies to what the input is given,
-// which is why the field is bound to the first 16 characters of this rather
-// than to all of it.
+// The seconds were stripped here until recently, which left every stored
+// report's time a minute wide. They belong to the report: its time is what it
+// is, and rounding it is not this function's job. Only the fraction of a second
+// goes.
 const jsDateToCreateDate = jsDate => jsDate.toISOString().replace(/\..*/g, '');
 
 async function blobToBuffer({ attachmentFile }) {
@@ -2823,9 +2820,12 @@ class Home extends React.Component {
                         <input
                           required
                           type="datetime-local"
-                          // Minute precision, without the seconds this state
-                          // carries: iOS Safari rejects a `datetime-local`
-                          // value that has them.
+                          // Minutes, not the seconds the state carries. The
+                          // slice started as a workaround for an iOS picker
+                          // that refused a value carrying seconds (issue #11).
+                          // It stays on its own account: this is a field for a
+                          // person to nudge, and a phone's picker offers no
+                          // finer than a minute anyway.
                           value={this.state.CreateDate.slice(0, 16)}
                           name="CreateDate"
                           onChange={this.handleInputChange}

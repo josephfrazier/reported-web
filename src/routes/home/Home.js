@@ -2772,8 +2772,10 @@ class Home extends React.Component {
                         violation.createDateMs,
                       )} — ${violation.plate || 'no plate read'}`}
                       // The row is a flex line, so this pushes the X to the
-                      // far end of it.
-                      style={{ marginLeft: 'auto' }}
+                      // far end of it. It takes no background of its own
+                      // either, so the highlight of the loaded row runs behind
+                      // it instead of stopping at a white square.
+                      style={{ marginLeft: 'auto', background: 'transparent' }}
                       onClick={() => this.deleteBatchViolation(index)}
                     />
                   </li>

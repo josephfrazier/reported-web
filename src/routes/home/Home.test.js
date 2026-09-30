@@ -2082,17 +2082,24 @@ describe('Home', () => {
               })
               .props.onChange();
           }),
-        // Load a violation through the Load button on its queue row. Every
-        // row's button reads "Load", so find the row by the plate its
-        // description contains and take the Load button inside it.
+        // Load a violation the way the queue does: click the row's own text.
+        // The description is the control, and the Delete and merge buttons are
+        // separate buttons that do not carry the plate.
         clickQueueLoad: plate =>
           renderer.act(() => {
-            const row = tree.root
-              .findAllByType('li')
-              .find(({ children }) => children.join('').includes(plate));
-            row
+            tree.root
               .findAllByType('button')
-              .find(({ children }) => children.includes('Load'))
+              .find(({ children }) => children.join('').includes(plate))
+              .props.onClick();
+          }),
+        // Press Delete on the queue row whose description carries `plate`.
+        clickRowDelete: plate =>
+          renderer.act(() => {
+            tree.root
+              .findAllByType('button')
+              .find(({ children }) => children.join('').includes(plate))
+              .parent.findAllByType('button')
+              .find(({ children }) => children.includes('Delete'))
               .props.onClick();
           }),
         // Tick or untick one photo in a loaded group's attachment picker, by
@@ -2210,7 +2217,7 @@ describe('Home', () => {
       cleanup();
     });
 
-    test('loads a violation from its Load button, and ignores it on the one already loaded', async () => {
+    test('loads a violation when its row is clicked, and ignores a click on the one already loaded', async () => {
       const photos = [
         jpeg({ name: 'a.jpg', size: 4 }),
         jpeg({ name: 'b.jpg', size: 5 }),
@@ -2532,6 +2539,50 @@ describe('Home', () => {
       ]);
       expect(batchViolations[0].createDateMs).toBe(farAt);
       expect(batchMergeSelection).toEqual([]);
+
+      cleanup();
+    });
+
+    test('does not load a violation when its delete or merge control is used', async () => {
+      const photos = ['a', 'b'].map(name => {
+        const file = new File(['picture'], `${name}.jpg`, {
+          type: 'image/jpeg',
+        });
+        return { file, name: file.name, createDateMs: 1704110400000 };
+      });
+      const violation = (photo, plate, createDateMs) => ({
+        photos: [photo],
+        plate,
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs,
+      });
+
+      const { homeRef, tickMerge, clickRowDelete, cleanup } =
+        await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchPhotos: photos,
+          batchViolations: [
+            violation(photos[0], 'AAA111', 1704110400000),
+            violation(photos[1], 'BBB222', 1704110500000),
+          ],
+        });
+      });
+
+      // Nothing is loaded, and neither control beside the description may
+      // load one: they are siblings of it, not children.
+      expect(homeRef.current.state.currentViolationIndex).toBe(-1);
+
+      tickMerge('AAA111');
+      expect(homeRef.current.state.batchMergeSelection).toHaveLength(1);
+      expect(homeRef.current.state.currentViolationIndex).toBe(-1);
+
+      clickRowDelete('AAA111');
+      expect(homeRef.current.state.batchViolations).toHaveLength(1);
+      expect(homeRef.current.state.currentViolationIndex).toBe(-1);
 
       cleanup();
     });

@@ -2727,16 +2727,21 @@ class Home extends React.Component {
                         violation.createDateMs,
                       )} — ${violation.plate || 'no plate read'}`}
                     />{' '}
-                    {formatBatchViolationTime(violation.createDateMs)} —{' '}
-                    {violation.plate || '(no plate read)'} (
-                    {violation.photos.length} photo
-                    {violation.photos.length === 1 ? '' : 's'})
-                    {flags.length > 0 && ` — ${flags.join(', ')}`}{' '}
+                    {/* The description is the control that loads this
+                        violation, so the thing you read is the thing you
+                        click. Delete and the merge box are siblings rather
+                        than children, which is what keeps a click on either
+                        from loading the row as well. */}
                     <button
                       type="button"
+                      className={homeStyles['batch-violation-description']}
                       onClick={() => this.selectBatchViolation(index)}
                     >
-                      Load
+                      {formatBatchViolationTime(violation.createDateMs)} —{' '}
+                      {violation.plate || '(no plate read)'} (
+                      {violation.photos.length} photo
+                      {violation.photos.length === 1 ? '' : 's'})
+                      {flags.length > 0 && ` — ${flags.join(', ')}`}
                     </button>{' '}
                     <button
                       type="button"

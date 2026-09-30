@@ -541,7 +541,7 @@
             <tr><td>Entry point</td><td>Toggle in Preferences, persisted alongside <code>isReverseGeocodingEnabled</code></td></tr>
             <tr><td>Photo input</td><td>A folder pick, a loose multi-file pick, or a drag-and-drop — all equally supported</td></tr>
             <tr><td>Grouping signals</td><td>EXIF time <em>and</em> GPS <em>and</em> ALPR plate</td></tr>
-            <tr><td>Thresholds</td><td class="num">Δt ≤ 5000 ms · distance ≤ 30 m</td></tr>
+            <tr><td>Thresholds</td><td class="num">Δt ≤ 60 s, on time alone — see <em>Why distance went</em></td></tr>
             <tr><td>Plate's role</td><td>May <strong>split</strong> a time+GPS cluster</td></tr>
             <tr><td>OCR variants</td><td>Folded via ALPR <code>candidates</code> sets</td></tr>
             <tr><td>Violation time &amp; location</td><td>From the <strong>earliest</strong> photo in the group</td></tr>
@@ -594,10 +594,9 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
           chronological order. Missing timestamps fall back to file last-modified and sort last.
         </li>
         <li>
-          <strong>Cluster by time and place.</strong> Union two photos when
-          <span class="mono">Δt ≤ 5000 ms</span> <em>and</em> the haversine distance between them is
-          <span class="mono">≤ 30 m</span>. A photo with no GPS links on time alone. Connected
-          components become candidate violations.
+          <strong>Cluster by time.</strong> Union two photos when
+          <span class="mono">Δt ≤ 60 s</span>. Place plays no part; see <em>Why distance went</em>.
+          Connected components become candidate violations.
         </li>
         <li>
           <strong>Vote the plate, then split on it.</strong> Fold OCR variants together, count how
@@ -611,6 +610,34 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
           violation. Finally, sort the violations earliest-first.
         </li>
       </ol>
+
+      <h3>Why distance went</h3>
+      <p>
+        Distance was the second half of the rule until it was measured against the reports
+        themselves. Two numbers came out of that, and neither supports it.
+      </p>
+      <p>
+        Of 385 gaps between two photos of one violation, <strong>328 were at identical
+        coordinates</strong>. A phone reuses one location fix for shots taken seconds apart. Most
+        violations therefore carry a single coordinate, and distance has nothing to compare.
+      </p>
+      <p>
+        The rest cannot be told from GPS error. The photos are taken from a bike, so long distances
+        inside one violation are real: 713&nbsp;m over 180&nbsp;s is 14&nbsp;km/h, and 1,130&nbsp;m
+        over 96&nbsp;s is 42&nbsp;km/h on an e-bike. But the same population holds 4,739&nbsp;m in
+        2&nbsp;s and 1,798&nbsp;m in 2&nbsp;s, which no bike covers. A threshold low enough to
+        separate two violations splits the real ones. One high enough to keep them together
+        separates nothing.
+      </p>
+      <p>
+        So the plate does that job instead. It has to: the pairs a threshold cannot divide are the
+        ordinary case, not the awkward one.
+      </p>
+      <p>
+        The <span class="mono">60 s</span> window comes from the same measurement. Across 399 gaps
+        inside one violation, <span class="mono">5 s</span> split 33 of them and
+        <span class="mono">60 s</span> splits 2. The largest real gap was 180&nbsp;s.
+      </p>
 
       <h3>Choosing the plate</h3>
       <p>Each tie-break is applied only if the one before it is still tied:</p>
@@ -706,19 +733,22 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
       </div>
 
       <p>
-        Photo&nbsp;3 → 4 breaks on both signals at once (18&nbsp;s, 144&nbsp;m), so V2 opens
-        regardless of plates. Photo&nbsp;6 → V3 breaks on both as well, and having no plate at all
-        it is flagged rather than discarded. Within V1 the three readings fold into one plate with
-        three photos — the majority it wins is <span class="mono">t696817c</span>, the clean read
-        and the only one matching the medallion pattern.
+        Photo&nbsp;6 → V3 breaks on time: 127&nbsp;s is past the window, and a photo with no plate
+        at all is flagged rather than discarded. Photos&nbsp;3 → 4 do <em>not</em> break — 18&nbsp;s
+        is inside the window — so both cars sit in one cluster, and the plate vote is what divides
+        them. That is the ordinary case rather than the awkward one: two cars at one kerb are 0&nbsp;m
+        and a few seconds apart, and nothing but the plate can tell them apart. Within V1 the three
+        readings fold into one plate with three photos — the majority it wins is
+        <span class="mono">t696817c</span>, the clean read and the only one matching the medallion
+        pattern.
       </p>
 
       <div class="note note--warn">
         <span class="note__label">Order of operations matters</span>
         <p>
           Clustering runs <em>before</em> the plate vote, and the plate vote runs <em>before</em>
-          the split. The plate cannot merge two clusters that time and place kept apart — it only
-          ever divides. That keeps the rule one-directional and avoids the obvious circularity of
+          the split. The plate cannot merge two clusters that time kept apart — it only ever
+          divides. That keeps the rule one-directional and avoids the obvious circularity of
           using a plate both to define a group and to be chosen from it.
         </p>
       </div>
@@ -727,7 +757,7 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
       <p>
         The queue fills in while the batch is still being read, which needs a rule for when a
         violation has stopped changing. It is the linking window itself rather than a photo count:
-        since <code>linkPhotos</code> requires two photos to be within <span class="mono">5 s</span>
+        since <code>linkPhotos</code> requires two photos to be within <span class="mono">60 s</span>
         of each other, once the frontier — the latest photo read so far — has moved more than that
         past a violation's end, nothing still to come can reach back and join it.
         <code>isViolationSettled</code> is that test, exported and unit-tested on its own because it
@@ -829,7 +859,7 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
       </p>
       <p>Four helpers live alongside it:</p>
       <ul>
-        <li><code>haversineMeters(a, b)</code> — distance between two coordinates</li>
+        <li><code>haversineMeters(a, b)</code> — distance between two coordinates. Nothing in the grouping calls it now; it stays, with its tests, for a distance bound if one is ever wanted again</li>
         <li><code>normalizedCenterDistance(box, uploadWidth, uploadHeight)</code> — how far a plate sits from the frame centre</li>
         <li><code>effectiveTimeMs(photo)</code> — capture time, falling back to file last-modified, so grouping and the read order agree on <em>earliest</em></li>
         <li><code>isViolationSettled({ violation, frontierTimeMs })</code> — whether a violation has stopped changing, which is what publishing waits for</li>

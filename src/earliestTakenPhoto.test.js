@@ -1,10 +1,10 @@
 import earliestTakenPhoto from './earliestTakenPhoto.js';
 
-// One reading, as `extractDate` answers: a moment, and the offset it is read
-// in.
-const takenAt = (millisecondsSinceEpoch, offset = 0) => ({
-  millisecondsSinceEpoch,
-  offset,
+// One reading, as the photos are recorded: a moment, and the offset it is
+// read in.
+const takenAt = (createDateMs, createDateOffset = 0) => ({
+  createDateMs,
+  createDateOffset,
 });
 
 describe('earliestTakenPhoto', () => {
@@ -22,7 +22,9 @@ describe('earliestTakenPhoto', () => {
   test('brings back the offset the moment is read in', () => {
     const earliest = takenAt(1000, 240);
 
-    expect(earliestTakenPhoto([takenAt(3000), earliest]).offset).toBe(240);
+    expect(earliestTakenPhoto([takenAt(3000), earliest]).createDateOffset).toBe(
+      240,
+    );
   });
 
   test('ignores readings with no capture time', () => {

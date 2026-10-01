@@ -180,6 +180,41 @@ const geolocate = () =>
 // goes.
 const jsDateToCreateDate = jsDate => jsDate.toISOString().replace(/\..*/g, '');
 
+// The CreateDate field's value for a moment, read in the offset it belongs to.
+// `setCreateDate` writes this, and the photos' time is recognised by comparing
+// against it: a time the user typed no longer matches what they say.
+const createDateValue = ({ millisecondsSinceEpoch, offset }) => {
+  // Adjust date to local time
+  // https://stackoverflow.com/questions/674721/how-do-i-subtract-minutes-from-a-date-in-javascript
+  const MS_PER_MINUTE = 60000;
+  return jsDateToCreateDate(
+    new Date(millisecondsSinceEpoch - offset * MS_PER_MINUTE),
+  );
+};
+
+// What the form records as the origin of a location the photos gave it. The
+// map and the address field write their own words in its place, which is how a
+// place the user set is told from one the photos did -- and the place follows
+// the photos only while it is still theirs.
+const EXTRACTED_FROM_PHOTOS = '(extracted from picture/video)';
+
+// What one of a photo's reads left behind: when it was taken and where, in the
+// field names the grouping uses. A value the read did not answer with stays
+// NaN, and is passed over by whichever rule is looking.
+const emptyReading = file => ({
+  file,
+  createDateMs: NaN,
+  createDateOffset: NaN,
+  latitude: NaN,
+  longitude: NaN,
+});
+
+// A reading's moment, as `setCreateDate` and `createDateValue` take it.
+const momentOf = ({ createDateMs, createDateOffset }) => ({
+  millisecondsSinceEpoch: createDateMs,
+  offset: createDateOffset,
+});
+
 async function blobToBuffer({ attachmentFile }) {
   console.time(`blobUtil.blobToArrayBuffer(${attachmentFile.name})`); // eslint-disable-line no-console
   const attachmentArrayBuffer =
@@ -748,6 +783,10 @@ class Home extends React.Component {
     this.isDragging = false;
     this.plateLookupCache = new Map();
     this.geosearchAddressCache = createGeosearchAddressCache();
+    // What each attached photo's reads said, keyed by the file, for as long as
+    // it is attached. The form's time and place are worked out from these
+    // again whenever the photos change -- see applyPhotosTimeAndPlace.
+    this.photoReadings = new Map();
     this.plateRef = React.createRef();
     this.plateLabelRef = React.createRef();
     this.loginEmailRef = React.createRef();
@@ -1075,15 +1114,8 @@ class Home extends React.Component {
     millisecondsSinceEpoch,
     offset = new Date().getTimezoneOffset(),
   }) => {
-    // Adjust date to local time
-    // https://stackoverflow.com/questions/674721/how-do-i-subtract-minutes-from-a-date-in-javascript
-    const MS_PER_MINUTE = 60000;
-    const CreateDateJsLocal = new Date(
-      millisecondsSinceEpoch - offset * MS_PER_MINUTE,
-    );
-
     this.setState({
-      CreateDate: jsDateToCreateDate(CreateDateJsLocal),
+      CreateDate: createDateValue({ millisecondsSinceEpoch, offset }),
     });
   };
 
@@ -1346,23 +1378,83 @@ class Home extends React.Component {
     return this.handleAttachmentData({ attachmentData });
   };
 
-  // Given what each photo's date read said, give the form the earliest one's
-  // time. Called once the whole pass has been read, rather than as each photo
-  // arrives.
-  applyPhotoTime = dateReadings => {
-    const earliest = earliestTakenPhoto(dateReadings);
+  // What each of a set of photos read.
+  readingsOf = photos =>
+    photos.map(file => this.photoReadings.get(file)).filter(Boolean);
+
+  // The CreateDate value a set of photos gives. This is what the field holds
+  // while the photos still own the time, and comparing the two is how a time
+  // the user typed is told from theirs.
+  createDateFor = photos => {
+    const earliest = earliestTakenPhoto(this.readingsOf(photos));
+
+    return earliest ? createDateValue(momentOf(earliest)) : undefined;
+  };
+
+  // The time and place a submission takes from the photos it holds, worked out
+  // again whenever that set changes: a photo dropped leaves the others to say
+  // what they are.
+  //
+  // Each follows the photos only while it is still what they gave it. A time
+  // the user typed no longer matches what they say, and a place the user set
+  // carries their own provenance instead. The place needs that guard most: a
+  // camera's location can be wrong for every photo in the set, and the user's
+  // correction is then the only right one there is.
+  //
+  // With nothing attached before, there is nothing of the user's to keep, and
+  // the photos say what the time and place are.
+  applyPhotosTimeAndPlace = (photos, { previousPhotos = null } = {}) => {
+    if (photos.length === 0) {
+      return;
+    }
+
+    const changing = previousPhotos !== null && previousPhotos.length > 0;
+    const readings = this.readingsOf(photos);
+
+    const timeIsTheUsers =
+      changing && this.state.CreateDate !== this.createDateFor(previousPhotos);
+    if (!timeIsTheUsers) {
+      this.applyPhotoTime(readings);
+    }
+
+    // The place follows the photos only while it is still theirs. A place the
+    // user set, or one this device found before any photo arrived, is not the
+    // photos' to move -- and on the first attach there is nothing of the
+    // user's to keep either way.
+    const placeIsThePhotos =
+      !changing || this.state.addressProvenance === EXTRACTED_FROM_PHOTOS;
+    if (!placeIsThePhotos) {
+      return;
+    }
+
+    if (latestLocatedPhoto(readings)) {
+      this.applyPhotoPlace(readings);
+    } else if (changing) {
+      // The photos owned the place and none of the ones left has one, so there
+      // is nothing to take: drop back to the default rather than keep the
+      // place of a photo the submission no longer holds.
+      this.setCoords({
+        latitude: defaultLatitude,
+        longitude: defaultLongitude,
+        addressProvenance: '',
+      });
+    }
+  };
+
+  // Given what the photos read, give the form the earliest one's time.
+  applyPhotoTime = readings => {
+    const earliest = earliestTakenPhoto(readings);
     if (!earliest) {
       return;
     }
 
-    this.setCreateDate(earliest);
+    this.setCreateDate(momentOf(earliest));
   };
 
-  // Given where each photo was and when it was taken, move the form to the
-  // place the newest one that has coordinates gave. Called once the whole
-  // pass has been read, rather than as each photo arrives.
-  applyPhotoPlace = locatedPhotos => {
-    const located = latestLocatedPhoto(locatedPhotos);
+  // Given what the photos read, move the form to the place the newest one
+  // that has coordinates gave.
+  applyPhotoPlace = readings => {
+    const located = latestLocatedPhoto(readings);
     if (!located) {
       return;
     }
@@ -1370,11 +1462,70 @@ class Home extends React.Component {
     this.setCoords({
       latitude: located.latitude,
       longitude: located.longitude,
-      addressProvenance: '(extracted from picture/video)',
+      addressProvenance: EXTRACTED_FROM_PHOTOS,
     });
   };
 
+  // Take one photo out of the submission, from the X on its thumbnail. What
+  // the submission's time and place are is asked again once it is gone: they
+  // came from the photos, and the photos have changed.
+  removeAttachment = name => {
+    const previousPhotos = this.state.attachmentData;
+
+    this.setState(
+      state => {
+        const attachmentData = state.attachmentData.filter(
+          file => file.name !== name,
+        );
+
+        if (attachmentData.length === 0) {
+          // Nothing is left to take a time or a place from.
+          this.setCoords({
+            latitude: defaultLatitude,
+            longitude: defaultLongitude,
+          });
+          this.setCreateDate({ millisecondsSinceEpoch: Date.now() });
+          return {
+            attachmentData,
+            plate: '',
+            licenseState: 'NY',
+            allPlateData: null,
+            plateDataByAttachmentName: {},
+            vehicleInfoComponent: null,
+            violationSummaryComponent: null,
+          };
+        }
+
+        return {
+          attachmentData,
+          plateDataByAttachmentName: omit(
+            state.plateDataByAttachmentName,
+            name,
+          ),
+        };
+      },
+      () => {
+        // The photos that were attached when the user made the change are
+        // still the ones on record, so the time and place they gave can be
+        // told from the ones the user set. The reading goes once that is
+        // settled, not before.
+        this.applyPhotosTimeAndPlace(this.state.attachmentData, {
+          previousPhotos,
+        });
+
+        previousPhotos
+          .filter(file => !this.state.attachmentData.includes(file))
+          .forEach(file => this.photoReadings.delete(file));
+      },
+    );
+  };
+
   handleAttachmentData = async ({ attachmentData }) => {
+    // The photos already attached, so that the time and place the user set by
+    // hand can be told from the ones the photos gave. `concat` leaves this
+    // array alone, so it stays the set as it was before the call.
+    const previousPhotos = this.state.attachmentData;
+
     this.setState(
       state => ({
         attachmentData: state.attachmentData.concat(attachmentData),
@@ -1407,10 +1558,6 @@ class Home extends React.Component {
           }
         });
 
-        // Where each photo was, and when, for the pass below to choose from.
-        const locatedPhotos = [];
-        const dateReadings = [];
-
         const listsOfExtractions = await Promise.all(
           this.state.attachmentData.map(async (attachmentFile, index) => {
             if (attachmentFile.size > 20 * 1000 * 1000) {
@@ -1436,8 +1583,12 @@ class Home extends React.Component {
 
             this.setState({ isAlprLoading: true });
 
-            // One read of a photo's date, used twice below: to set the form's
-            // time, and to order this photo against the others for the place.
+            // What this photo's reads will say, filled in by the two below as
+            // they answer. Kept rather than collected for one pass: the form
+            // reads them again every time the photos change.
+            const reading = emptyReading(attachmentFile);
+            this.photoReadings.set(attachmentFile, reading);
+
             const datePromise = extractDate({
               attachmentFile,
               attachmentArrayBuffer,
@@ -1473,18 +1624,18 @@ class Home extends React.Component {
                 .finally(() => {
                   this.setState({ isAlprLoading: false });
                 }),
-              // Recorded rather than applied, for the same reason as the
-              // place below: the time is the earliest photo's, which is not
-              // known until every photo has been read.
+              // Recorded rather than applied: the time is the earliest
+              // photo's, which is not known until every photo has been read.
               datePromise.then(date => {
-                dateReadings.push(date);
+                reading.createDateMs = date.millisecondsSinceEpoch;
+                reading.createDateOffset = date.offset;
               }),
               extractLocation({
                 attachmentFile,
                 attachmentArrayBuffer,
                 ext,
                 isReverseGeocodingEnabled: this.state.isReverseGeocodingEnabled,
-              }).then(async ({ latitude, longitude }) => {
+              }).then(({ latitude, longitude }) => {
                 if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
                   throw 'location (may have been stripped by Android, see https://github.com/josephfrazier/reported-web/issues/751 for details)'; // eslint-disable-line no-throw-literal
                 }
@@ -1493,22 +1644,18 @@ class Home extends React.Component {
                 // not known until every photo has been read, and applying
                 // each one as it arrived left that to whichever read
                 // happened to finish last.
-                const date = await datePromise.catch(() => null);
-                locatedPhotos.push({
-                  latitude,
-                  longitude,
-                  createDateMs: date ? date.millisecondsSinceEpoch : NaN,
-                  file: attachmentFile,
-                });
+                reading.latitude = latitude;
+                reading.longitude = longitude;
               }),
             ]);
           }),
         );
 
         // Every photo has now been read, so the form takes its time and its
-        // place once each, rather than taking each photo's in turn.
-        this.applyPhotoTime(dateReadings);
-        this.applyPhotoPlace(locatedPhotos);
+        // place from the set as a whole, rather than from each photo in turn.
+        this.applyPhotosTimeAndPlace(this.state.attachmentData, {
+          previousPhotos,
+        });
 
         if (listsOfExtractions.length === 0) {
           return;
@@ -2635,39 +2782,7 @@ class Home extends React.Component {
                                   color: 'red', // Ubuntu Chrome shows black otherwise
                                   background: 'white',
                                 }}
-                                onClick={() => {
-                                  this.setState(state => {
-                                    const attachmentData =
-                                      state.attachmentData.filter(
-                                        file => file.name !== name,
-                                      );
-                                    if (attachmentData.length === 0) {
-                                      this.setCoords({
-                                        latitude: defaultLatitude,
-                                        longitude: defaultLongitude,
-                                      });
-                                      this.setCreateDate({
-                                        millisecondsSinceEpoch: Date.now(),
-                                      });
-                                      return {
-                                        attachmentData,
-                                        plate: '',
-                                        licenseState: 'NY',
-                                        allPlateData: null,
-                                        plateDataByAttachmentName: {},
-                                        vehicleInfoComponent: null,
-                                        violationSummaryComponent: null,
-                                      };
-                                    }
-                                    return {
-                                      attachmentData,
-                                      plateDataByAttachmentName: omit(
-                                        state.plateDataByAttachmentName,
-                                        name,
-                                      ),
-                                    };
-                                  });
-                                }}
+                                onClick={() => this.removeAttachment(name)}
                               >
                                 <span
                                   role="img"

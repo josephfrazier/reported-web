@@ -119,18 +119,24 @@ async function renderAndExtract(files) {
     homeRef.current.setState({ isAlprEnabled: false });
   });
 
+  // The pass runs inside a setState callback, through jsdom's FileReader and
+  // the stubbed reads, so it needs real time rather than a microtask.
+  // `setCoords` then asks geosearch for an address 500ms later; waiting that
+  // out keeps every request inside the stubs, instead of one going out after
+  // they are gone.
+  const settle = () =>
+    renderer.act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 700));
+    });
+
   await renderer.act(async () => {
     await homeRef.current.handleAttachmentData({ attachmentData: files });
-    // The pass runs inside a setState callback, through jsdom's FileReader and
-    // the stubbed reads, so it needs real time rather than a microtask.
-    // `setCoords` then asks geosearch for an address 500ms later; waiting that
-    // out keeps every request inside the stubs, instead of one going out after
-    // they are gone.
-    await new Promise(resolve => setTimeout(resolve, 700));
   });
+  await settle();
 
   return {
     homeRef,
+    settle,
     cleanup: () => {
       exifr.gps.mockReset();
       exifr.parse.mockReset();
@@ -884,6 +890,113 @@ describe('Home', () => {
     const { homeRef, cleanup } = await renderAndExtract([earlier, later]);
 
     expect(homeRef.current.state.CreateDate).toBe('2024-01-01T12:00:10');
+
+    cleanup();
+  });
+
+  // Three photos, each taken ten seconds and a little way from the last, so a
+  // submission's time and place land on different photos: the earliest for the
+  // time, the last one with coordinates for the place.
+  const threePhotosApart = () => {
+    const places = {
+      early: { latitude: 40.7, longitude: -73.98 },
+      middle: { latitude: 40.72, longitude: -73.96 },
+      late: { latitude: 40.74, longitude: -73.94 },
+    };
+    const seconds = { early: 10, middle: 20, late: 30 };
+
+    const photos = ['early', 'middle', 'late'].map(
+      name =>
+        new File([photoBytes(name)], `${name}.jpg`, { type: 'image/jpeg' }),
+    );
+
+    exifr.gps.mockImplementation(async buffer => {
+      const which = Buffer.from(buffer).toString('utf8');
+      return Object.entries(places).find(([name]) => which.includes(name))[1];
+    });
+    exifr.parse.mockImplementation(async buffer => {
+      const which = Buffer.from(buffer).toString('utf8');
+      const name = Object.keys(seconds).find(each => which.includes(each));
+      return {
+        CreateDate: new Date(Date.UTC(2024, 0, 1, 12, 0, seconds[name])),
+        OffsetTimeDigitized: '+00:00',
+      };
+    });
+
+    return photos;
+  };
+
+  const dropPhoto = async (homeRef, settle, name) => {
+    await renderer.act(async () => {
+      homeRef.current.removeAttachment(name);
+    });
+    await settle();
+  };
+
+  test('moves the time and place onto the photos left when one is dropped', async () => {
+    const { homeRef, settle, cleanup } =
+      await renderAndExtract(threePhotosApart());
+
+    // The submission is as old as its earliest photo, and sits where the last
+    // photo that knows where it was was taken.
+    expect(homeRef.current.state.CreateDate).toBe('2024-01-01T12:00:10');
+    expect(homeRef.current.state.latitude).toBe(40.74);
+
+    // Drop the earliest: the time moves onto the one that is left, and the
+    // place was already the last photo's.
+    await dropPhoto(homeRef, settle, 'early.jpg');
+    expect(homeRef.current.state.CreateDate).toBe('2024-01-01T12:00:20');
+    expect(homeRef.current.state.latitude).toBe(40.74);
+
+    // Drop the last: now the place has to move too.
+    await dropPhoto(homeRef, settle, 'late.jpg');
+    expect(homeRef.current.state.CreateDate).toBe('2024-01-01T12:00:20');
+    expect(homeRef.current.state.latitude).toBe(40.72);
+
+    cleanup();
+  });
+
+  test('leaves a place the user set alone when a photo is dropped', async () => {
+    const { homeRef, settle, cleanup } =
+      await renderAndExtract(threePhotosApart());
+
+    // The user moves the pin. Every photo in the set can be wrong about where
+    // the car was -- a camera that has just woken up reports its last fix --
+    // and the correction is theirs to keep.
+    renderer.act(() => {
+      homeRef.current.setCoords({
+        latitude: 40.9,
+        longitude: -73.9,
+        addressProvenance: '(manually set)',
+      });
+    });
+
+    await dropPhoto(homeRef, settle, 'early.jpg');
+
+    expect(homeRef.current.state.latitude).toBe(40.9);
+    expect(homeRef.current.state.longitude).toBe(-73.9);
+    // The time was still the photos', so it followed them.
+    expect(homeRef.current.state.CreateDate).toBe('2024-01-01T12:00:20');
+
+    cleanup();
+  });
+
+  test('leaves a time the user typed alone when a photo is dropped', async () => {
+    const { homeRef, settle, cleanup } =
+      await renderAndExtract(threePhotosApart());
+
+    renderer.act(() => {
+      homeRef.current.setCreateDate({
+        millisecondsSinceEpoch: Date.UTC(2024, 5, 1, 9, 0, 0),
+        offset: 0,
+      });
+    });
+
+    await dropPhoto(homeRef, settle, 'late.jpg');
+
+    expect(homeRef.current.state.CreateDate).toBe('2024-06-01T09:00:00');
+    // The place was still the photos', so it followed them.
+    expect(homeRef.current.state.latitude).toBe(40.72);
 
     cleanup();
   });

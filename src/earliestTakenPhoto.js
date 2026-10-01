@@ -12,12 +12,13 @@
  * being handed one the photos never gave.
  */
 
-// Reads the shape `extractDate` answers with: `millisecondsSinceEpoch`, and
-// the `offset` that moment is read in. The offset belongs to the same photo,
-// so it comes back with it.
+// Reads a photo reading, in the field names the grouping gives them:
+// `createDateMs` for when the photo was taken, and `createDateOffset` for the
+// offset that moment is read in. The offset belongs to the same photo, so the
+// reading comes back whole.
 export default function earliestTakenPhoto(readings) {
-  const taken = readings.filter(({ millisecondsSinceEpoch }) =>
-    Number.isFinite(millisecondsSinceEpoch),
+  const taken = readings.filter(({ createDateMs }) =>
+    Number.isFinite(createDateMs),
   );
 
   if (taken.length === 0) {
@@ -25,8 +26,6 @@ export default function earliestTakenPhoto(readings) {
   }
 
   return taken.reduce((earliest, reading) =>
-    reading.millisecondsSinceEpoch < earliest.millisecondsSinceEpoch
-      ? reading
-      : earliest,
+    reading.createDateMs < earliest.createDateMs ? reading : earliest,
   );
 }

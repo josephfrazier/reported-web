@@ -14,6 +14,7 @@ import FileReaderInput from 'react-file-reader-input';
 import * as blobUtil from 'blob-util';
 import exifr from 'exifr/dist/full.umd.js';
 import axios from 'axios';
+import axiosRetry from 'axios-retry';
 import promisedLocation from 'promised-location';
 import { compose, withProps } from 'recompose';
 import {
@@ -51,6 +52,7 @@ import homeStyles from './Home.css';
 import PreviousSubmissionsList from '../../components/PreviousSubmissionsList.js';
 import formatGeosearchAddress from '../../formatGeosearchAddress.js';
 import { isImage, isVideo } from '../../isImage.js';
+import plateReadRetry from '../../plateReadRetry.js';
 import getNycTimezoneOffset from '../../timezone.js';
 import { isPointInNycMemoized } from '../../isPointInNyc.js';
 import vehicleTypeUrl from '../../vehicleTypeUrl.js';
@@ -301,6 +303,12 @@ function upperCaseInputValueInPlace(input) {
   return upperCased;
 }
 
+// Attached to the shared axios instance, which is what installs the
+// interceptors, but retrying nothing by default. Only the plate read asks for a
+// retry, in its own config. Every other request keeps failing straight away,
+// `/submit` among them: a submission POST repeated after a 5xx can arrive twice.
+axiosRetry(axios, { retries: 0 });
+
 async function fetchPlateResults({
   attachmentFile,
   attachmentBuffer,
@@ -331,7 +339,13 @@ async function fetchPlateResults({
     email,
     password,
   });
-  const { data } = await axios.post('/platerecognizer', formData);
+  // Plate Recognizer rate limits, so a 429 here is expected rather than
+  // exceptional -- and it is transient, which is the difference between a plate
+  // read and a photo the user has to type in by hand. What a repeat is worth is
+  // in `plateReadRetry`; this asks for it for this request alone.
+  const { data } = await axios.post('/platerecognizer', formData, {
+    'axios-retry': plateReadRetry,
+  });
 
   attachmentPlateCache.set(attachmentFile, data);
   return data;

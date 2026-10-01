@@ -13,6 +13,7 @@ import renderer from 'react-test-renderer';
 import { setImmediate } from 'timers';
 import StyleContext from 'isomorphic-style-loader/StyleContext';
 import axios from 'axios';
+import exifr from 'exifr/dist/full.umd.js';
 import * as blobUtil from 'blob-util';
 import { toast } from 'react-toastify';
 import Modal from 'react-modal';
@@ -25,6 +26,16 @@ jest.mock('react-modal', () =>
     setAppElement: jest.fn(),
   }),
 );
+
+// exifr reads the metadata out of real image bytes, which no test here has.
+// Mocked rather than spied on: the imported object's properties are getters,
+// so `jest.spyOn` cannot replace them. A test that wants an extraction to
+// succeed gives these implementations; every other test leaves them
+// returning nothing, which fails an extraction exactly as junk bytes do.
+jest.mock('exifr/dist/full.umd.js', () => ({
+  __esModule: true,
+  default: { gps: jest.fn(), parse: jest.fn() },
+}));
 
 require('timezone-mock').register('US/Eastern');
 require('jest-mock-now')();
@@ -746,6 +757,90 @@ describe('Home', () => {
     expect(homeRef.current.state.longitude).toBe(-74.01);
 
     jest.useRealTimers();
+    axiosGet.mockRestore();
+    axiosPost.mockRestore();
+    consoleError.mockRestore();
+    tree.unmount();
+  });
+
+  test("takes the form's place from the newest photo, not the last to answer", async () => {
+    // The extraction reads EXIF through exifr, which no test can hand a real
+    // photo, so it is stubbed here and the bytes say which photo is which.
+    //
+    // The older photo is listed last, and each photo is read in the order the
+    // list gives, so the older photo is also the last to answer. That is the
+    // whole point: the form used to take its place from the last answer, and
+    // the newest photo has to win even though it answered first.
+    //
+    // The bytes have to look like a picture to the detector in `Home.js`, or
+    // the extraction stops before it reads anything at all. A JPEG
+    // start-of-image marker does that; the label after it is what the stubs
+    // below read to tell the two photos apart.
+    const photoBytes = label =>
+      Uint8Array.from([0xff, 0xd8, 0xff, 0xe0, ...Buffer.from(label, 'utf8')]);
+    const older = new File([photoBytes('older')], 'older.jpg', {
+      type: 'image/jpeg',
+    });
+    const newer = new File([photoBytes('newer')], 'newer.jpg', {
+      type: 'image/jpeg',
+    });
+
+    exifr.gps.mockImplementation(async buffer => {
+      const which = Buffer.from(buffer).toString('utf8');
+      return which.includes('older')
+        ? { latitude: 40.7, longitude: -73.98 }
+        : { latitude: 40.73, longitude: -74.01 };
+    });
+    exifr.parse.mockImplementation(async buffer => {
+      const which = Buffer.from(buffer).toString('utf8');
+      return {
+        CreateDate: new Date(which.includes('older') ? 1000 : 3000),
+        OffsetTimeDigitized: '-04:00',
+      };
+    });
+
+    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+    const axiosPost = jest.spyOn(axios, 'post').mockImplementation(url => {
+      if (url === '/api/geosearch') {
+        return Promise.resolve({ data: { features: [] } });
+      }
+      if (url === '/api/uploadAttachment') {
+        return Promise.resolve({ data: { id: 'a'.repeat(64) } });
+      }
+      return Promise.resolve({ data: {} });
+    });
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ homeRef });
+    });
+    renderer.act(() => {
+      homeRef.current.setState({ isAlprEnabled: false });
+    });
+
+    // Through the same path the file input uses, so the extraction that
+    // chooses the place is the one under test.
+    await renderer.act(async () => {
+      await homeRef.current.handleAttachmentData({
+        attachmentData: [newer, older],
+      });
+      // The pass runs inside a setState callback, through jsdom's FileReader
+      // and the mocked reads above, so it needs real time rather than a
+      // microtask. `setCoords` then asks geosearch for an address 500ms
+      // later; waiting that out here keeps every request inside the stubs,
+      // instead of one going out after they are gone.
+      await new Promise(resolve => setTimeout(resolve, 700));
+    });
+
+    expect(homeRef.current.state.latitude).toBe(40.73);
+    expect(homeRef.current.state.longitude).toBe(-74.01);
+
+    exifr.gps.mockReset();
+    exifr.parse.mockReset();
     axiosGet.mockRestore();
     axiosPost.mockRestore();
     consoleError.mockRestore();

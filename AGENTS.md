@@ -61,6 +61,7 @@
 
 - **Do not include CI results.** No test or suite counts, and no "`yarn lint` exits 0" line. A message says what changed and why; it does not report the run that checked it. Run the suite and the linter all the same — just keep them out of the message.
 - **Name in-flight work by its pull request**, rather than only by branch name, so a reader can follow it. If you're not sure whether there's a PR, ask the user, or if that's not acceptable (e.g. in non-interactive work), generate a github link to the branch name, for example https://github.com/josephfrazier/reported-web/tree/add-semi-automatic-mode-plan
+- **Say when a change came out of other in-flight work.** If a fix turned up while building something that has a pull request open, name that PR and say what it was doing that surfaced the problem. The change still has to stand on its own — a reader should not need the other work to follow it — but knowing where it came from is the context for why it was made.
 
 ## Refactoring `server.js`
 

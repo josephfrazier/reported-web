@@ -51,6 +51,7 @@ import homeStyles from './Home.css';
 
 import PreviousSubmissionsList from '../../components/PreviousSubmissionsList.js';
 import formatGeosearchAddress from '../../formatGeosearchAddress.js';
+import createGeosearchAddressCache from '../../geosearchAddressCache.js';
 import { isImage, isVideo } from '../../isImage.js';
 import plateReadRetry from '../../plateReadRetry.js';
 import getNycTimezoneOffset from '../../timezone.js';
@@ -744,6 +745,7 @@ class Home extends React.Component {
     this.initialStatePersistent = initialStatePersistent;
     this.isDragging = false;
     this.plateLookupCache = new Map();
+    this.geosearchAddressCache = createGeosearchAddressCache();
     this.plateRef = React.createRef();
     this.plateLabelRef = React.createRef();
     this.loginEmailRef = React.createRef();
@@ -1002,6 +1004,22 @@ class Home extends React.Component {
       return;
     }
 
+    // An address is a function of coordinates alone, and the same coordinates
+    // come up more than once in a session -- moving the map off a curb and
+    // back, for one. What was looked up before can be shown without asking
+    // geosearch again.
+    const cachedAddress = this.geosearchAddressCache.get({
+      latitude,
+      longitude,
+    });
+    if (cachedAddress !== undefined) {
+      this.setState({
+        formatted_address: cachedAddress,
+      });
+      toast.dismiss('geosearch-warning');
+      return;
+    }
+
     debouncedGeosearch({ latitude, longitude })
       .then(data => {
         const { properties } = data.features[0];
@@ -1013,8 +1031,15 @@ class Home extends React.Component {
           this.state.latitude === latitude &&
           this.state.longitude === longitude
         ) {
+          const address = formatGeosearchAddress(properties);
+          // Only a response that is still current is known to be for these
+          // coordinates: debounce() resolves every pending call with the last
+          // call's response, so the calls this guard discards are carrying
+          // some other location's address and must not be filed under this
+          // key.
+          this.geosearchAddressCache.set({ latitude, longitude, address });
           this.setState({
-            formatted_address: formatGeosearchAddress(properties),
+            formatted_address: address,
           });
           toast.dismiss('geosearch-warning');
         }

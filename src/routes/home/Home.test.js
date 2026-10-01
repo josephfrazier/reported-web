@@ -841,6 +841,72 @@ describe('Home', () => {
     tree.unmount();
   });
 
+  test('reuses the address it looked up for coordinates it has seen', async () => {
+    jest.useFakeTimers();
+
+    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+    const axiosPost = jest.spyOn(axios, 'post').mockResolvedValue({
+      data: {
+        features: [
+          {
+            properties: {
+              housenumber: '123',
+              street: 'Main St',
+              borough: 'Manhattan',
+            },
+          },
+        ],
+      },
+    });
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ homeRef });
+    });
+
+    const coordinates = { latitude: 40.7129, longitude: -74.0061 };
+    const searches = () =>
+      axiosPost.mock.calls.filter(([url]) => url === '/api/geosearch');
+
+    renderer.act(() => {
+      homeRef.current.setCoords(coordinates);
+    });
+    await renderer.act(async () => {
+      jest.advanceTimersByTime(500);
+    });
+
+    expect(homeRef.current.state.formatted_address).toBe(
+      '123 Main St, Manhattan',
+    );
+    expect(searches()).toHaveLength(1);
+
+    // The same coordinates again, as moving the map off a curb and back gives.
+    // The address is a function of them alone, so this is answered from what
+    // was already looked up rather than asked again.
+    renderer.act(() => {
+      homeRef.current.setCoords(coordinates);
+    });
+    // Past the debounce, so a request that was going to be made would be.
+    await renderer.act(async () => {
+      jest.advanceTimersByTime(500);
+    });
+
+    expect(homeRef.current.state.formatted_address).toBe(
+      '123 Main St, Manhattan',
+    );
+    expect(searches()).toHaveLength(1);
+
+    jest.useRealTimers();
+    axiosGet.mockRestore();
+    axiosPost.mockRestore();
+    consoleError.mockRestore();
+    tree.unmount();
+  });
+
   test('still submits when geosearch fails', async () => {
     jest.useFakeTimers();
 

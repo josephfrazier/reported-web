@@ -13,13 +13,6 @@ import { glob } from 'glob';
 import mkdirp from 'mkdirp';
 import rimraf from 'rimraf';
 
-export const readFile = file =>
-  new Promise((resolve, reject) => {
-    fs.readFile(file, 'utf8', (err, data) =>
-      err ? reject(err) : resolve(data),
-    );
-  });
-
 export const writeFile = (file, contents) =>
   new Promise((resolve, reject) => {
     fs.writeFile(file, contents, 'utf8', err =>
@@ -27,7 +20,7 @@ export const writeFile = (file, contents) =>
     );
   });
 
-export const renameFile = (source, target) =>
+const renameFile = (source, target) =>
   new Promise((resolve, reject) => {
     fs.rename(source, target, err => (err ? reject(err) : resolve()));
   });
@@ -95,14 +88,3 @@ export const cleanDir = (pattern, options) =>
       err ? reject(err) : resolve(result),
     ),
   );
-
-export default {
-  readFile,
-  writeFile,
-  renameFile,
-  copyFile,
-  makeDir,
-  copyDir,
-  moveDir,
-  cleanDir,
-};

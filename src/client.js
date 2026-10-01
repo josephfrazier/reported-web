@@ -18,7 +18,7 @@ import cookie from 'cookie';
 import App from './components/App.js';
 import createFetch from './createFetch.js';
 import history from './history.js';
-import { updateMeta } from './DOMUtils.js';
+import updateMeta from './DOMUtils.js';
 import router from './router.js';
 
 // Parse cookies from document.cookie into a plain object. This must be in

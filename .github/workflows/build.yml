@@ -26,7 +26,21 @@ jobs:
     - run: yarn test:ssr-css
       env:
         CI: true
-    - run: npx playwright install --with-deps chromium
+    # The Chromium download dominates this job (24s to 245s across recent
+    # runs, depending on the Playwright CDN). Key the cache on the Playwright
+    # version, which pins the browser build revision — a yarn.lock hash would
+    # miss on every unrelated dependabot bump. runner.arch keeps an x64 cache
+    # from being restored onto an arm64 runner.
+    - name: Get the Playwright version
+      id: playwright-version
+      run: echo "version=$(node -p 'require("playwright/package.json").version')" >> "$GITHUB_OUTPUT"
+    - uses: actions/cache@v6
+      with:
+        path: ~/.cache/ms-playwright
+        key: ${{ runner.os }}-${{ runner.arch }}-playwright-${{ steps.playwright-version.outputs.version }}-headless-shell
+    # The client smoke test only ever launches headless Chromium, which uses
+    # the headless shell build, so --only-shell skips the full browser.
+    - run: npx playwright install --with-deps --only-shell chromium
     - run: yarn test:client-smoke
       env:
         CI: true

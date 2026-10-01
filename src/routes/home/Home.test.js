@@ -64,6 +64,14 @@ beforeAll(() => {
   };
 });
 
+// Bytes that look like a picture to the detector in `Home.js`, which reads the
+// extension before it reads any metadata: ASCII bytes come back as
+// `text/plain`, which is not an image, so every extractor throws before exifr
+// is reached. A JPEG start-of-image marker does that; the label after it is
+// how a test's exifr stubs tell one photo from another.
+const photoBytes = label =>
+  Uint8Array.from([0xff, 0xd8, 0xff, 0xe0, ...Buffer.from(label, 'utf8')]);
+
 function renderHome({ initialState, homeRef, ...props } = {}) {
   return renderer.create(
     <StyleContext.Provider value={{ insertCss }}>
@@ -80,6 +88,58 @@ function renderHome({ initialState, homeRef, ...props } = {}) {
       </App>
     </StyleContext.Provider>,
   );
+}
+
+// Mounts Home, hands the photos to the extraction pass the way the file input
+// does, and returns once that pass has finished. Stubs axios and console.error
+// for the duration; `cleanup` puts them back and unmounts.
+async function renderAndExtract(files) {
+  const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+  const axiosPost = jest.spyOn(axios, 'post').mockImplementation(url => {
+    if (url === '/api/geosearch') {
+      return Promise.resolve({ data: { features: [] } });
+    }
+    if (url === '/api/uploadAttachment') {
+      return Promise.resolve({ data: { id: 'a'.repeat(64) } });
+    }
+    return Promise.resolve({ data: {} });
+  });
+  const consoleError = jest
+    .spyOn(console, 'error')
+    .mockImplementation(() => {});
+
+  let tree;
+  const homeRef = React.createRef();
+  renderer.act(() => {
+    tree = renderHome({ homeRef });
+  });
+  renderer.act(() => {
+    // The plate read is not what these tests are about, and it would send a
+    // request per photo.
+    homeRef.current.setState({ isAlprEnabled: false });
+  });
+
+  await renderer.act(async () => {
+    await homeRef.current.handleAttachmentData({ attachmentData: files });
+    // The pass runs inside a setState callback, through jsdom's FileReader and
+    // the stubbed reads, so it needs real time rather than a microtask.
+    // `setCoords` then asks geosearch for an address 500ms later; waiting that
+    // out keeps every request inside the stubs, instead of one going out after
+    // they are gone.
+    await new Promise(resolve => setTimeout(resolve, 700));
+  });
+
+  return {
+    homeRef,
+    cleanup: () => {
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      axiosGet.mockRestore();
+      axiosPost.mockRestore();
+      consoleError.mockRestore();
+      tree.unmount();
+    },
+  };
 }
 
 // Stand-in for a text <input> DOM node: reading/writing `value` works, and
@@ -764,20 +824,10 @@ describe('Home', () => {
   });
 
   test("takes the form's place from the newest photo, not the last to answer", async () => {
-    // The extraction reads EXIF through exifr, which no test can hand a real
-    // photo, so it is stubbed here and the bytes say which photo is which.
-    //
     // The older photo is listed last, and each photo is read in the order the
     // list gives, so the older photo is also the last to answer. That is the
     // whole point: the form used to take its place from the last answer, and
     // the newest photo has to win even though it answered first.
-    //
-    // The bytes have to look like a picture to the detector in `Home.js`, or
-    // the extraction stops before it reads anything at all. A JPEG
-    // start-of-image marker does that; the label after it is what the stubs
-    // below read to tell the two photos apart.
-    const photoBytes = label =>
-      Uint8Array.from([0xff, 0xd8, 0xff, 0xe0, ...Buffer.from(label, 'utf8')]);
     const older = new File([photoBytes('older')], 'older.jpg', {
       type: 'image/jpeg',
     });
@@ -795,56 +845,47 @@ describe('Home', () => {
       const which = Buffer.from(buffer).toString('utf8');
       return {
         CreateDate: new Date(which.includes('older') ? 1000 : 3000),
-        OffsetTimeDigitized: '-04:00',
+        OffsetTimeDigitized: '+00:00',
       };
     });
 
-    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
-    const axiosPost = jest.spyOn(axios, 'post').mockImplementation(url => {
-      if (url === '/api/geosearch') {
-        return Promise.resolve({ data: { features: [] } });
-      }
-      if (url === '/api/uploadAttachment') {
-        return Promise.resolve({ data: { id: 'a'.repeat(64) } });
-      }
-      return Promise.resolve({ data: {} });
-    });
-    const consoleError = jest
-      .spyOn(console, 'error')
-      .mockImplementation(() => {});
-
-    let tree;
-    const homeRef = React.createRef();
-    renderer.act(() => {
-      tree = renderHome({ homeRef });
-    });
-    renderer.act(() => {
-      homeRef.current.setState({ isAlprEnabled: false });
-    });
-
-    // Through the same path the file input uses, so the extraction that
-    // chooses the place is the one under test.
-    await renderer.act(async () => {
-      await homeRef.current.handleAttachmentData({
-        attachmentData: [newer, older],
-      });
-      // The pass runs inside a setState callback, through jsdom's FileReader
-      // and the mocked reads above, so it needs real time rather than a
-      // microtask. `setCoords` then asks geosearch for an address 500ms
-      // later; waiting that out here keeps every request inside the stubs,
-      // instead of one going out after they are gone.
-      await new Promise(resolve => setTimeout(resolve, 700));
-    });
+    const { homeRef, cleanup } = await renderAndExtract([newer, older]);
 
     expect(homeRef.current.state.latitude).toBe(40.73);
     expect(homeRef.current.state.longitude).toBe(-74.01);
 
-    exifr.gps.mockReset();
-    exifr.parse.mockReset();
-    axiosGet.mockRestore();
-    axiosPost.mockRestore();
-    consoleError.mockRestore();
-    tree.unmount();
+    cleanup();
+  });
+
+  test("takes the form's time from the earliest photo, not the last to answer", async () => {
+    // Listed earliest first, so it is also the first to answer -- the other way
+    // round from the test above, because this rule runs the other way: the
+    // form used to take its time from the last answer, and the earliest photo
+    // has to win even though it answered first.
+    const earlier = new File([photoBytes('earlier')], 'earlier.jpg', {
+      type: 'image/jpeg',
+    });
+    const later = new File([photoBytes('later')], 'later.jpg', {
+      type: 'image/jpeg',
+    });
+
+    exifr.parse.mockImplementation(async buffer => {
+      const which = Buffer.from(buffer).toString('utf8');
+      return {
+        CreateDate: new Date(
+          which.includes('earlier')
+            ? Date.UTC(2024, 0, 1, 12, 0, 10)
+            : Date.UTC(2024, 0, 1, 12, 0, 40),
+        ),
+        OffsetTimeDigitized: '+00:00',
+      };
+    });
+
+    const { homeRef, cleanup } = await renderAndExtract([earlier, later]);
+
+    expect(homeRef.current.state.CreateDate).toBe('2024-01-01T12:00:10');
+
+    cleanup();
   });
 
   test('skips geosearch for the default coordinates and leaves the address empty', async () => {

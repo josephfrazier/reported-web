@@ -51,6 +51,7 @@ import homeStyles from './Home.css';
 
 import PreviousSubmissionsList from '../../components/PreviousSubmissionsList.js';
 import formatGeosearchAddress from '../../formatGeosearchAddress.js';
+import earliestTakenPhoto from '../../earliestTakenPhoto.js';
 import createGeosearchAddressCache from '../../geosearchAddressCache.js';
 import { isImage, isVideo } from '../../isImage.js';
 import latestLocatedPhoto from '../../latestLocatedPhoto.js';
@@ -1345,6 +1346,18 @@ class Home extends React.Component {
     return this.handleAttachmentData({ attachmentData });
   };
 
+  // Given what each photo's date read said, give the form the earliest one's
+  // time. Called once the whole pass has been read, rather than as each photo
+  // arrives.
+  applyPhotoTime = dateReadings => {
+    const earliest = earliestTakenPhoto(dateReadings);
+    if (!earliest) {
+      return;
+    }
+
+    this.setCreateDate(earliest);
+  };
+
   // Given where each photo was and when it was taken, move the form to the
   // place the newest one that has coordinates gave. Called once the whole
   // pass has been read, rather than as each photo arrives.
@@ -1396,6 +1409,7 @@ class Home extends React.Component {
 
         // Where each photo was, and when, for the pass below to choose from.
         const locatedPhotos = [];
+        const dateReadings = [];
 
         const listsOfExtractions = await Promise.all(
           this.state.attachmentData.map(async (attachmentFile, index) => {
@@ -1459,7 +1473,12 @@ class Home extends React.Component {
                 .finally(() => {
                   this.setState({ isAlprLoading: false });
                 }),
-              datePromise.then(this.setCreateDate),
+              // Recorded rather than applied, for the same reason as the
+              // place below: the time is the earliest photo's, which is not
+              // known until every photo has been read.
+              datePromise.then(date => {
+                dateReadings.push(date);
+              }),
               extractLocation({
                 attachmentFile,
                 attachmentArrayBuffer,
@@ -1486,8 +1505,9 @@ class Home extends React.Component {
           }),
         );
 
-        // Every photo has now been read, so the map moves once, to the place
-        // the newest located photo gave, rather than to each photo in turn.
+        // Every photo has now been read, so the form takes its time and its
+        // place once each, rather than taking each photo's in turn.
+        this.applyPhotoTime(dateReadings);
         this.applyPhotoPlace(locatedPhotos);
 
         if (listsOfExtractions.length === 0) {

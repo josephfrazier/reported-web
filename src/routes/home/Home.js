@@ -14,6 +14,7 @@ import FileReaderInput from 'react-file-reader-input';
 import * as blobUtil from 'blob-util';
 import exifr from 'exifr/dist/full.umd.js';
 import axios from 'axios';
+import axiosRetry from 'axios-retry';
 import promisedLocation from 'promised-location';
 import { compose, withProps } from 'recompose';
 import {
@@ -50,7 +51,10 @@ import homeStyles from './Home.css';
 
 import PreviousSubmissionsList from '../../components/PreviousSubmissionsList.js';
 import formatGeosearchAddress from '../../formatGeosearchAddress.js';
+import createGeosearchAddressCache from '../../geosearchAddressCache.js';
 import { isImage, isVideo } from '../../isImage.js';
+import latestLocatedPhoto from '../../latestLocatedPhoto.js';
+import plateReadRetry from '../../plateReadRetry.js';
 import getNycTimezoneOffset from '../../timezone.js';
 import { isPointInNycMemoized } from '../../isPointInNyc.js';
 import vehicleTypeUrl from '../../vehicleTypeUrl.js';
@@ -167,8 +171,13 @@ const geolocate = () =>
     };
   });
 
-const jsDateToCreateDate = jsDate =>
-  jsDate.toISOString().replace(/:\d\d\..*/g, '');
+// The time a report is filed with, to the second.
+//
+// The seconds were stripped here until recently, which left every stored
+// report's time a minute wide. They belong to the report: its time is what it
+// is, and rounding it is not this function's job. Only the fraction of a second
+// goes.
+const jsDateToCreateDate = jsDate => jsDate.toISOString().replace(/\..*/g, '');
 
 async function blobToBuffer({ attachmentFile }) {
   console.time(`blobUtil.blobToArrayBuffer(${attachmentFile.name})`); // eslint-disable-line no-console
@@ -296,6 +305,12 @@ function upperCaseInputValueInPlace(input) {
   return upperCased;
 }
 
+// Attached to the shared axios instance, which is what installs the
+// interceptors, but retrying nothing by default. Only the plate read asks for a
+// retry, in its own config. Every other request keeps failing straight away,
+// `/submit` among them: a submission POST repeated after a 5xx can arrive twice.
+axiosRetry(axios, { retries: 0 });
+
 async function fetchPlateResults({
   attachmentFile,
   attachmentBuffer,
@@ -326,7 +341,13 @@ async function fetchPlateResults({
     email,
     password,
   });
-  const { data } = await axios.post('/platerecognizer', formData);
+  // Plate Recognizer rate limits, so a 429 here is expected rather than
+  // exceptional -- and it is transient, which is the difference between a plate
+  // read and a photo the user has to type in by hand. What a repeat is worth is
+  // in `plateReadRetry`; this asks for it for this request alone.
+  const { data } = await axios.post('/platerecognizer', formData, {
+    'axios-retry': plateReadRetry,
+  });
 
   attachmentPlateCache.set(attachmentFile, data);
   return data;
@@ -725,6 +746,7 @@ class Home extends React.Component {
     this.initialStatePersistent = initialStatePersistent;
     this.isDragging = false;
     this.plateLookupCache = new Map();
+    this.geosearchAddressCache = createGeosearchAddressCache();
     this.plateRef = React.createRef();
     this.plateLabelRef = React.createRef();
     this.loginEmailRef = React.createRef();
@@ -983,6 +1005,22 @@ class Home extends React.Component {
       return;
     }
 
+    // An address is a function of coordinates alone, and the same coordinates
+    // come up more than once in a session -- moving the map off a curb and
+    // back, for one. What was looked up before can be shown without asking
+    // geosearch again.
+    const cachedAddress = this.geosearchAddressCache.get({
+      latitude,
+      longitude,
+    });
+    if (cachedAddress !== undefined) {
+      this.setState({
+        formatted_address: cachedAddress,
+      });
+      toast.dismiss('geosearch-warning');
+      return;
+    }
+
     debouncedGeosearch({ latitude, longitude })
       .then(data => {
         const { properties } = data.features[0];
@@ -994,8 +1032,15 @@ class Home extends React.Component {
           this.state.latitude === latitude &&
           this.state.longitude === longitude
         ) {
+          const address = formatGeosearchAddress(properties);
+          // Only a response that is still current is known to be for these
+          // coordinates: debounce() resolves every pending call with the last
+          // call's response, so the calls this guard discards are carrying
+          // some other location's address and must not be filed under this
+          // key.
+          this.geosearchAddressCache.set({ latitude, longitude, address });
           this.setState({
-            formatted_address: formatGeosearchAddress(properties),
+            formatted_address: address,
           });
           toast.dismiss('geosearch-warning');
         }
@@ -1300,6 +1345,22 @@ class Home extends React.Component {
     return this.handleAttachmentData({ attachmentData });
   };
 
+  // Given where each photo was and when it was taken, move the form to the
+  // place the newest one that has coordinates gave. Called once the whole
+  // pass has been read, rather than as each photo arrives.
+  applyPhotoPlace = locatedPhotos => {
+    const located = latestLocatedPhoto(locatedPhotos);
+    if (!located) {
+      return;
+    }
+
+    this.setCoords({
+      latitude: located.latitude,
+      longitude: located.longitude,
+      addressProvenance: '(extracted from picture/video)',
+    });
+  };
+
   handleAttachmentData = async ({ attachmentData }) => {
     this.setState(
       state => ({
@@ -1333,6 +1394,9 @@ class Home extends React.Component {
           }
         });
 
+        // Where each photo was, and when, for the pass below to choose from.
+        const locatedPhotos = [];
+
         const listsOfExtractions = await Promise.all(
           this.state.attachmentData.map(async (attachmentFile, index) => {
             if (attachmentFile.size > 20 * 1000 * 1000) {
@@ -1357,6 +1421,15 @@ class Home extends React.Component {
             )) || { name: 'jpg' };
 
             this.setState({ isAlprLoading: true });
+
+            // One read of a photo's date, used twice below: to set the form's
+            // time, and to order this photo against the others for the place.
+            const datePromise = extractDate({
+              attachmentFile,
+              attachmentArrayBuffer,
+              ext,
+            });
+
             return Promise.allSettled([
               extractPlate({
                 attachmentFile,
@@ -1386,30 +1459,36 @@ class Home extends React.Component {
                 .finally(() => {
                   this.setState({ isAlprLoading: false });
                 }),
-              extractDate({
-                attachmentFile,
-                attachmentArrayBuffer,
-                ext,
-              }).then(this.setCreateDate),
+              datePromise.then(this.setCreateDate),
               extractLocation({
                 attachmentFile,
                 attachmentArrayBuffer,
                 ext,
                 isReverseGeocodingEnabled: this.state.isReverseGeocodingEnabled,
-              }).then(({ latitude, longitude }) => {
+              }).then(async ({ latitude, longitude }) => {
                 if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
                   throw 'location (may have been stripped by Android, see https://github.com/josephfrazier/reported-web/issues/751 for details)'; // eslint-disable-line no-throw-literal
                 }
 
-                this.setCoords({
+                // Recorded rather than applied: which photo's place wins is
+                // not known until every photo has been read, and applying
+                // each one as it arrived left that to whichever read
+                // happened to finish last.
+                const date = await datePromise.catch(() => null);
+                locatedPhotos.push({
                   latitude,
                   longitude,
-                  addressProvenance: '(extracted from picture/video)',
+                  createDateMs: date ? date.millisecondsSinceEpoch : NaN,
+                  file: attachmentFile,
                 });
               }),
             ]);
           }),
         );
+
+        // Every photo has now been read, so the map moves once, to the place
+        // the newest located photo gave, rather than to each photo in turn.
+        this.applyPhotoPlace(locatedPhotos);
 
         if (listsOfExtractions.length === 0) {
           return;
@@ -2815,7 +2894,13 @@ class Home extends React.Component {
                         <input
                           required
                           type="datetime-local"
-                          value={this.state.CreateDate}
+                          // Minutes, not the seconds the state carries. The
+                          // slice started as a workaround for an iOS picker
+                          // that refused a value carrying seconds (issue #11).
+                          // It stays on its own account: this is a field for a
+                          // person to nudge, and a phone's picker offers no
+                          // finer than a minute anyway.
+                          value={this.state.CreateDate.slice(0, 16)}
                           name="CreateDate"
                           onChange={this.handleInputChange}
                         />

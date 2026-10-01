@@ -13,6 +13,7 @@ import renderer from 'react-test-renderer';
 import { setImmediate } from 'timers';
 import StyleContext from 'isomorphic-style-loader/StyleContext';
 import axios from 'axios';
+import exifr from 'exifr/dist/full.umd.js';
 import * as blobUtil from 'blob-util';
 import { toast } from 'react-toastify';
 import Modal from 'react-modal';
@@ -25,6 +26,16 @@ jest.mock('react-modal', () =>
     setAppElement: jest.fn(),
   }),
 );
+
+// exifr reads the metadata out of real image bytes, which no test here has.
+// Mocked rather than spied on: the imported object's properties are getters,
+// so `jest.spyOn` cannot replace them. A test that wants an extraction to
+// succeed gives these implementations; every other test leaves them
+// returning nothing, which fails an extraction exactly as junk bytes do.
+jest.mock('exifr/dist/full.umd.js', () => ({
+  __esModule: true,
+  default: { gps: jest.fn(), parse: jest.fn() },
+}));
 
 require('timezone-mock').register('US/Eastern');
 require('jest-mock-now')();
@@ -703,6 +714,139 @@ describe('Home', () => {
     global.URL.createObjectURL = originalCreateObjectURL;
   });
 
+  test('moves the form to the place the newest located photo gave', async () => {
+    jest.useFakeTimers();
+
+    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+    const axiosPost = jest.spyOn(axios, 'post').mockResolvedValue({ data: {} });
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ homeRef });
+    });
+
+    // What the extraction pass hands over once every photo has been read: the
+    // early photo's fix is the stale one, and the late photo's is the place
+    // the submission should carry.
+    renderer.act(() => {
+      homeRef.current.applyPhotoPlace([
+        { latitude: 40.7128, longitude: -74.006, createDateMs: 1000 },
+        { latitude: 40.73, longitude: -74.01, createDateMs: 3000 },
+      ]);
+    });
+    await renderer.act(async () => {
+      jest.advanceTimersByTime(500);
+    });
+
+    expect(homeRef.current.state.latitude).toBe(40.73);
+    expect(homeRef.current.state.longitude).toBe(-74.01);
+    expect(homeRef.current.state.addressProvenance).toBe(
+      '(extracted from picture/video)',
+    );
+
+    // A pass that found no coordinates anywhere leaves the form where it is.
+    renderer.act(() => {
+      homeRef.current.applyPhotoPlace([{ createDateMs: 4000 }]);
+    });
+
+    expect(homeRef.current.state.latitude).toBe(40.73);
+    expect(homeRef.current.state.longitude).toBe(-74.01);
+
+    jest.useRealTimers();
+    axiosGet.mockRestore();
+    axiosPost.mockRestore();
+    consoleError.mockRestore();
+    tree.unmount();
+  });
+
+  test("takes the form's place from the newest photo, not the last to answer", async () => {
+    // The extraction reads EXIF through exifr, which no test can hand a real
+    // photo, so it is stubbed here and the bytes say which photo is which.
+    //
+    // The older photo is listed last, and each photo is read in the order the
+    // list gives, so the older photo is also the last to answer. That is the
+    // whole point: the form used to take its place from the last answer, and
+    // the newest photo has to win even though it answered first.
+    //
+    // The bytes have to look like a picture to the detector in `Home.js`, or
+    // the extraction stops before it reads anything at all. A JPEG
+    // start-of-image marker does that; the label after it is what the stubs
+    // below read to tell the two photos apart.
+    const photoBytes = label =>
+      Uint8Array.from([0xff, 0xd8, 0xff, 0xe0, ...Buffer.from(label, 'utf8')]);
+    const older = new File([photoBytes('older')], 'older.jpg', {
+      type: 'image/jpeg',
+    });
+    const newer = new File([photoBytes('newer')], 'newer.jpg', {
+      type: 'image/jpeg',
+    });
+
+    exifr.gps.mockImplementation(async buffer => {
+      const which = Buffer.from(buffer).toString('utf8');
+      return which.includes('older')
+        ? { latitude: 40.7, longitude: -73.98 }
+        : { latitude: 40.73, longitude: -74.01 };
+    });
+    exifr.parse.mockImplementation(async buffer => {
+      const which = Buffer.from(buffer).toString('utf8');
+      return {
+        CreateDate: new Date(which.includes('older') ? 1000 : 3000),
+        OffsetTimeDigitized: '-04:00',
+      };
+    });
+
+    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+    const axiosPost = jest.spyOn(axios, 'post').mockImplementation(url => {
+      if (url === '/api/geosearch') {
+        return Promise.resolve({ data: { features: [] } });
+      }
+      if (url === '/api/uploadAttachment') {
+        return Promise.resolve({ data: { id: 'a'.repeat(64) } });
+      }
+      return Promise.resolve({ data: {} });
+    });
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ homeRef });
+    });
+    renderer.act(() => {
+      homeRef.current.setState({ isAlprEnabled: false });
+    });
+
+    // Through the same path the file input uses, so the extraction that
+    // chooses the place is the one under test.
+    await renderer.act(async () => {
+      await homeRef.current.handleAttachmentData({
+        attachmentData: [newer, older],
+      });
+      // The pass runs inside a setState callback, through jsdom's FileReader
+      // and the mocked reads above, so it needs real time rather than a
+      // microtask. `setCoords` then asks geosearch for an address 500ms
+      // later; waiting that out here keeps every request inside the stubs,
+      // instead of one going out after they are gone.
+      await new Promise(resolve => setTimeout(resolve, 700));
+    });
+
+    expect(homeRef.current.state.latitude).toBe(40.73);
+    expect(homeRef.current.state.longitude).toBe(-74.01);
+
+    exifr.gps.mockReset();
+    exifr.parse.mockReset();
+    axiosGet.mockRestore();
+    axiosPost.mockRestore();
+    consoleError.mockRestore();
+    tree.unmount();
+  });
+
   test('skips geosearch for the default coordinates and leaves the address empty', async () => {
     jest.useFakeTimers();
 
@@ -837,6 +981,72 @@ describe('Home', () => {
     axiosGet.mockRestore();
     axiosPost.mockRestore();
     toastWarn.mockRestore();
+    consoleError.mockRestore();
+    tree.unmount();
+  });
+
+  test('reuses the address it looked up for coordinates it has seen', async () => {
+    jest.useFakeTimers();
+
+    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+    const axiosPost = jest.spyOn(axios, 'post').mockResolvedValue({
+      data: {
+        features: [
+          {
+            properties: {
+              housenumber: '123',
+              street: 'Main St',
+              borough: 'Manhattan',
+            },
+          },
+        ],
+      },
+    });
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ homeRef });
+    });
+
+    const coordinates = { latitude: 40.7129, longitude: -74.0061 };
+    const searches = () =>
+      axiosPost.mock.calls.filter(([url]) => url === '/api/geosearch');
+
+    renderer.act(() => {
+      homeRef.current.setCoords(coordinates);
+    });
+    await renderer.act(async () => {
+      jest.advanceTimersByTime(500);
+    });
+
+    expect(homeRef.current.state.formatted_address).toBe(
+      '123 Main St, Manhattan',
+    );
+    expect(searches()).toHaveLength(1);
+
+    // The same coordinates again, as moving the map off a curb and back gives.
+    // The address is a function of them alone, so this is answered from what
+    // was already looked up rather than asked again.
+    renderer.act(() => {
+      homeRef.current.setCoords(coordinates);
+    });
+    // Past the debounce, so a request that was going to be made would be.
+    await renderer.act(async () => {
+      jest.advanceTimersByTime(500);
+    });
+
+    expect(homeRef.current.state.formatted_address).toBe(
+      '123 Main St, Manhattan',
+    );
+    expect(searches()).toHaveLength(1);
+
+    jest.useRealTimers();
+    axiosGet.mockRestore();
+    axiosPost.mockRestore();
     consoleError.mockRestore();
     tree.unmount();
   });
@@ -1563,6 +1773,91 @@ describe('Home', () => {
     expect(input.value).toBe('ABC');
 
     cleanup();
+  });
+
+  describe('the report time', () => {
+    // The state carries seconds and the `datetime-local` field shows minutes.
+    // The two differ on purpose: iOS Safari rejects a value that carries
+    // seconds with "enter a valid value" (see "Fix datetime-local input on iOS
+    // by removing seconds", for issue #11), and that is a constraint on what
+    // the field is given rather than on the time being reported.
+    const renderTime = () => {
+      const initialState = {
+        email: 'test@example.com',
+        loginSuccessful: true,
+      };
+
+      const originalCreateObjectURL = global.URL.createObjectURL;
+      global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+      const homeRef = React.createRef();
+      let tree;
+      renderer.act(() => {
+        tree = renderHome({ initialState, homeRef });
+      });
+      // The form's fields are rendered with the report's first attachment.
+      renderer.act(() => {
+        homeRef.current.setState({
+          attachmentData: [
+            new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }),
+          ],
+        });
+      });
+
+      return {
+        homeRef,
+        field: tree.root.findByProps({ name: 'CreateDate' }),
+        cleanup: () => {
+          tree.unmount();
+          global.URL.createObjectURL = originalCreateObjectURL;
+        },
+      };
+    };
+
+    test('keeps the seconds in state, ready to be submitted', () => {
+      const { homeRef, cleanup } = renderTime();
+
+      expect(homeRef.current.state.CreateDate).toMatch(
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/,
+      );
+
+      cleanup();
+    });
+
+    test('gives the field only the minutes, which is all it accepts', () => {
+      const { homeRef, field, cleanup } = renderTime();
+
+      const { CreateDate } = homeRef.current.state;
+      expect(field.props.value).toBe(CreateDate.slice(0, 16));
+      expect(field.props.value).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
+      // Shorter than the state it came from, which is the whole point: the
+      // state carries seconds and the field would reject them. Comparing the
+      // two is what keeps this from passing when the seconds are gone from
+      // both.
+      expect(field.props.value.length).toBeLessThan(CreateDate.length);
+
+      cleanup();
+    });
+
+    test('takes a hand edit at the minute the field offers', () => {
+      const { homeRef, field, cleanup } = renderTime();
+
+      // What a `datetime-local` field hands its handler. The value has no
+      // seconds because the field has none to offer.
+      renderer.act(() => {
+        field.props.onChange({
+          target: {
+            name: 'CreateDate',
+            type: 'datetime-local',
+            value: '2024-01-01T12:34',
+          },
+        });
+      });
+
+      expect(homeRef.current.state.CreateDate).toBe('2024-01-01T12:34');
+
+      cleanup();
+    });
   });
 
   describe('background attachment uploads', () => {

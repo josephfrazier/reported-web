@@ -443,27 +443,20 @@ function adoptOrphans({ orphans, groups }) {
   });
 }
 
-// The form needs one time and one place per violation, and they come from
-// opposite ends of the group.
+// The time and the place a violation records, which come from opposite ends of
+// its group.
 //
-// The time is the earliest photo's: that is the moment the report describes.
+// Neither rule lives here. The time is the earliest photo's, which
+// `earliestTakenPhoto` reads, and the place is the last photo's that has one,
+// which `latestLocatedPhoto` reads -- the same two the form applies to the
+// photos it holds, so a violation means the same thing whether it is waiting
+// in the queue or loaded into the form.
 //
-// The place is the last photo's that has one. A camera that has just been
-// woken up can report a fix from wherever it was last used, so the first
-// reading of a group is the one most likely to be stale, and the last is the
-// one taken once the GPS had caught up with the car. The time cannot follow
-// the same way, because a report is of when the violation happened rather than
-// of when its last photo was taken.
-//
-// A photo with no GPS still clusters on time alone, so the newest photos can
-// be missing the very coordinates the report needs. Fall back to the latest
-// that has them, rather than forcing the user to drop a pin for a violation
-// already located.
-//
-// This is the rule for any set of photos, not just a whole violation: the
-// queue applies it again to the photos a report still holds after the user
-// drops one, which is why it is its own function.
-export function photosSummary(photos) {
+// This is what the violation itself records, and a violation is always
+// somewhere at some time: a photo with no capture time falls back to its
+// file's, and the place falls back to the first photo when none of them has
+// coordinates, so the record is complete even when the photos are not.
+function photosSummary(photos) {
   const sorted = [...photos].sort(compareByCaptureTime);
   // The rule itself is `latestLocatedPhoto`'s. This falls back to the first
   // photo when none of them has coordinates, so the form still gets an answer

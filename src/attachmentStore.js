@@ -36,6 +36,12 @@ export async function writeAttachment(id, buffer) {
   cleanupTimer.unref?.();
 }
 
+// Remove an attachment before its TTL would have. The timer writeAttachment
+// set will find nothing when it fires, and ignore that.
+export async function deleteAttachment(id) {
+  await fs.promises.unlink(attachmentFilePath(id)).catch(() => {});
+}
+
 export async function readAttachment(id) {
   try {
     return await fs.promises.readFile(attachmentFilePath(id));

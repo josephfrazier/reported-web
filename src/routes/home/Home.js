@@ -53,6 +53,7 @@ import PreviousSubmissionsList from '../../components/PreviousSubmissionsList.js
 import formatGeosearchAddress from '../../formatGeosearchAddress.js';
 import createGeosearchAddressCache from '../../geosearchAddressCache.js';
 import { isImage, isVideo } from '../../isImage.js';
+import latestLocatedPhoto from '../../latestLocatedPhoto.js';
 import plateReadRetry from '../../plateReadRetry.js';
 import getNycTimezoneOffset from '../../timezone.js';
 import { isPointInNycMemoized } from '../../isPointInNyc.js';
@@ -1344,6 +1345,22 @@ class Home extends React.Component {
     return this.handleAttachmentData({ attachmentData });
   };
 
+  // Given where each photo was and when it was taken, move the form to the
+  // place the newest one that has coordinates gave. Called once the whole
+  // pass has been read, rather than as each photo arrives.
+  applyPhotoPlace = locatedPhotos => {
+    const located = latestLocatedPhoto(locatedPhotos);
+    if (!located) {
+      return;
+    }
+
+    this.setCoords({
+      latitude: located.latitude,
+      longitude: located.longitude,
+      addressProvenance: '(extracted from picture/video)',
+    });
+  };
+
   handleAttachmentData = async ({ attachmentData }) => {
     this.setState(
       state => ({
@@ -1377,6 +1394,9 @@ class Home extends React.Component {
           }
         });
 
+        // Where each photo was, and when, for the pass below to choose from.
+        const locatedPhotos = [];
+
         const listsOfExtractions = await Promise.all(
           this.state.attachmentData.map(async (attachmentFile, index) => {
             if (attachmentFile.size > 20 * 1000 * 1000) {
@@ -1401,6 +1421,15 @@ class Home extends React.Component {
             )) || { name: 'jpg' };
 
             this.setState({ isAlprLoading: true });
+
+            // One read of a photo's date, used twice below: to set the form's
+            // time, and to order this photo against the others for the place.
+            const datePromise = extractDate({
+              attachmentFile,
+              attachmentArrayBuffer,
+              ext,
+            });
+
             return Promise.allSettled([
               extractPlate({
                 attachmentFile,
@@ -1430,30 +1459,36 @@ class Home extends React.Component {
                 .finally(() => {
                   this.setState({ isAlprLoading: false });
                 }),
-              extractDate({
-                attachmentFile,
-                attachmentArrayBuffer,
-                ext,
-              }).then(this.setCreateDate),
+              datePromise.then(this.setCreateDate),
               extractLocation({
                 attachmentFile,
                 attachmentArrayBuffer,
                 ext,
                 isReverseGeocodingEnabled: this.state.isReverseGeocodingEnabled,
-              }).then(({ latitude, longitude }) => {
+              }).then(async ({ latitude, longitude }) => {
                 if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
                   throw 'location (may have been stripped by Android, see https://github.com/josephfrazier/reported-web/issues/751 for details)'; // eslint-disable-line no-throw-literal
                 }
 
-                this.setCoords({
+                // Recorded rather than applied: which photo's place wins is
+                // not known until every photo has been read, and applying
+                // each one as it arrived left that to whichever read
+                // happened to finish last.
+                const date = await datePromise.catch(() => null);
+                locatedPhotos.push({
                   latitude,
                   longitude,
-                  addressProvenance: '(extracted from picture/video)',
+                  createDateMs: date ? date.millisecondsSinceEpoch : NaN,
+                  file: attachmentFile,
                 });
               }),
             ]);
           }),
         );
+
+        // Every photo has now been read, so the map moves once, to the place
+        // the newest located photo gave, rather than to each photo in turn.
+        this.applyPhotoPlace(locatedPhotos);
 
         if (listsOfExtractions.length === 0) {
           return;

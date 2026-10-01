@@ -20,7 +20,10 @@
  * photo is the newest.
  */
 
-const hasCoordinates = ({ latitude, longitude }) =>
+// A photo, a violation or a summary has coordinates only when both are real
+// numbers: `extractLocation` can hand back `NaN` for a photo whose EXIF has
+// no GPS. Defaulted, because callers ask about things that may not be there.
+export const hasCoordinates = ({ latitude, longitude } = {}) =>
   Number.isFinite(latitude) && Number.isFinite(longitude);
 
 // A capture time is the signal that orders photos, but plenty have none --

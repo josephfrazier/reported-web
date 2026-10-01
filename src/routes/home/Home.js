@@ -60,6 +60,7 @@ import groupAttachmentsByViolation, {
 import { isImage, isVideo } from '../../isImage.js';
 import latestLocatedPhoto, {
   effectiveTimeMs,
+  hasCoordinates,
 } from '../../latestLocatedPhoto.js';
 import plateReadRetry from '../../plateReadRetry.js';
 import getNycTimezoneOffset from '../../timezone.js';
@@ -619,12 +620,6 @@ function defaultBatchSelection(photos) {
 
   return photos.filter(photo => selected.has(photo));
 }
-
-// A violation is only geocodable, and only loadable as a location, when every
-// coordinate it carries is a real number: extractLocation can hand back NaN
-// for a photo whose EXIF has no GPS.
-const hasCoordinates = ({ latitude, longitude } = {}) =>
-  Number.isFinite(latitude) && Number.isFinite(longitude);
 
 // What the form records as the origin of a location the photos gave it. The
 // map and the address field write their own words in its place, which is how

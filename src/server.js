@@ -19,7 +19,6 @@ import PrettyError from 'pretty-error';
 import Parse from 'parse/node';
 import cookie from 'cookie';
 import multer from 'multer';
-import stringify from 'json-stringify-safe';
 import StyleContext from 'isomorphic-style-loader/StyleContext';
 
 import { geosearch } from './geoclient.js';
@@ -30,6 +29,7 @@ import deleteSubmission from './deleteSubmission.js';
 import createSubmission from './createSubmission.js';
 import uploadAttachment from './uploadAttachment.js';
 import getAttachmentData from './getAttachmentData.js';
+import handlePromiseRejection from './handlePromiseRejection.js';
 import { logIn, saveUser } from './users.js';
 
 import App from './components/App.js';
@@ -134,11 +134,6 @@ app.use(express.static(path.resolve(__dirname, 'public')));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json({ limit: '80mb' }));
 // attachments are no longer sent as base64 JSON, but express's internal usage of `body-parser` still tries to parse non-JSON bodies, so this 80mb `limit` needs to be here to avoid errors
-
-const handlePromiseRejection = res => error => {
-  console.error({ error });
-  res.status(500).json(JSON.parse(stringify({ error })));
-};
 
 // Busboy reports "Unexpected end of form" when a multipart body ends before
 // its closing boundary, which is what browsers have been sending when they

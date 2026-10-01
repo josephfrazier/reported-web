@@ -1565,6 +1565,91 @@ describe('Home', () => {
     cleanup();
   });
 
+  describe('the report time', () => {
+    // The state carries seconds and the `datetime-local` field shows minutes.
+    // The two differ on purpose: iOS Safari rejects a value that carries
+    // seconds with "enter a valid value" (see "Fix datetime-local input on iOS
+    // by removing seconds", for issue #11), and that is a constraint on what
+    // the field is given rather than on the time being reported.
+    const renderTime = () => {
+      const initialState = {
+        email: 'test@example.com',
+        loginSuccessful: true,
+      };
+
+      const originalCreateObjectURL = global.URL.createObjectURL;
+      global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+      const homeRef = React.createRef();
+      let tree;
+      renderer.act(() => {
+        tree = renderHome({ initialState, homeRef });
+      });
+      // The form's fields are rendered with the report's first attachment.
+      renderer.act(() => {
+        homeRef.current.setState({
+          attachmentData: [
+            new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }),
+          ],
+        });
+      });
+
+      return {
+        homeRef,
+        field: tree.root.findByProps({ name: 'CreateDate' }),
+        cleanup: () => {
+          tree.unmount();
+          global.URL.createObjectURL = originalCreateObjectURL;
+        },
+      };
+    };
+
+    test('keeps the seconds in state, ready to be submitted', () => {
+      const { homeRef, cleanup } = renderTime();
+
+      expect(homeRef.current.state.CreateDate).toMatch(
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/,
+      );
+
+      cleanup();
+    });
+
+    test('gives the field only the minutes, which is all it accepts', () => {
+      const { homeRef, field, cleanup } = renderTime();
+
+      const { CreateDate } = homeRef.current.state;
+      expect(field.props.value).toBe(CreateDate.slice(0, 16));
+      expect(field.props.value).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
+      // Shorter than the state it came from, which is the whole point: the
+      // state carries seconds and the field would reject them. Comparing the
+      // two is what keeps this from passing when the seconds are gone from
+      // both.
+      expect(field.props.value.length).toBeLessThan(CreateDate.length);
+
+      cleanup();
+    });
+
+    test('takes a hand edit at the minute the field offers', () => {
+      const { homeRef, field, cleanup } = renderTime();
+
+      // What a `datetime-local` field hands its handler. The value has no
+      // seconds because the field has none to offer.
+      renderer.act(() => {
+        field.props.onChange({
+          target: {
+            name: 'CreateDate',
+            type: 'datetime-local',
+            value: '2024-01-01T12:34',
+          },
+        });
+      });
+
+      expect(homeRef.current.state.CreateDate).toBe('2024-01-01T12:34');
+
+      cleanup();
+    });
+  });
+
   describe('background attachment uploads', () => {
     // Renders the form as a logged-in user, disables the network-backed
     // extraction pipelines, and adds the given files through the same code

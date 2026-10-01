@@ -57,6 +57,11 @@
 - Before committing changes, run `yarn fix` to auto-fix lint issues.
 - When asked to update AGENTS.md in the middle of other work: find an unmerged branch that only touches AGENTS.md (or create one if it doesn't exist), switch to it, make the changes there, commit, run `git show` so the diff is visible, then switch back to the previous branch.
 
+### Commit messages
+
+- **Do not include CI results.** No test or suite counts, and no "`yarn lint` exits 0" line. A message says what changed and why; it does not report the run that checked it. Run the suite and the linter all the same — just keep them out of the message.
+- **Name in-flight work by its pull request**, rather than only by branch name, so a reader can follow it. If you're not sure whether there's a PR, ask the user, or if that's not acceptable (e.g. in non-interactive work), generate a github link to the branch name, for example https://github.com/josephfrazier/reported-web/tree/add-semi-automatic-mode-plan
+
 ## Refactoring `server.js`
 
 Extract a route's logic into its own module as **three commits**, in this order:

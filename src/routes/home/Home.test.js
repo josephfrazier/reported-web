@@ -1001,6 +1001,30 @@ describe('Home', () => {
     cleanup();
   });
 
+  test('resets to the default place when the last photo is dropped', async () => {
+    const [early] = threePhotosApart();
+    const { homeRef, settle, cleanup } = await renderAndExtract([early]);
+
+    // The user moves the pin, and then takes the last photo away. A place the
+    // user set outranks the photos, but with none left there is nothing for it
+    // to describe, so the form goes back to the default place the "Where"
+    // button prompts from.
+    renderer.act(() => {
+      homeRef.current.setCoords({
+        latitude: 40.9,
+        longitude: -73.9,
+        addressProvenance: '(manually set)',
+      });
+    });
+
+    await dropPhoto(homeRef, settle, 'early.jpg');
+
+    expect(homeRef.current.state.latitude).toBe(40.7128);
+    expect(homeRef.current.state.longitude).toBe(-74.006);
+
+    cleanup();
+  });
+
   test('skips geosearch for the default coordinates and leaves the address empty', async () => {
     jest.useFakeTimers();
 

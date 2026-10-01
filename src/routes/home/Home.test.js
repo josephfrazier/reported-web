@@ -18,6 +18,7 @@ import * as blobUtil from 'blob-util';
 import { toast } from 'react-toastify';
 import Modal from 'react-modal';
 import App from '../../components/App.js';
+import plateReadRetry from '../../plateReadRetry.js';
 import Home from './Home.js';
 import boroughBoundariesFeatureCollection from '../../boroughBoundaries.js';
 
@@ -27,9 +28,12 @@ jest.mock('react-modal', () =>
   }),
 );
 
-// jest.spyOn can't replace exifr's exports: the module's properties are
-// read-only under Jest (they are writable when it is required from Node
-// directly). The semi-automatic mode tests set the two functions they need.
+// exifr reads the metadata out of real image bytes, which no test here has.
+// Mocked rather than spied on: the imported object's properties are getters
+// under Jest (they are writable when the module is required from Node
+// directly), so `jest.spyOn` cannot replace them. A test that wants an
+// extraction to succeed gives these implementations; every other test leaves
+// them returning nothing, which fails an extraction exactly as junk bytes do.
 jest.mock('exifr/dist/full.umd.js', () => ({
   __esModule: true,
   default: { gps: jest.fn(), parse: jest.fn() },
@@ -710,6 +714,139 @@ describe('Home', () => {
     toastWarn.mockRestore();
     tree.unmount();
     global.URL.createObjectURL = originalCreateObjectURL;
+  });
+
+  test('moves the form to the place the newest located photo gave', async () => {
+    jest.useFakeTimers();
+
+    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+    const axiosPost = jest.spyOn(axios, 'post').mockResolvedValue({ data: {} });
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ homeRef });
+    });
+
+    // What the extraction pass hands over once every photo has been read: the
+    // early photo's fix is the stale one, and the late photo's is the place
+    // the submission should carry.
+    renderer.act(() => {
+      homeRef.current.applyPhotoPlace([
+        { latitude: 40.7128, longitude: -74.006, createDateMs: 1000 },
+        { latitude: 40.73, longitude: -74.01, createDateMs: 3000 },
+      ]);
+    });
+    await renderer.act(async () => {
+      jest.advanceTimersByTime(500);
+    });
+
+    expect(homeRef.current.state.latitude).toBe(40.73);
+    expect(homeRef.current.state.longitude).toBe(-74.01);
+    expect(homeRef.current.state.addressProvenance).toBe(
+      '(extracted from picture/video)',
+    );
+
+    // A pass that found no coordinates anywhere leaves the form where it is.
+    renderer.act(() => {
+      homeRef.current.applyPhotoPlace([{ createDateMs: 4000 }]);
+    });
+
+    expect(homeRef.current.state.latitude).toBe(40.73);
+    expect(homeRef.current.state.longitude).toBe(-74.01);
+
+    jest.useRealTimers();
+    axiosGet.mockRestore();
+    axiosPost.mockRestore();
+    consoleError.mockRestore();
+    tree.unmount();
+  });
+
+  test("takes the form's place from the newest photo, not the last to answer", async () => {
+    // The extraction reads EXIF through exifr, which no test can hand a real
+    // photo, so it is stubbed here and the bytes say which photo is which.
+    //
+    // The older photo is listed last, and each photo is read in the order the
+    // list gives, so the older photo is also the last to answer. That is the
+    // whole point: the form used to take its place from the last answer, and
+    // the newest photo has to win even though it answered first.
+    //
+    // The bytes have to look like a picture to the detector in `Home.js`, or
+    // the extraction stops before it reads anything at all. A JPEG
+    // start-of-image marker does that; the label after it is what the stubs
+    // below read to tell the two photos apart.
+    const photoBytes = label =>
+      Uint8Array.from([0xff, 0xd8, 0xff, 0xe0, ...Buffer.from(label, 'utf8')]);
+    const older = new File([photoBytes('older')], 'older.jpg', {
+      type: 'image/jpeg',
+    });
+    const newer = new File([photoBytes('newer')], 'newer.jpg', {
+      type: 'image/jpeg',
+    });
+
+    exifr.gps.mockImplementation(async buffer => {
+      const which = Buffer.from(buffer).toString('utf8');
+      return which.includes('older')
+        ? { latitude: 40.7, longitude: -73.98 }
+        : { latitude: 40.73, longitude: -74.01 };
+    });
+    exifr.parse.mockImplementation(async buffer => {
+      const which = Buffer.from(buffer).toString('utf8');
+      return {
+        CreateDate: new Date(which.includes('older') ? 1000 : 3000),
+        OffsetTimeDigitized: '-04:00',
+      };
+    });
+
+    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+    const axiosPost = jest.spyOn(axios, 'post').mockImplementation(url => {
+      if (url === '/api/geosearch') {
+        return Promise.resolve({ data: { features: [] } });
+      }
+      if (url === '/api/uploadAttachment') {
+        return Promise.resolve({ data: { id: 'a'.repeat(64) } });
+      }
+      return Promise.resolve({ data: {} });
+    });
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ homeRef });
+    });
+    renderer.act(() => {
+      homeRef.current.setState({ isAlprEnabled: false });
+    });
+
+    // Through the same path the file input uses, so the extraction that
+    // chooses the place is the one under test.
+    await renderer.act(async () => {
+      await homeRef.current.handleAttachmentData({
+        attachmentData: [newer, older],
+      });
+      // The pass runs inside a setState callback, through jsdom's FileReader
+      // and the mocked reads above, so it needs real time rather than a
+      // microtask. `setCoords` then asks geosearch for an address 500ms
+      // later; waiting that out here keeps every request inside the stubs,
+      // instead of one going out after they are gone.
+      await new Promise(resolve => setTimeout(resolve, 700));
+    });
+
+    expect(homeRef.current.state.latitude).toBe(40.73);
+    expect(homeRef.current.state.longitude).toBe(-74.01);
+
+    exifr.gps.mockReset();
+    exifr.parse.mockReset();
+    axiosGet.mockRestore();
+    axiosPost.mockRestore();
+    consoleError.mockRestore();
+    tree.unmount();
   });
 
   test('skips geosearch for the default coordinates and leaves the address empty', async () => {
@@ -2022,7 +2159,6 @@ describe('Home', () => {
     async function renderBatchWithFiles(
       files,
       {
-        alprFailures = 0,
         // Answers a coordinate with its own address. The default mock answers
         // every coordinate the same way, which cannot show a stale address:
         // whichever one is on screen looks right.
@@ -2047,22 +2183,11 @@ describe('Home', () => {
       const originalQuerySelector = document.querySelector;
       document.querySelector = jest.fn(() => ({ scrollTo: jest.fn() }));
 
-      let alprAttempts = 0;
-
       const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
       const axiosPost = jest
         .spyOn(axios, 'post')
         .mockImplementation((url, body) => {
           if (url === '/platerecognizer') {
-            // Refuse the first `alprFailures` attempts the way a rate limit
-            // does, so a test can watch the retry turn one into a plate read.
-            alprAttempts += 1;
-            if (alprAttempts <= alprFailures) {
-              const error = new Error('rate limited');
-              error.response = { status: 429 };
-              return Promise.reject(error);
-            }
-
             const { size } = body.get('attachmentFile');
             const delayMs = alprDelayMsBySize[size] || 0;
 
@@ -2413,7 +2538,7 @@ describe('Home', () => {
       cleanup();
     });
 
-    test('retries a rate-limited photo rather than leaving it with no plate read', async () => {
+    test('asks for a rate-limited plate read to be retried', async () => {
       const photos = [jpeg({ name: 'a.jpg', size: 4 })];
 
       exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
@@ -2422,18 +2547,16 @@ describe('Home', () => {
         OffsetTimeDigitized: '-05:00',
       }));
 
-      const { homeRef, platerecognizerCalls, cleanup } =
-        await renderBatchWithFiles(photos, { alprFailures: 1 });
+      const { platerecognizerCalls, cleanup } =
+        await renderBatchWithFiles(photos);
 
-      // Two requests for one photo: the refused attempt and the retry that
-      // replaced it.
-      expect(platerecognizerCalls()).toHaveLength(2);
-
-      // And the retry is what the violation was built from, rather than the
-      // photo landing in the queue with nothing read.
-      const { batchViolations } = homeRef.current.state;
-      expect(batchViolations).toHaveLength(1);
-      expect(batchViolations[0].plate).toBe('T696817C');
+      // What a repeat is worth is `plateReadRetry`'s, and that module's own
+      // test drives a real axios instance through those options. This is the
+      // other half: that the plate read asks for it. Whether the repeat then
+      // happens cannot be watched from here -- mocking `axios.post` replaces
+      // the very method whose interceptors do the retrying.
+      const [[, , config]] = platerecognizerCalls();
+      expect(config['axios-retry']).toBe(plateReadRetry);
 
       exifr.gps.mockReset();
       exifr.parse.mockReset();

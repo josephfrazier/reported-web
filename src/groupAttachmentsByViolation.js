@@ -19,6 +19,10 @@
  * Time is the only geometric signal here, and both numbers come from measuring
  * the reports themselves rather than from guessing.
  *
+ * Capture order is not defined here: `compareByCaptureTime` and
+ * `effectiveTimeMs` come from `latestLocatedPhoto.js`, which sorts the form's
+ * photos the same way.
+ *
  * Distance was a second signal until it was measured. Of 385 gaps between two
  * photos of one violation, 328 were at *identical* coordinates -- a phone
  * reuses one location fix for shots taken seconds apart -- and most of the rest
@@ -46,6 +50,11 @@
  * out: [{ photos[], plate, licenseState,
  *         latitude, longitude, createDateMs }]
  */
+
+import latestLocatedPhoto, {
+  compareByCaptureTime,
+  effectiveTimeMs,
+} from './latestLocatedPhoto.js';
 
 const TIME_THRESHOLD_MS = 60000;
 
@@ -75,28 +84,8 @@ export function normalizedCenterDistance(box, uploadWidth, uploadHeight) {
   );
 }
 
-const hasCoordinates = ({ latitude, longitude }) =>
-  Number.isFinite(latitude) && Number.isFinite(longitude);
-
-// A capture time is the signal that orders a batch, but plenty of photos have
-// none -- EXIF stripped, or the file is a scan/screenshot. File last-modified
-// is the fallback those photos sort, cluster and report on instead.
-export const effectiveTimeMs = ({ createDateMs, file }) =>
-  Number.isFinite(createDateMs) ? createDateMs : file?.lastModified || 0;
-
-// Photos with a real capture time sort first and in order; photos without one
-// sort last, so a batch's unknowns never interleave with its knowns.
-//
-// Array.prototype.sort is stable, so photos that compare equal keep the order
-// the caller passed them in.
-function compareByCaptureTime(a, b) {
-  const aHasCaptureTime = Number.isFinite(a.createDateMs);
-  const bHasCaptureTime = Number.isFinite(b.createDateMs);
-  if (aHasCaptureTime !== bHasCaptureTime) {
-    return aHasCaptureTime ? -1 : 1;
-  }
-  return effectiveTimeMs(a) - effectiveTimeMs(b);
-}
+// Capture order, and which photo's place wins, belong to `latestLocatedPhoto`:
+// the form reads them from there too, and two copies would be free to drift.
 
 // Two photos belong to the same violation when they were taken close together
 // in time. Place deliberately plays no part -- see the note at the top of the
@@ -476,9 +465,10 @@ function adoptOrphans({ orphans, groups }) {
 // drops one, which is why it is its own function.
 export function photosSummary(photos) {
   const sorted = [...photos].sort(compareByCaptureTime);
-  // Reversed on a copy: `sorted` is handed back below, and reverse() would
-  // turn the violation's own photos back to front.
-  const located = [...sorted].reverse().find(hasCoordinates) || sorted[0];
+  // The rule itself is `latestLocatedPhoto`'s. This falls back to the first
+  // photo when none of them has coordinates, so the form still gets an answer
+  // (an empty one) rather than nothing at all.
+  const located = latestLocatedPhoto(sorted) || sorted[0];
 
   return {
     photos: sorted,

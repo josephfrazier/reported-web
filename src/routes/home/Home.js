@@ -14,6 +14,7 @@ import FileReaderInput from 'react-file-reader-input';
 import * as blobUtil from 'blob-util';
 import exifr from 'exifr/dist/full.umd.js';
 import axios from 'axios';
+import axiosRetry from 'axios-retry';
 import promisedLocation from 'promised-location';
 import { compose, withProps } from 'recompose';
 import {
@@ -52,13 +53,15 @@ import PreviousSubmissionsList from '../../components/PreviousSubmissionsList.js
 import formatGeosearchAddress from '../../formatGeosearchAddress.js';
 import createGeosearchAddressCache from '../../geosearchAddressCache.js';
 import groupAttachmentsByViolation, {
-  effectiveTimeMs,
   isViolationSettled,
   mergeViolations,
   photosSummary,
 } from '../../groupAttachmentsByViolation.js';
 import { isImage, isVideo } from '../../isImage.js';
-import retryTransientRequest from '../../retryTransientRequest.js';
+import latestLocatedPhoto, {
+  effectiveTimeMs,
+} from '../../latestLocatedPhoto.js';
+import plateReadRetry from '../../plateReadRetry.js';
 import getNycTimezoneOffset from '../../timezone.js';
 import { isPointInNycMemoized } from '../../isPointInNyc.js';
 import vehicleTypeUrl from '../../vehicleTypeUrl.js';
@@ -346,6 +349,12 @@ function upperCaseInputValueInPlace(input) {
   return upperCased;
 }
 
+// Attached to the shared axios instance, which is what installs the
+// interceptors, but retrying nothing by default. Only the plate read asks for a
+// retry, in its own config. Every other request keeps failing straight away,
+// `/submit` among them: a submission POST repeated after a 5xx can arrive twice.
+axiosRetry(axios, { retries: 0 });
+
 async function fetchPlateResults({
   attachmentFile,
   attachmentBuffer,
@@ -376,18 +385,12 @@ async function fetchPlateResults({
     email,
     password,
   });
-  // A batch sends one of these per photo, and Plate Recognizer rate limits
-  // that, so a 429 part-way through is expected rather than exceptional --
-  // and it is transient, which is the difference between a plate read and a
-  // photo the user has to type in by hand. The retry is here rather than
-  // inside the batch so the single-violation flow gets it too.
-  const data = await retryTransientRequest({
-    send: async () => (await axios.post('/platerecognizer', formData)).data,
-    onRetry: ({ attempt, error, retryInMs }) =>
-      console.info(
-        `/platerecognizer failed, retrying in ${retryInMs}ms (attempt ${attempt})`,
-        { error },
-      ),
+  // Plate Recognizer rate limits, so a 429 here is expected rather than
+  // exceptional -- and it is transient, which is the difference between a plate
+  // read and a photo the user has to type in by hand. What a repeat is worth is
+  // in `plateReadRetry`; this asks for it for this request alone.
+  const { data } = await axios.post('/platerecognizer', formData, {
+    'axios-retry': plateReadRetry,
   });
 
   attachmentPlateCache.set(attachmentFile, data);
@@ -1573,6 +1576,22 @@ class Home extends React.Component {
     return this.handleAttachmentData({ attachmentData });
   };
 
+  // Given where each photo was and when it was taken, move the form to the
+  // place the newest one that has coordinates gave. Called once the whole
+  // pass has been read, rather than as each photo arrives.
+  applyPhotoPlace = locatedPhotos => {
+    const located = latestLocatedPhoto(locatedPhotos);
+    if (!located) {
+      return;
+    }
+
+    this.setCoords({
+      latitude: located.latitude,
+      longitude: located.longitude,
+      addressProvenance: '(extracted from picture/video)',
+    });
+  };
+
   // Start (or reuse) each file's background upload to /api/uploadAttachment,
   // so that submitting sends attachment IDs instead of re-sending the bytes.
   // The single-violation flow calls this for every pick; the batch calls it for
@@ -1610,6 +1629,9 @@ class Home extends React.Component {
       async () => {
         this.startBackgroundUploads(attachmentData);
 
+        // Where each photo was, and when, for the pass below to choose from.
+        const locatedPhotos = [];
+
         const listsOfExtractions = await Promise.all(
           this.state.attachmentData.map(async (attachmentFile, index) => {
             if (attachmentFile.size > 20 * 1000 * 1000) {
@@ -1634,6 +1656,15 @@ class Home extends React.Component {
             )) || { name: 'jpg' };
 
             this.setState({ isAlprLoading: true });
+
+            // One read of a photo's date, used twice below: to set the form's
+            // time, and to order this photo against the others for the place.
+            const datePromise = extractDate({
+              attachmentFile,
+              attachmentArrayBuffer,
+              ext,
+            });
+
             return Promise.allSettled([
               extractPlate({
                 attachmentFile,
@@ -1663,30 +1694,36 @@ class Home extends React.Component {
                 .finally(() => {
                   this.setState({ isAlprLoading: false });
                 }),
-              extractDate({
-                attachmentFile,
-                attachmentArrayBuffer,
-                ext,
-              }).then(this.setCreateDate),
+              datePromise.then(this.setCreateDate),
               extractLocation({
                 attachmentFile,
                 attachmentArrayBuffer,
                 ext,
                 isReverseGeocodingEnabled: this.state.isReverseGeocodingEnabled,
-              }).then(({ latitude, longitude }) => {
+              }).then(async ({ latitude, longitude }) => {
                 if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
                   throw 'location (may have been stripped by Android, see https://github.com/josephfrazier/reported-web/issues/751 for details)'; // eslint-disable-line no-throw-literal
                 }
 
-                this.setCoords({
+                // Recorded rather than applied: which photo's place wins is
+                // not known until every photo has been read, and applying
+                // each one as it arrived left that to whichever read
+                // happened to finish last.
+                const date = await datePromise.catch(() => null);
+                locatedPhotos.push({
                   latitude,
                   longitude,
-                  addressProvenance: '(extracted from picture/video)',
+                  createDateMs: date ? date.millisecondsSinceEpoch : NaN,
+                  file: attachmentFile,
                 });
               }),
             ]);
           }),
         );
+
+        // Every photo has now been read, so the map moves once, to the place
+        // the newest located photo gave, rather than to each photo in turn.
+        this.applyPhotoPlace(locatedPhotos);
 
         if (listsOfExtractions.length === 0) {
           return;

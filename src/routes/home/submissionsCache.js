@@ -25,7 +25,7 @@ export const MAX_CACHE_LENGTH = 2 * 1024 * 1024; // JSON string length
 
 // `submissions` is newest-first (the server sorts by `timeofreport`
 // descending), so keeping the head of the array keeps the most recent ones.
-export const buildCachedSubmissionsJson = submissions => {
+const buildCachedSubmissionsJson = submissions => {
   const cached = [];
   let length = 0;
   for (const submission of submissions) {

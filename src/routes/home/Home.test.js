@@ -703,6 +703,55 @@ describe('Home', () => {
     global.URL.createObjectURL = originalCreateObjectURL;
   });
 
+  test('moves the form to the place the newest located photo gave', async () => {
+    jest.useFakeTimers();
+
+    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+    const axiosPost = jest.spyOn(axios, 'post').mockResolvedValue({ data: {} });
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ homeRef });
+    });
+
+    // What the extraction pass hands over once every photo has been read: the
+    // early photo's fix is the stale one, and the late photo's is the place
+    // the submission should carry.
+    renderer.act(() => {
+      homeRef.current.applyPhotoPlace([
+        { latitude: 40.7128, longitude: -74.006, createDateMs: 1000 },
+        { latitude: 40.73, longitude: -74.01, createDateMs: 3000 },
+      ]);
+    });
+    await renderer.act(async () => {
+      jest.advanceTimersByTime(500);
+    });
+
+    expect(homeRef.current.state.latitude).toBe(40.73);
+    expect(homeRef.current.state.longitude).toBe(-74.01);
+    expect(homeRef.current.state.addressProvenance).toBe(
+      '(extracted from picture/video)',
+    );
+
+    // A pass that found no coordinates anywhere leaves the form where it is.
+    renderer.act(() => {
+      homeRef.current.applyPhotoPlace([{ createDateMs: 4000 }]);
+    });
+
+    expect(homeRef.current.state.latitude).toBe(40.73);
+    expect(homeRef.current.state.longitude).toBe(-74.01);
+
+    jest.useRealTimers();
+    axiosGet.mockRestore();
+    axiosPost.mockRestore();
+    consoleError.mockRestore();
+    tree.unmount();
+  });
+
   test('skips geosearch for the default coordinates and leaves the address empty', async () => {
     jest.useFakeTimers();
 

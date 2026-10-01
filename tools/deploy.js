@@ -8,7 +8,7 @@
  */
 
 import path from 'path';
-import { spawn } from './lib/cp.js';
+import spawn from './lib/cp.js';
 import { makeDir, moveDir, cleanDir } from './lib/fs.js';
 import run from './run.js';
 

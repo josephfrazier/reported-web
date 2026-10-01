@@ -43,9 +43,9 @@ describe('geosearchAddressCache', () => {
     const cache = createGeosearchAddressCache();
 
     // Geosearch resolves coordinates with no street address (mid-block, a
-    // park) to an empty address. That is an answer, and re-asking for it on
-    // every violation at those coordinates would put back the traffic the
-    // memo exists to remove.
+    // park) to an empty address. That is an answer, and re-asking for it every
+    // time those coordinates come up would put back the traffic the memo
+    // exists to remove.
     cache.set({ latitude: 40.7129, longitude: -74.0061, address: '' });
 
     expect(cache.get({ latitude: 40.7129, longitude: -74.0061 })).toBe('');

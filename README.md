@@ -88,15 +88,13 @@ What to tell an affected user: remove and re-add the photos/videos before submit
 again — reusing a selection that already failed keeps failing — or use a device that
 isn't on the affected browser version.
 
-Worth checking while looking at this: `/api/uploadAttachment`'s byte budget keys on
-`req.ip`, and `src/config.js` defaults `trust proxy` to `'loopback'`, which trusts
-`X-Forwarded-For` only from a loopback peer. Heroku's router isn't one, so unless
-`TRUST_PROXY` is set on Heroku, every request carries the router's private address as
-`req.ip` and all users share one quarter-gigabyte of unsubmitted attachments. Background
-uploads then fail
-(silently, since the client only logs those) and each submission falls back to re-sending
-every file through `/submit` — the route that shows this error. `TRUST_PROXY=uniquelocal`
-covers the router's private address.
+Worth checking while looking at this: `/api/uploadAttachment`'s rate limiter keys on
+`req.ip`, and `src/config.js` trusts the private ranges for `trust proxy`, which is where
+Heroku's router sits. If that is wrong for a deployment — a router somewhere else — then
+every request carries the router's address as `req.ip`, and all users share one
+30-per-15-minutes bucket. Background uploads then fail (silently, since the client only
+logs those) and each submission falls back to re-sending every file through `/submit` —
+the route that shows this error. `TRUST_PROXY` overrides the default.
 
 ## Context on `localStorage` use (w.r.t performance concerns about lag/delay/slowness/latency when typing)
 

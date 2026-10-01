@@ -1240,10 +1240,10 @@ class Home extends React.Component {
       return;
     }
 
-    // An address is a function of coordinates alone, so one already looked up
-    // for this page can be shown without asking geosearch again. Batch mode
-    // geocodes every violation before the user reviews them, so this is what
-    // makes loading one instant rather than another round trip.
+    // An address is a function of coordinates alone, and the same coordinates
+    // come up more than once in a session -- moving the map off a curb and
+    // back, for one. What was looked up before can be shown without asking
+    // geosearch again.
     const cachedAddress = this.geosearchAddressCache.get({
       latitude,
       longitude,

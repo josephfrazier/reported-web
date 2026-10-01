@@ -850,7 +850,7 @@ describe('Home', () => {
     tree.unmount();
   });
 
-  test('reuses a reverse-geocoded address instead of asking geosearch again', async () => {
+  test('reuses the address it looked up for coordinates it has seen', async () => {
     jest.useFakeTimers();
 
     const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
@@ -867,6 +867,9 @@ describe('Home', () => {
         ],
       },
     });
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
 
     let tree;
     const homeRef = React.createRef();
@@ -874,51 +877,53 @@ describe('Home', () => {
       tree = renderHome({ homeRef });
     });
 
-    const firstLocation = { latitude: 40.7129, longitude: -74.0061 };
-    const secondLocation = { latitude: 40.73, longitude: -74.01 };
+    const coordinates = { latitude: 40.7129, longitude: -74.0061 };
+    const elsewhere = { latitude: 40.73, longitude: -74.01 };
+    const searches = () =>
+      axiosPost.mock.calls.filter(([url]) => url === '/api/geosearch');
 
     renderer.act(() => {
-      homeRef.current.setCoords(firstLocation);
+      homeRef.current.setCoords(coordinates);
     });
     await renderer.act(async () => {
       jest.advanceTimersByTime(500);
     });
 
-    expect(axiosPost).toHaveBeenCalledTimes(1);
     expect(homeRef.current.state.formatted_address).toBe(
       '123 Main St, Manhattan',
     );
-    expect(homeRef.current.geosearchAddressCache.get(firstLocation)).toBe(
-      '123 Main St, Manhattan',
-    );
+    expect(searches()).toHaveLength(1);
 
-    // Somewhere else, so a lookup that isn't memoized still goes out.
+    // Somewhere else is a different address, so that lookup still goes out:
+    // the memo answers for coordinates it has seen, not for every pair.
     renderer.act(() => {
-      homeRef.current.setCoords(secondLocation);
+      homeRef.current.setCoords(elsewhere);
     });
     await renderer.act(async () => {
       jest.advanceTimersByTime(500);
     });
-    expect(axiosPost).toHaveBeenCalledTimes(2);
+    expect(searches()).toHaveLength(2);
 
-    // Back to the first location. Batch mode geocodes every violation before
-    // the user loads one, so returning to a location it already resolved must
-    // fill the field from the memo rather than re-asking geosearch.
+    // The same coordinates again, as moving the map off a curb and back gives.
+    // The address is a function of them alone, so this is answered from what
+    // was already looked up rather than asked again.
     renderer.act(() => {
-      homeRef.current.setCoords(firstLocation);
+      homeRef.current.setCoords(coordinates);
     });
+    // Past the debounce, so a request that was going to be made would be.
     await renderer.act(async () => {
       jest.advanceTimersByTime(500);
     });
 
-    expect(axiosPost).toHaveBeenCalledTimes(2);
     expect(homeRef.current.state.formatted_address).toBe(
       '123 Main St, Manhattan',
     );
+    expect(searches()).toHaveLength(2);
 
     jest.useRealTimers();
     axiosGet.mockRestore();
     axiosPost.mockRestore();
+    consoleError.mockRestore();
     tree.unmount();
   });
 

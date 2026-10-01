@@ -5,10 +5,7 @@
  * An address is a function of coordinates alone, but `setCoords` re-queries
  * NYC Planning Labs on every call: the 500 ms debounce coalesces a burst of
  * calls into one request and then stores nothing, so moving the map away from
- * a curb and back asks for the same address all over again. Semi-automatic
- * mode gives that work a stage of its own -- it geocodes every violation
- * before the user starts reviewing them -- which is what makes the same
- * coordinates worth remembering.
+ * a curb and back asks for the same address all over again.
  *
  * One memo per `Home` instance rather than a module-level singleton: this
  * module is evaluated once per server process, so a shared cache would leak
@@ -16,8 +13,8 @@
  *
  * Successes only. A failed lookup means "not right now" -- the service is
  * down, or the request timed out -- and caching that would keep serving the
- * failure long after the service recovered, for every violation at those
- * coordinates. `get` returns `undefined` for coordinates that were never
+ * failure long after the service recovered, for those coordinates. `get`
+ * returns `undefined` for coordinates that were never
  * resolved, so a cached empty string (a real answer for coordinates geosearch
  * cannot name) is still distinguishable from a miss.
  */

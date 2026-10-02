@@ -37,6 +37,8 @@ const context = {
   commitHash: window.App.commitHash,
   parseServerUrl: window.App.parseServerUrl,
   showParseServerBanner: window.App.showParseServerBanner,
+  reviewAppUrl: window.App.reviewAppUrl,
+  reviewAppLabel: window.App.reviewAppLabel,
   cookies,
 };
 

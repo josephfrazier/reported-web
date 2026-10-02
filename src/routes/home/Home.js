@@ -2020,6 +2020,15 @@ class Home extends React.Component {
             </span>{' '}
             NOT PRODUCTION — using Parse server:{' '}
             <code>{this.props.parseServerUrl || '(unknown)'}</code>
+            {this.props.reviewAppUrl && (
+              <>
+                {' '}
+                — deployed from{' '}
+                <a href={this.props.reviewAppUrl}>
+                  {this.props.reviewAppLabel || this.props.reviewAppUrl}
+                </a>
+              </>
+            )}
           </div>
         )}
         <div className={homeStyles.container}>
@@ -3165,6 +3174,8 @@ Home.propTypes = {
   commitHash: PropTypes.string,
   parseServerUrl: PropTypes.string,
   showParseServerBanner: PropTypes.bool,
+  reviewAppUrl: PropTypes.string,
+  reviewAppLabel: PropTypes.string,
   initialState: PropTypes.object,
 };
 
@@ -3172,6 +3183,8 @@ Home.defaultProps = {
   commitHash: undefined,
   parseServerUrl: undefined,
   showParseServerBanner: false,
+  reviewAppUrl: undefined,
+  reviewAppLabel: undefined,
   initialState: null,
 };
 

@@ -30,10 +30,13 @@ const isAnalyze =
 
 // One release string for the SDKs and the source map upload, so the
 // artifacts can never be filed under a different release than the events.
+// `SOURCE_VERSION` names the code this build compiles; inside a Heroku
+// build, `HEROKU_BUILD_COMMIT` can still name the release that is running,
+// so it only comes second.
 const release =
   process.env.SENTRY_RELEASE ||
-  process.env.HEROKU_BUILD_COMMIT ||
   process.env.SOURCE_VERSION ||
+  process.env.HEROKU_BUILD_COMMIT ||
   (() => {
     try {
       return execSync('git rev-parse --short HEAD', {
@@ -44,10 +47,17 @@ const release =
     }
   })();
 
-if (!isDebug && !process.env.SENTRY_AUTH_TOKEN) {
-  console.warn(
-    'SENTRY_AUTH_TOKEN is not set: this build will not upload source maps.',
+if (!isDebug) {
+  console.info(
+    `Sentry release: ${release} (SOURCE_VERSION=${
+      process.env.SOURCE_VERSION || 'unset'
+    }, HEROKU_BUILD_COMMIT=${process.env.HEROKU_BUILD_COMMIT || 'unset'})`,
   );
+  if (!process.env.SENTRY_AUTH_TOKEN) {
+    console.warn(
+      'SENTRY_AUTH_TOKEN is not set: this build will not upload source maps.',
+    );
+  }
 }
 
 const reScript = /\.(js|jsx|mjs)$/;

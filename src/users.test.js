@@ -9,7 +9,7 @@
 import net from 'net';
 
 import Parse from 'parse/node';
-import { logIn, saveUser, updateUserProfile } from './users.js';
+import { logIn, updateUserProfile } from './users.js';
 
 const { MongoMemoryServer } = require('mongodb-memory-server');
 // parse-server is deliberately installed on demand instead of being a project
@@ -135,39 +135,6 @@ describe('users', () => {
     await expect(
       logIn({ email, password: 'wrong-password' }),
     ).rejects.toMatchObject({ code: 101 });
-  });
-
-  test('saveUser saves the profile fields onto the logged-in user', async () => {
-    const user = await saveUser({
-      email,
-      password,
-      FirstName: 'Test',
-      LastName: 'User',
-      Phone: '5551234567',
-      testify: true,
-    });
-
-    expect(user.id).toBe(verifiedUser.id);
-    expect(user.toJSON()).toMatchObject({
-      useremail: email,
-      FirstName: 'Test',
-      LastName: 'User',
-      Phone: '5551234567',
-      testify: true,
-    });
-  });
-
-  test('saveUser rejects when a required field is missing', async () => {
-    await expect(
-      saveUser({
-        email,
-        password,
-        FirstName: '',
-        LastName: 'User',
-        Phone: '5551234567',
-        testify: true,
-      }),
-    ).rejects.toMatchObject({ message: 'FirstName is required' });
   });
 
   test('updateUserProfile saves the fields with the session token', async () => {

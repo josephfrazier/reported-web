@@ -37,7 +37,14 @@ import {
 } from './attachmentBudget.js';
 import { attachmentId } from './attachmentStore.js';
 import handlePromiseRejection from './handlePromiseRejection.js';
-import { logIn, saveUser } from './users.js';
+import { logIn, updateUserProfile } from './users.js';
+import {
+  authenticateRequest,
+  clearSessionCookie,
+  readSessionToken,
+  rejectCrossSiteRequest,
+  setSessionCookie,
+} from './session.js';
 
 import App from './components/App.js';
 import Html from './components/Html.js';
@@ -166,14 +173,59 @@ const logTruncatedMultipartBody = (error, req) => {
   });
 };
 
+// SameSite=Lax already keeps the session cookie off cross-site POSTs in
+// current browsers; this guard covers older ones and login CSRF. It applies
+// to every non-GET request below, and lets GET/HEAD/OPTIONS and requests
+// with no Origin/Referer (non-browser clients) through.
+app.use(rejectCrossSiteRequest);
+
+// The one place a password is accepted. The session it creates goes into the
+// HttpOnly cookie, and the response carries only the profile fields the
+// client uses -- never the token.
 app.use('/api/logIn', (req, res) => {
   logIn(req.body)
-    .then(user => res.json(user))
+    .then(user => {
+      setSessionCookie(res, req, user.getSessionToken());
+      res.json({
+        email: user.get('email'),
+        FirstName: user.get('FirstName'),
+        LastName: user.get('LastName'),
+        Phone: user.get('Phone'),
+        testify: user.get('testify'),
+      });
+    })
     .catch(handlePromiseRejection(res));
 });
 
+app.use('/api/logOut', (req, res) => {
+  const sessionToken = readSessionToken(req);
+  const revoke = sessionToken
+    ? Parse.User.logOut({ sessionToken }).catch(error => {
+        // The cookie goes either way; a failed revoke just leaves the
+        // session to expire on its own.
+        console.error({ error });
+      })
+    : Promise.resolve();
+
+  revoke.then(() => {
+    clearSessionCookie(res, req);
+    res.json({});
+  });
+});
+
 app.use('/saveUser', (req, res) => {
-  saveUser(req.body)
+  authenticateRequest(req, res)()
+    .then(({ user, sessionToken }) =>
+      updateUserProfile({
+        user,
+        sessionToken,
+        email: req.body.email,
+        FirstName: req.body.FirstName,
+        LastName: req.body.LastName,
+        Phone: req.body.Phone,
+        testify: req.body.testify,
+      }),
+    )
     .then(user => res.json(user))
     .catch(handlePromiseRejection(res));
 });
@@ -186,7 +238,7 @@ app.use('/api/geosearch', (req, res) => {
 });
 
 app.use('/submissions', (req, res) => {
-  getSubmissionsWithTasks({ req, saveUser })
+  getSubmissionsWithTasks({ authenticate: authenticateRequest(req, res) })
     .then(submissions => {
       res.json({ submissions });
     })
@@ -194,7 +246,7 @@ app.use('/submissions', (req, res) => {
 });
 
 app.use('/api/deleteSubmission', (req, res) => {
-  deleteSubmission({ req, saveUser })
+  deleteSubmission({ req, authenticate: authenticateRequest(req, res) })
     .then(({ objectId }) => res.json({ objectId }))
     .catch(handlePromiseRejection(res));
 });
@@ -240,7 +292,14 @@ app.use(
   }),
   upload.single('attachmentData'),
   async (req, res) => {
-    const { email, password } = req.body;
+    // Authenticate before the budget below is checked: a refused request must
+    // not spend any of it.
+    try {
+      await authenticateRequest(req, res)();
+    } catch (authError) {
+      handlePromiseRejection(res)(authError);
+      return;
+    }
 
     // multer has the size and the body is already buffered, so this is the
     // first point at which what the upload costs is known.
@@ -263,7 +322,7 @@ app.use(
     recordUpload({ ip, id, bytes: size });
 
     try {
-      await uploadAttachment({ email, password, buffer });
+      await uploadAttachment({ buffer });
     } catch (error) {
       forgetUpload({ ip, id });
       handlePromiseRejection(res)(error);
@@ -286,9 +345,17 @@ app.use('/submit', (req, res) => {
       return;
     }
 
+    let user;
+    let sessionToken;
+    try {
+      ({ user, sessionToken } = await authenticateRequest(req, res)());
+    } catch (authError) {
+      handlePromiseRejection(res)(authError);
+      return;
+    }
+
     const {
       email,
-      password,
       FirstName,
       LastName,
       Phone,
@@ -323,9 +390,9 @@ app.use('/submit', (req, res) => {
     }
 
     createSubmission({
-      saveUser,
+      user,
+      sessionToken,
       email,
-      password,
       FirstName,
       LastName,
       Phone,
@@ -364,10 +431,8 @@ app.use(
   '/platerecognizer',
   upload.single('attachmentFile'),
   async (req, res) => {
-    const { email, password } = req.body;
-
     try {
-      await logIn({ email, password });
+      await authenticateRequest(req, res)();
     } catch (error) {
       handlePromiseRejection(res)(error);
       return;

@@ -4,6 +4,8 @@
 
 - `reported-web` is a server-rendered React Starter Kit app for submitting and reviewing Reported reports.
 - The app has both an Express server/API layer and a React client. Most feature work touches `src/server.js`, `src/routes/home/Home.js`, or shared components in `src/components/`.
+- Production is https://web.reported.nyc (not reportedweb.com). The domain appears nowhere in the repo. The sandbox proxy allows this domain, so `curl https://web.reported.nyc/<path>` shows what a route serves in production. This check settles questions that the code alone leaves ambiguous.
+- Deployment is Heroku: the `git remote -v` list carries a `heroku` remote, and `tools/deploy.js` documents the flow. `src/config.js` falls back to `https://${HEROKU_APP_NAME}.herokuapp.com` when `API_SERVER_URL` is unset.
 
 ## Repository map
 
@@ -54,6 +56,8 @@
 - If you change API or submission behavior, inspect both `src/server.js` and `src/routes/home/Home.js`; client and server responsibilities are split between them.
 - Keep tests near the affected module when possible; this repo uses a mix of colocated tests and snapshots under `src/**/__snapshots__/`.
 - Do not "clean up" existing warnings unless your task is specifically about them.
+- Write each code comment for a reader who never saw the previous version. Do not explain what changed or what was removed ("no longer", "used to"). Delete the comment with the code it described, unless the remaining code needs one.
+- `src/session.js` still accepts legacy email+password auth. The transition away from client-stored passwords needs it. Each use logs `[session] legacy credential auth used`. Delete the fallback and the `viaCredentials` plumbing after that log line stays quiet for about 90 days.
 - Before committing changes, run `yarn fix` to auto-fix lint issues.
 - When asked to update AGENTS.md in the middle of other work: find an unmerged branch that only touches AGENTS.md (or create one if it doesn't exist), switch to it, make the changes there, commit, run `git show` so the diff is visible, then switch back to the previous branch.
 

@@ -29,6 +29,13 @@ import deleteSubmission from './deleteSubmission.js';
 import createSubmission from './createSubmission.js';
 import uploadAttachment from './uploadAttachment.js';
 import getAttachmentData from './getAttachmentData.js';
+import {
+  canAfford,
+  forgetUpload,
+  recordUpload,
+  releaseUploads,
+} from './attachmentBudget.js';
+import { attachmentId } from './attachmentStore.js';
 import handlePromiseRejection from './handlePromiseRejection.js';
 import { logIn, saveUser } from './users.js';
 
@@ -218,11 +225,16 @@ app.use('/requestPasswordReset', (req, res) => {
     .catch(handlePromiseRejection(res));
 });
 
+// What a client may pre-upload is metered in bytes rather than in requests
+// (see attachmentBudget.js); this is only a flood stop, and it runs before
+// multer so that a burst is refused before the server buffers a body for it.
+// It sits far above any rate a real uploader reaches, because the byte budget
+// is what actually bounds them.
 app.use(
   '/api/uploadAttachment',
   rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    limit: 30, // max 30 uploads per window per IP (5 submissions × 6 files each)
+    windowMs: 60 * 1000, // 1 minute
+    limit: 60, // 60 uploads per minute per IP
     standardHeaders: 'draft-8',
     legacyHeaders: false,
   }),
@@ -230,10 +242,30 @@ app.use(
   async (req, res) => {
     const { email, password } = req.body;
 
-    let id;
+    // multer has the size and the body is already buffered, so this is the
+    // first point at which what the upload costs is known.
+    const { ip } = req;
+    const { size, buffer } = req.file;
+    const id = attachmentId(buffer);
+
+    if (!canAfford({ ip, bytes: size })) {
+      handlePromiseRejection(res)({
+        status: 429,
+        message: `Too many unsubmitted attachments are already held. Submit a report, or wait out the hour they are kept for, and try again.`,
+      });
+      return;
+    }
+
+    // The budget is taken before the upload is written, and there is no await
+    // between the two: a report's photos are uploaded together, and checking
+    // and spending in separate turns would let all of them spend the same last
+    // byte. A refusal below gives it back.
+    recordUpload({ ip, id, bytes: size });
+
     try {
-      id = await uploadAttachment({ email, password, buffer: req.file.buffer });
+      await uploadAttachment({ email, password, buffer });
     } catch (error) {
+      forgetUpload({ ip, id });
       handlePromiseRejection(res)(error);
       return;
     }
@@ -315,6 +347,13 @@ app.use('/submit', (req, res) => {
       .then(submission => {
         console.info({ submission });
         res.json({ submission });
+        // The submission used whatever pre-uploads it named, so they stop
+        // counting against the client's budget. Waiting for it is not worth
+        // holding the response open.
+        releaseUploads({
+          ip: req.ip,
+          attachmentIdsJson: req.body.attachmentIds,
+        }).catch(releaseError => console.error({ releaseError }));
       })
       .catch(handlePromiseRejection(res));
   });

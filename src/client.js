@@ -29,6 +29,9 @@ if (window.App.sentryDsn) {
     dsn: window.App.sentryDsn,
     release: window.App.commitHash,
     environment: __DEV__ ? 'development' : 'production',
+    // Content blockers drop requests to Sentry's own domain, so the SDK
+    // sends its envelopes through this app instead (src/server.js).
+    tunnel: '/monitoring',
     integrations: defaultIntegrations => [
       ...defaultIntegrations,
       Sentry.consoleLoggingIntegration({

@@ -25,7 +25,10 @@ process.env.TESTING = '1';
 jest.setTimeout(30000);
 
 const username = 'test@example.com';
-const saveUser = jest.fn(() => Promise.resolve({ get: () => username }));
+// Stand-in for src/session.js's authenticate: resolves the request's user.
+const authenticate = jest.fn(() =>
+  Promise.resolve({ user: { get: () => username } }),
+);
 
 describe('deleteSubmission', () => {
   let mongo;
@@ -141,12 +144,12 @@ describe('deleteSubmission', () => {
 
   const Submission = Parse.Object.extend('submission');
   const callDeleteSubmission = objectId =>
-    deleteSubmission({ req: { body: { objectId } }, saveUser });
+    deleteSubmission({ req: { body: { objectId } }, authenticate });
 
   test('deletes the submission with the given objectId', async () => {
     const result = await callDeleteSubmission(ownedSubmission.id);
 
-    expect(saveUser).toHaveBeenCalledWith({ objectId: ownedSubmission.id });
+    expect(authenticate).toHaveBeenCalled();
     expect(result).toEqual({ objectId: ownedSubmission.id });
 
     // The submission is really gone from Parse.
@@ -170,7 +173,7 @@ describe('deleteSubmission', () => {
   test("deletes a submission that carries the account's email, not its username", async () => {
     const result = await deleteSubmission({
       req: { body: { objectId: emailOwnedSubmission.id } },
-      saveUser: () => Promise.resolve(emailAccount),
+      authenticate: () => Promise.resolve({ user: emailAccount }),
     });
 
     expect(result).toEqual({ objectId: emailOwnedSubmission.id });

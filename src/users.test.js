@@ -9,7 +9,7 @@
 import net from 'net';
 
 import Parse from 'parse/node';
-import { logIn, saveUser } from './users.js';
+import { logIn, updateUserProfile } from './users.js';
 
 const { MongoMemoryServer } = require('mongodb-memory-server');
 // parse-server is deliberately installed on demand instead of being a project
@@ -137,18 +137,21 @@ describe('users', () => {
     ).rejects.toMatchObject({ code: 101 });
   });
 
-  test('saveUser saves the profile fields onto the logged-in user', async () => {
-    const user = await saveUser({
+  test('updateUserProfile saves the fields with the session token', async () => {
+    const user = await logIn({ email, password });
+
+    const saved = await updateUserProfile({
+      user,
+      sessionToken: user.getSessionToken(),
       email,
-      password,
       FirstName: 'Test',
       LastName: 'User',
       Phone: '5551234567',
       testify: true,
     });
 
-    expect(user.id).toBe(verifiedUser.id);
-    expect(user.toJSON()).toMatchObject({
+    expect(saved.id).toBe(verifiedUser.id);
+    expect(saved.toJSON()).toMatchObject({
       useremail: email,
       FirstName: 'Test',
       LastName: 'User',
@@ -157,16 +160,19 @@ describe('users', () => {
     });
   });
 
-  test('saveUser rejects when a required field is missing', async () => {
+  test('updateUserProfile rejects when a required field is missing', async () => {
+    const user = await logIn({ email, password });
+
     await expect(
-      saveUser({
+      updateUserProfile({
+        user,
+        sessionToken: user.getSessionToken(),
         email,
-        password,
-        FirstName: '',
-        LastName: 'User',
+        FirstName: 'Test',
+        LastName: '',
         Phone: '5551234567',
         testify: true,
       }),
-    ).rejects.toMatchObject({ message: 'FirstName is required' });
+    ).rejects.toMatchObject({ message: 'LastName is required' });
   });
 });

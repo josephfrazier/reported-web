@@ -23,7 +23,10 @@ process.env.TESTING = '1';
 jest.setTimeout(30000);
 
 const username = 'test@example.com';
-const saveUser = jest.fn(() => Promise.resolve({ get: () => username }));
+// Stand-in for src/session.js's authenticate: resolves the request's user.
+const authenticate = jest.fn(() =>
+  Promise.resolve({ user: { get: () => username } }),
+);
 
 describe('getSubmissions', () => {
   let mongo;
@@ -141,12 +144,12 @@ describe('getSubmissions', () => {
   test('sorts by photo time, breaking ties by when they were submitted', async () => {
     const results = await getSubmissions({
       req: { body: { email: username } },
-      saveUser,
+      authenticate,
     });
 
     // F1 and F2 both have a photo timestamp of 3:00 PM; F2 was created after
     // F1, so F2 must come first. The same holds for S2/S1 at 2:58 PM.
-    expect(saveUser).toHaveBeenCalledWith({ email: username });
+    expect(authenticate).toHaveBeenCalled();
     expect(results.map(result => labelsById[result.id])).toEqual([
       'F2',
       'F1',
@@ -158,7 +161,7 @@ describe('getSubmissions', () => {
   test("matches the account's email as well as its username", async () => {
     const results = await getSubmissions({
       req: { body: {} },
-      saveUser: () => Promise.resolve(emailAccount),
+      authenticate: () => Promise.resolve({ user: emailAccount }),
     });
 
     // Only the report carrying the account's email comes back; the entries

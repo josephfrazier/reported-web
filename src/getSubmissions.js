@@ -2,10 +2,11 @@ import Parse from 'parse/node';
 
 import accountIdentifiers from './accountIdentifiers.js';
 
-// `saveUser` is injected for testability; in production it defaults to
-// server.js's user-creation glue.
-const getSubmissions = ({ req, saveUser }) =>
-  saveUser(req.body).then(user => {
+// `authenticate` is injected for testability; in production it comes from
+// src/session.js, so the query runs for whoever the request is authenticated
+// as.
+const getSubmissions = ({ authenticate }) =>
+  authenticate().then(({ user }) => {
     const Submission = Parse.Object.extend('submission');
     // Both of the account's identifiers (username and email) are matched, not
     // just the username: logIn() accepts either, and a mobile account's

@@ -1,5 +1,7 @@
 import Parse from 'parse/node';
 
+import accountIdentifiers from './accountIdentifiers.js';
+
 // Extracted from server.js's /api/deleteSubmission handler so the deletion
 // logic can be tested against a real Parse Server without the surrounding
 // HTTP glue. `authenticate` is injected for testability; in production it
@@ -41,11 +43,18 @@ const deleteSubmission = ({ req, authenticate }) => {
         // Verify that the logged-in user actually made this submission before
         // deleting it. Getting the submission by id directly avoids loading
         // every submission the user has ever made, like getSubmissions() did.
-        // The Username/email match is what that listing used to filter by,
-        // since iOS submissions don't always have Username set.
-        const madeByThisUser =
-          submission.get('Username') === user.get('username') ||
-          submission.get('email') === user.get('username');
+        // Ownership is either the `user` pointer (the account that created
+        // it) or one of the account's identifiers in the address fields, for
+        // the reason in accountIdentifiers.js; the native clients do not
+        // always set those fields.
+        const owner = submission.get('user');
+        const ownedByPointer = Boolean(owner?.id) && owner.id === user.id;
+        const matchesIdentifier = accountIdentifiers(user).some(
+          identifier =>
+            submission.get('Username') === identifier ||
+            submission.get('email') === identifier,
+        );
+        const madeByThisUser = ownedByPointer || matchesIdentifier;
         if (!madeByThisUser) {
           throw submissionNotFoundOrNotYoursError();
         }

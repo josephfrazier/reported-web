@@ -32,6 +32,10 @@ describe('getSubmissions', () => {
   let mongo;
   let parseServer;
   let labelsById;
+  let emailAccount;
+  let emailOnlySubmission;
+  let pointerAccount;
+  let pointerOnlySubmission;
 
   beforeAll(async () => {
     // MongoDB 4.4 is the newest version whose wire protocol parse-server
@@ -114,6 +118,38 @@ describe('getSubmissions', () => {
     });
     const s2 = await create({ timeofreport: '2026-09-03T14:58:00.000Z' });
     labelsById = { [f1.id]: 'F1', [f2.id]: 'F2', [s1.id]: 'S1', [s2.id]: 'S2' };
+
+    // The mobile clients create accounts whose username is not the address
+    // that ends up on their reports (their email is). This is one of those
+    // accounts, and a report carrying its email address.
+    emailAccount = new Parse.User();
+    emailAccount.setUsername('mobile-account');
+    emailAccount.set('email', 'reports@example.com');
+    emailAccount.setPassword('password');
+    await emailAccount.signUp();
+
+    emailOnlySubmission = new Submission();
+    emailOnlySubmission.set('Username', 'reports@example.com');
+    emailOnlySubmission.set(
+      'timeofreport',
+      new Date('2026-09-03T13:00:00.000Z'),
+    );
+    await emailOnlySubmission.save();
+
+    // A native-client report: the `user` pointer, and neither address field,
+    // so only the pointer can find it.
+    pointerAccount = new Parse.User();
+    pointerAccount.setUsername('pointer-account');
+    pointerAccount.setPassword('password');
+    await pointerAccount.signUp();
+
+    pointerOnlySubmission = new Submission();
+    pointerOnlySubmission.set('user', pointerAccount);
+    pointerOnlySubmission.set(
+      'timeofreport',
+      new Date('2026-09-03T12:00:00.000Z'),
+    );
+    await pointerOnlySubmission.save();
   });
 
   afterAll(async () => {
@@ -136,6 +172,29 @@ describe('getSubmissions', () => {
       'F1',
       'S2',
       'S1',
+    ]);
+  });
+
+  test("matches the account's email as well as its username", async () => {
+    const results = await getSubmissions({
+      req: { body: {} },
+      authenticate: () => Promise.resolve({ user: emailAccount }),
+    });
+
+    // Only the report carrying the account's email comes back; the entries
+    // above use a different address, and emailAccount's username (which no
+    // submission carries) must not matter.
+    expect(results.map(result => result.id)).toEqual([emailOnlySubmission.id]);
+  });
+
+  test('matches a submission by its user pointer when it has no address fields', async () => {
+    const results = await getSubmissions({
+      req: { body: {} },
+      authenticate: () => Promise.resolve({ user: pointerAccount }),
+    });
+
+    expect(results.map(result => result.id)).toEqual([
+      pointerOnlySubmission.id,
     ]);
   });
 });

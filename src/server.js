@@ -459,7 +459,12 @@ app.use('/getVehicleType/:licensePlate/:licenseState?', (req, res) => {
     .catch(handlePromiseRejection(res));
 });
 
-app.get('/submissions-map', (req, res) => {
+app.get('/submissions-map', async (req, res) => {
+  // This static page does not go through the SSR route below, so run the same
+  // session resolution here: a visitor who lands straight on the map gets
+  // their legacy cookie migrated (and an existing session cookie slid),
+  // instead of having to detour through the home page first.
+  await resolveSsrSession({ req, res });
   res.sendFile(path.resolve(__dirname, 'public', 'submissions-map.html'));
 });
 

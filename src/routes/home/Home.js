@@ -34,7 +34,6 @@ import omit from 'object.omit';
 import bufferToArrayBuffer from 'buffer-to-arraybuffer';
 import { serialize } from 'object-to-formdata';
 import usStateNames from 'datasets-us-states-abbr-names';
-import cookie from 'cookie';
 import fileExtension from 'file-extension';
 import diceware from 'diceware-generator';
 import wordlist from 'diceware-wordlist-en-eff';
@@ -50,6 +49,11 @@ import marx from 'marx-css/css/marx.css';
 import homeStyles from './Home.css';
 
 import PreviousSubmissionsList from '../../components/PreviousSubmissionsList.js';
+import {
+  HOME_STATE_COOKIE,
+  HOME_STATE_MAX_AGE,
+  serializeHomeState,
+} from '../../homeStateCookie.js';
 import formatGeosearchAddress from '../../formatGeosearchAddress.js';
 import earliestTakenPhoto from '../../earliestTakenPhoto.js';
 import createGeosearchAddressCache from '../../geosearchAddressCache.js';
@@ -69,14 +73,12 @@ usStateNames.DC = 'District of Columbia';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyDlwm2ykA0ohTXeVepQYvkcmdjz2M2CKEI';
 
-const COOKIE_KEY = 'reportedWebHomeState';
-const COOKIE_MAX_AGE = 365 * 24 * 60 * 60; // 1 year in seconds
-
-const setHomeStateCookie = (value, maxAge) => {
-  document.cookie = cookie.serialize(COOKIE_KEY, value, {
+// The value is an object; the serialization (and the cookie's attributes)
+// live in src/homeStateCookie.js, which the server also uses to read and
+// rewrite the same cookie.
+const setHomeStateCookie = (state, maxAge) => {
+  document.cookie = serializeHomeState(state, {
     maxAge,
-    path: '/',
-    sameSite: 'lax',
     secure: window.location.protocol === 'https:',
   });
 };
@@ -798,7 +800,7 @@ class Home extends React.Component {
     // The old localStorage key came from getDisplayName() which resolved to
     // 'Function' for class components. The newer key was 'reportedWebHomeState'.
     // Migrate both old localStorage keys to the cookie if no cookie exists yet.
-    if (!document.cookie.includes(`${COOKIE_KEY}=`)) {
+    if (!document.cookie.includes(`${HOME_STATE_COOKIE}=`)) {
       const migrateKeys = ['Function', 'reportedWebHomeState'];
       for (const key of migrateKeys) {
         const oldData = localStorage.getItem(key);
@@ -810,7 +812,7 @@ class Home extends React.Component {
             Object.keys(this.initialStatePersistent).forEach(k => {
               if (k in parsed) persistentData[k] = parsed[k];
             });
-            setHomeStateCookie(JSON.stringify(persistentData), COOKIE_MAX_AGE);
+            setHomeStateCookie(persistentData, HOME_STATE_MAX_AGE);
 
             // Use the setState callback so handleLogIn sees the migrated
             // email/password in this.state, not the constructor defaults.
@@ -1867,7 +1869,7 @@ class Home extends React.Component {
         loginSuccessful: false,
       },
       () => {
-        setHomeStateCookie('', 0);
+        setHomeStateCookie({}, 0);
         // Remove old localStorage keys so they aren't re-migrated
         // if the user logs back in later.
         localStorage.removeItem('Function');
@@ -1944,7 +1946,7 @@ class Home extends React.Component {
     Object.keys(this.initialStatePersistent).forEach(key => {
       persistentState[key] = this.state[key];
     });
-    setHomeStateCookie(JSON.stringify(persistentState), COOKIE_MAX_AGE);
+    setHomeStateCookie(persistentState, HOME_STATE_MAX_AGE);
   };
 
   findMatchingPlateThumbnail() {

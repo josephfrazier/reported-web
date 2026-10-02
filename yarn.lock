@@ -8329,10 +8329,10 @@ micromatch@^4.0.4, micromatch@^4.0.5, micromatch@^4.0.8:
     braces "^3.0.3"
     picomatch "^2.3.1"
 
-mime-bytes@^0.30.0:
-  version "0.30.0"
-  resolved "https://registry.yarnpkg.com/mime-bytes/-/mime-bytes-0.30.0.tgz#755a5c2d081683bfcfdfa1a495aabe15f24261ed"
-  integrity sha512-jNTUN9mLFT0Xu7P+Ucey0PlQ75UPMYCIes1SRP7+1hlFYCBwMbAEXs0A3xaZrIWhrMjBRe8Bhb0IlUJJ8gJB6Q==
+mime-bytes@^0.33.0:
+  version "0.33.0"
+  resolved "https://registry.yarnpkg.com/mime-bytes/-/mime-bytes-0.33.0.tgz#5cb7da5cf51941216b98fdf776de2dc3417783fe"
+  integrity sha512-emVdYtii+gojiQSb8e1JtrQqngXuaQjE15pTRj0cOix+RsT9QV5tHznNdZ6RxBSR4nT0fO7naW5rgeE6F8eOgg==
 
 mime-db@1.52.0:
   version "1.52.0"

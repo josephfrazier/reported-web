@@ -18,6 +18,8 @@ const ContextType = {
   commitHash: PropTypes.string,
   parseServerUrl: PropTypes.string,
   showParseServerBanner: PropTypes.bool,
+  reviewAppUrl: PropTypes.string,
+  reviewAppLabel: PropTypes.string,
 };
 
 /**

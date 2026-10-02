@@ -127,13 +127,16 @@ const createSubmission = async ({
   const images = attachmentsWithFormats.filter(isImage);
   const videos = attachmentsWithFormats.filter(isVideo);
 
+  // The submission is ACLed to its reporter, so its files and the submission
+  // itself are saved with that user's session token: parse-server then
+  // enforces the ACL instead of trusting this code to apply it.
   await Promise.all([
     ...images.slice(0, 3).map(async ({ attachmentBuffer, ext }, index) => {
       const key = `photoData${index}`;
       const file = new Parse.File(`${key}.${ext}`, {
         base64: attachmentBuffer.toString('base64'),
       });
-      await file.save();
+      await file.save({ sessionToken });
       submission.set(key, file);
     }),
     ...videos.slice(0, 3).map(async ({ attachmentBuffer, ext }, index) => {
@@ -141,11 +144,11 @@ const createSubmission = async ({
       const file = new Parse.File(`${key}.${ext}`, {
         base64: attachmentBuffer.toString('base64'),
       });
-      await file.save();
+      await file.save({ sessionToken });
       submission.set(key, file.url());
     }),
   ]);
-  await submission.save(null);
+  await submission.save(null, { sessionToken });
 
   // Unwrap encoded Date objects into ISO strings
   // before: { __type: 'Date', iso: '2018-05-26T23:17:22.000Z' }

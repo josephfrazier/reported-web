@@ -85,7 +85,9 @@ describe('getSubmissionsWithTasks', () => {
       parseServer.server.once('error', reject);
     });
     // parse-server initializes its own nested parse SDK; ours needs it too.
-    Parse.initialize('test-app');
+    // The master key is passed for getSubmissions()'s listing query; the task
+    // join itself runs without it, since task records carry no ACL.
+    Parse.initialize('test-app', undefined, 'test-master');
     Parse.serverURL = `http://localhost:${parseServer.server.address().port}/parse`;
 
     const Submission = Parse.Object.extend('submission');

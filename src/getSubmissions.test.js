@@ -88,7 +88,10 @@ describe('getSubmissions', () => {
       parseServer.server.once('error', reject);
     });
     // parse-server initializes its own nested parse SDK; ours needs it too.
-    Parse.initialize('test-app');
+    // getSubmissions() lists with the master key, because submissions made by
+    // the mobile clients belong to a different Parse user with the same email
+    // address (see the test's iOS-style entries below), so it is passed here.
+    Parse.initialize('test-app', undefined, 'test-master');
     Parse.serverURL = `http://localhost:${parseServer.server.address().port}/parse`;
 
     // Create the newest-photo submissions FIRST and the oldest-photo ones

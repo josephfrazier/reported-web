@@ -90,8 +90,13 @@ if (commitHash === 'unknown') {
 }
 
 // http://docs.parseplatform.org/js/guide/#getting-started
+//
+// Requests carry the master key only where a call site opts in with
+// { useMasterKey: true }: the reads that must bypass ACLs, which are
+// submissions belonging to another Parse user with the same email, and the
+// public map's query. Every other request runs as the logged-in user, via an
+// explicit sessionToken, or with no credential at all.
 Parse.initialize(PARSE_APP_ID, PARSE_JAVASCRIPT_KEY, PARSE_MASTER_KEY);
-Parse.Cloud.useMasterKey();
 Parse.serverURL = PARSE_SERVER_URL;
 
 // Whether to show the "NOT PRODUCTION" banner on the home page. Enabled via
@@ -534,7 +539,12 @@ app.get('/api/submissions-in-polygon', (req, res) => {
   query.select(POLYGON_FIELDS);
 
   query
-    .find()
+    // The submissions this returns belong to other users by design (that is
+    // the point of the public map), and their ACLs only name their own
+    // owner, so this read has to bypass them. Granting public read access at
+    // creation time instead would expose every field the reporters did not
+    // agree to share (name, phone, and so on), so the master key stays.
+    .find({ useMasterKey: true })
     .then(parseResults => {
       const results = parseResults.map(obj => {
         const json = obj.toJSON();

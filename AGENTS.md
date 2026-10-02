@@ -71,7 +71,7 @@
 
 Extract a route's logic into its own module as **three commits**, in this order:
 
-1. **Characterization test first** — a real-HTTP test through the actual express app against a real Parse Server + in-memory MongoDB (the `src/server.test.js` harness: env vars set before `require('./server.js')`, `app.listen` replacement, `jest.mock` on chunk-manifest.json, `X-Forwarded-Proto: https`, explicit `emailVerified: true` seeding).
+1. **Characterization test first** — a real-HTTP test through the actual express app against a real Parse Server + in-memory MongoDB, in the new module's own test file. Step 3 rewrites that file, so no example stays in the tree; the most recent one is `git show f91bb664:src/getAttachmentData.test.js`. Its shape: env vars set before `require('./server.js')`, `app.listen` replacement, `jest.mock` on chunk-manifest.json, `X-Forwarded-Proto: https`, explicit `emailVerified: true` seeding.
 2. **Extract the implementation** — move the logic verbatim into its own module so routes become thin adapters; the characterization test must stay green.
 3. **Simplify the test** — replace the HTTP-level test with a direct module test against the real Parse server; the fetch/FormData/forceSsl/env-var/app.listen workarounds go away.
 

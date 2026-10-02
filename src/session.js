@@ -9,8 +9,9 @@ import {
 import { logIn } from './users.js';
 
 // The browser's session cookie. It holds the Parse session token, so it is
-// HttpOnly: no script (and no XSS) can read it, and the server is the only
-// party that ever sees the token.
+// HttpOnly: no script can read the token, and the server is the only party
+// that ever sees it. A script on the page can still make requests as the
+// logged-in user while the page is open; it just cannot take the token away.
 export const SESSION_COOKIE = 'reportedWebSession';
 
 // Parse sessions last a year by default (parse-server's sessionLength), and

@@ -7,8 +7,6 @@
  * LICENSE.txt file in the root directory of this source tree.
  */
 
-/* eslint-disable global-require */
-
 // The top-level (parent) route
 const routes = {
   path: '',
@@ -39,13 +37,5 @@ const routes = {
     return route;
   },
 };
-
-// The error page is available by permanent url for development mode
-if (__DEV__) {
-  routes.children.unshift({
-    path: '/error',
-    action: require('./error/index.js').default,
-  });
-}
 
 export default routes;

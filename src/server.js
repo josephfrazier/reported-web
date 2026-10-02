@@ -20,6 +20,7 @@ import Parse from 'parse/node';
 import cookie from 'cookie';
 import multer from 'multer';
 import StyleContext from 'isomorphic-style-loader/StyleContext';
+import * as Sentry from '@sentry/node';
 
 import { geosearch } from './geoclient.js';
 import getVehicleType from './getVehicleType.js';
@@ -61,10 +62,44 @@ import getReviewAppSource from './getReviewAppSource.js';
 
 require('dotenv').config();
 
+let commitHash = process.env.HEROKU_BUILD_COMMIT || 'unknown';
+if (commitHash === 'unknown') {
+  try {
+    commitHash = execSync('git rev-parse --short HEAD', {
+      encoding: 'utf8',
+    }).trim();
+  } catch (e) {
+    console.warn('Could not determine git commit hash:', e.message);
+  }
+}
+
+// Errors, unhandled rejections, and console logs go to Sentry. This must
+// run before the unhandledRejection handler below, so that Sentry's own
+// listener captures the rejection before that handler ends the process.
+if (config.sentry.dsn) {
+  Sentry.init({
+    dsn: config.sentry.dsn,
+    release: commitHash,
+    environment: process.env.NODE_ENV || 'development',
+    integrations: defaultIntegrations => [
+      ...defaultIntegrations,
+      Sentry.consoleLoggingIntegration({
+        levels: ['log', 'info', 'warn', 'error'],
+      }),
+    ],
+  });
+}
+
 process.on('unhandledRejection', (reason, p) => {
   console.error('Unhandled Rejection at:', p, 'reason:', reason);
   // send entire app down. Process manager will restart it
-  process.exit(1);
+  const exit = () => process.exit(1);
+  if (Sentry.getClient()) {
+    // Give the captured event time to leave before the process dies.
+    Sentry.close(2000).then(exit, exit);
+  } else {
+    exit();
+  }
 });
 
 const {
@@ -77,17 +112,6 @@ const {
   PLATERECOGNIZER_TOKEN,
   PLATERECOGNIZER_TOKEN_TWO,
 } = process.env;
-
-let commitHash = process.env.HEROKU_BUILD_COMMIT || 'unknown';
-if (commitHash === 'unknown') {
-  try {
-    commitHash = execSync('git rev-parse --short HEAD', {
-      encoding: 'utf8',
-    }).trim();
-  } catch (e) {
-    console.warn('Could not determine git commit hash:', e.message);
-  }
-}
 
 // http://docs.parseplatform.org/js/guide/#getting-started
 //
@@ -667,6 +691,7 @@ app.get('*', async (req, res, next) => {
     data.app = {
       apiUrl: config.api.clientUrl,
       commitHash,
+      sentryDsn: config.sentry.dsn,
       parseServerUrl: PARSE_SERVER_URL,
       showParseServerBanner,
       reviewAppUrl,

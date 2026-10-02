@@ -15,11 +15,28 @@ import queryString from 'query-string';
 import { createPath } from 'history';
 import StyleContext from 'isomorphic-style-loader/StyleContext';
 import cookie from 'cookie';
+import * as Sentry from '@sentry/browser';
 import App from './components/App.js';
 import createFetch from './createFetch.js';
 import history from './history.js';
 import updateMeta from './DOMUtils.js';
 import router from './router.js';
+
+// Errors, unhandled rejections, and console logs go to Sentry. The DSN is
+// public by design (it ships in this bundle); leave it unset to disable.
+if (window.App.sentryDsn) {
+  Sentry.init({
+    dsn: window.App.sentryDsn,
+    release: window.App.commitHash,
+    environment: __DEV__ ? 'development' : 'production',
+    integrations: defaultIntegrations => [
+      ...defaultIntegrations,
+      Sentry.consoleLoggingIntegration({
+        levels: ['log', 'info', 'warn', 'error'],
+      }),
+    ],
+  });
+}
 
 // Parse cookies from document.cookie into a plain object. This must be in
 // the client context so that route actions receive the same cookie data

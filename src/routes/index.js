@@ -19,28 +19,6 @@ const routes = {
       path: '',
       load: () => import(/* webpackChunkName: 'home' */ './home/index.js'),
     },
-    {
-      path: '/login',
-      load: () => import(/* webpackChunkName: 'login' */ './login/index.js'),
-    },
-    {
-      path: '/register',
-      load: () =>
-        import(/* webpackChunkName: 'register' */ './register/index.js'),
-    },
-    {
-      path: '/about',
-      load: () => import(/* webpackChunkName: 'about' */ './about/index.js'),
-    },
-    {
-      path: '/privacy',
-      load: () =>
-        import(/* webpackChunkName: 'privacy' */ './privacy/index.js'),
-    },
-    {
-      path: '/admin',
-      load: () => import(/* webpackChunkName: 'admin' */ './admin/index.js'),
-    },
 
     // Wildcard routes, e.g. { path: '(.*)', ... } (must go last)
     {

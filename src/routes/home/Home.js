@@ -829,10 +829,6 @@ class Home extends React.Component {
       }
     }
 
-    // Whether the page load was logged in comes from the session cookie,
-    // which is HttpOnly: the server puts the answer in the initial state
-    // (SSR) and in window.App (hydration). Nothing to retry here.
-
     // if there's no attachments or a time couldn't be extracted, just use now
     if (this.state.attachmentData.length === 0 || !this.state.CreateDate) {
       this.setCreateDate({ millisecondsSinceEpoch: Date.now() });
@@ -1842,8 +1838,8 @@ class Home extends React.Component {
     }
   };
 
-  // The fields /saveUser accepts. The password is never among them: with the
-  // session cookie, the server no longer needs it to identify the user.
+  // The fields /saveUser accepts. The password is never among them: the
+  // session cookie identifies the user.
   profileFields = () => {
     const { email, FirstName, LastName, Phone, testify } = this.state;
     return { email, FirstName, LastName, Phone, testify };

@@ -24,17 +24,32 @@ export async function logIn({ email, password }) {
   return user
     .signUp(null, { installationId })
     .catch(() => Parse.User.logIn(username, password, { installationId }))
-    .then(userAgain => {
+    .then(async userAgain => {
       // Not the user object itself: it carries the session token, which is
       // the credential the browser's cookie holds.
       console.info('Logged in', userAgain.id);
       if (!userAgain.get('emailVerified')) {
-        userAgain.set({ email }); // reset email to trigger a verification email
-        userAgain.save(null, {
-          // sessionToken must be manually passed in:
-          // https://github.com/parse-community/parse-server/issues/1729#issuecomment-218932566
-          sessionToken: userAgain.get('sessionToken'),
-        });
+        // Ask parse-server for another verification email. That write needs
+        // the user's own session, but with `preventLoginWithUnverifiedEmail`
+        // (which Back4App sets) sign-up returns no session token at all
+        // (parse-server's RestWrite#createSessionTokenIfNeeded), and sign-up
+        // already sent the email. So when there is no token, skip the
+        // resend: the unauthenticated write comes back as "Cannot modify
+        // user" (206), which the global master key used to hide until #1047,
+        // and the unhandled rejection now exits the process (src/server.js).
+        const sessionToken = userAgain.getSessionToken();
+        if (sessionToken) {
+          userAgain.set({ email }); // reset email to trigger a verification email
+          try {
+            await userAgain.save(null, {
+              // sessionToken must be manually passed in:
+              // https://github.com/parse-community/parse-server/issues/1729#issuecomment-218932566
+              sessionToken,
+            });
+          } catch (error) {
+            console.error('Could not resend the verification email:', error);
+          }
+        }
         const message = `We just sent you an email with a link to confirm your address, please find and click that.`;
         throw { message }; // eslint-disable-line no-throw-literal
       }

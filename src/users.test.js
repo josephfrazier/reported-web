@@ -73,6 +73,16 @@ describe('users', () => {
         mountPath: '/parse',
         port: 0,
         verbose: false,
+        // Production requires a verified address and refuses to log in
+        // without one. In that configuration sign-up returns no session
+        // token at all (parse-server's RestWrite#createSessionTokenIfNeeded),
+        // which is what makes logIn() skip its verification-email resend.
+        verifyUserEmails: true,
+        preventLoginWithUnverifiedEmail: true,
+        appName: 'test',
+        publicServerURL: 'http://localhost/parse',
+        // Nothing reads the mail; the calls just have to succeed.
+        emailAdapter: { sendMail: () => Promise.resolve() },
       },
       () => {},
     );
@@ -119,13 +129,36 @@ describe('users', () => {
 
   test('logIn refuses a user that signed up but has not verified their email', async () => {
     // signUp() succeeds for the new address, but emailVerified is unset, so
-    // logIn() re-sets the email (to trigger a verification email) and throws.
+    // logIn() throws the "check your email" error.
     await expect(
       logIn({ email: 'unverified@example.com', password }),
     ).rejects.toMatchObject({
       message:
         'We just sent you an email with a link to confirm your address, please find and click that.',
     });
+  });
+
+  test('an unverified signup leaves no unauthenticated save behind', async () => {
+    // The verification-email resend writes to the user's own _User row, and
+    // with preventLoginWithUnverifiedEmail sign-up hands back no session
+    // token to authorize it. Sending it anyway comes back as a 206, "Cannot
+    // modify user", whose rejection exits the process.
+    const save = jest.spyOn(Parse.User.prototype, 'save');
+
+    await expect(
+      logIn({ email: 'unverified-resend@example.com', password }),
+    ).rejects.toMatchObject({
+      message:
+        'We just sent you an email with a link to confirm your address, please find and click that.',
+    });
+
+    // signUp() saves with only an installationId; the resend would be the
+    // one call naming a sessionToken, and without a token it must not happen.
+    const resends = save.mock.calls.filter(
+      ([, options]) => options && 'sessionToken' in options,
+    );
+    save.mockRestore();
+    expect(resends).toEqual([]);
   });
 
   test('logIn rejects a wrong password', async () => {

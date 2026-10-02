@@ -349,13 +349,18 @@ function upperCaseInputValueInPlace(input) {
 // `/submit` among them: a submission POST repeated after a 5xx can arrive twice.
 axiosRetry(axios, { retries: 0 });
 
-async function fetchPlateResults({
-  attachmentFile,
-  attachmentBuffer,
-  ext,
-  email,
-  password,
-}) {
+// A 401 means the session is gone: expired, revoked by a logout elsewhere, or
+// invalidated by a password reset. Home registers the handler on mount; the
+// interceptor lives here because the axios instance is shared.
+let onUnauthorized = null;
+axios.interceptors.response.use(undefined, error => {
+  if (error?.response?.status === 401 && onUnauthorized) {
+    onUnauthorized();
+  }
+  return Promise.reject(error);
+});
+
+async function fetchPlateResults({ attachmentFile, attachmentBuffer, ext }) {
   if (attachmentPlateCache.has(attachmentFile)) {
     console.info(`found cached plate results for ${attachmentFile.name}!`);
     return attachmentPlateCache.get(attachmentFile);
@@ -374,11 +379,8 @@ async function fetchPlateResults({
   );
   console.timeEnd(`bufferToBlob(${attachmentFile.name})`); // eslint-disable-line no-console
 
-  const formData = serialize({
-    attachmentFile: attachmentBlob,
-    email,
-    password,
-  });
+  // No credentials: /platerecognizer authenticates with the session cookie.
+  const formData = serialize({ attachmentFile: attachmentBlob });
   // Plate Recognizer rate limits, so a 429 here is expected rather than
   // exceptional -- and it is transient, which is the difference between a plate
   // read and a photo the user has to type in by hand. What a repeat is worth is
@@ -396,8 +398,6 @@ async function extractPlate({
   attachmentBuffer,
   ext,
   isAlprEnabled,
-  email,
-  password,
 }) {
   try {
     console.time(`extractPlate(${attachmentFile.name})`); // eslint-disable-line no-console
@@ -411,8 +411,6 @@ async function extractPlate({
       attachmentFile,
       attachmentBuffer,
       ext,
-      email,
-      password,
     });
     const { results } = data;
 
@@ -719,7 +717,6 @@ class Home extends React.Component {
 
     const initialStatePerSubmission = {
       email: '',
-      password: '',
       FirstName: '',
       LastName: '',
       Phone: '',
@@ -750,6 +747,11 @@ class Home extends React.Component {
     const initialStatePerSession = {
       attachmentData: [],
 
+      // Per session, not persistent: the password is never written to the
+      // cookie, and it is not sent to /submit or /api/deleteSubmission
+      // (getPerSubmissionState keeps only initialStatePerSubmission keys).
+      password: '',
+
       isAlprLoading: false,
       isPasswordRevealed: false,
       isUserInfoSaving: false,
@@ -778,6 +780,8 @@ class Home extends React.Component {
       // This ensures logged-in users see the correct UI immediately on first render.
       ...(props.initialState || {}),
     };
+    // A legacy cookie still contains the password; never let it into state.
+    initialState.password = '';
 
     this.state = initialState;
     this.initialStatePerSubmission = initialStatePerSubmission;
@@ -796,6 +800,9 @@ class Home extends React.Component {
   }
 
   componentDidMount() {
+    // Handle a 401 from any API call (see the interceptor above).
+    onUnauthorized = this.handleSessionExpired;
+
     // Migrate from old localStorage key ('Function') to cookie.
     // The old localStorage key came from getDisplayName() which resolved to
     // 'Function' for class components. The newer key was 'reportedWebHomeState'.
@@ -813,18 +820,7 @@ class Home extends React.Component {
               if (k in parsed) persistentData[k] = parsed[k];
             });
             setHomeStateCookie(persistentData, HOME_STATE_MAX_AGE);
-
-            // Use the setState callback so handleLogIn sees the migrated
-            // email/password in this.state, not the constructor defaults.
-            this.setState(persistentData, () => {
-              if (
-                persistentData.email &&
-                persistentData.password &&
-                !persistentData.loginSuccessful
-              ) {
-                this.handleLogIn();
-              }
-            });
+            this.setState(persistentData);
             break;
           } catch {
             // Ignore parse errors from corrupted data.
@@ -833,15 +829,9 @@ class Home extends React.Component {
       }
     }
 
-    // If the cookie already existed at mount time (i.e. a subsequent
-    // page load), check whether loginSuccessful is missing and retry.
-    if (
-      this.state.email &&
-      this.state.password &&
-      !this.state.loginSuccessful
-    ) {
-      this.handleLogIn();
-    }
+    // Whether the page load was logged in comes from the session cookie,
+    // which is HttpOnly: the server puts the answer in the initial state
+    // (SSR) and in window.App (hydration). Nothing to retry here.
 
     // if there's no attachments or a time couldn't be extracted, just use now
     if (this.state.attachmentData.length === 0 || !this.state.CreateDate) {
@@ -931,6 +921,7 @@ class Home extends React.Component {
 
   componentWillUnmount() {
     document.removeEventListener('keydown', this.handleDocumentKeyDown);
+    onUnauthorized = null;
   }
 
   onDeleteSubmission = ({ objectId }) => {
@@ -1537,9 +1528,9 @@ class Home extends React.Component {
         attachmentData.forEach(attachmentFile => {
           if (!fileUploadPromises.has(attachmentFile)) {
             const uploadPromise = (async () => {
+              // No credentials: the route authenticates with the session
+              // cookie the browser sends.
               const formData = new FormData();
-              formData.append('email', this.state.email);
-              formData.append('password', this.state.password);
               formData.append(
                 'attachmentData',
                 await inMemoryAttachment({ attachmentFile }),
@@ -1603,8 +1594,6 @@ class Home extends React.Component {
                 attachmentBuffer,
                 ext,
                 isAlprEnabled: this.state.isAlprEnabled,
-                email: this.state.email,
-                password: this.state.password,
               })
                 .then(result => {
                   if (
@@ -1831,7 +1820,7 @@ class Home extends React.Component {
         }),
         async () => {
           try {
-            await axios.post('/saveUser', this.state);
+            await axios.post('/saveUser', this.profileFields());
             this.setState({ isUserInfoSaving: false, isAuthModalOpen: false });
             this.savePersistentStateToCookie();
             this.loadPreviousSubmissions();
@@ -1853,7 +1842,14 @@ class Home extends React.Component {
     }
   };
 
-  handleLogOut = () => {
+  // The fields /saveUser accepts. The password is never among them: with the
+  // session cookie, the server no longer needs it to identify the user.
+  profileFields = () => {
+    const { email, FirstName, LastName, Phone, testify } = this.state;
+    return { email, FirstName, LastName, Phone, testify };
+  };
+
+  clearAuthState = (extraState = {}) => {
     this.setState(
       {
         email: '',
@@ -1867,6 +1863,7 @@ class Home extends React.Component {
         isPreferencesOpen: false,
         hasLoadedPreviousSubmissions: false,
         loginSuccessful: false,
+        ...extraState,
       },
       () => {
         setHomeStateCookie({}, 0);
@@ -1878,6 +1875,26 @@ class Home extends React.Component {
         clearCachedSubmissions();
       },
     );
+  };
+
+  handleLogOut = () => {
+    // Revoke the Parse session server-side, then clear locally whether or not
+    // that request succeeds (an unreachable server must not trap the user in
+    // a logged-in UI).
+    axios.post('/api/logOut').catch(err => console.error({ err }));
+    this.clearAuthState();
+  };
+
+  // A 401 from any API call: the session is gone. Not shown for requests made
+  // while logged out (there is nothing to expire).
+  handleSessionExpired = () => {
+    if (!this.state.loginSuccessful) {
+      return;
+    }
+    this.clearAuthState({
+      isAuthModalOpen: true,
+      authError: 'Your session expired, please log in again.',
+    });
   };
 
   handlePasswordReset = async () => {
@@ -1902,7 +1919,7 @@ class Home extends React.Component {
     e.preventDefault();
     this.setState({ isUserInfoSaving: true });
     try {
-      await axios.post('/saveUser', this.state);
+      await axios.post('/saveUser', this.profileFields());
       this.setState({ isUserInfoSaving: false, isEditProfileOpen: false });
       document.querySelector(`.${homeStyles.root}`).scrollTo({
         top: 100,
@@ -2423,8 +2440,7 @@ class Home extends React.Component {
                     />
                   </label>
                   <label htmlFor="auth-signup-password">
-                    Password (this is saved on your device, so use a password
-                    you don&apos;t use anywhere else):
+                    Password:
                     <div className={homeStyles['auth-field-row']}>
                       <input
                         required

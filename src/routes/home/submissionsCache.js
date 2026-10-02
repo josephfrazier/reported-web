@@ -7,11 +7,11 @@
  * be shown instantly while the fresh list loads in the background (see
  * Home.loadPreviousSubmissions).
  *
- * The cache is not keyed per user: the home-state cookie already stores the
- * user's credentials in plaintext, so anyone who can read localStorage on
- * this machine can log in as that user anyway. Logging out clears the cache,
- * which keeps one account's submissions from appearing for another account
- * that logs in later on the same machine.
+ * The cache is not keyed per user: the session cookie is HttpOnly, so a
+ * script that can read this cache cannot read the credential that would let
+ * it fetch the same submissions, and logging out clears the cache, which
+ * keeps one account's submissions from appearing for another account that
+ * logs in later on the same machine.
  *
  * Only a bounded, newest-first prefix is cached: some users have thousands of
  * submissions, whose JSON exceeds localStorage's ~5MB per-origin quota.

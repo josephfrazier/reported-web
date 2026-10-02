@@ -29,6 +29,8 @@ describe('getSubmissions', () => {
   let mongo;
   let parseServer;
   let labelsById;
+  let emailAccount;
+  let emailOnlySubmission;
 
   beforeAll(async () => {
     // MongoDB 4.4 is the newest version whose wire protocol parse-server
@@ -111,6 +113,23 @@ describe('getSubmissions', () => {
     });
     const s2 = await create({ timeofreport: '2026-09-03T14:58:00.000Z' });
     labelsById = { [f1.id]: 'F1', [f2.id]: 'F2', [s1.id]: 'S1', [s2.id]: 'S2' };
+
+    // The mobile clients create accounts whose username is not the address
+    // that ends up on their reports (their email is). This is one of those
+    // accounts, and a report carrying its email address.
+    emailAccount = new Parse.User();
+    emailAccount.setUsername('mobile-account');
+    emailAccount.set('email', 'reports@example.com');
+    emailAccount.setPassword('password');
+    await emailAccount.signUp();
+
+    emailOnlySubmission = new Submission();
+    emailOnlySubmission.set('Username', 'reports@example.com');
+    emailOnlySubmission.set(
+      'timeofreport',
+      new Date('2026-09-03T13:00:00.000Z'),
+    );
+    await emailOnlySubmission.save();
   });
 
   afterAll(async () => {
@@ -134,5 +153,17 @@ describe('getSubmissions', () => {
       'S2',
       'S1',
     ]);
+  });
+
+  test("matches the account's email as well as its username", async () => {
+    const results = await getSubmissions({
+      req: { body: {} },
+      saveUser: () => Promise.resolve(emailAccount),
+    });
+
+    // Only the report carrying the account's email comes back; the entries
+    // above use a different address, and emailAccount's username (which no
+    // submission carries) must not matter.
+    expect(results.map(result => result.id)).toEqual([emailOnlySubmission.id]);
   });
 });

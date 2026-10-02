@@ -1,5 +1,7 @@
 import Parse from 'parse/node';
 
+import accountIdentifiers from './accountIdentifiers.js';
+
 // Extracted from server.js's /api/deleteSubmission handler so the deletion
 // logic can be tested against a real Parse Server without the surrounding
 // HTTP glue. `saveUser` is injected for testability; in production it
@@ -42,10 +44,13 @@ const deleteSubmission = ({ req, saveUser }) => {
         // deleting it. Getting the submission by id directly avoids loading
         // every submission the user has ever made, like getSubmissions() did.
         // The Username/email match is what that listing used to filter by,
-        // since iOS submissions don't always have Username set.
-        const madeByThisUser =
-          submission.get('Username') === user.get('username') ||
-          submission.get('email') === user.get('username');
+        // since iOS submissions don't always have Username set. Both of the
+        // account's identifiers count, for the reason in accountIdentifiers.js.
+        const madeByThisUser = accountIdentifiers(user).some(
+          identifier =>
+            submission.get('Username') === identifier ||
+            submission.get('email') === identifier,
+        );
         if (!madeByThisUser) {
           throw submissionNotFoundOrNotYoursError();
         }

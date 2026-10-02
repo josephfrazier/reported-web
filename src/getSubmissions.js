@@ -1,23 +1,30 @@
 import Parse from 'parse/node';
 
+import accountIdentifiers from './accountIdentifiers.js';
+
 // `saveUser` is injected for testability; in production it defaults to
 // server.js's user-creation glue.
 const getSubmissions = ({ req, saveUser }) =>
   saveUser(req.body).then(user => {
     const Submission = Parse.Object.extend('submission');
+    // Both of the account's identifiers (username and email) are matched, not
+    // just the username: logIn() accepts either, and a mobile account's
+    // username is not always the address that ends up on its reports. See
+    // accountIdentifiers.js.
+    const identifiers = accountIdentifiers(user);
 
     // Search by "Username" (email address) to show submissions made by all
     // users with the same email, since the web and mobile clients create
     // separate users.
     const usernameQuery = new Parse.Query(Submission);
-    usernameQuery.equalTo('Username', user.get('username'));
+    usernameQuery.containedIn('Username', identifiers);
     usernameQuery.descending('timeofreport');
     usernameQuery.limit(Number.MAX_SAFE_INTEGER);
 
     // Also search by "email" since submissions from iOS clients don't always
     // have this set.
     const emailQuery = new Parse.Query(Submission);
-    emailQuery.equalTo('email', user.get('username'));
+    emailQuery.containedIn('email', identifiers);
     emailQuery.descending('timeofreport');
     emailQuery.limit(Number.MAX_SAFE_INTEGER);
 

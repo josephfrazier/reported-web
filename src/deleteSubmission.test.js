@@ -33,6 +33,8 @@ describe('deleteSubmission', () => {
   let ownedSubmission;
   let iosStyleSubmission;
   let otherUsersSubmission;
+  let emailAccount;
+  let emailOwnedSubmission;
 
   beforeAll(async () => {
     // MongoDB 4.4 is the newest version whose wire protocol parse-server
@@ -112,6 +114,23 @@ describe('deleteSubmission', () => {
       new Date('2026-09-03T13:00:00.000Z'),
     );
     await otherUsersSubmission.save();
+
+    // The mobile clients create accounts whose username is not the address
+    // that ends up on their reports (their email is). The ownership check
+    // must accept the account's email too, so this report is deletable.
+    emailAccount = new Parse.User();
+    emailAccount.setUsername('mobile-account');
+    emailAccount.set('email', 'reports@example.com');
+    emailAccount.setPassword('password');
+    await emailAccount.signUp();
+
+    emailOwnedSubmission = new Submission();
+    emailOwnedSubmission.set('Username', 'reports@example.com');
+    emailOwnedSubmission.set(
+      'timeofreport',
+      new Date('2026-09-03T12:00:00.000Z'),
+    );
+    await emailOwnedSubmission.save();
   });
 
   afterAll(async () => {
@@ -144,6 +163,20 @@ describe('deleteSubmission', () => {
 
     const query = new Parse.Query(Submission);
     await expect(query.get(iosStyleSubmission.id)).rejects.toMatchObject({
+      code: 101,
+    });
+  });
+
+  test("deletes a submission that carries the account's email, not its username", async () => {
+    const result = await deleteSubmission({
+      req: { body: { objectId: emailOwnedSubmission.id } },
+      saveUser: () => Promise.resolve(emailAccount),
+    });
+
+    expect(result).toEqual({ objectId: emailOwnedSubmission.id });
+
+    const query = new Parse.Query(Submission);
+    await expect(query.get(emailOwnedSubmission.id)).rejects.toMatchObject({
       code: 101,
     });
   });

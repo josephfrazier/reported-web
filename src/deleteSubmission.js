@@ -2,8 +2,8 @@ import Parse from 'parse/node';
 
 // Extracted from server.js's /api/deleteSubmission handler so the deletion
 // logic can be tested against a real Parse Server without the surrounding
-// HTTP glue. `saveUser` is injected for testability; in production it
-// defaults to server.js's user-creation glue.
+// HTTP glue. `authenticate` is injected for testability; in production it
+// comes from src/session.js.
 
 // "The submission doesn't exist" and "the submission isn't the user's" must
 // be indistinguishable, so the route can't be used to confirm that someone
@@ -23,9 +23,9 @@ const submissionNotFoundOrNotYoursError = () => {
   return error;
 };
 
-const deleteSubmission = ({ req, saveUser }) => {
+const deleteSubmission = ({ req, authenticate }) => {
   const { objectId } = req.body;
-  return saveUser(req.body).then(user => {
+  return authenticate().then(({ user }) => {
     const Submission = Parse.Object.extend('submission');
     const query = new Parse.Query(Submission);
     // Fetched with the master key for the same reason getSubmissions() lists

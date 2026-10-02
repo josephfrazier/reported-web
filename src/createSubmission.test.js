@@ -76,8 +76,8 @@ describe('createSubmission', () => {
   let mongo;
   let parseServer;
   let user;
+  let sessionToken;
   let otherUserSessionToken;
-  let saveUser;
 
   beforeAll(async () => {
     // MongoDB 4.4 is the newest version whose wire protocol parse-server
@@ -140,6 +140,9 @@ describe('createSubmission', () => {
     user.setUsername(email);
     user.setPassword('test-password');
     await user.signUp();
+    // The sign-up session. Captured once: a save or fetch response without a
+    // sessionToken in it clears the attribute getSessionToken() reads.
+    sessionToken = user.getSessionToken();
 
     // A second user, to prove the submission's ACL keeps everyone else out.
     const otherUser = new Parse.User();
@@ -155,12 +158,6 @@ describe('createSubmission', () => {
     await mongo.stop();
   });
 
-  beforeEach(() => {
-    // Stand-in for server.js's saveUser, which logs the user in (or creates
-    // them) and resolves to the Parse user.
-    saveUser = jest.fn(() => Promise.resolve(user));
-  });
-
   afterEach(() => {
     // Same delete-vs-assign subtlety as the module itself: assigning an
     // undefined value would store the string "undefined".
@@ -172,9 +169,11 @@ describe('createSubmission', () => {
   });
 
   const validParams = overrides => ({
-    saveUser,
+    // The signed-in account and the token that authenticated it, as the route
+    // resolves them from the session cookie.
+    user,
+    sessionToken,
     email,
-    password: 'test-password',
     FirstName: 'Test',
     LastName: 'User',
     Phone: '5551234567',
@@ -198,9 +197,11 @@ describe('createSubmission', () => {
     const params = validParams();
     const submission = await createSubmission(params);
 
-    expect(saveUser).toHaveBeenCalledWith({
-      email,
-      password: 'test-password',
+    // The submit form doubles as a profile edit, so its fields land on the
+    // reporter's account.
+    const savedUser = await Parse.User.me(sessionToken);
+    expect(savedUser.toJSON()).toMatchObject({
+      useremail: email,
       FirstName: 'Test',
       LastName: 'User',
       Phone: '5551234567',
@@ -256,7 +257,7 @@ describe('createSubmission', () => {
     // The reporter (whose session token createSubmission saved with) can read
     // it back...
     await expect(
-      query.get(submission.objectId, { sessionToken: user.getSessionToken() }),
+      query.get(submission.objectId, { sessionToken }),
     ).resolves.toMatchObject({ id: submission.objectId });
 
     // ...and a different user gets the ACL's "not found" for the same id.

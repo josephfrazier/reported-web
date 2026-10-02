@@ -23,7 +23,10 @@ process.env.TESTING = '1';
 jest.setTimeout(30000);
 
 const username = 'test@example.com';
-const saveUser = jest.fn(() => Promise.resolve({ get: () => username }));
+// Stand-in for src/session.js's authenticate: resolves the request's user.
+const authenticate = jest.fn(() =>
+  Promise.resolve({ user: { get: () => username } }),
+);
 
 describe('getSubmissionsWithTasks', () => {
   let mongo;
@@ -135,10 +138,10 @@ describe('getSubmissionsWithTasks', () => {
   test('returns the submissions newest-first, each with its tasks joined', async () => {
     const results = await getSubmissionsWithTasks({
       req: { body: { email: username } },
-      saveUser,
+      authenticate,
     });
 
-    expect(saveUser).toHaveBeenCalledWith({ email: username });
+    expect(authenticate).toHaveBeenCalled();
     expect(results).toHaveLength(2);
 
     expect(results[0]).toMatchObject({

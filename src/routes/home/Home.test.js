@@ -2187,8 +2187,10 @@ describe('Home', () => {
       uploadCalls.forEach(([, body], index) => {
         const original = index === 0 ? photo : video;
         const uploaded = body.get('attachmentData');
-        expect(body.get('email')).toBe('test@example.com');
-        expect(body.get('password')).toBe('test-password');
+        // No credentials in the body: the route authenticates from the
+        // session cookie the browser sends.
+        expect(body.get('email')).toBeNull();
+        expect(body.get('password')).toBeNull();
         // The upload carries a copy of the file's bytes, not the File from
         // the file input: the network is handed a File whose contents are
         // already in memory, since some browsers send an empty body for the
@@ -2272,6 +2274,93 @@ describe('Home', () => {
       expect(homeRef.current.state.attachmentData).toEqual([]);
 
       cleanup();
+    });
+  });
+
+  describe('session handling', () => {
+    test('does not send stored credentials on mount', async () => {
+      // A legacy cookie may still hold email+password; the client must not
+      // re-authenticate with them. The server migrates them from the cookie
+      // itself (see src/session.js).
+      const axiosPost = jest
+        .spyOn(axios, 'post')
+        .mockResolvedValue({ data: {} });
+      const consoleError = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => null);
+      const homeRef = React.createRef();
+
+      const tree = renderHome({
+        homeRef,
+        initialState: {
+          email: 'test@example.com',
+          password: 'test-password',
+          loginSuccessful: false,
+        },
+      });
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(
+        axiosPost.mock.calls.filter(([url]) => url === '/api/logIn'),
+      ).toHaveLength(0);
+      // The legacy password never reaches React state.
+      expect(homeRef.current.state.password).toBe('');
+
+      tree.unmount();
+      axiosPost.mockRestore();
+      consoleError.mockRestore();
+    });
+
+    test('logging out revokes the session server-side', async () => {
+      const axiosPost = jest
+        .spyOn(axios, 'post')
+        .mockResolvedValue({ data: {} });
+      const homeRef = React.createRef();
+
+      const tree = renderHome({
+        homeRef,
+        initialState: { email: 'test@example.com', loginSuccessful: true },
+      });
+      homeRef.current.handleLogOut();
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(axiosPost).toHaveBeenCalledWith('/api/logOut');
+      expect(homeRef.current.state.loginSuccessful).toBe(false);
+      expect(homeRef.current.state.email).toBe('');
+
+      tree.unmount();
+      axiosPost.mockRestore();
+    });
+
+    test('an expired session clears the login state and reopens the auth modal', async () => {
+      const homeRef = React.createRef();
+
+      const tree = renderHome({
+        homeRef,
+        initialState: { email: 'test@example.com', loginSuccessful: true },
+      });
+      homeRef.current.handleSessionExpired();
+
+      expect(homeRef.current.state.loginSuccessful).toBe(false);
+      expect(homeRef.current.state.isAuthModalOpen).toBe(true);
+      expect(homeRef.current.state.authError).toMatch(/session expired/i);
+
+      tree.unmount();
+    });
+
+    test('an expired-session notice is not shown to logged-out visitors', async () => {
+      const homeRef = React.createRef();
+
+      const tree = renderHome({
+        homeRef,
+        initialState: { loginSuccessful: false },
+      });
+      homeRef.current.handleSessionExpired();
+
+      expect(homeRef.current.state.isAuthModalOpen).toBe(false);
+      expect(homeRef.current.state.loginSuccessful).toBe(false);
+
+      tree.unmount();
     });
   });
 });

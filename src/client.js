@@ -24,7 +24,9 @@ import router from './router.js';
 // Parse cookies from document.cookie into a plain object. This must be in
 // the client context so that route actions receive the same cookie data
 // during client-side hydration as they did during SSR — otherwise React
-// hydration will replace the logged-in SSR UI with a logged-out one.
+// hydration will replace the logged-in SSR UI with a logged-out one. The
+// session cookie is HttpOnly, so whether the request was logged in comes
+// from SSR through window.App instead.
 const cookies = cookie.parse(document.cookie);
 
 // Global (context) variables that can be easily accessed from any React component
@@ -40,6 +42,7 @@ const context = {
   reviewAppUrl: window.App.reviewAppUrl,
   reviewAppLabel: window.App.reviewAppLabel,
   cookies,
+  sessionPresent: window.App.sessionPresent,
 };
 
 // insertCss function for client-side rendering

@@ -59,6 +59,7 @@ import chunks from './chunk-manifest.json'; // eslint-disable-line import/no-unr
 import config from './config.js';
 import readLicenseViaALPR from './alpr.js';
 import getReviewAppSource from './getReviewAppSource.js';
+import { relayEnvelope } from './sentryTunnel.js';
 
 let commitHash = process.env.HEROKU_BUILD_COMMIT || 'unknown';
 if (commitHash === 'unknown') {
@@ -247,6 +248,32 @@ app.use('/api/legacyStateMigrated', (req, res) => {
   console.info('[home] legacy localStorage state migrated');
   res.status(204).end();
 });
+
+// The browser SDK sends its envelopes here instead of to Sentry's own
+// domain, which content blockers drop. The relay forwards them only for
+// this app's DSN; see src/sentryTunnel.js. The client sends them with
+// `fetch`'s default text/plain content type, and Sentry's own ingest
+// accepts that too.
+app.post(
+  '/monitoring',
+  express.raw({
+    type: ['application/x-sentry-envelope', 'text/plain'],
+    limit: '1mb',
+  }),
+  (req, res) => {
+    if (!config.sentry.dsn) {
+      res.sendStatus(404);
+      return;
+    }
+    relayEnvelope(req.body, { dsn: config.sentry.dsn }).then(
+      status => res.sendStatus(status),
+      error => {
+        console.error('Failed to relay a Sentry envelope:', error.message);
+        res.sendStatus(400);
+      },
+    );
+  },
+);
 
 app.use('/saveUser', (req, res) => {
   authenticateRequest(req, res)()

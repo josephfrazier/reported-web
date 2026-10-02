@@ -1,6 +1,11 @@
 import Parse from 'parse/node';
 import cookie from 'cookie';
 
+import {
+  parseHomeState,
+  serializeHomeState,
+  withoutPassword,
+} from './homeStateCookie.js';
 import { logIn } from './users.js';
 
 // The browser's session cookie. It holds the Parse session token, so it is
@@ -104,6 +109,66 @@ export const authenticateRequest = (req, res) => () =>
     setSessionCookie(res, req, result.sessionToken);
     return result;
   });
+
+// SSR only: decide whether this page load is logged in, and migrate a legacy
+// visitor to a session cookie. Their state cookie still holds the password
+// their browser used to re-send on every request; the server logs in with it
+// once and rewrites the cookie without it, so the visitor notices nothing.
+//
+// Never rejects: a page must render even if Parse is unreachable. A session
+// cookie whose token cannot be checked here is taken at face value -- the API
+// routes verify it, and the client reacts to their 401s.
+export const resolveSsrSession = async ({ req, res }) => {
+  let homeState = parseHomeState(req.headers.cookie);
+  const sessionToken = readSessionToken(req);
+
+  if (sessionToken) {
+    // Re-set on every page load, so the browser cookie never expires before
+    // the Parse session it stands for.
+    setSessionCookie(res, req, sessionToken);
+    if (homeState?.password) {
+      homeState = withoutPassword(homeState);
+      res.append(
+        'Set-Cookie',
+        serializeHomeState(homeState, { secure: req.secure }),
+      );
+    }
+    return { sessionPresent: true, homeState };
+  }
+
+  const hasLegacyCredentials =
+    homeState?.loginSuccessful && homeState.email && homeState.password;
+  if (!hasLegacyCredentials) {
+    return { sessionPresent: false, homeState };
+  }
+
+  let sessionPresent = false;
+  try {
+    const user = await logIn({
+      email: homeState.email,
+      password: homeState.password,
+    });
+    setSessionCookie(res, req, user.getSessionToken());
+    sessionPresent = true;
+  } catch (error) {
+    // The stored password no longer authenticates (changed, wrong, or the
+    // account needs verification). Strip it and show the logged-out page.
+    console.error(
+      '[session] legacy state-cookie login failed:',
+      error?.message,
+    );
+  }
+
+  homeState = {
+    ...withoutPassword(homeState),
+    loginSuccessful: sessionPresent,
+  };
+  res.append(
+    'Set-Cookie',
+    serializeHomeState(homeState, { secure: req.secure }),
+  );
+  return { sessionPresent, homeState };
+};
 
 // SameSite=Lax keeps the session cookie off cross-site POSTs in current
 // browsers. This closes the gap for browsers that predate SameSite, and for

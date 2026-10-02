@@ -43,6 +43,7 @@ import {
   clearSessionCookie,
   readSessionToken,
   rejectCrossSiteRequest,
+  resolveSsrSession,
   setSessionCookie,
 } from './session.js';
 
@@ -585,6 +586,17 @@ app.get('*', async (req, res, next) => {
     // Parse cookies from the request header into a plain object
     const cookies = cookie.parse(req.headers.cookie || '');
 
+    // Decide whether this page is logged in, and migrate a legacy visitor
+    // whose state cookie still holds their password (see session.js). Never
+    // rejects: the page renders even if Parse is unreachable.
+    const { sessionPresent, homeState } = await resolveSsrSession({ req, res });
+    if (homeState) {
+      // resolveSsrSession may have rewritten the state cookie (stripping the
+      // password); the route must render the rewritten state, not the
+      // header's.
+      cookies.reportedWebHomeState = JSON.stringify(homeState);
+    }
+
     // Global (context) variables that can be easily accessed from any React component
     // https://facebook.github.io/react/docs/context.html
     const context = {
@@ -596,6 +608,7 @@ app.get('*', async (req, res, next) => {
       reviewAppUrl,
       reviewAppLabel,
       cookies,
+      sessionPresent,
       // The twins below are wild, be careful!
       pathname: req.path,
       query: req.query,
@@ -636,6 +649,9 @@ app.get('*', async (req, res, next) => {
       showParseServerBanner,
       reviewAppUrl,
       reviewAppLabel,
+      // The session cookie is HttpOnly, so the client cannot read it; this is
+      // how hydration learns the request was logged in.
+      sessionPresent,
     };
 
     const html = ReactDOM.renderToStaticMarkup(<Html {...data} />);

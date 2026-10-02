@@ -10,6 +10,7 @@
 import net from 'net';
 
 import Parse from 'parse/node';
+import { HOME_STATE_COOKIE, serializeHomeState } from './homeStateCookie.js';
 import {
   SESSION_COOKIE,
   SESSION_MAX_AGE_MS,
@@ -18,6 +19,7 @@ import {
   clearSessionCookie,
   readSessionToken,
   rejectCrossSiteRequest,
+  resolveSsrSession,
   setSessionCookie,
 } from './session.js';
 
@@ -46,12 +48,21 @@ const fakeResponse = () => {
   const res = {
     cookie: jest.fn(),
     clearCookie: jest.fn(),
+    append: jest.fn(),
     status: jest.fn(),
     json: jest.fn(),
   };
   res.status.mockReturnValue(res);
   return res;
 };
+
+// The `name=value` part of a state cookie, to build request headers with.
+const stateCookieHeader = state => serializeHomeState(state).split(';')[0];
+
+const setCookies = res =>
+  res.append.mock.calls
+    .filter(([name]) => name === 'Set-Cookie')
+    .map(([, value]) => value);
 
 describe('session cookie helpers', () => {
   const req = { secure: true };
@@ -111,9 +122,13 @@ describe('rejectCrossSiteRequest', () => {
   };
 
   test('lets same-host and headerless requests through', () => {
-    expect(call({ method: 'POST', origin: 'https://example.com' }).next).toHaveBeenCalled();
+    expect(
+      call({ method: 'POST', origin: 'https://example.com' }).next,
+    ).toHaveBeenCalled();
     expect(call({ method: 'POST' }).next).toHaveBeenCalled();
-    expect(call({ method: 'GET', origin: 'https://evil.example' }).next).toHaveBeenCalled();
+    expect(
+      call({ method: 'GET', origin: 'https://evil.example' }).next,
+    ).toHaveBeenCalled();
   });
 
   test('falls back to the Referer when there is no Origin', () => {
@@ -262,7 +277,10 @@ describe('authenticate', () => {
     // id when a session is created, so logIn() must give each login its own
     // id; otherwise this second login would revoke the first browser's
     // session, and could 401 it mid-request.
-    const first = await authenticate({ headers: {}, body: { email, password } });
+    const first = await authenticate({
+      headers: {},
+      body: { email, password },
+    });
     const second = await authenticate({
       headers: {},
       body: { email, password },
@@ -307,9 +325,9 @@ describe('authenticate', () => {
 
     await Parse.User.logOut({ sessionToken: result.sessionToken });
 
-    await expect(
-      Parse.User.me(result.sessionToken),
-    ).rejects.toMatchObject({ code: Parse.Error.INVALID_SESSION_TOKEN });
+    await expect(Parse.User.me(result.sessionToken)).rejects.toMatchObject({
+      code: Parse.Error.INVALID_SESSION_TOKEN,
+    });
     await expect(
       authenticate(cookieRequest(result.sessionToken)),
     ).rejects.toMatchObject({ status: 401 });
@@ -336,5 +354,97 @@ describe('authenticate', () => {
       authenticateRequest({ headers: {}, body: {} }, res)(),
     ).rejects.toMatchObject({ status: 401 });
     expect(res.cookie).not.toHaveBeenCalled();
+  });
+
+  describe('resolveSsrSession', () => {
+    test('reports a session and slides its cookie', async () => {
+      const req = cookieRequest(verifiedUser.getSessionToken());
+      const res = fakeResponse();
+
+      const result = await resolveSsrSession({ req, res });
+
+      expect(result.sessionPresent).toBe(true);
+      expect(res.cookie).toHaveBeenCalledWith(
+        SESSION_COOKIE,
+        verifiedUser.getSessionToken(),
+        expect.objectContaining({ httpOnly: true }),
+      );
+      expect(res.append).not.toHaveBeenCalled();
+    });
+
+    test('migrates legacy credentials from the state cookie', async () => {
+      const state = {
+        email,
+        password,
+        loginSuccessful: true,
+        plate: 'ABC1234',
+      };
+      const req = { headers: { cookie: stateCookieHeader(state) } };
+      const res = fakeResponse();
+
+      const result = await resolveSsrSession({ req, res });
+
+      expect(result.sessionPresent).toBe(true);
+      // The session cookie was set...
+      const [, token] = res.cookie.mock.calls[0];
+      await expect(Parse.User.me(token)).resolves.toMatchObject({
+        id: verifiedUser.id,
+      });
+      // ...and the rewritten state cookie has no password in it.
+      const [rewritten] = setCookies(res);
+      expect(rewritten).toContain(HOME_STATE_COOKIE);
+      expect(decodeURIComponent(rewritten)).not.toContain('password');
+      expect(decodeURIComponent(rewritten)).toContain('ABC1234');
+      expect(result.homeState.password).toBeUndefined();
+      expect(result.homeState.loginSuccessful).toBe(true);
+    });
+
+    test('strips a password that no longer authenticates', async () => {
+      const state = {
+        email,
+        password: 'wrong-password',
+        loginSuccessful: true,
+      };
+      const req = { headers: { cookie: stateCookieHeader(state) } };
+      const res = fakeResponse();
+
+      const result = await resolveSsrSession({ req, res });
+
+      expect(result.sessionPresent).toBe(false);
+      expect(res.cookie).not.toHaveBeenCalled();
+      const [rewritten] = setCookies(res);
+      expect(decodeURIComponent(rewritten)).not.toContain('wrong-password');
+      expect(result.homeState).toMatchObject({ loginSuccessful: false });
+    });
+
+    test('strips a stale password even when a session cookie exists', async () => {
+      const state = { email, password, loginSuccessful: true };
+      const req = {
+        headers: {
+          cookie: `${stateCookieHeader(state)}; ${SESSION_COOKIE}=${encodeURIComponent(verifiedUser.getSessionToken())}`,
+        },
+      };
+      const res = fakeResponse();
+
+      const result = await resolveSsrSession({ req, res });
+
+      expect(result.sessionPresent).toBe(true);
+      expect(result.homeState.password).toBeUndefined();
+      const [rewritten] = setCookies(res);
+      expect(decodeURIComponent(rewritten)).not.toContain(`"password"`);
+    });
+
+    test('does nothing without cookies', async () => {
+      const res = fakeResponse();
+
+      const result = await resolveSsrSession({
+        req: { headers: {}, secure: false },
+        res,
+      });
+
+      expect(result).toEqual({ sessionPresent: false, homeState: null });
+      expect(res.cookie).not.toHaveBeenCalled();
+      expect(res.append).not.toHaveBeenCalled();
+    });
   });
 });

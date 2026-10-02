@@ -78,7 +78,8 @@ if (commitHash === 'unknown') {
 if (config.sentry.dsn) {
   Sentry.init({
     dsn: config.sentry.dsn,
-    release: commitHash,
+    // The build pins the release so it matches the uploaded source maps.
+    release: process.env.SENTRY_RELEASE || commitHash,
     environment: process.env.NODE_ENV || 'development',
     integrations: defaultIntegrations => [
       ...defaultIntegrations,

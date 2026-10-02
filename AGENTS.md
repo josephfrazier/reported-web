@@ -118,7 +118,7 @@ Never squash the trio together: each step is independently reviewable, and the h
 ## Logging and countable events
 
 - Count things with one-line `console.info('[topic] message')` calls, like `[session] legacy credential auth used` and `[home] legacy localStorage state migrated`. A search in the log service finds every event of one kind, so a count needs no new metrics code.
-- The default `heroku logs` window is short. Pull a longer tail with `heroku logs -n 9999`, and check it periodically. A line that stays absent across the checks is the signal that ends a transitional block.
+- Production logs drain to Axiom, dataset `reported-web` (30-day retention, US region). Count a line with APL, for example `['reported-web'] | where message contains "[home] legacy localStorage state migrated" | count`, and use a match monitor to hear about each event. `heroku logs -n 9999` covers the recent window when Axiom is not at hand.
 
 ## Writing style
 

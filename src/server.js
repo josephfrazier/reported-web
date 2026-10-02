@@ -49,6 +49,7 @@ import router from './router.js';
 import chunks from './chunk-manifest.json'; // eslint-disable-line import/no-unresolved
 import config from './config.js';
 import readLicenseViaALPR from './alpr.js';
+import getReviewAppSource from './getReviewAppSource.js';
 
 require('dotenv').config();
 
@@ -91,6 +92,11 @@ Parse.serverURL = PARSE_SERVER_URL;
 // environment, never hardcoded here, and the banner always displays the
 // live PARSE_SERVER_URL config var.
 const showParseServerBanner = !!SHOW_PARSE_SERVER_BANNER;
+
+// The pull request or branch this deployment came from, so the banner can
+// link back to it. Heroku sets these config vars on review apps only, so
+// production and local runs show the banner without a link.
+const { url: reviewAppUrl, label: reviewAppLabel } = getReviewAppSource() || {};
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -522,6 +528,8 @@ app.get('*', async (req, res, next) => {
       commitHash,
       parseServerUrl: PARSE_SERVER_URL,
       showParseServerBanner,
+      reviewAppUrl,
+      reviewAppLabel,
       cookies,
       // The twins below are wild, be careful!
       pathname: req.path,
@@ -561,6 +569,8 @@ app.get('*', async (req, res, next) => {
       commitHash,
       parseServerUrl: PARSE_SERVER_URL,
       showParseServerBanner,
+      reviewAppUrl,
+      reviewAppLabel,
     };
 
     const html = ReactDOM.renderToStaticMarkup(<Html {...data} />);

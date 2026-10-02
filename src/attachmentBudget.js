@@ -8,14 +8,15 @@ import { ATTACHMENT_TTL_MS, deleteAttachment } from './attachmentStore.js';
 // between an upload and the submission that uses it, so that is what is
 // metered here.
 //
-// The budget comes back when a submission consumes the uploads it used, which
-// is what lets a batch -- many small reports, one after another -- keep going
-// without waiting out a window. An upload no submission ever uses holds its
-// budget until the file's own TTL takes it, so nothing sits on it for ever.
+// The budget comes back when a submission consumes the uploads it used, so a
+// client that submits keeps its room rather than waiting out a window. An
+// upload no submission ever uses holds its budget until the file's own TTL
+// takes it, so nothing sits on it for ever.
 //
 // A quarter of a gigabyte is well over anything one report needs: the largest
 // report allowed is three pictures and three videos of under 20MB, so 120MB,
-// and the queue uploads one report's worth at a time.
+// with room for the next report's photos to arrive before the last one has
+// been submitted.
 export const ATTACHMENT_BUDGET_BYTES = 250 * 1000 * 1000;
 
 // ip -> Map(id -> { bytes, at })

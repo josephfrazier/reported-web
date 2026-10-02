@@ -78,6 +78,11 @@ export const authenticate = async req => {
     }
   }
 
+  // Transitional, for old clients that still send the credentials their
+  // state cookie holds. TODO: delete this fallback, the `viaCredentials`
+  // field, and the legacy state-cookie migration in `resolveSsrSession` once
+  // `[session] legacy credential auth used` has not appeared in the logs for
+  // about 90 days.
   const { email, password } = req.body || {};
   if (!email || !password) {
     throw unauthorizedError();

@@ -4,6 +4,8 @@
 
 - `reported-web` is a server-rendered React Starter Kit app for submitting and reviewing Reported reports.
 - The app has both an Express server/API layer and a React client. Most feature work touches `src/server.js`, `src/routes/home/Home.js`, or shared components in `src/components/`.
+- Production is https://web.reported.nyc (not reportedweb.com). The domain appears nowhere else in the repo. The sandbox proxy allows this domain, so `curl https://web.reported.nyc/<path>` shows what a route serves in production. This check settles questions that the code alone leaves ambiguous.
+- Deployment is Heroku: the `git remote -v` list carries a `heroku` remote, and `docs/getting-started.md` describes the flow. A deploy is `git push heroku main`, and Heroku then runs `yarn run build --release` through `heroku-postbuild`. `src/config.js` falls back to `https://${HEROKU_APP_NAME}.herokuapp.com` when `API_SERVER_URL` is unset.
 
 ## Repository map
 
@@ -54,6 +56,8 @@
 - If you change API or submission behavior, inspect both `src/server.js` and `src/routes/home/Home.js`; client and server responsibilities are split between them.
 - Keep tests near the affected module when possible; this repo uses a mix of colocated tests and snapshots under `src/**/__snapshots__/`.
 - Do not "clean up" existing warnings unless your task is specifically about them.
+- Write each code comment for a reader who never saw the previous version. Do not explain what changed or what was removed ("no longer", "used to"). Delete the comment with the code it described, unless the remaining code needs one.
+- `src/session.js` still accepts legacy email+password auth. The transition away from client-stored passwords needs it. Each use logs `[session] legacy credential auth used`. Delete the fallback and the `viaCredentials` plumbing after that log line stays quiet for about 90 days.
 - Before committing changes, run `yarn fix` to auto-fix lint issues.
 - When asked to update AGENTS.md in the middle of other work: find an unmerged branch that only touches AGENTS.md (or create one if it doesn't exist), switch to it, make the changes there, commit, run `git show` so the diff is visible, then switch back to the previous branch.
 
@@ -67,7 +71,7 @@
 
 Extract a route's logic into its own module as **three commits**, in this order:
 
-1. **Characterization test first** — a real-HTTP test through the actual express app against a real Parse Server + in-memory MongoDB (the `src/server.test.js` harness: env vars set before `require('./server.js')`, `app.listen` replacement, `jest.mock` on chunk-manifest.json, `X-Forwarded-Proto: https`, explicit `emailVerified: true` seeding).
+1. **Characterization test first** — a real-HTTP test through the actual express app against a real Parse Server + in-memory MongoDB, in the new module's own test file. Step 3 rewrites that file, so no example stays in the tree; the most recent one is `git show f91bb664:src/getAttachmentData.test.js`. Its shape: env vars set before `require('./server.js')`, `app.listen` replacement, `jest.mock` on chunk-manifest.json, `X-Forwarded-Proto: https`, explicit `emailVerified: true` seeding.
 2. **Extract the implementation** — move the logic verbatim into its own module so routes become thin adapters; the characterization test must stay green.
 3. **Simplify the test** — replace the HTTP-level test with a direct module test against the real Parse server; the fetch/FormData/forceSsl/env-var/app.listen workarounds go away.
 
@@ -115,6 +119,18 @@ Never squash the trio together: each step is independently reviewable, and the h
 
 - Count things with one-line `console.info('[topic] message')` calls, like `[session] legacy credential auth used` and `[home] legacy localStorage state migrated`. A search in the log service finds every event of one kind, so a count needs no new metrics code.
 - `heroku logs` keeps only the last 1,500 lines (about a week). Production logs drain to Axiom (a Heroku HTTPS drain, US region, set up outside this repo); keep saved searches and alerts there.
+
+## Writing style
+
+Write all prose in Simplified Technical English (ASD-STE100). The user asked for this style as the default for all prose.
+
+- Keep each sentence at or below 20 words.
+- Use active voice.
+- Use simple tenses only. Do not use `-ing` verbs or the present perfect.
+- Put one instruction in each sentence.
+- Use a vertical list for two or more items.
+- Keep each paragraph at or below 6 sentences.
+- Keep code identifiers, file paths, command names, and the git trailer unchanged. STE permits technical names.
 
 ## Commit message style
 

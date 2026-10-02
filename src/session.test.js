@@ -381,9 +381,17 @@ describe('authenticate', () => {
       };
       const req = { headers: { cookie: stateCookieHeader(state) } };
       const res = fakeResponse();
+      // The log line is how the transitional code is known to be unused
+      // later, so the migration must announce itself the same way the
+      // per-request fallback does.
+      const info = jest.spyOn(console, 'info').mockImplementation(() => null);
 
       const result = await resolveSsrSession({ req, res });
 
+      expect(info).toHaveBeenCalledWith(
+        '[session] legacy credential auth used',
+      );
+      info.mockRestore();
       expect(result.sessionPresent).toBe(true);
       // The session cookie was set...
       const [, token] = res.cookie.mock.calls[0];

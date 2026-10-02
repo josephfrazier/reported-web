@@ -149,6 +149,9 @@ export const resolveSsrSession = async ({ req, res }) => {
       email: homeState.email,
       password: homeState.password,
     });
+    // The same line the per-request fallback logs, so one search finds
+    // every remaining legacy authentication, whichever path it took.
+    console.info('[session] legacy credential auth used');
     setSessionCookie(res, req, user.getSessionToken());
     sessionPresent = true;
   } catch (error) {

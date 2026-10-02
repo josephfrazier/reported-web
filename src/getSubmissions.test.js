@@ -34,6 +34,8 @@ describe('getSubmissions', () => {
   let labelsById;
   let emailAccount;
   let emailOnlySubmission;
+  let pointerAccount;
+  let pointerOnlySubmission;
 
   beforeAll(async () => {
     // MongoDB 4.4 is the newest version whose wire protocol parse-server
@@ -133,6 +135,21 @@ describe('getSubmissions', () => {
       new Date('2026-09-03T13:00:00.000Z'),
     );
     await emailOnlySubmission.save();
+
+    // A native-client report: the `user` pointer, and neither address field,
+    // so only the pointer can find it.
+    pointerAccount = new Parse.User();
+    pointerAccount.setUsername('pointer-account');
+    pointerAccount.setPassword('password');
+    await pointerAccount.signUp();
+
+    pointerOnlySubmission = new Submission();
+    pointerOnlySubmission.set('user', pointerAccount);
+    pointerOnlySubmission.set(
+      'timeofreport',
+      new Date('2026-09-03T12:00:00.000Z'),
+    );
+    await pointerOnlySubmission.save();
   });
 
   afterAll(async () => {
@@ -168,5 +185,16 @@ describe('getSubmissions', () => {
     // above use a different address, and emailAccount's username (which no
     // submission carries) must not matter.
     expect(results.map(result => result.id)).toEqual([emailOnlySubmission.id]);
+  });
+
+  test('matches a submission by its user pointer when it has no address fields', async () => {
+    const results = await getSubmissions({
+      req: { body: {} },
+      authenticate: () => Promise.resolve({ user: pointerAccount }),
+    });
+
+    expect(results.map(result => result.id)).toEqual([
+      pointerOnlySubmission.id,
+    ]);
   });
 });

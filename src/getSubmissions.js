@@ -29,7 +29,16 @@ const getSubmissions = ({ authenticate }) =>
     emailQuery.descending('timeofreport');
     emailQuery.limit(Number.MAX_SAFE_INTEGER);
 
-    const query = Parse.Query.or(usernameQuery, emailQuery);
+    // The native clients set the `user` pointer but not always either address
+    // field, so their submissions would otherwise be invisible to their own
+    // reporter. The pointer names the creating account exactly, so it needs
+    // no identifier matching.
+    const pointerQuery = new Parse.Query(Submission);
+    pointerQuery.equalTo('user', user);
+    pointerQuery.descending('timeofreport');
+    pointerQuery.limit(Number.MAX_SAFE_INTEGER);
+
+    const query = Parse.Query.or(usernameQuery, emailQuery, pointerQuery);
     // Sort by when the photo was taken (timeofreport), newest first, and break
     // ties by when the submission was created (createdAt), newest first, so a
     // later submission appears before an earlier one with the same photo

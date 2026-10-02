@@ -38,6 +38,8 @@ describe('deleteSubmission', () => {
   let otherUsersSubmission;
   let emailAccount;
   let emailOwnedSubmission;
+  let pointerAccount;
+  let pointerOnlySubmission;
 
   beforeAll(async () => {
     // MongoDB 4.4 is the newest version whose wire protocol parse-server
@@ -134,6 +136,20 @@ describe('deleteSubmission', () => {
       new Date('2026-09-03T12:00:00.000Z'),
     );
     await emailOwnedSubmission.save();
+
+    // A native-client report: the `user` pointer, and neither address field.
+    pointerAccount = new Parse.User();
+    pointerAccount.setUsername('pointer-account');
+    pointerAccount.setPassword('password');
+    await pointerAccount.signUp();
+
+    pointerOnlySubmission = new Submission();
+    pointerOnlySubmission.set('user', pointerAccount);
+    pointerOnlySubmission.set(
+      'timeofreport',
+      new Date('2026-09-03T11:00:00.000Z'),
+    );
+    await pointerOnlySubmission.save();
   });
 
   afterAll(async () => {
@@ -180,6 +196,36 @@ describe('deleteSubmission', () => {
 
     const query = new Parse.Query(Submission);
     await expect(query.get(emailOwnedSubmission.id)).rejects.toMatchObject({
+      code: 101,
+    });
+  });
+
+  test("does not treat another account's pointer as ownership", async () => {
+    await expect(
+      deleteSubmission({
+        req: { body: { objectId: pointerOnlySubmission.id } },
+        authenticate: () => Promise.resolve({ user: emailAccount }),
+      }),
+    ).rejects.toMatchObject({
+      message: 'the submission was not found or was not made by this user',
+    });
+
+    // The other account's submission is still there.
+    const query = new Parse.Query(Submission);
+    const stillThere = await query.get(pointerOnlySubmission.id);
+    expect(stillThere.id).toBe(pointerOnlySubmission.id);
+  });
+
+  test('deletes a submission matched by its user pointer without address fields', async () => {
+    const result = await deleteSubmission({
+      req: { body: { objectId: pointerOnlySubmission.id } },
+      authenticate: () => Promise.resolve({ user: pointerAccount }),
+    });
+
+    expect(result).toEqual({ objectId: pointerOnlySubmission.id });
+
+    const query = new Parse.Query(Submission);
+    await expect(query.get(pointerOnlySubmission.id)).rejects.toMatchObject({
       code: 101,
     });
   });

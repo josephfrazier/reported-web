@@ -19,6 +19,8 @@ async function action({
   cookies,
   parseServerUrl,
   showParseServerBanner,
+  reviewAppUrl,
+  reviewAppLabel,
 }) {
   // The complaint categories haven't changed in Parse for years, so a
   // snapshot of them is bundled instead of fetched at render time.
@@ -56,6 +58,8 @@ async function action({
           commitHash={commitHash}
           parseServerUrl={parseServerUrl}
           showParseServerBanner={showParseServerBanner}
+          reviewAppUrl={reviewAppUrl}
+          reviewAppLabel={reviewAppLabel}
           initialState={initialState}
         />
       </Layout>

@@ -283,6 +283,33 @@ describe('Home', () => {
         }),
       ]),
     );
+    // No review app source outside a Heroku review app, so no link.
+    expect(banner.findAllByType('a')).toHaveLength(0);
+
+    expect(tree.toJSON()).toMatchSnapshot();
+
+    tree.unmount();
+  });
+
+  test('links the banner to the PR the review app was deployed from', () => {
+    const parseServerUrl = 'https://reported-parse.webabot.com/parse';
+    const reviewAppUrl =
+      'https://github.com/josephfrazier/reported-web/pull/1046';
+
+    const tree = renderHome({
+      parseServerUrl,
+      showParseServerBanner: true,
+      reviewAppUrl,
+      reviewAppLabel: 'PR #1046',
+    });
+
+    const banner = tree.root.findByProps({
+      className: 'non-production-banner',
+    });
+    const link = banner.findByType('a');
+
+    expect(link.props.href).toBe(reviewAppUrl);
+    expect(link.children).toEqual(['PR #1046']);
 
     expect(tree.toJSON()).toMatchSnapshot();
 

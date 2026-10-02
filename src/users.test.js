@@ -9,7 +9,7 @@
 import net from 'net';
 
 import Parse from 'parse/node';
-import { logIn, saveUser } from './users.js';
+import { logIn, saveUser, updateUserProfile } from './users.js';
 
 const { MongoMemoryServer } = require('mongodb-memory-server');
 // parse-server is deliberately installed on demand instead of being a project
@@ -168,5 +168,44 @@ describe('users', () => {
         testify: true,
       }),
     ).rejects.toMatchObject({ message: 'FirstName is required' });
+  });
+
+  test('updateUserProfile saves the fields with the session token', async () => {
+    const user = await logIn({ email, password });
+
+    const saved = await updateUserProfile({
+      user,
+      sessionToken: user.getSessionToken(),
+      email,
+      FirstName: 'Test',
+      LastName: 'User',
+      Phone: '5551234567',
+      testify: true,
+    });
+
+    expect(saved.id).toBe(verifiedUser.id);
+    expect(saved.toJSON()).toMatchObject({
+      useremail: email,
+      FirstName: 'Test',
+      LastName: 'User',
+      Phone: '5551234567',
+      testify: true,
+    });
+  });
+
+  test('updateUserProfile rejects when a required field is missing', async () => {
+    const user = await logIn({ email, password });
+
+    await expect(
+      updateUserProfile({
+        user,
+        sessionToken: user.getSessionToken(),
+        email,
+        FirstName: 'Test',
+        LastName: '',
+        Phone: '5551234567',
+        testify: true,
+      }),
+    ).rejects.toMatchObject({ message: 'LastName is required' });
   });
 });

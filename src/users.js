@@ -42,6 +42,41 @@ export async function logIn({ email, password }) {
     });
 }
 
+// Saves the profile fields onto an already-authenticated user, with the
+// session token that authenticated them. Credentials are not involved: the
+// caller (a route) resolved the user from the session cookie, or through
+// logIn()'s transitional fallback.
+export async function updateUserProfile({
+  user,
+  sessionToken,
+  email,
+  FirstName,
+  LastName,
+  Phone,
+  testify,
+}) {
+  // make sure all required fields are present
+  Object.entries({
+    FirstName,
+    LastName,
+    Phone,
+  }).forEach(([key, value]) => {
+    if (!value) {
+      throw { message: `${key} is required` }; // eslint-disable-line no-throw-literal
+    }
+  });
+
+  user.set({
+    useremail: email,
+    FirstName,
+    LastName,
+    Phone,
+    testify,
+  });
+
+  return user.save(null, { sessionToken });
+}
+
 export async function saveUser({
   email,
   password,

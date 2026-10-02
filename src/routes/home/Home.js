@@ -807,6 +807,12 @@ class Home extends React.Component {
     // The old localStorage key came from getDisplayName() which resolved to
     // 'Function' for class components. The newer key was 'reportedWebHomeState'.
     // Migrate both old localStorage keys to the cookie if no cookie exists yet.
+    //
+    // Transitional, and invisible to the server: this runs once per browser,
+    // in the client, and the cookie it writes carries no password, so no log
+    // line counts the browsers that still need it. TODO: delete this block,
+    // the two keys, and the `removeItem` calls in `clearAuthState` once the
+    // migration can be counted and the count stays at zero.
     if (!document.cookie.includes(`${HOME_STATE_COOKIE}=`)) {
       const migrateKeys = ['Function', 'reportedWebHomeState'];
       for (const key of migrateKeys) {

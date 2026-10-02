@@ -27,7 +27,8 @@ import router from './router.js';
 if (window.App.sentryDsn) {
   Sentry.init({
     dsn: window.App.sentryDsn,
-    release: window.App.commitHash,
+    // The build pins the release so it matches the uploaded source maps.
+    release: process.env.SENTRY_RELEASE || window.App.commitHash,
     environment: __DEV__ ? 'development' : 'production',
     // Content blockers drop requests to Sentry's own domain, so the SDK
     // sends its envelopes through this app instead (src/server.js).

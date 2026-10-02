@@ -30,13 +30,14 @@ const isAnalyze =
 
 // One release string for the SDKs and the source map upload, so the
 // artifacts can never be filed under a different release than the events.
-// `SOURCE_VERSION` names the code this build compiles; inside a Heroku
-// build, `HEROKU_BUILD_COMMIT` can still name the release that is running,
-// so it only comes second.
+// `SOURCE_VERSION` names the code this build compiles. `HEROKU_BUILD_COMMIT`
+// is deliberately not a fallback: inside a Heroku build it still names the
+// release that is running, which filed artifacts one commit behind on
+// #1058. Without `SOURCE_VERSION` the release becomes `unknown`, and the
+// line below shows why.
 const release =
   process.env.SENTRY_RELEASE ||
   process.env.SOURCE_VERSION ||
-  process.env.HEROKU_BUILD_COMMIT ||
   (() => {
     try {
       return execSync('git rev-parse --short HEAD', {

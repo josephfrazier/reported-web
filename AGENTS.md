@@ -111,6 +111,18 @@ Never squash the trio together: each step is independently reviewable, and the h
 - In a restricted sandbox with no outbound access, those tests fail with DNS/network errors or timeouts. Work around this by running the narrowest relevant tests, or at least `yarn test:no-flaky` when you want parity with the main CI workflow.
 - Run tests as `yarn test [path]`, never `npx jest`: the `test` script is `node -r dotenv/config node_modules/.bin/jest`, and that `-r dotenv/config` is the only thing loading `.env`. Under `npx jest` the API-backed suites go out with undefined credentials and fail in a misleading way — it reads like the environment has no credentials rather than like jest was invoked without dotenv.
 
+## Writing style
+
+Write all prose in Simplified Technical English (ASD-STE100). The user asked for this style as the default for all prose.
+
+- Keep each sentence at or below 20 words.
+- Use active voice.
+- Use simple tenses only. Do not use `-ing` verbs or the present perfect.
+- Put one instruction in each sentence.
+- Use a vertical list for two or more items.
+- Keep each paragraph at or below 6 sentences.
+- Keep code identifiers, file paths, command names, and the git trailer unchanged. STE permits technical names.
+
 ## Commit message style
 
 - Use markdown backtick code snippets for identifiers in commit message titles and bodies: `handleLogIn`, `type="submit"`, `<form>`, `src/routes/home/Home.js`.

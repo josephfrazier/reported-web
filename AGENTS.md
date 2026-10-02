@@ -4,8 +4,8 @@
 
 - `reported-web` is a server-rendered React Starter Kit app for submitting and reviewing Reported reports.
 - The app has both an Express server/API layer and a React client. Most feature work touches `src/server.js`, `src/routes/home/Home.js`, or shared components in `src/components/`.
-- Production is https://web.reported.nyc (not reportedweb.com). The domain appears nowhere in the repo. The sandbox proxy allows this domain, so `curl https://web.reported.nyc/<path>` shows what a route serves in production. This check settles questions that the code alone leaves ambiguous.
-- Deployment is Heroku: the `git remote -v` list carries a `heroku` remote, and `tools/deploy.js` documents the flow. `src/config.js` falls back to `https://${HEROKU_APP_NAME}.herokuapp.com` when `API_SERVER_URL` is unset.
+- Production is https://web.reported.nyc (not reportedweb.com). The domain appears nowhere else in the repo. The sandbox proxy allows this domain, so `curl https://web.reported.nyc/<path>` shows what a route serves in production. This check settles questions that the code alone leaves ambiguous.
+- Deployment is Heroku: the `git remote -v` list carries a `heroku` remote, and `docs/getting-started.md` describes the flow. A deploy is `git push heroku main`, and Heroku then runs `yarn run build --release` through `heroku-postbuild`. `src/config.js` falls back to `https://${HEROKU_APP_NAME}.herokuapp.com` when `API_SERVER_URL` is unset.
 
 ## Repository map
 

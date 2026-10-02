@@ -83,12 +83,11 @@ if (commitHash === 'unknown') {
 
 // http://docs.parseplatform.org/js/guide/#getting-started
 //
-// The master key is available for the few requests that must bypass ACLs
-// (reading submissions that belong to another Parse user with the same email,
-// and the public map's query), but it is no longer switched on globally with
-// Parse.Cloud.useMasterKey(): each request either runs as the logged-in user,
-// via an explicit sessionToken, or opts in with { useMasterKey: true } at the
-// call site.
+// Requests carry the master key only where a call site opts in with
+// { useMasterKey: true }: the reads that must bypass ACLs, which are
+// submissions belonging to another Parse user with the same email, and the
+// public map's query. Every other request runs as the logged-in user, via an
+// explicit sessionToken, or with no credential at all.
 Parse.initialize(PARSE_APP_ID, PARSE_JAVASCRIPT_KEY, PARSE_MASTER_KEY);
 Parse.serverURL = PARSE_SERVER_URL;
 

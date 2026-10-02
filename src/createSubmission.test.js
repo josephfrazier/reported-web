@@ -76,6 +76,7 @@ describe('createSubmission', () => {
   let mongo;
   let parseServer;
   let user;
+  let otherUserSessionToken;
   let saveUser;
 
   beforeAll(async () => {
@@ -130,15 +131,22 @@ describe('createSubmission', () => {
       parseServer.server.once('error', reject);
     });
     // parse-server initializes its own nested parse SDK; ours needs it too.
-    // The master key is passed like prod's Parse.initialize() does, so that
-    // submission.save(null) and Parse.File#save() are authorized the same way.
-    Parse.initialize('test-app', undefined, 'test-master');
+    // No master key is passed: the submission is saved with the reporter's
+    // session token, so nothing here should need to bypass ACLs.
+    Parse.initialize('test-app');
     Parse.serverURL = `http://localhost:${parseServer.server.address().port}/parse`;
 
     user = new Parse.User();
     user.setUsername(email);
     user.setPassword('test-password');
     await user.signUp();
+
+    // A second user, to prove the submission's ACL keeps everyone else out.
+    const otherUser = new Parse.User();
+    otherUser.setUsername('other@example.com');
+    otherUser.setPassword('test-password');
+    await otherUser.signUp();
+    otherUserSessionToken = otherUser.getSessionToken();
   });
 
   afterAll(async () => {
@@ -236,6 +244,25 @@ describe('createSubmission', () => {
     expect(submission.timeofreport).toBe(params.CreateDate);
     expect(submission.timeofreported).toBe(params.CreateDate);
     expect(submission.objectId).toEqual(expect.any(String));
+  });
+
+  test("ACLs the submission to the reporter, so other users can't read it", async () => {
+    const params = validParams();
+    const submission = await createSubmission(params);
+
+    const Submission = Parse.Object.extend('submission');
+    const query = new Parse.Query(Submission);
+
+    // The reporter (whose session token createSubmission saved with) can read
+    // it back...
+    await expect(
+      query.get(submission.objectId, { sessionToken: user.getSessionToken() }),
+    ).resolves.toMatchObject({ id: submission.objectId });
+
+    // ...and a different user gets the ACL's "not found" for the same id.
+    await expect(
+      query.get(submission.objectId, { sessionToken: otherUserSessionToken }),
+    ).rejects.toMatchObject({ code: 101 });
   });
 
   test('marks non-complaint reports differently via selectedReport', async () => {

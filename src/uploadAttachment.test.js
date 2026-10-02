@@ -85,12 +85,11 @@ describe('uploadAttachment', () => {
       parseServer.server.once('error', reject);
     });
     // parse-server initializes its own nested parse SDK; ours needs it too.
-    // The master key is passed like prod's Parse.initialize() does, and
-    // server.js's import-time useMasterKey() call is mirrored, so the
-    // modules under test see the master key on their requests like in prod.
-    // (Only the master key lets parse-server accept an emailVerified update.)
+    // The master key is passed only for the seeding save below: parse-server
+    // treats emailVerified as a protected field that no client may set on
+    // itself. uploadAttachment() needs no master key — it only logs in, which
+    // is what the user's own password authorizes.
     Parse.initialize('test-app', undefined, 'test-master');
-    Parse.Cloud.useMasterKey();
     Parse.serverURL = `http://localhost:${parseServer.server.address().port}/parse`;
 
     // Parse Server 2.8.4 leaves emailVerified unset on signUp, and logIn()
@@ -102,7 +101,7 @@ describe('uploadAttachment', () => {
     user.setPassword(password);
     await user.signUp();
     user.set('emailVerified', true);
-    await user.save(null, { sessionToken: user.getSessionToken() });
+    await user.save(null, { useMasterKey: true });
   });
 
   afterAll(async () => {

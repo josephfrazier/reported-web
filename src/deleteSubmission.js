@@ -28,8 +28,13 @@ const deleteSubmission = ({ req, saveUser }) => {
   return saveUser(req.body).then(user => {
     const Submission = Parse.Object.extend('submission');
     const query = new Parse.Query(Submission);
+    // Fetched with the master key for the same reason getSubmissions() lists
+    // with it: a submission made by the mobile client belongs to a different
+    // Parse user, and its ACL would otherwise hide it from this user's
+    // session. The explicit Username/email check below is what decides
+    // ownership; the ACL never was.
     return query
-      .get(objectId)
+      .get(objectId, { useMasterKey: true })
       .catch(error => {
         if (error.code === 101) {
           throw submissionNotFoundOrNotYoursError();
@@ -51,7 +56,7 @@ const deleteSubmission = ({ req, saveUser }) => {
         }
 
         return submission
-          .destroy()
+          .destroy({ useMasterKey: true })
           .catch(error => {
             if (error.message === 'Object not found for delete.') {
               console.info(

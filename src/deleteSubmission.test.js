@@ -85,7 +85,10 @@ describe('deleteSubmission', () => {
       parseServer.server.once('error', reject);
     });
     // parse-server initializes its own nested parse SDK; ours needs it too.
-    Parse.initialize('test-app');
+    // deleteSubmission() fetches and destroys with the master key, because a
+    // submission made by the mobile client belongs to a different Parse user
+    // (see the iOS-style entry below), so it is passed here.
+    Parse.initialize('test-app', undefined, 'test-master');
     Parse.serverURL = `http://localhost:${parseServer.server.address().port}/parse`;
 
     const Submission = Parse.Object.extend('submission');

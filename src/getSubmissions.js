@@ -29,7 +29,12 @@ const getSubmissions = ({ req, saveUser }) =>
     // both keys must be passed together.
     query.descending(['timeofreport', 'createdAt']);
     query.limit(Number.MAX_SAFE_INTEGER);
-    return query.find();
+    // The ACLs on submissions only name the Parse user that created them, and
+    // the mobile clients create a separate user for the same reporter (see
+    // the Username/email matching above). Running this as the logged-in user
+    // would therefore hide every mobile submission, so the listing keeps the
+    // master key even though the rest of the app no longer uses it.
+    return query.find({ useMasterKey: true });
   });
 
 export default getSubmissions;

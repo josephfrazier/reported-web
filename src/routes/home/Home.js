@@ -3181,7 +3181,17 @@ class Home extends React.Component {
                   paddingTop: '1rem',
                 }}
               >
-                {this.props.commitHash}
+                <a
+                  href={`https://github.com/josephfrazier/reported-web/commit/${this.props.commitHash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  // marx.css colours anchors blue and strips their underline,
+                  // so keep the footer's grey and put the underline back to
+                  // mark the hash as a link.
+                  style={{ color: 'inherit', textDecoration: 'underline' }}
+                >
+                  {this.props.commitHash}
+                </a>
               </div>
             )}
           </main>

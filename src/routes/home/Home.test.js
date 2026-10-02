@@ -319,6 +319,23 @@ describe('Home', () => {
     tree.unmount();
   });
 
+  test('links the footer commit hash to the commit on GitHub', () => {
+    const commitHash = '31df5a75cd5c5ca347b9693c9be65eb484e910f2';
+
+    const tree = renderHome({ commitHash });
+
+    const link = tree.root.findByProps({
+      href: `https://github.com/josephfrazier/reported-web/commit/${commitHash}`,
+    });
+
+    expect(link.type).toBe('a');
+    expect(link.children).toEqual([commitHash]);
+    expect(link.props.target).toBe('_blank');
+    expect(link.props.rel).toBe('noopener noreferrer');
+
+    tree.unmount();
+  });
+
   test('handles geolocation and its ipapi fallback both failing', async () => {
     const geolocationStub = navigator.geolocation;
     navigator.geolocation = {

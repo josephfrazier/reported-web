@@ -20,6 +20,7 @@ import Modal from 'react-modal';
 import App from '../../components/App.js';
 import Home from './Home.js';
 import boroughBoundariesFeatureCollection from '../../boroughBoundaries.js';
+import { HOME_STATE_COOKIE } from '../../homeStateCookie.js';
 
 jest.mock('react-modal', () =>
   Object.assign(({ children, isOpen }) => (isOpen ? children : null), {
@@ -2360,6 +2361,50 @@ describe('Home', () => {
       expect(homeRef.current.state.isAuthModalOpen).toBe(false);
       expect(homeRef.current.state.loginSuccessful).toBe(false);
 
+      tree.unmount();
+    });
+  });
+
+  describe('the legacy localStorage migration', () => {
+    const clearLegacyState = () => {
+      localStorage.removeItem('Function');
+      localStorage.removeItem('reportedWebHomeState');
+      document.cookie = `${HOME_STATE_COOKIE}=; max-age=0; path=/`;
+    };
+
+    afterEach(clearLegacyState);
+
+    test('reports the migration so it can be counted', () => {
+      clearLegacyState();
+      localStorage.setItem(
+        'reportedWebHomeState',
+        JSON.stringify({ plate: 'ABC1234' }),
+      );
+      const axiosPost = jest
+        .spyOn(axios, 'post')
+        .mockResolvedValue({ data: {} });
+
+      const tree = renderHome();
+
+      expect(axiosPost).toHaveBeenCalledWith('/api/legacyStateMigrated');
+      // The migration still does its real job: the state is in the cookie now.
+      expect(document.cookie).toContain(`${HOME_STATE_COOKIE}=`);
+
+      axiosPost.mockRestore();
+      tree.unmount();
+    });
+
+    test('does not report when there is no legacy state to migrate', () => {
+      clearLegacyState();
+      const axiosPost = jest
+        .spyOn(axios, 'post')
+        .mockResolvedValue({ data: {} });
+
+      const tree = renderHome();
+
+      expect(axiosPost).not.toHaveBeenCalledWith('/api/legacyStateMigrated');
+
+      axiosPost.mockRestore();
       tree.unmount();
     });
   });

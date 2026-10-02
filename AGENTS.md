@@ -111,6 +111,11 @@ Never squash the trio together: each step is independently reviewable, and the h
 - In a restricted sandbox with no outbound access, those tests fail with DNS/network errors or timeouts. Work around this by running the narrowest relevant tests, or at least `yarn test:no-flaky` when you want parity with the main CI workflow.
 - Run tests as `yarn test [path]`, never `npx jest`: the `test` script is `node -r dotenv/config node_modules/.bin/jest`, and that `-r dotenv/config` is the only thing loading `.env`. Under `npx jest` the API-backed suites go out with undefined credentials and fail in a misleading way — it reads like the environment has no credentials rather than like jest was invoked without dotenv.
 
+## Logging and countable events
+
+- Count things with one-line `console.info('[topic] message')` calls, like `[session] legacy credential auth used` and `[home] legacy localStorage state migrated`. A search in the log service finds every event of one kind, so a count needs no new metrics code.
+- `heroku logs` keeps only the last 1,500 lines (about a week). Production logs drain to Axiom (a Heroku HTTPS drain, US region, set up outside this repo); keep saved searches and alerts there.
+
 ## Commit message style
 
 - Use markdown backtick code snippets for identifiers in commit message titles and bodies: `handleLogIn`, `type="submit"`, `<form>`, `src/routes/home/Home.js`.

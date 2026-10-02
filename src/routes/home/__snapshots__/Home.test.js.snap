@@ -1109,7 +1109,7 @@ exports[`Home renders Sign Up modal UI 1`] = `
         <label
           htmlFor="auth-signup-password"
         >
-          Password (this is saved on your device, so use a password you don't use anywhere else):
+          Password:
           <div
             className="auth-field-row"
           >

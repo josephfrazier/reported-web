@@ -2,18 +2,20 @@ import Parse from 'parse/node';
 import { detectFromBuffer } from 'mime-bytes/file-type-detector';
 
 import { isImage, isVideo } from './isImage.js';
+import { updateUserProfile } from './users.js';
 
 // Extracted from server.js's /submit handler so the submission-creation
 // logic can be tested against a real Parse Server without the surrounding
-// HTTP/multer/coercion glue. `saveUser` and `versionNumber` are injected
-// because they come from server.js's app configuration; the remaining params
-// are the form fields, already coerced to their final types by the handler.
-// Resolves to the submission as the client receives it: Dates unwrapped to
-// ISO strings and objectId included (see #788).
+// HTTP/multer/coercion glue. `user` and `sessionToken` are the request's
+// authenticated account (src/session.js); `versionNumber` comes from
+// server.js's app configuration; the remaining params are the form fields,
+// already coerced to their final types by the handler. Resolves to the
+// submission as the client receives it: Dates unwrapped to ISO strings and
+// objectId included (see #788).
 const createSubmission = async ({
-  saveUser,
+  user,
+  sessionToken,
   email,
-  password,
   FirstName,
   LastName,
   Phone,
@@ -34,9 +36,12 @@ const createSubmission = async ({
   const timeofreport = new Date(CreateDate);
   const timeofreported = timeofreport;
 
-  const user = await saveUser({
+  // The submit form doubles as a profile edit, as before, so the fields it
+  // carries are saved onto the reporter's account.
+  await updateUserProfile({
+    user,
+    sessionToken,
     email,
-    password,
     FirstName,
     LastName,
     Phone,

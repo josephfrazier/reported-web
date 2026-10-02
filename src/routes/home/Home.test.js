@@ -296,11 +296,13 @@ describe('Home', () => {
     const reviewAppUrl =
       'https://github.com/josephfrazier/reported-web/pull/1046';
 
+    const reviewAppLabel = 'PR #1046 (review-app-source-link)';
+
     const tree = renderHome({
       parseServerUrl,
       showParseServerBanner: true,
       reviewAppUrl,
-      reviewAppLabel: 'PR #1046',
+      reviewAppLabel,
     });
 
     const banner = tree.root.findByProps({
@@ -309,7 +311,7 @@ describe('Home', () => {
     const link = banner.findByType('a');
 
     expect(link.props.href).toBe(reviewAppUrl);
-    expect(link.children).toEqual(['PR #1046']);
+    expect(link.children).toEqual([reviewAppLabel]);
 
     expect(tree.toJSON()).toMatchSnapshot();
 

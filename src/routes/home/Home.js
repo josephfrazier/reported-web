@@ -808,11 +808,11 @@ class Home extends React.Component {
     // 'Function' for class components. The newer key was 'reportedWebHomeState'.
     // Migrate both old localStorage keys to the cookie if no cookie exists yet.
     //
-    // Transitional, and invisible to the server: this runs once per browser,
-    // in the client, and the cookie it writes carries no password, so no log
-    // line counts the browsers that still need it. TODO: delete this block,
-    // the two keys, and the `removeItem` calls in `clearAuthState` once the
-    // migration can be counted and the count stays at zero.
+    // Transitional, and invisible to the server except for the report below:
+    // this runs once per browser, in the client. TODO: delete this block, the
+    // two keys, and the `removeItem` calls in `clearAuthState` once
+    // `[home] legacy localStorage state migrated` has not appeared in the
+    // logs for about six months.
     if (!document.cookie.includes(`${HOME_STATE_COOKIE}=`)) {
       const migrateKeys = ['Function', 'reportedWebHomeState'];
       for (const key of migrateKeys) {
@@ -827,6 +827,9 @@ class Home extends React.Component {
             });
             setHomeStateCookie(persistentData, HOME_STATE_MAX_AGE);
             this.setState(persistentData);
+            // Let the server log this, so a search can count the browsers
+            // that still needed the migration. A lost report is fine.
+            axios.post('/api/legacyStateMigrated').catch(() => {});
             break;
           } catch {
             // Ignore parse errors from corrupted data.

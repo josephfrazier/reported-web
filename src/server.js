@@ -219,6 +219,13 @@ app.use('/api/logOut', (req, res) => {
   });
 });
 
+// One line per browser that migrates pre-cookie localStorage state, so the
+// migration can be counted from the logs (the client posts here once).
+app.use('/api/legacyStateMigrated', (req, res) => {
+  console.info('[home] legacy localStorage state migrated');
+  res.status(204).end();
+});
+
 app.use('/saveUser', (req, res) => {
   authenticateRequest(req, res)()
     .then(({ user, sessionToken }) =>

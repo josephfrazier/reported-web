@@ -118,7 +118,7 @@ Never squash the trio together: each step is independently reviewable, and the h
 ## Logging and countable events
 
 - Count things with one-line `console.info('[topic] message')` calls, like `[session] legacy credential auth used` and `[home] legacy localStorage state migrated`. A search in the log service finds every event of one kind, so a count needs no new metrics code.
-- `heroku logs` keeps only the last 1,500 lines (about a week). Production logs drain to Axiom (a Heroku HTTPS drain, US region, set up outside this repo); keep saved searches and alerts there.
+- The default `heroku logs` window is short. Pull a longer tail with `heroku logs -n 9999`, and check it periodically. A line that stays absent across the checks is the signal that ends a transitional block.
 
 ## Writing style
 

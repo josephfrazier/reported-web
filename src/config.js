@@ -13,6 +13,10 @@ if (process.env.BROWSER) {
   );
 }
 
+// The values below are read when this module first evaluates, which happens
+// before any statement in the importing module runs, so load .env here.
+require('dotenv').config();
+
 module.exports = {
   // Node.js app
   port: process.env.PORT || 3000,

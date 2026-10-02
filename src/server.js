@@ -60,8 +60,6 @@ import config from './config.js';
 import readLicenseViaALPR from './alpr.js';
 import getReviewAppSource from './getReviewAppSource.js';
 
-require('dotenv').config();
-
 let commitHash = process.env.HEROKU_BUILD_COMMIT || 'unknown';
 if (commitHash === 'unknown') {
   try {

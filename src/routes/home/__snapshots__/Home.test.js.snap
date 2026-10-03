@@ -528,7 +528,11 @@ exports[`Home renders Edit Profile UI 1`] = `
               type="checkbox"
             />
              
-            Withhold contact info from NYPD
+            Don't include my contact info on NYPD service requests
+            <br />
+            <small>
+              Leave this unchecked and NYPD may call or email you about this report.
+            </small>
           </label>
           <button
             className="auth-submit-btn"

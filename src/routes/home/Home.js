@@ -2230,7 +2230,12 @@ class Home extends React.Component {
                       name="omit_contact_info_from_nypd"
                       onChange={this.handleInputChange}
                     />{' '}
-                    Withhold contact info from NYPD
+                    Don&apos;t include my contact info on NYPD service requests
+                    <br />
+                    <small>
+                      Leave this unchecked and NYPD may call or email you about
+                      this report.
+                    </small>
                   </label>
 
                   <button

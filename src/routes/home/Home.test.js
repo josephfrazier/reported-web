@@ -1849,8 +1849,9 @@ describe('Home', () => {
     const checkbox = tree.root.findByProps({
       name: 'omit_contact_info_from_nypd',
     });
-    // The checkbox is labeled "Withhold contact info from NYPD" and is
-    // unchecked by default: the omit flag is only set when the user opts out.
+    // The checkbox is labeled "Don't include my contact info on NYPD service
+    // requests" and is unchecked by default: the omit flag is only set when
+    // the user opts out.
     expect(checkbox.props.checked).toBe(false);
     expect(homeRef.current.state.omit_contact_info_from_nypd).toBe(false);
 

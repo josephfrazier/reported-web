@@ -1701,19 +1701,6 @@ class Home extends React.Component {
     );
   };
 
-  handleOmitContactInfoFromNypdChange = event => {
-    // The checkbox is labeled "Share contact info with NYPD" (checked by
-    // default), but the state/cookie/submission field
-    // `omit_contact_info_from_nypd` is the inverse of that, so store the
-    // opposite of the checkbox value.
-    this.setState(
-      {
-        omit_contact_info_from_nypd: !event.target.checked,
-      },
-      () => debouncedSavePersistentStateToCookie(this),
-    );
-  };
-
   loadPreviousSubmissions = () => {
     if (this.state.isPreviousSubmissionsLoading) {
       return;
@@ -2239,11 +2226,11 @@ class Home extends React.Component {
                     <input
                       id="omit_contact_info_from_nypd"
                       type="checkbox"
-                      checked={!this.state.omit_contact_info_from_nypd}
+                      checked={this.state.omit_contact_info_from_nypd}
                       name="omit_contact_info_from_nypd"
-                      onChange={this.handleOmitContactInfoFromNypdChange}
+                      onChange={this.handleInputChange}
                     />{' '}
-                    Share contact info with NYPD
+                    Withhold contact info from NYPD
                   </label>
 
                   <button

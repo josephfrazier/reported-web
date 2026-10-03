@@ -521,14 +521,14 @@ exports[`Home renders Edit Profile UI 1`] = `
             htmlFor="omit_contact_info_from_nypd"
           >
             <input
-              checked={true}
+              checked={false}
               id="omit_contact_info_from_nypd"
               name="omit_contact_info_from_nypd"
               onChange={[Function]}
               type="checkbox"
             />
              
-            Share contact info with NYPD
+            Withhold contact info from NYPD
           </label>
           <button
             className="auth-submit-btn"

@@ -279,7 +279,7 @@ describe('createSubmission', () => {
       validParams({ omit_contact_info_from_nypd: true }),
     );
 
-    expect(submission.get('omit_contact_info_from_nypd')).toBe(true);
+    expect(submission.omit_contact_info_from_nypd).toBe(true);
   });
 
   test('omits omit_contact_info_from_nypd when false or absent', async () => {
@@ -288,8 +288,8 @@ describe('createSubmission', () => {
     );
     const absent = await createSubmission(validParams());
 
-    expect(withFalse.toJSON().omit_contact_info_from_nypd).toBeUndefined();
-    expect(absent.toJSON().omit_contact_info_from_nypd).toBeUndefined();
+    expect(withFalse.omit_contact_info_from_nypd).toBeUndefined();
+    expect(absent.omit_contact_info_from_nypd).toBeUndefined();
   });
 
   test('rejects submissions missing a required field', async () => {

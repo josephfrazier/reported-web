@@ -1831,7 +1831,7 @@ describe('Home', () => {
     tree.unmount();
   });
 
-  test('inverts omit_contact_info_from_nypd from the checkbox', () => {
+  test('sets omit_contact_info_from_nypd from the checkbox', () => {
     const initialState = {
       email: 'test@example.com',
       loginSuccessful: true,
@@ -1849,22 +1849,34 @@ describe('Home', () => {
     const checkbox = tree.root.findByProps({
       name: 'omit_contact_info_from_nypd',
     });
-    // The checkbox is labeled "Share contact info with NYPD" and is checked
-    // by default: the omit flag is only set when the user opts out.
-    expect(checkbox.props.checked).toBe(true);
+    // The checkbox is labeled "Withhold contact info from NYPD" and is
+    // unchecked by default: the omit flag is only set when the user opts out.
+    expect(checkbox.props.checked).toBe(false);
     expect(homeRef.current.state.omit_contact_info_from_nypd).toBe(false);
 
-    // Unchecking the box sets the omit flag...
+    // Checking the box sets the omit flag...
     renderer.act(() => {
-      checkbox.props.onChange({ target: { checked: false } });
+      checkbox.props.onChange({
+        target: {
+          type: 'checkbox',
+          checked: true,
+          name: 'omit_contact_info_from_nypd',
+        },
+      });
     });
     expect(homeRef.current.state.omit_contact_info_from_nypd).toBe(true);
 
-    // ...and re-checking it clears the flag.
+    // ...and unchecking it clears the flag.
     renderer.act(() => {
       tree.root
         .findByProps({ name: 'omit_contact_info_from_nypd' })
-        .props.onChange({ target: { checked: true } });
+        .props.onChange({
+          target: {
+            type: 'checkbox',
+            checked: false,
+            name: 'omit_contact_info_from_nypd',
+          },
+        });
     });
     expect(homeRef.current.state.omit_contact_info_from_nypd).toBe(false);
 

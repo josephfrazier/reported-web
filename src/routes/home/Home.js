@@ -34,7 +34,6 @@ import omit from 'object.omit';
 import bufferToArrayBuffer from 'buffer-to-arraybuffer';
 import { serialize } from 'object-to-formdata';
 import usStateNames from 'datasets-us-states-abbr-names';
-import cookie from 'cookie';
 import fileExtension from 'file-extension';
 import diceware from 'diceware-generator';
 import wordlist from 'diceware-wordlist-en-eff';
@@ -50,6 +49,11 @@ import marx from 'marx-css/css/marx.css';
 import homeStyles from './Home.css';
 
 import PreviousSubmissionsList from '../../components/PreviousSubmissionsList.js';
+import {
+  HOME_STATE_COOKIE,
+  HOME_STATE_MAX_AGE,
+  serializeHomeState,
+} from '../../homeStateCookie.js';
 import formatGeosearchAddress from '../../formatGeosearchAddress.js';
 import earliestTakenPhoto from '../../earliestTakenPhoto.js';
 import createGeosearchAddressCache from '../../geosearchAddressCache.js';
@@ -76,14 +80,12 @@ usStateNames.DC = 'District of Columbia';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyDlwm2ykA0ohTXeVepQYvkcmdjz2M2CKEI';
 
-const COOKIE_KEY = 'reportedWebHomeState';
-const COOKIE_MAX_AGE = 365 * 24 * 60 * 60; // 1 year in seconds
-
-const setHomeStateCookie = (value, maxAge) => {
-  document.cookie = cookie.serialize(COOKIE_KEY, value, {
+// The value is an object; the serialization (and the cookie's attributes)
+// live in src/homeStateCookie.js, which the server also uses to read and
+// rewrite the same cookie.
+const setHomeStateCookie = (state, maxAge) => {
+  document.cookie = serializeHomeState(state, {
     maxAge,
-    path: '/',
-    sameSite: 'lax',
     secure: window.location.protocol === 'https:',
   });
 };
@@ -170,6 +172,34 @@ const inMemoryAttachment = async ({ attachmentFile }) => {
   const bytes = await blobUtil.blobToArrayBuffer(attachmentFile);
   return new File([bytes], attachmentFile.name, { type: attachmentFile.type });
 };
+
+// Start (or reuse) each file's background upload to /api/uploadAttachment, so
+// that submitting sends attachment IDs instead of re-sending the bytes. The
+// single-violation flow calls this for every pick; the batch calls it for the
+// files it is about to process, so a violation can be submitted the same way.
+function startBackgroundUploads(attachmentData) {
+  attachmentData.forEach(attachmentFile => {
+    if (!fileUploadPromises.has(attachmentFile)) {
+      const uploadPromise = (async () => {
+        // No credentials: the route authenticates with the session cookie the
+        // browser sends.
+        const formData = new FormData();
+        formData.append(
+          'attachmentData',
+          await inMemoryAttachment({ attachmentFile }),
+        );
+        const { data } = await axios.post('/api/uploadAttachment', formData);
+        return data.id;
+      })();
+      // The submit handler awaits this promise (catching failures so it can
+      // fall back to sending the files directly), so it can sit unhandled
+      // until then. Attach a no-op catch so the test runner and the browser
+      // console don't flag the rejection in the meantime.
+      uploadPromise.catch(() => {});
+      fileUploadPromises.set(attachmentFile, uploadPromise);
+    }
+  });
+}
 
 const geolocate = () =>
   promisedLocation().catch(async () => {
@@ -364,13 +394,18 @@ function upperCaseInputValueInPlace(input) {
 // `/submit` among them: a submission POST repeated after a 5xx can arrive twice.
 axiosRetry(axios, { retries: 0 });
 
-async function fetchPlateResults({
-  attachmentFile,
-  attachmentBuffer,
-  ext,
-  email,
-  password,
-}) {
+// A 401 means the session is gone: expired, revoked by a logout elsewhere, or
+// invalidated by a password reset. Home registers the handler on mount; the
+// interceptor lives here because the axios instance is shared.
+let onUnauthorized = null;
+axios.interceptors.response.use(undefined, error => {
+  if (error?.response?.status === 401 && onUnauthorized) {
+    onUnauthorized();
+  }
+  return Promise.reject(error);
+});
+
+async function fetchPlateResults({ attachmentFile, attachmentBuffer, ext }) {
   if (attachmentPlateCache.has(attachmentFile)) {
     console.info(`found cached plate results for ${attachmentFile.name}!`);
     return attachmentPlateCache.get(attachmentFile);
@@ -389,11 +424,8 @@ async function fetchPlateResults({
   );
   console.timeEnd(`bufferToBlob(${attachmentFile.name})`); // eslint-disable-line no-console
 
-  const formData = serialize({
-    attachmentFile: attachmentBlob,
-    email,
-    password,
-  });
+  // No credentials: /platerecognizer authenticates with the session cookie.
+  const formData = serialize({ attachmentFile: attachmentBlob });
   // Plate Recognizer rate limits, so a 429 here is expected rather than
   // exceptional -- and it is transient, which is the difference between a plate
   // read and a photo the user has to type in by hand. What a repeat is worth is
@@ -411,8 +443,6 @@ async function extractPlate({
   attachmentBuffer,
   ext,
   isAlprEnabled,
-  email,
-  password,
 }) {
   try {
     console.time(`extractPlate(${attachmentFile.name})`); // eslint-disable-line no-console
@@ -426,8 +456,6 @@ async function extractPlate({
       attachmentFile,
       attachmentBuffer,
       ext,
-      email,
-      password,
     });
     const { results } = data;
 
@@ -886,7 +914,6 @@ class Home extends React.Component {
 
     const initialStatePerSubmission = {
       email: '',
-      password: '',
       FirstName: '',
       LastName: '',
       Phone: '',
@@ -917,6 +944,11 @@ class Home extends React.Component {
 
     const initialStatePerSession = {
       attachmentData: [],
+
+      // Per session, not persistent: the password is never written to the
+      // cookie, and it is not sent to /submit or /api/deleteSubmission
+      // (getPerSubmissionState keeps only initialStatePerSubmission keys).
+      password: '',
 
       // Semi-automatic mode: one record per photo the user has picked (in the
       // order they picked them), the violations those photos group into
@@ -958,6 +990,8 @@ class Home extends React.Component {
       // This ensures logged-in users see the correct UI immediately on first render.
       ...(props.initialState || {}),
     };
+    // A legacy cookie still contains the password; never let it into state.
+    initialState.password = '';
 
     this.state = initialState;
     this.initialStatePerSubmission = initialStatePerSubmission;
@@ -986,11 +1020,20 @@ class Home extends React.Component {
   }
 
   componentDidMount() {
+    // Handle a 401 from any API call (see the interceptor above).
+    onUnauthorized = this.handleSessionExpired;
+
     // Migrate from old localStorage key ('Function') to cookie.
     // The old localStorage key came from getDisplayName() which resolved to
     // 'Function' for class components. The newer key was 'reportedWebHomeState'.
     // Migrate both old localStorage keys to the cookie if no cookie exists yet.
-    if (!document.cookie.includes(`${COOKIE_KEY}=`)) {
+    //
+    // Transitional, and invisible to the server except for the report below:
+    // this runs once per browser, in the client. TODO: delete this block, the
+    // two keys, and the `removeItem` calls in `clearAuthState` once
+    // `[home] legacy localStorage state migrated` has not appeared in the
+    // logs for about six months.
+    if (!document.cookie.includes(`${HOME_STATE_COOKIE}=`)) {
       const migrateKeys = ['Function', 'reportedWebHomeState'];
       for (const key of migrateKeys) {
         const oldData = localStorage.getItem(key);
@@ -1002,35 +1045,17 @@ class Home extends React.Component {
             Object.keys(this.initialStatePersistent).forEach(k => {
               if (k in parsed) persistentData[k] = parsed[k];
             });
-            setHomeStateCookie(JSON.stringify(persistentData), COOKIE_MAX_AGE);
-
-            // Use the setState callback so handleLogIn sees the migrated
-            // email/password in this.state, not the constructor defaults.
-            this.setState(persistentData, () => {
-              if (
-                persistentData.email &&
-                persistentData.password &&
-                !persistentData.loginSuccessful
-              ) {
-                this.handleLogIn();
-              }
-            });
+            setHomeStateCookie(persistentData, HOME_STATE_MAX_AGE);
+            this.setState(persistentData);
+            // Let the server log this, so a search can count the browsers
+            // that still needed the migration. A lost report is fine.
+            axios.post('/api/legacyStateMigrated').catch(() => {});
             break;
           } catch {
             // Ignore parse errors from corrupted data.
           }
         }
       }
-    }
-
-    // If the cookie already existed at mount time (i.e. a subsequent
-    // page load), check whether loginSuccessful is missing and retry.
-    if (
-      this.state.email &&
-      this.state.password &&
-      !this.state.loginSuccessful
-    ) {
-      this.handleLogIn();
     }
 
     // if there's no attachments or a time couldn't be extracted, just use now
@@ -1129,6 +1154,7 @@ class Home extends React.Component {
 
   componentWillUnmount() {
     document.removeEventListener('keydown', this.handleDocumentKeyDown);
+    onUnauthorized = null;
   }
 
   onDeleteSubmission = ({ objectId }) => {
@@ -1666,35 +1692,6 @@ class Home extends React.Component {
     });
   };
 
-  // Start (or reuse) each file's background upload to /api/uploadAttachment,
-  // so that submitting sends attachment IDs instead of re-sending the bytes.
-  // The single-violation flow calls this for every pick; the batch calls it for
-  // the files it is about to process, so a violation can be submitted the same
-  // way.
-  startBackgroundUploads = attachmentData => {
-    attachmentData.forEach(attachmentFile => {
-      if (!fileUploadPromises.has(attachmentFile)) {
-        const uploadPromise = (async () => {
-          const formData = new FormData();
-          formData.append('email', this.state.email);
-          formData.append('password', this.state.password);
-          formData.append(
-            'attachmentData',
-            await inMemoryAttachment({ attachmentFile }),
-          );
-          const { data } = await axios.post('/api/uploadAttachment', formData);
-          return data.id;
-        })();
-        // The submit handler awaits this promise (catching failures so it can
-        // fall back to sending the files directly), so it can sit unhandled
-        // until then. Attach a no-op catch so the test runner and the browser
-        // console don't flag the rejection in the meantime.
-        uploadPromise.catch(() => {});
-        fileUploadPromises.set(attachmentFile, uploadPromise);
-      }
-    });
-  };
-
   // Take one photo out of the submission, from the X on its thumbnail. What
   // the submission's time and place are asked again once it is gone: they
   // came from the photos, and the photos have changed.
@@ -1760,7 +1757,7 @@ class Home extends React.Component {
         attachmentData: state.attachmentData.concat(attachmentData),
       }),
       async () => {
-        this.startBackgroundUploads(attachmentData);
+        startBackgroundUploads(attachmentData);
 
         const listsOfExtractions = await Promise.all(
           this.state.attachmentData.map(async (attachmentFile, index) => {
@@ -1805,8 +1802,6 @@ class Home extends React.Component {
                 attachmentBuffer,
                 ext,
                 isAlprEnabled: this.state.isAlprEnabled,
-                email: this.state.email,
-                password: this.state.password,
               })
                 .then(result => {
                   if (
@@ -2235,8 +2230,6 @@ class Home extends React.Component {
         attachmentFile,
         attachmentBuffer,
         ext,
-        email: this.state.email,
-        password: this.state.password,
       });
     } catch (err) {
       console.error(err);
@@ -2323,7 +2316,7 @@ class Home extends React.Component {
     // unsubmitted attachments at a time, so a picked folder can spend the whole
     // budget in one go. Every upload past it is refused, quietly, leaving the
     // submit to send the file itself.
-    this.startBackgroundUploads(attached.map(photo => photo.file));
+    startBackgroundUploads(attached.map(photo => photo.file));
 
     this.setState({
       currentViolationIndex: index,
@@ -2532,7 +2525,7 @@ class Home extends React.Component {
       // A photo swapped in is one the report may be submitted with, so it needs
       // the upload the ones loaded with the violation already had. The call is
       // per file and skips the ones already under way.
-      this.startBackgroundUploads([photo.file]);
+      startBackgroundUploads([photo.file]);
     } else {
       selected.delete(photo.file);
     }
@@ -2702,7 +2695,7 @@ class Home extends React.Component {
         }),
         async () => {
           try {
-            await axios.post('/saveUser', this.state);
+            await axios.post('/saveUser', this.profileFields());
             this.setState({ isUserInfoSaving: false, isAuthModalOpen: false });
             this.savePersistentStateToCookie();
             this.loadPreviousSubmissions();
@@ -2724,7 +2717,14 @@ class Home extends React.Component {
     }
   };
 
-  handleLogOut = () => {
+  // The fields /saveUser accepts. The password is never among them: the
+  // session cookie identifies the user.
+  profileFields = () => {
+    const { email, FirstName, LastName, Phone, testify } = this.state;
+    return { email, FirstName, LastName, Phone, testify };
+  };
+
+  clearAuthState = (extraState = {}) => {
     this.setState(
       {
         email: '',
@@ -2738,9 +2738,10 @@ class Home extends React.Component {
         isPreferencesOpen: false,
         hasLoadedPreviousSubmissions: false,
         loginSuccessful: false,
+        ...extraState,
       },
       () => {
-        setHomeStateCookie('', 0);
+        setHomeStateCookie({}, 0);
         // Remove old localStorage keys so they aren't re-migrated
         // if the user logs back in later.
         localStorage.removeItem('Function');
@@ -2749,6 +2750,26 @@ class Home extends React.Component {
         clearCachedSubmissions();
       },
     );
+  };
+
+  handleLogOut = () => {
+    // Revoke the Parse session server-side, then clear locally whether or not
+    // that request succeeds (an unreachable server must not trap the user in
+    // a logged-in UI).
+    axios.post('/api/logOut').catch(err => console.error({ err }));
+    this.clearAuthState();
+  };
+
+  // A 401 from any API call: the session is gone. Not shown for requests made
+  // while logged out (there is nothing to expire).
+  handleSessionExpired = () => {
+    if (!this.state.loginSuccessful) {
+      return;
+    }
+    this.clearAuthState({
+      isAuthModalOpen: true,
+      authError: 'Your session expired, please log in again.',
+    });
   };
 
   handlePasswordReset = async () => {
@@ -2773,7 +2794,7 @@ class Home extends React.Component {
     e.preventDefault();
     this.setState({ isUserInfoSaving: true });
     try {
-      await axios.post('/saveUser', this.state);
+      await axios.post('/saveUser', this.profileFields());
       this.setState({ isUserInfoSaving: false, isEditProfileOpen: false });
       document.querySelector(`.${homeStyles.root}`).scrollTo({
         top: 100,
@@ -2817,7 +2838,7 @@ class Home extends React.Component {
     Object.keys(this.initialStatePersistent).forEach(key => {
       persistentState[key] = this.state[key];
     });
-    setHomeStateCookie(JSON.stringify(persistentState), COOKIE_MAX_AGE);
+    setHomeStateCookie(persistentState, HOME_STATE_MAX_AGE);
   };
 
   findMatchingPlateThumbnail() {
@@ -3488,8 +3509,7 @@ class Home extends React.Component {
                     />
                   </label>
                   <label htmlFor="auth-signup-password">
-                    Password (this is saved on your device, so use a password
-                    you don&apos;t use anywhere else):
+                    Password:
                     <div className={homeStyles['auth-field-row']}>
                       <input
                         required
@@ -4275,7 +4295,17 @@ class Home extends React.Component {
                   paddingTop: '1rem',
                 }}
               >
-                {this.props.commitHash}
+                <a
+                  href={`https://github.com/josephfrazier/reported-web/commit/${this.props.commitHash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  // marx.css colours anchors blue and strips their underline,
+                  // so keep the footer's grey and put the underline back to
+                  // mark the hash as a link.
+                  style={{ color: 'inherit', textDecoration: 'underline' }}
+                >
+                  {this.props.commitHash}
+                </a>
               </div>
             )}
           </main>

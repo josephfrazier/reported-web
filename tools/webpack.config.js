@@ -9,10 +9,12 @@
 
 import fs from 'fs';
 import path from 'path';
+import { execSync } from 'child_process';
 import webpack from 'webpack';
 import WebpackAssetsManifest from 'webpack-assets-manifest';
 import nodeExternals from 'webpack-node-externals';
 import { BundleAnalyzerPlugin } from 'webpack-bundle-analyzer';
+import { sentryWebpackPlugin } from '@sentry/webpack-plugin';
 import overrideRules from './lib/overrideRules.js';
 import pkg from '../package.json';
 
@@ -25,6 +27,39 @@ const isDebug = !process.argv.includes('--release');
 const isVerbose = process.argv.includes('--verbose');
 const isAnalyze =
   process.argv.includes('--analyze') || process.argv.includes('--analyse');
+
+// One release string for the SDKs and the source map upload, so the
+// artifacts can never be filed under a different release than the events.
+// `SOURCE_VERSION` names the code this build compiles. `HEROKU_BUILD_COMMIT`
+// is deliberately not a fallback: inside a Heroku build it still names the
+// release that is running, which filed artifacts one commit behind on
+// #1058. Without `SOURCE_VERSION` the release becomes `unknown`, and the
+// line below shows why.
+const release =
+  process.env.SENTRY_RELEASE ||
+  process.env.SOURCE_VERSION ||
+  (() => {
+    try {
+      return execSync('git rev-parse --short HEAD', {
+        encoding: 'utf8',
+      }).trim();
+    } catch {
+      return 'unknown';
+    }
+  })();
+
+if (!isDebug) {
+  console.info(
+    `Sentry release: ${release} (SOURCE_VERSION=${
+      process.env.SOURCE_VERSION || 'unset'
+    }, HEROKU_BUILD_COMMIT=${process.env.HEROKU_BUILD_COMMIT || 'unset'})`,
+  );
+  if (!process.env.SENTRY_AUTH_TOKEN) {
+    console.warn(
+      'SENTRY_AUTH_TOKEN is not set: this build will not upload source maps.',
+    );
+  }
+}
 
 const reScript = /\.(js|jsx|mjs)$/;
 const reStyle = /\.(css|less|styl|scss|sass|sss)$/;
@@ -312,6 +347,10 @@ const clientConfig = {
   name: 'client',
   target: 'web',
 
+  // Release maps go to Sentry instead of being referenced from the bundle,
+  // so browsers do not fetch them and expose the sources.
+  devtool: isDebug ? 'inline-cheap-module-source-map' : 'hidden-source-map',
+
   entry: {
     client: ['@babel/polyfill', './src/client.js'],
   },
@@ -321,8 +360,26 @@ const clientConfig = {
     // https://webpack.js.org/plugins/define-plugin/
     new webpack.DefinePlugin({
       'process.env.BROWSER': true,
+      'process.env.SENTRY_RELEASE': JSON.stringify(release),
       __DEV__: isDebug,
     }),
+
+    // Uploads the client bundle's source maps and files them under the same
+    // release the SDKs report. The warning above covers the missing-token
+    // case; a failed upload stops the build instead of shipping blind.
+    !isDebug &&
+      sentryWebpackPlugin({
+        org: process.env.SENTRY_ORG || 'reported',
+        project: process.env.SENTRY_PROJECT || 'reported-web',
+        authToken: process.env.SENTRY_AUTH_TOKEN,
+        release: { name: release, inject: false },
+        disable: !process.env.SENTRY_AUTH_TOKEN,
+        // The plugin only logs upload errors by default; a build that
+        // ships without maps should fail instead.
+        errorHandler: error => {
+          throw error;
+        },
+      }),
 
     // Emit a file with assets paths
     // https://github.com/webdeveric/webpack-assets-manifest#options
@@ -505,6 +562,7 @@ const serverConfig = {
     // https://webpack.js.org/plugins/define-plugin/
     new webpack.DefinePlugin({
       'process.env.BROWSER': false,
+      'process.env.SENTRY_RELEASE': JSON.stringify(release),
       __DEV__: isDebug,
     }),
 

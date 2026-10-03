@@ -243,6 +243,20 @@ so hopefully that will be the end of this saga.
 
 </details>
 
+## Staying logged in
+
+The browser holds its Parse session token in an **HttpOnly** `reportedWebSession`
+cookie, which the server sets on login and clears (revoking the session with Parse)
+on logout. The password is sent only to `/api/logIn` and is never stored: the
+`reportedWebHomeState` cookie keeps form state and preferences, nothing else.
+
+A client (or tab) that predates this still sends the email+password it has in that
+state cookie. The server accepts them when there is no session cookie, and rewrites
+the state cookie without the password in the same response, so those visitors
+migrate without noticing. That transitional path lives in `src/session.js`
+(`authenticate` and `resolveSsrSession`) and can be deleted once old clients are
+gone; it logs `[session] legacy credential auth used` on each fallback hit.
+
 ---
 
 This project is based on [React Starter Kit](https://github.com/kriasoft/react-starter-kit/tree/b821a03895ff6901722ed6f4be100699cc72a674). See its README below:

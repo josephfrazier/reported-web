@@ -939,12 +939,12 @@ function getHomeStateCookie() {
   }
 }
 
-function getCredentials() {
+// Whether the home page last left the visitor logged in. A hint for the UI
+// only: the session cookie is HttpOnly and the server enforces it, so a stale
+// true costs one request that answers 401.
+function looksLoggedIn() {
   const state = getHomeStateCookie();
-  if (!state) return null;
-  const { email, password, FirstName, LastName, Phone, testify } = state;
-  if (!email || !password || !FirstName || !LastName || !Phone) return null;
-  return { email, password, FirstName, LastName, Phone, testify: Boolean(testify) };
+  return Boolean(state && state.loginSuccessful);
 }
 
 function showMySubmissionsLoginPrompt() {
@@ -954,20 +954,22 @@ function showMySubmissionsLoginPrompt() {
 }
 
 async function loadMySubmissions() {
-  const credentials = getCredentials();
-  if (!credentials) {
-    showMySubmissionsLoginPrompt();
-    return;
-  }
   mySubmissionsPromptEl.style.display = 'none';
   mySubmissionsStatusEl.textContent = 'Loading your submissions…';
   mySubmissionsLoadBtn.disabled = true;
   try {
+    // No credentials in the body: the browser sends the HttpOnly session
+    // cookie with the request, and the server authenticates from it.
     const resp = await fetch('/submissions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(credentials),
+      body: JSON.stringify({}),
     });
+    if (resp.status === 401) {
+      mySubmissionsStatusEl.textContent = '';
+      showMySubmissionsLoginPrompt();
+      return;
+    }
     if (!resp.ok) {
       const body = await resp.json().catch(() => ({}));
       throw new Error(body.error || `Unexpected server error (HTTP ${resp.status}). Please try again.`);
@@ -997,7 +999,7 @@ async function loadMySubmissions() {
 }
 
 mySubmissionsLoadBtn.addEventListener('click', () => {
-  if (!getCredentials()) {
+  if (!looksLoggedIn()) {
     showMySubmissionsLoginPrompt();
     return;
   }

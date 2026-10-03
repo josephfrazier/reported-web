@@ -2,18 +2,20 @@ import Parse from 'parse/node';
 import { detectFromBuffer } from 'mime-bytes/file-type-detector';
 
 import { isImage, isVideo } from './isImage.js';
+import { updateUserProfile } from './users.js';
 
 // Extracted from server.js's /submit handler so the submission-creation
 // logic can be tested against a real Parse Server without the surrounding
-// HTTP/multer/coercion glue. `saveUser` and `versionNumber` are injected
-// because they come from server.js's app configuration; the remaining params
-// are the form fields, already coerced to their final types by the handler.
-// Resolves to the submission as the client receives it: Dates unwrapped to
-// ISO strings and objectId included (see #788).
+// HTTP/multer/coercion glue. `user` and `sessionToken` are the request's
+// authenticated account (src/session.js); `versionNumber` comes from
+// server.js's app configuration; the remaining params are the form fields,
+// already coerced to their final types by the handler. Resolves to the
+// submission as the client receives it: Dates unwrapped to ISO strings and
+// objectId included (see #788).
 const createSubmission = async ({
-  saveUser,
+  user,
+  sessionToken,
   email,
-  password,
   FirstName,
   LastName,
   Phone,
@@ -34,9 +36,12 @@ const createSubmission = async ({
   const timeofreport = new Date(CreateDate);
   const timeofreported = timeofreport;
 
-  const user = await saveUser({
+  // The submit form doubles as a profile edit, as before, so the fields it
+  // carries are saved onto the reporter's account.
+  await updateUserProfile({
+    user,
+    sessionToken,
     email,
-    password,
     FirstName,
     LastName,
     Phone,
@@ -122,13 +127,16 @@ const createSubmission = async ({
   const images = attachmentsWithFormats.filter(isImage);
   const videos = attachmentsWithFormats.filter(isVideo);
 
+  // The submission is ACLed to its reporter, so its files and the submission
+  // itself are saved with that user's session token: parse-server then
+  // enforces the ACL instead of trusting this code to apply it.
   await Promise.all([
     ...images.slice(0, 3).map(async ({ attachmentBuffer, ext }, index) => {
       const key = `photoData${index}`;
       const file = new Parse.File(`${key}.${ext}`, {
         base64: attachmentBuffer.toString('base64'),
       });
-      await file.save();
+      await file.save({ sessionToken });
       submission.set(key, file);
     }),
     ...videos.slice(0, 3).map(async ({ attachmentBuffer, ext }, index) => {
@@ -136,11 +144,11 @@ const createSubmission = async ({
       const file = new Parse.File(`${key}.${ext}`, {
         base64: attachmentBuffer.toString('base64'),
       });
-      await file.save();
+      await file.save({ sessionToken });
       submission.set(key, file.url());
     }),
   ]);
-  await submission.save(null);
+  await submission.save(null, { sessionToken });
 
   // Unwrap encoded Date objects into ISO strings
   // before: { __type: 'Date', iso: '2018-05-26T23:17:22.000Z' }

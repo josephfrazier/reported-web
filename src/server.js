@@ -63,11 +63,10 @@ import { relayEnvelope } from './sentryTunnel.js';
 
 // `process.env.BUILD_COMMIT` is not a config var: the build replaces it with
 // the commit it compiled (see tools/webpack.config.js), so a deployed app
-// shows its own commit without Dyno Metadata. That Heroku Labs feature is
-// per-app, and review apps do not inherit it, so `HEROKU_BUILD_COMMIT` is
-// absent there. The git command below only helps with a local checkout.
-let commitHash =
-  process.env.BUILD_COMMIT || process.env.HEROKU_BUILD_COMMIT || 'unknown';
+// shows its own commit without Dyno Metadata. `HEROKU_BUILD_COMMIT` reads
+// the same commit through a per-app Heroku Labs feature, so the build value
+// is the one source. The git command below only helps with a local checkout.
+let commitHash = process.env.BUILD_COMMIT || 'unknown';
 if (commitHash === 'unknown') {
   try {
     commitHash = execSync('git rev-parse --short HEAD', {

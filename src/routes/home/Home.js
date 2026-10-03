@@ -2233,8 +2233,8 @@ class Home extends React.Component {
                     Don&apos;t include my contact info on NYPD service requests
                     <br />
                     <small>
-                      Leave this unchecked and NYPD may call or email you about
-                      this report.
+                      If you leave this unchecked, NYPD may call or email you
+                      about your service requests.
                     </small>
                   </label>
 

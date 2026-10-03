@@ -55,7 +55,7 @@ if (!isDebug) {
   console.info(
     `Sentry release: ${release} (SOURCE_VERSION=${
       process.env.SOURCE_VERSION || 'unset'
-    }, HEROKU_BUILD_COMMIT=${process.env.HEROKU_BUILD_COMMIT || 'unset'})`,
+    })`,
   );
   if (!process.env.SENTRY_AUTH_TOKEN) {
     console.warn(

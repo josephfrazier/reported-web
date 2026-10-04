@@ -357,7 +357,6 @@ input[type='search']::-webkit-search-cancel-button {
 .batch-violation-row {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
   padding-left: 0.4rem;
 }
 
@@ -384,11 +383,20 @@ input[type='search']::-webkit-search-cancel-button {
 .batch-violation-description {
   background: none;
   border: 0;
-  padding: 0;
   font: inherit;
   color: inherit;
   text-align: left;
   cursor: pointer;
+
+  /* The row's highlight covers its whole width, so the description -- the
+     control that loads the violation -- takes the width its text does not.
+     Without this the space between the text and the X belongs to the row
+     rather than to any control, and a click there lands on the highlight and
+     does nothing; the padding replaces the gap the row used to space its
+     controls with, so the text keeps its distance from the checkbox and from
+     the X. */
+  flex: 1;
+  padding: 0 0.4rem;
 
   /* marx keeps a button on one line. A description is a sentence, and on a
      narrow screen it is wider than the row, so it wraps instead of running

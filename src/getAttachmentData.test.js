@@ -6,12 +6,24 @@
  * instead of a fake.
  */
 
+import crypto from 'crypto';
+
 import getAttachmentData from './getAttachmentData.js';
 import { attachmentId, writeAttachment } from './attachmentStore.js';
 
 describe('getAttachmentData', () => {
+  // The store files an attachment under the hash of its bytes, and jest runs
+  // test files in parallel against one shared temp directory, so these bytes
+  // and ids stay unique to this file: the same bytes elsewhere would be one
+  // file, which another file's cleanup deletes mid-test.
+  const buffer = Buffer.from('getAttachmentData attachment bytes');
+  const missingId = crypto
+    .createHash('sha256')
+    .update('getAttachmentData: never written')
+    .digest('hex');
+
   test('returns multer files untouched when no attachmentIds are given', async () => {
-    const files = [{ buffer: Buffer.from('attachment bytes') }];
+    const files = [{ buffer }];
 
     await expect(
       getAttachmentData({ attachmentIdsJson: undefined, files }),
@@ -19,7 +31,6 @@ describe('getAttachmentData', () => {
   });
 
   test('reads pre-uploaded attachment buffers back from the store', async () => {
-    const buffer = Buffer.from('attachment bytes');
     const id = attachmentId(buffer);
     await writeAttachment(id, buffer);
 
@@ -39,7 +50,7 @@ describe('getAttachmentData', () => {
   test('rejects attachment ids that are not in the store', async () => {
     await expect(
       getAttachmentData({
-        attachmentIdsJson: JSON.stringify(['a'.repeat(64)]),
+        attachmentIdsJson: JSON.stringify([missingId]),
       }),
     ).rejects.toMatchObject({
       message: 'Attachment not found; please re-add your files and try again',

@@ -274,6 +274,24 @@ describe('createSubmission', () => {
     expect(submission.selectedReport).toBe(0);
   });
 
+  test('sets withhold_contact_info_from_nypd on the submission when true', async () => {
+    const submission = await createSubmission(
+      validParams({ withhold_contact_info_from_nypd: true }),
+    );
+
+    expect(submission.withhold_contact_info_from_nypd).toBe(true);
+  });
+
+  test('leaves withhold_contact_info_from_nypd off when false or absent', async () => {
+    const withFalse = await createSubmission(
+      validParams({ withhold_contact_info_from_nypd: false }),
+    );
+    const absent = await createSubmission(validParams());
+
+    expect(withFalse.withhold_contact_info_from_nypd).toBeUndefined();
+    expect(absent.withhold_contact_info_from_nypd).toBeUndefined();
+  });
+
   test('rejects submissions missing a required field', async () => {
     await expect(
       createSubmission(validParams({ plate: '' })),

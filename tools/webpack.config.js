@@ -28,15 +28,12 @@ const isVerbose = process.argv.includes('--verbose');
 const isAnalyze =
   process.argv.includes('--analyze') || process.argv.includes('--analyse');
 
-// One release string for the SDKs and the source map upload, so the
-// artifacts can never be filed under a different release than the events.
-// `SOURCE_VERSION` names the code this build compiles. `HEROKU_BUILD_COMMIT`
-// is deliberately not a fallback: inside a Heroku build it still names the
-// release that is running, which filed artifacts one commit behind on
-// #1058. Without `SOURCE_VERSION` the release becomes `unknown`, and the
-// line below shows why.
-const release =
-  process.env.SENTRY_RELEASE ||
+// The commit this build compiles. `SOURCE_VERSION` names the code in a
+// git-based Heroku build, review apps included. The git command covers a
+// local build. `HEROKU_BUILD_COMMIT` is deliberately not a fallback: inside
+// a Heroku build it still names the release that is running, which filed
+// artifacts one commit behind on #1058.
+const commitHash =
   process.env.SOURCE_VERSION ||
   (() => {
     try {
@@ -44,15 +41,21 @@ const release =
         encoding: 'utf8',
       }).trim();
     } catch {
-      return 'unknown';
+      return null;
     }
   })();
+
+// One release string for the SDKs and the source map upload, so the
+// artifacts can never be filed under a different release than the events.
+// Without `SOURCE_VERSION` the release becomes `unknown`, and the line below
+// shows why.
+const release = process.env.SENTRY_RELEASE || commitHash || 'unknown';
 
 if (!isDebug) {
   console.info(
     `Sentry release: ${release} (SOURCE_VERSION=${
       process.env.SOURCE_VERSION || 'unset'
-    }, HEROKU_BUILD_COMMIT=${process.env.HEROKU_BUILD_COMMIT || 'unset'})`,
+    })`,
   );
   if (!process.env.SENTRY_AUTH_TOKEN) {
     console.warn(
@@ -562,6 +565,10 @@ const serverConfig = {
     // https://webpack.js.org/plugins/define-plugin/
     new webpack.DefinePlugin({
       'process.env.BROWSER': false,
+      // The running server prints this commit in the home page footer.
+      // Baking it in keeps that working on apps without Dyno Metadata,
+      // such as review apps.
+      'process.env.BUILD_COMMIT': JSON.stringify(commitHash),
       'process.env.SENTRY_RELEASE': JSON.stringify(release),
       __DEV__: isDebug,
     }),

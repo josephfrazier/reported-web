@@ -1,3 +1,5 @@
+import crypto from 'crypto';
+
 import {
   ATTACHMENT_BUDGET_BYTES,
   canAfford,
@@ -16,13 +18,19 @@ import {
 describe('attachmentBudget', () => {
   // The bookkeeping is process-wide, the way it is in the server, and a file is
   // kept while any client still holds it. So no two tests share an id: one
-  // test's client would otherwise keep another test's file alive. Ids are hex,
-  // the form the store's paths accept.
-  const id = character => character.repeat(64);
+  // test's client would otherwise keep another test's file alive. The ids also
+  // stay within this file, for the reason in attachmentStore.test.js: the store
+  // keeps one file per id in the shared temp directory, so the cleanup below
+  // would otherwise delete another file's attachment mid-test.
+  const id = character =>
+    crypto
+      .createHash('sha256')
+      .update(`attachmentBudget:${character}`)
+      .digest('hex');
   const usedIds = ['a', 'b', 'c', 'd', 'e', 'f', '1', '2', '7', '8'].map(id);
 
   afterEach(async () => {
-    await Promise.all(usedIds.map(character => deleteAttachment(character)));
+    await Promise.all(usedIds.map(usedId => deleteAttachment(usedId)));
   });
 
   test('adds up what one client is holding', () => {

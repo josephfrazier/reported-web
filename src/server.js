@@ -61,7 +61,12 @@ import readLicenseViaALPR from './alpr.js';
 import getReviewAppSource from './getReviewAppSource.js';
 import { relayEnvelope } from './sentryTunnel.js';
 
-let commitHash = process.env.HEROKU_BUILD_COMMIT || 'unknown';
+// `process.env.BUILD_COMMIT` is not a config var: the build replaces it with
+// the commit it compiled (see tools/webpack.config.js), so a deployed app
+// shows its own commit without Dyno Metadata. `HEROKU_BUILD_COMMIT` reads
+// the same commit through a per-app Heroku Labs feature, so the build value
+// is the one source. The git command below only helps with a local checkout.
+let commitHash = process.env.BUILD_COMMIT || 'unknown';
 if (commitHash === 'unknown') {
   try {
     commitHash = execSync('git rev-parse --short HEAD', {

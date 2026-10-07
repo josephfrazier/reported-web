@@ -9,8 +9,14 @@ import {
 } from './attachmentStore.js';
 
 describe('attachmentStore', () => {
-  const id = 'a'.repeat(64);
-  const otherId = 'b'.repeat(64);
+  // The store keeps one file per id in the shared temp directory, and jest
+  // runs test files in parallel, so an id that two files both use is one
+  // file: the other file's cleanup deletes this file's attachment mid-test.
+  // Deriving the ids from this file's name keeps them to this file.
+  const idFor = name =>
+    crypto.createHash('sha256').update(`attachmentStore:${name}`).digest('hex');
+  const id = idFor('written');
+  const otherId = idFor('never written');
 
   afterEach(async () => {
     await fs.promises

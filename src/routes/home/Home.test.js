@@ -1675,6 +1675,65 @@ describe('Home', () => {
     global.URL.createObjectURL = originalCreateObjectURL;
   });
 
+  test('does not look up an empty plate', async () => {
+    jest.useFakeTimers();
+
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+    const axiosGet = jest.spyOn(axios, 'get').mockImplementation(url => {
+      if (url.startsWith('/getVehicleType/')) {
+        return Promise.resolve({
+          data: {
+            result: {
+              vehicleYear: 2020,
+              vehicleMake: 'Toyota',
+              vehicleModel: 'Camry',
+              vehicleBody: 'Sedan',
+            },
+          },
+        });
+      }
+      return Promise.resolve({ data: { data: [] } });
+    });
+    const axiosPost = jest
+      .spyOn(axios, 'post')
+      .mockResolvedValue({ data: { features: [{ properties: {} }] } });
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ homeRef });
+    });
+
+    renderer.act(() => {
+      homeRef.current.setLicensePlate({ plate: 'TEST', licenseState: 'NY' });
+    });
+    await renderer.act(async () => {
+      jest.advanceTimersByTime(1500);
+    });
+
+    axiosGet.mockClear();
+
+    // Clearing the field looks nothing up: /getVehicleType//NY is a 404, and
+    // an empty plate has no make/model to show anyway.
+    renderer.act(() => {
+      homeRef.current.setLicensePlate({ plate: '', licenseState: 'NY' });
+    });
+    await renderer.act(async () => {
+      jest.advanceTimersByTime(1500);
+    });
+    expect(axiosGet).not.toHaveBeenCalled();
+    expect(homeRef.current.state.vehicleInfoComponent).toBe(null);
+    expect(homeRef.current.state.violationSummaryComponent).toBe(null);
+
+    jest.useRealTimers();
+    axiosGet.mockRestore();
+    axiosPost.mockRestore();
+    tree.unmount();
+    global.URL.createObjectURL = originalCreateObjectURL;
+  });
+
   test('positions plate overlays with the uploaded image dimensions', () => {
     // Three sizes are in play for one photo, and only one of them is the space
     // `box` is measured in:

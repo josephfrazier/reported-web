@@ -1261,7 +1261,10 @@ class Home extends React.Component {
       );
     }
 
-    if (!cachedVehicleInfoComponent) {
+    // An empty plate (after a submission, or when the field is cleared) has
+    // nothing to look up: the request would be /getVehicleType//NY, which the
+    // server answers with a 404.
+    if (plate && !cachedVehicleInfoComponent) {
       debouncedGetVehicleType({
         plate,
         licenseState,

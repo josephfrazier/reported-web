@@ -727,7 +727,7 @@ class Home extends React.Component {
       typeofcomplaint: typeofcomplaintValues[0],
       reportDescription: '',
       can_be_shared_publicly: false,
-      omit_contact_info_from_nypd: false,
+      withhold_contact_info_from_nypd: false,
       latitude: defaultLatitude,
       longitude: defaultLongitude,
       coordsAreInNyc: true,
@@ -2222,15 +2222,15 @@ class Home extends React.Component {
                     to be publicly displayed
                   </label>
 
-                  <label htmlFor="omit_contact_info_from_nypd">
+                  <label htmlFor="withhold_contact_info_from_nypd">
                     <input
-                      id="omit_contact_info_from_nypd"
+                      id="withhold_contact_info_from_nypd"
                       type="checkbox"
-                      checked={this.state.omit_contact_info_from_nypd}
-                      name="omit_contact_info_from_nypd"
+                      checked={this.state.withhold_contact_info_from_nypd}
+                      name="withhold_contact_info_from_nypd"
                       onChange={this.handleInputChange}
                     />{' '}
-                    Don&apos;t include my contact info on NYPD service requests
+                    Withhold my contact info from NYPD service requests
                     <br />
                     <small>
                       If you leave this unchecked, NYPD may call or email you

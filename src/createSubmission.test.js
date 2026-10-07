@@ -274,22 +274,22 @@ describe('createSubmission', () => {
     expect(submission.selectedReport).toBe(0);
   });
 
-  test('sets omit_contact_info_from_nypd on the submission when true', async () => {
+  test('sets withhold_contact_info_from_nypd on the submission when true', async () => {
     const submission = await createSubmission(
-      validParams({ omit_contact_info_from_nypd: true }),
+      validParams({ withhold_contact_info_from_nypd: true }),
     );
 
-    expect(submission.omit_contact_info_from_nypd).toBe(true);
+    expect(submission.withhold_contact_info_from_nypd).toBe(true);
   });
 
-  test('omits omit_contact_info_from_nypd when false or absent', async () => {
+  test('leaves withhold_contact_info_from_nypd off when false or absent', async () => {
     const withFalse = await createSubmission(
-      validParams({ omit_contact_info_from_nypd: false }),
+      validParams({ withhold_contact_info_from_nypd: false }),
     );
     const absent = await createSubmission(validParams());
 
-    expect(withFalse.omit_contact_info_from_nypd).toBeUndefined();
-    expect(absent.omit_contact_info_from_nypd).toBeUndefined();
+    expect(withFalse.withhold_contact_info_from_nypd).toBeUndefined();
+    expect(absent.withhold_contact_info_from_nypd).toBeUndefined();
   });
 
   test('rejects submissions missing a required field', async () => {

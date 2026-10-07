@@ -518,17 +518,17 @@ exports[`Home renders Edit Profile UI 1`] = `
             Allow the photos/videos, description, category, and location to be publicly displayed
           </label>
           <label
-            htmlFor="omit_contact_info_from_nypd"
+            htmlFor="withhold_contact_info_from_nypd"
           >
             <input
               checked={false}
-              id="omit_contact_info_from_nypd"
-              name="omit_contact_info_from_nypd"
+              id="withhold_contact_info_from_nypd"
+              name="withhold_contact_info_from_nypd"
               onChange={[Function]}
               type="checkbox"
             />
              
-            Don't include my contact info on NYPD service requests
+            Withhold my contact info from NYPD service requests
             <br />
             <small>
               If you leave this unchecked, NYPD may call or email you about your service requests.

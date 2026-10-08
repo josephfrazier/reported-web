@@ -727,6 +727,7 @@ class Home extends React.Component {
       typeofcomplaint: typeofcomplaintValues[0],
       reportDescription: '',
       can_be_shared_publicly: false,
+      withhold_contact_info_from_nypd: false,
       latitude: defaultLatitude,
       longitude: defaultLongitude,
       coordsAreInNyc: true,
@@ -2222,6 +2223,22 @@ class Home extends React.Component {
                     />{' '}
                     Allow the photos/videos, description, category, and location
                     to be publicly displayed
+                  </label>
+
+                  <label htmlFor="withhold_contact_info_from_nypd">
+                    <input
+                      id="withhold_contact_info_from_nypd"
+                      type="checkbox"
+                      checked={this.state.withhold_contact_info_from_nypd}
+                      name="withhold_contact_info_from_nypd"
+                      onChange={this.handleInputChange}
+                    />{' '}
+                    Withhold my contact info from NYPD service requests
+                    <br />
+                    <small>
+                      If you leave this unchecked, NYPD may call or email you
+                      about your service requests.
+                    </small>
                   </label>
 
                   <button

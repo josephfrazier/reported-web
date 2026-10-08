@@ -1,0 +1,59 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+
+  // `tools/run.js` loads its task from `process.argv[2]`
+  // (`require(`./${process.argv[2]}.js`)`), which knip cannot follow, so the
+  // tasks are listed by hand. `tools/lib/webpackHotDevClient.js` is named the
+  // same way, by `tools/start.js`, when the dev server starts. The two webpack
+  // entries -- `src/client.js` and `src/server.js` -- are found by the webpack
+  // plugin, so they need no entry here.
+  "entry": ["tools/*.js", "tools/lib/webpackHotDevClient.js"],
+
+  // The application and its build tooling. Left narrow on purpose: the root
+  // also holds throwaway scripts, and a report that mixes them in is a report
+  // nobody reads.
+  "project": ["src/**/*.js", "tools/**/*.js"],
+
+  // Both configs are named only from inside other files -- webpack is started
+  // from `tools/start.js`, and the postcss config from the `postcss-loader`
+  // options in the webpack config -- so knip does not find them by itself.
+  "webpack": { "config": ["tools/webpack.config.js"] },
+  "postcss": { "config": ["tools/postcss.config.js"] },
+
+  // Dependencies that are used, but in a place knip does not read. Each one is
+  // a gap in the tool, not dead code: remove an entry only after checking that
+  // the reference it stands for is gone.
+  "ignoreDependencies": [
+    // Named by `.eslintrc.js`, as `settings['import/resolver'].node`.
+    "eslint-import-resolver-node",
+
+    // Named inside the server bundle's banner, in `tools/webpack.config.js`:
+    // `require("source-map-support").install()` is a string there, not code.
+    "source-map-support",
+
+    // These four sit behind `isDebug` (`!process.argv.includes('--release')`)
+    // in `tools/webpack.config.js`, and knip cannot put `--release` on the
+    // argv it runs that config with. Verified by forcing `isDebug` false.
+    "@babel/plugin-transform-react-constant-elements",
+    "@babel/plugin-transform-react-inline-elements",
+    "babel-plugin-transform-react-remove-prop-types",
+    "null-loader",
+
+    // These two sit in the style rule's nested `rules`, which knip 6.39.0 does
+    // not walk (it follows `use`, `loader` and `oneOf` only).
+    "css-loader",
+    "postcss-loader",
+
+    // Loaded with `require()` from `Home.test.js` and
+    // `SubmissionDetails.test.js`, which knip does not read them from.
+    "jest-mock-now",
+    "timezone-mock",
+
+    // Deliberately kept out of package.json -- `jest.globalSetup.js` installs
+    // it on demand, so that Dependabot does not file against its advisories.
+    "parse-server",
+  ],
+
+  // Started by hand, from the same kind of on-demand install.
+  "ignoreBinaries": ["mongodb-runner", "parse-server", "parse-dashboard"],
+}

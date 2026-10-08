@@ -85,6 +85,33 @@ input[type='search']::-webkit-search-cancel-button {
   display: block;
 }
 
+/* Full-width banner flagging non-production instances (review apps, local
+   dev), so submissions against a different Parse server aren't confused
+   with production. Sticky keeps it visible while the page is scrolled.
+   The negative margins cancel .root's side padding so the banner spans the
+   full width of the scroller. */
+.non-production-banner {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  margin: 0 -20px;
+  padding: 0.5rem 20px;
+  background: #ffcf3f;
+  color: #000;
+  font-weight: bold;
+  text-align: center;
+}
+
+.non-production-banner code {
+  overflow-wrap: anywhere;
+}
+
+/* Keep the link to the review app's PR or branch in the banner's
+   black-on-yellow palette instead of the default blue. */
+.non-production-banner a {
+  color: inherit;
+}
+
 /* User Status Bar */
 .user-status-bar {
   display: flex;

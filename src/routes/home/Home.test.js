@@ -1844,6 +1844,59 @@ describe('Home', () => {
     tree.unmount();
   });
 
+  test('sets withhold_contact_info_from_nypd from the checkbox', () => {
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+    };
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ initialState, homeRef });
+    });
+    renderer.act(() => {
+      homeRef.current.setState({ isEditProfileOpen: true });
+    });
+
+    const checkbox = tree.root.findByProps({
+      name: 'withhold_contact_info_from_nypd',
+    });
+    // The checkbox is labeled "Withhold my contact info from NYPD service
+    // requests" and is unchecked by default: the withhold flag is only set
+    // when the user opts out.
+    expect(checkbox.props.checked).toBe(false);
+    expect(homeRef.current.state.withhold_contact_info_from_nypd).toBe(false);
+
+    // Checking the box sets the omit flag...
+    renderer.act(() => {
+      checkbox.props.onChange({
+        target: {
+          type: 'checkbox',
+          checked: true,
+          name: 'withhold_contact_info_from_nypd',
+        },
+      });
+    });
+    expect(homeRef.current.state.withhold_contact_info_from_nypd).toBe(true);
+
+    // ...and unchecking it clears the flag.
+    renderer.act(() => {
+      tree.root
+        .findByProps({ name: 'withhold_contact_info_from_nypd' })
+        .props.onChange({
+          target: {
+            type: 'checkbox',
+            checked: false,
+            name: 'withhold_contact_info_from_nypd',
+          },
+        });
+    });
+    expect(homeRef.current.state.withhold_contact_info_from_nypd).toBe(false);
+
+    tree.unmount();
+  });
+
   test('renders Preferences UI', () => {
     const initialState = {
       email: 'test@example.com',
@@ -2262,6 +2315,9 @@ describe('Home', () => {
         'uploaded-photo.jpg',
       ]);
       expect(submitBody.get('attachmentData')).toBeNull();
+      // The omit flag is sent alongside the rest of the per-submission
+      // state, so the server can store it (sparsely) when true.
+      expect(submitBody.get('withhold_contact_info_from_nypd')).toBe('false');
 
       // The upload must have started before the submit request went out,
       // i.e. in the background rather than as part of submitting.

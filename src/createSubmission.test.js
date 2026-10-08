@@ -76,7 +76,8 @@ describe('createSubmission', () => {
   let mongo;
   let parseServer;
   let user;
-  let saveUser;
+  let sessionToken;
+  let otherUserSessionToken;
 
   beforeAll(async () => {
     // MongoDB 4.4 is the newest version whose wire protocol parse-server
@@ -130,27 +131,31 @@ describe('createSubmission', () => {
       parseServer.server.once('error', reject);
     });
     // parse-server initializes its own nested parse SDK; ours needs it too.
-    // The master key is passed like prod's Parse.initialize() does, so that
-    // submission.save(null) and Parse.File#save() are authorized the same way.
-    Parse.initialize('test-app', undefined, 'test-master');
+    // No master key is passed: the submission is saved with the reporter's
+    // session token, so nothing here should need to bypass ACLs.
+    Parse.initialize('test-app');
     Parse.serverURL = `http://localhost:${parseServer.server.address().port}/parse`;
 
     user = new Parse.User();
     user.setUsername(email);
     user.setPassword('test-password');
     await user.signUp();
+    // The sign-up session. Captured once: a save or fetch response without a
+    // sessionToken in it clears the attribute getSessionToken() reads.
+    sessionToken = user.getSessionToken();
+
+    // A second user, to prove the submission's ACL keeps everyone else out.
+    const otherUser = new Parse.User();
+    otherUser.setUsername('other@example.com');
+    otherUser.setPassword('test-password');
+    await otherUser.signUp();
+    otherUserSessionToken = otherUser.getSessionToken();
   });
 
   afterAll(async () => {
     await new Promise(resolve => parseServer.server.close(resolve));
     parseServer.handleShutdown();
     await mongo.stop();
-  });
-
-  beforeEach(() => {
-    // Stand-in for server.js's saveUser, which logs the user in (or creates
-    // them) and resolves to the Parse user.
-    saveUser = jest.fn(() => Promise.resolve(user));
   });
 
   afterEach(() => {
@@ -164,9 +169,11 @@ describe('createSubmission', () => {
   });
 
   const validParams = overrides => ({
-    saveUser,
+    // The signed-in account and the token that authenticated it, as the route
+    // resolves them from the session cookie.
+    user,
+    sessionToken,
     email,
-    password: 'test-password',
     FirstName: 'Test',
     LastName: 'User',
     Phone: '5551234567',
@@ -190,9 +197,11 @@ describe('createSubmission', () => {
     const params = validParams();
     const submission = await createSubmission(params);
 
-    expect(saveUser).toHaveBeenCalledWith({
-      email,
-      password: 'test-password',
+    // The submit form doubles as a profile edit, so its fields land on the
+    // reporter's account.
+    const savedUser = await Parse.User.me(sessionToken);
+    expect(savedUser.toJSON()).toMatchObject({
+      useremail: email,
       FirstName: 'Test',
       LastName: 'User',
       Phone: '5551234567',
@@ -238,12 +247,49 @@ describe('createSubmission', () => {
     expect(submission.objectId).toEqual(expect.any(String));
   });
 
+  test("ACLs the submission to the reporter, so other users can't read it", async () => {
+    const params = validParams();
+    const submission = await createSubmission(params);
+
+    const Submission = Parse.Object.extend('submission');
+    const query = new Parse.Query(Submission);
+
+    // The reporter (whose session token createSubmission saved with) can read
+    // it back...
+    await expect(
+      query.get(submission.objectId, { sessionToken }),
+    ).resolves.toMatchObject({ id: submission.objectId });
+
+    // ...and a different user gets the ACL's "not found" for the same id.
+    await expect(
+      query.get(submission.objectId, { sessionToken: otherUserSessionToken }),
+    ).rejects.toMatchObject({ code: 101 });
+  });
+
   test('marks non-complaint reports differently via selectedReport', async () => {
     const submission = await createSubmission(
       validParams({ typeofreport: 'compliment' }),
     );
 
     expect(submission.selectedReport).toBe(0);
+  });
+
+  test('sets withhold_contact_info_from_nypd on the submission when true', async () => {
+    const submission = await createSubmission(
+      validParams({ withhold_contact_info_from_nypd: true }),
+    );
+
+    expect(submission.withhold_contact_info_from_nypd).toBe(true);
+  });
+
+  test('leaves withhold_contact_info_from_nypd off when false or absent', async () => {
+    const withFalse = await createSubmission(
+      validParams({ withhold_contact_info_from_nypd: false }),
+    );
+    const absent = await createSubmission(validParams());
+
+    expect(withFalse.withhold_contact_info_from_nypd).toBeUndefined();
+    expect(absent.withhold_contact_info_from_nypd).toBeUndefined();
   });
 
   test('rejects submissions missing a required field', async () => {

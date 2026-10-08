@@ -20,6 +20,7 @@ import Modal from 'react-modal';
 import App from '../../components/App.js';
 import Home from './Home.js';
 import boroughBoundariesFeatureCollection from '../../boroughBoundaries.js';
+import { HOME_STATE_COOKIE } from '../../homeStateCookie.js';
 
 jest.mock('react-modal', () =>
   Object.assign(({ children, isOpen }) => (isOpen ? children : null), {
@@ -64,6 +65,14 @@ beforeAll(() => {
   };
 });
 
+// Bytes that look like a picture to the detector in `Home.js`, which reads the
+// extension before it reads any metadata: ASCII bytes come back as
+// `text/plain`, which is not an image, so every extractor throws before exifr
+// is reached. A JPEG start-of-image marker does that; the label after it is
+// how a test's exifr stubs tell one photo from another.
+const photoBytes = label =>
+  Uint8Array.from([0xff, 0xd8, 0xff, 0xe0, ...Buffer.from(label, 'utf8')]);
+
 function renderHome({ initialState, homeRef, ...props } = {}) {
   return renderer.create(
     <StyleContext.Provider value={{ insertCss }}>
@@ -80,6 +89,64 @@ function renderHome({ initialState, homeRef, ...props } = {}) {
       </App>
     </StyleContext.Provider>,
   );
+}
+
+// Mounts Home, hands the photos to the extraction pass the way the file input
+// does, and returns once that pass has finished. Stubs axios and console.error
+// for the duration; `cleanup` puts them back and unmounts.
+async function renderAndExtract(files) {
+  const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+  const axiosPost = jest.spyOn(axios, 'post').mockImplementation(url => {
+    if (url === '/api/geosearch') {
+      return Promise.resolve({ data: { features: [] } });
+    }
+    if (url === '/api/uploadAttachment') {
+      return Promise.resolve({ data: { id: 'a'.repeat(64) } });
+    }
+    return Promise.resolve({ data: {} });
+  });
+  const consoleError = jest
+    .spyOn(console, 'error')
+    .mockImplementation(() => {});
+
+  let tree;
+  const homeRef = React.createRef();
+  renderer.act(() => {
+    tree = renderHome({ homeRef });
+  });
+  renderer.act(() => {
+    // The plate read is not what these tests are about, and it would send a
+    // request per photo.
+    homeRef.current.setState({ isAlprEnabled: false });
+  });
+
+  // The pass runs inside a setState callback, through jsdom's FileReader and
+  // the stubbed reads, so it needs real time rather than a microtask.
+  // `setCoords` then asks geosearch for an address 500ms later; waiting that
+  // out keeps every request inside the stubs, instead of one going out after
+  // they are gone.
+  const settle = () =>
+    renderer.act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 700));
+    });
+
+  await renderer.act(async () => {
+    await homeRef.current.handleAttachmentData({ attachmentData: files });
+  });
+  await settle();
+
+  return {
+    homeRef,
+    settle,
+    cleanup: () => {
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      axiosGet.mockRestore();
+      axiosPost.mockRestore();
+      consoleError.mockRestore();
+      tree.unmount();
+    },
+  };
 }
 
 // Stand-in for a text <input> DOM node: reading/writing `value` works, and
@@ -217,8 +284,54 @@ describe('Home', () => {
         }),
       ]),
     );
+    // No review app source outside a Heroku review app, so no link.
+    expect(banner.findAllByType('a')).toHaveLength(0);
 
     expect(tree.toJSON()).toMatchSnapshot();
+
+    tree.unmount();
+  });
+
+  test('links the banner to the PR the review app was deployed from', () => {
+    const parseServerUrl = 'https://reported-parse.webabot.com/parse';
+    const reviewAppUrl =
+      'https://github.com/josephfrazier/reported-web/pull/1046';
+
+    const reviewAppLabel = 'PR #1046 (review-app-source-link)';
+
+    const tree = renderHome({
+      parseServerUrl,
+      showParseServerBanner: true,
+      reviewAppUrl,
+      reviewAppLabel,
+    });
+
+    const banner = tree.root.findByProps({
+      className: 'non-production-banner',
+    });
+    const link = banner.findByType('a');
+
+    expect(link.props.href).toBe(reviewAppUrl);
+    expect(link.children).toEqual([reviewAppLabel]);
+
+    expect(tree.toJSON()).toMatchSnapshot();
+
+    tree.unmount();
+  });
+
+  test('links the footer commit hash to the commit on GitHub', () => {
+    const commitHash = '31df5a75cd5c5ca347b9693c9be65eb484e910f2';
+
+    const tree = renderHome({ commitHash });
+
+    const link = tree.root.findByProps({
+      href: `https://github.com/josephfrazier/reported-web/commit/${commitHash}`,
+    });
+
+    expect(link.type).toBe('a');
+    expect(link.children).toEqual([commitHash]);
+    expect(link.props.target).toBe('_blank');
+    expect(link.props.rel).toBe('noopener noreferrer');
 
     tree.unmount();
   });
@@ -764,20 +877,10 @@ describe('Home', () => {
   });
 
   test("takes the form's place from the newest photo, not the last to answer", async () => {
-    // The extraction reads EXIF through exifr, which no test can hand a real
-    // photo, so it is stubbed here and the bytes say which photo is which.
-    //
     // The older photo is listed last, and each photo is read in the order the
     // list gives, so the older photo is also the last to answer. That is the
     // whole point: the form used to take its place from the last answer, and
     // the newest photo has to win even though it answered first.
-    //
-    // The bytes have to look like a picture to the detector in `Home.js`, or
-    // the extraction stops before it reads anything at all. A JPEG
-    // start-of-image marker does that; the label after it is what the stubs
-    // below read to tell the two photos apart.
-    const photoBytes = label =>
-      Uint8Array.from([0xff, 0xd8, 0xff, 0xe0, ...Buffer.from(label, 'utf8')]);
     const older = new File([photoBytes('older')], 'older.jpg', {
       type: 'image/jpeg',
     });
@@ -795,56 +898,178 @@ describe('Home', () => {
       const which = Buffer.from(buffer).toString('utf8');
       return {
         CreateDate: new Date(which.includes('older') ? 1000 : 3000),
-        OffsetTimeDigitized: '-04:00',
+        OffsetTimeDigitized: '+00:00',
       };
     });
 
-    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
-    const axiosPost = jest.spyOn(axios, 'post').mockImplementation(url => {
-      if (url === '/api/geosearch') {
-        return Promise.resolve({ data: { features: [] } });
-      }
-      if (url === '/api/uploadAttachment') {
-        return Promise.resolve({ data: { id: 'a'.repeat(64) } });
-      }
-      return Promise.resolve({ data: {} });
-    });
-    const consoleError = jest
-      .spyOn(console, 'error')
-      .mockImplementation(() => {});
-
-    let tree;
-    const homeRef = React.createRef();
-    renderer.act(() => {
-      tree = renderHome({ homeRef });
-    });
-    renderer.act(() => {
-      homeRef.current.setState({ isAlprEnabled: false });
-    });
-
-    // Through the same path the file input uses, so the extraction that
-    // chooses the place is the one under test.
-    await renderer.act(async () => {
-      await homeRef.current.handleAttachmentData({
-        attachmentData: [newer, older],
-      });
-      // The pass runs inside a setState callback, through jsdom's FileReader
-      // and the mocked reads above, so it needs real time rather than a
-      // microtask. `setCoords` then asks geosearch for an address 500ms
-      // later; waiting that out here keeps every request inside the stubs,
-      // instead of one going out after they are gone.
-      await new Promise(resolve => setTimeout(resolve, 700));
-    });
+    const { homeRef, cleanup } = await renderAndExtract([newer, older]);
 
     expect(homeRef.current.state.latitude).toBe(40.73);
     expect(homeRef.current.state.longitude).toBe(-74.01);
 
-    exifr.gps.mockReset();
-    exifr.parse.mockReset();
-    axiosGet.mockRestore();
-    axiosPost.mockRestore();
-    consoleError.mockRestore();
-    tree.unmount();
+    cleanup();
+  });
+
+  test("takes the form's time from the earliest photo, not the last to answer", async () => {
+    // Listed earliest first, so it is also the first to answer -- the other way
+    // round from the test above, because this rule runs the other way: the
+    // form used to take its time from the last answer, and the earliest photo
+    // has to win even though it answered first.
+    const earlier = new File([photoBytes('earlier')], 'earlier.jpg', {
+      type: 'image/jpeg',
+    });
+    const later = new File([photoBytes('later')], 'later.jpg', {
+      type: 'image/jpeg',
+    });
+
+    exifr.parse.mockImplementation(async buffer => {
+      const which = Buffer.from(buffer).toString('utf8');
+      return {
+        CreateDate: new Date(
+          which.includes('earlier')
+            ? Date.UTC(2024, 0, 1, 12, 0, 10)
+            : Date.UTC(2024, 0, 1, 12, 0, 40),
+        ),
+        OffsetTimeDigitized: '+00:00',
+      };
+    });
+
+    const { homeRef, cleanup } = await renderAndExtract([earlier, later]);
+
+    expect(homeRef.current.state.CreateDate).toBe('2024-01-01T12:00:10');
+
+    cleanup();
+  });
+
+  // Three photos, each taken ten seconds and a little way from the last, so a
+  // submission's time and place land on different photos: the earliest for the
+  // time, the last one with coordinates for the place.
+  const threePhotosApart = () => {
+    const places = {
+      early: { latitude: 40.7, longitude: -73.98 },
+      middle: { latitude: 40.72, longitude: -73.96 },
+      late: { latitude: 40.74, longitude: -73.94 },
+    };
+    const seconds = { early: 10, middle: 20, late: 30 };
+
+    const photos = ['early', 'middle', 'late'].map(
+      name =>
+        new File([photoBytes(name)], `${name}.jpg`, { type: 'image/jpeg' }),
+    );
+
+    exifr.gps.mockImplementation(async buffer => {
+      const which = Buffer.from(buffer).toString('utf8');
+      return Object.entries(places).find(([name]) => which.includes(name))[1];
+    });
+    exifr.parse.mockImplementation(async buffer => {
+      const which = Buffer.from(buffer).toString('utf8');
+      const name = Object.keys(seconds).find(each => which.includes(each));
+      return {
+        CreateDate: new Date(Date.UTC(2024, 0, 1, 12, 0, seconds[name])),
+        OffsetTimeDigitized: '+00:00',
+      };
+    });
+
+    return photos;
+  };
+
+  const dropPhoto = async (homeRef, settle, name) => {
+    await renderer.act(async () => {
+      homeRef.current.removeAttachment(name);
+    });
+    await settle();
+  };
+
+  test('moves the time and place onto the photos left when one is dropped', async () => {
+    const { homeRef, settle, cleanup } =
+      await renderAndExtract(threePhotosApart());
+
+    // The submission is as old as its earliest photo, and sits where the last
+    // photo that knows where it was was taken.
+    expect(homeRef.current.state.CreateDate).toBe('2024-01-01T12:00:10');
+    expect(homeRef.current.state.latitude).toBe(40.74);
+
+    // Drop the earliest: the time moves onto the one that is left, and the
+    // place was already the last photo's.
+    await dropPhoto(homeRef, settle, 'early.jpg');
+    expect(homeRef.current.state.CreateDate).toBe('2024-01-01T12:00:20');
+    expect(homeRef.current.state.latitude).toBe(40.74);
+
+    // Drop the last: now the place has to move too.
+    await dropPhoto(homeRef, settle, 'late.jpg');
+    expect(homeRef.current.state.CreateDate).toBe('2024-01-01T12:00:20');
+    expect(homeRef.current.state.latitude).toBe(40.72);
+
+    cleanup();
+  });
+
+  test('leaves a place the user set alone when a photo is dropped', async () => {
+    const { homeRef, settle, cleanup } =
+      await renderAndExtract(threePhotosApart());
+
+    // The user moves the pin. Every photo in the set can be wrong about where
+    // the car was -- a camera that has just woken up reports its last fix --
+    // and the correction is theirs to keep.
+    renderer.act(() => {
+      homeRef.current.setCoords({
+        latitude: 40.9,
+        longitude: -73.9,
+        addressProvenance: '(manually set)',
+      });
+    });
+
+    await dropPhoto(homeRef, settle, 'early.jpg');
+
+    expect(homeRef.current.state.latitude).toBe(40.9);
+    expect(homeRef.current.state.longitude).toBe(-73.9);
+    // The time was still the photos', so it followed them.
+    expect(homeRef.current.state.CreateDate).toBe('2024-01-01T12:00:20');
+
+    cleanup();
+  });
+
+  test('leaves a time the user typed alone when a photo is dropped', async () => {
+    const { homeRef, settle, cleanup } =
+      await renderAndExtract(threePhotosApart());
+
+    renderer.act(() => {
+      homeRef.current.setCreateDate({
+        millisecondsSinceEpoch: Date.UTC(2024, 5, 1, 9, 0, 0),
+        offset: 0,
+      });
+    });
+
+    await dropPhoto(homeRef, settle, 'late.jpg');
+
+    expect(homeRef.current.state.CreateDate).toBe('2024-06-01T09:00:00');
+    // The place was still the photos', so it followed them.
+    expect(homeRef.current.state.latitude).toBe(40.72);
+
+    cleanup();
+  });
+
+  test('resets to the default place when the last photo is dropped', async () => {
+    const [early] = threePhotosApart();
+    const { homeRef, settle, cleanup } = await renderAndExtract([early]);
+
+    // The user moves the pin, and then takes the last photo away. A place the
+    // user set outranks the photos, but with none left there is nothing for it
+    // to describe, so the form goes back to the default place the "Where"
+    // button prompts from.
+    renderer.act(() => {
+      homeRef.current.setCoords({
+        latitude: 40.9,
+        longitude: -73.9,
+        addressProvenance: '(manually set)',
+      });
+    });
+
+    await dropPhoto(homeRef, settle, 'early.jpg');
+
+    expect(homeRef.current.state.latitude).toBe(40.7128);
+    expect(homeRef.current.state.longitude).toBe(-74.006);
+
+    cleanup();
   });
 
   test('skips geosearch for the default coordinates and leaves the address empty', async () => {
@@ -1606,6 +1831,59 @@ describe('Home', () => {
     tree.unmount();
   });
 
+  test('sets withhold_contact_info_from_nypd from the checkbox', () => {
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+    };
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ initialState, homeRef });
+    });
+    renderer.act(() => {
+      homeRef.current.setState({ isEditProfileOpen: true });
+    });
+
+    const checkbox = tree.root.findByProps({
+      name: 'withhold_contact_info_from_nypd',
+    });
+    // The checkbox is labeled "Withhold my contact info from NYPD service
+    // requests" and is unchecked by default: the withhold flag is only set
+    // when the user opts out.
+    expect(checkbox.props.checked).toBe(false);
+    expect(homeRef.current.state.withhold_contact_info_from_nypd).toBe(false);
+
+    // Checking the box sets the omit flag...
+    renderer.act(() => {
+      checkbox.props.onChange({
+        target: {
+          type: 'checkbox',
+          checked: true,
+          name: 'withhold_contact_info_from_nypd',
+        },
+      });
+    });
+    expect(homeRef.current.state.withhold_contact_info_from_nypd).toBe(true);
+
+    // ...and unchecking it clears the flag.
+    renderer.act(() => {
+      tree.root
+        .findByProps({ name: 'withhold_contact_info_from_nypd' })
+        .props.onChange({
+          target: {
+            type: 'checkbox',
+            checked: false,
+            name: 'withhold_contact_info_from_nypd',
+          },
+        });
+    });
+    expect(homeRef.current.state.withhold_contact_info_from_nypd).toBe(false);
+
+    tree.unmount();
+  });
+
   test('renders Preferences UI', () => {
     const initialState = {
       email: 'test@example.com',
@@ -1980,8 +2258,10 @@ describe('Home', () => {
       uploadCalls.forEach(([, body], index) => {
         const original = index === 0 ? photo : video;
         const uploaded = body.get('attachmentData');
-        expect(body.get('email')).toBe('test@example.com');
-        expect(body.get('password')).toBe('test-password');
+        // No credentials in the body: the route authenticates from the
+        // session cookie the browser sends.
+        expect(body.get('email')).toBeNull();
+        expect(body.get('password')).toBeNull();
         // The upload carries a copy of the file's bytes, not the File from
         // the file input: the network is handed a File whose contents are
         // already in memory, since some browsers send an empty body for the
@@ -2022,6 +2302,9 @@ describe('Home', () => {
         'uploaded-photo.jpg',
       ]);
       expect(submitBody.get('attachmentData')).toBeNull();
+      // The omit flag is sent alongside the rest of the per-submission
+      // state, so the server can store it (sparsely) when true.
+      expect(submitBody.get('withhold_contact_info_from_nypd')).toBe('false');
 
       // The upload must have started before the submit request went out,
       // i.e. in the background rather than as part of submitting.
@@ -2065,6 +2348,137 @@ describe('Home', () => {
       expect(homeRef.current.state.attachmentData).toEqual([]);
 
       cleanup();
+    });
+  });
+
+  describe('session handling', () => {
+    test('does not send stored credentials on mount', async () => {
+      // A legacy cookie may still hold email+password; the client must not
+      // re-authenticate with them. The server migrates them from the cookie
+      // itself (see src/session.js).
+      const axiosPost = jest
+        .spyOn(axios, 'post')
+        .mockResolvedValue({ data: {} });
+      const consoleError = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => null);
+      const homeRef = React.createRef();
+
+      const tree = renderHome({
+        homeRef,
+        initialState: {
+          email: 'test@example.com',
+          password: 'test-password',
+          loginSuccessful: false,
+        },
+      });
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(
+        axiosPost.mock.calls.filter(([url]) => url === '/api/logIn'),
+      ).toHaveLength(0);
+      // The legacy password never reaches React state.
+      expect(homeRef.current.state.password).toBe('');
+
+      tree.unmount();
+      axiosPost.mockRestore();
+      consoleError.mockRestore();
+    });
+
+    test('logging out revokes the session server-side', async () => {
+      const axiosPost = jest
+        .spyOn(axios, 'post')
+        .mockResolvedValue({ data: {} });
+      const homeRef = React.createRef();
+
+      const tree = renderHome({
+        homeRef,
+        initialState: { email: 'test@example.com', loginSuccessful: true },
+      });
+      homeRef.current.handleLogOut();
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(axiosPost).toHaveBeenCalledWith('/api/logOut');
+      expect(homeRef.current.state.loginSuccessful).toBe(false);
+      expect(homeRef.current.state.email).toBe('');
+
+      tree.unmount();
+      axiosPost.mockRestore();
+    });
+
+    test('an expired session clears the login state and reopens the auth modal', async () => {
+      const homeRef = React.createRef();
+
+      const tree = renderHome({
+        homeRef,
+        initialState: { email: 'test@example.com', loginSuccessful: true },
+      });
+      homeRef.current.handleSessionExpired();
+
+      expect(homeRef.current.state.loginSuccessful).toBe(false);
+      expect(homeRef.current.state.isAuthModalOpen).toBe(true);
+      expect(homeRef.current.state.authError).toMatch(/session expired/i);
+
+      tree.unmount();
+    });
+
+    test('an expired-session notice is not shown to logged-out visitors', async () => {
+      const homeRef = React.createRef();
+
+      const tree = renderHome({
+        homeRef,
+        initialState: { loginSuccessful: false },
+      });
+      homeRef.current.handleSessionExpired();
+
+      expect(homeRef.current.state.isAuthModalOpen).toBe(false);
+      expect(homeRef.current.state.loginSuccessful).toBe(false);
+
+      tree.unmount();
+    });
+  });
+
+  describe('the legacy localStorage migration', () => {
+    const clearLegacyState = () => {
+      localStorage.removeItem('Function');
+      localStorage.removeItem('reportedWebHomeState');
+      document.cookie = `${HOME_STATE_COOKIE}=; max-age=0; path=/`;
+    };
+
+    afterEach(clearLegacyState);
+
+    test('reports the migration so it can be counted', () => {
+      clearLegacyState();
+      localStorage.setItem(
+        'reportedWebHomeState',
+        JSON.stringify({ plate: 'ABC1234' }),
+      );
+      const axiosPost = jest
+        .spyOn(axios, 'post')
+        .mockResolvedValue({ data: {} });
+
+      const tree = renderHome();
+
+      expect(axiosPost).toHaveBeenCalledWith('/api/legacyStateMigrated');
+      // The migration still does its real job: the state is in the cookie now.
+      expect(document.cookie).toContain(`${HOME_STATE_COOKIE}=`);
+
+      axiosPost.mockRestore();
+      tree.unmount();
+    });
+
+    test('does not report when there is no legacy state to migrate', () => {
+      clearLegacyState();
+      const axiosPost = jest
+        .spyOn(axios, 'post')
+        .mockResolvedValue({ data: {} });
+
+      const tree = renderHome();
+
+      expect(axiosPost).not.toHaveBeenCalledWith('/api/legacyStateMigrated');
+
+      axiosPost.mockRestore();
+      tree.unmount();
     });
   });
 });

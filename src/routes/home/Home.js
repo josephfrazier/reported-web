@@ -8,6 +8,7 @@
  */
 
 import React from 'react';
+import ReactDOM from 'react-dom';
 import PropTypes from 'prop-types';
 import withStyles from 'isomorphic-style-loader/withStyles';
 import FileReaderInput from 'react-file-reader-input';
@@ -23,7 +24,7 @@ import {
   GoogleMap,
   Marker,
 } from 'react-google-maps';
-import { SearchBox } from 'react-google-maps/lib/components/places/SearchBox';
+import { MAP } from 'react-google-maps/lib/constants';
 import debounce from 'debounce-promise';
 import { detectFromBuffer } from 'mime-bytes/file-type-detector';
 import MP4Box from 'mp4box';
@@ -695,11 +696,10 @@ class Home extends React.Component {
         ['BUTTON', 'INPUT', 'SELECT', 'TEXTAREA', 'A'].includes(
           activeElement?.tagName,
         ) || activeElement?.classList?.contains('gm-style');
-      // The SearchBox portal-renders the input into a container that is
-      // not in the document yet when this ref fires, and Google Maps only
-      // attaches the control containers to the page as the map finishes
-      // initializing. focus() on a detached element is a no-op, so retry
-      // until the input is in the document and the focus sticks.
+      // The input renders into a container that is not in the document yet
+      // when this ref fires, and it joins the map's controls only as the map
+      // finishes initializing. focus() on a detached element is a no-op, so
+      // retry until the input is in the document and the focus sticks.
       if (!userInteracted && document.contains(input)) {
         input.focus();
       }
@@ -1118,8 +1118,8 @@ class Home extends React.Component {
     });
   };
 
-  handleSearchBoxMounted = ref => {
-    this.searchBox = ref;
+  handleAutocompleteMounted = autocomplete => {
+    this.autocomplete = autocomplete;
   };
 
   renderPlateOverlays = ({ attachmentPlateData }) =>
@@ -3010,25 +3010,21 @@ class Home extends React.Component {
                           onDragEnd={() => {
                             this.isDragging = false;
                           }}
-                          onSearchBoxMounted={this.handleSearchBoxMounted}
+                          onAutocompleteMounted={this.handleAutocompleteMounted}
                           onSearchInputMounted={Home.handleSearchInputMounted}
                           onPlacesChanged={() => {
-                            const places = this.searchBox.getPlaces();
-
-                            const nextMarkers = places.map(place => ({
-                              position: place.geometry.location,
-                            }));
-                            const { latitude, longitude } =
-                              nextMarkers.length > 0
-                                ? {
-                                    latitude: nextMarkers[0].position.lat(),
-                                    longitude: nextMarkers[0].position.lng(),
-                                  }
-                                : this.state;
+                            // `getPlace()` also returns a geometry-less result
+                            // when the user types text without picking a
+                            // prediction, so leave the map where it is then.
+                            const location =
+                              this.autocomplete.getPlace()?.geometry?.location;
+                            if (!location) {
+                              return;
+                            }
 
                             this.setCoords({
-                              latitude,
-                              longitude,
+                              latitude: location.lat(),
+                              longitude: location.lng(),
                               addressProvenance: '(manually set)',
                             });
                           }}
@@ -3238,6 +3234,91 @@ Home.defaultProps = {
   initialState: null,
 };
 
+// Google's SearchBox widget cannot keep its predictions inside a region: the
+// `bounds` option only biases them, so a search for a name that also occurs
+// outside NYC (e.g. "Foodtown van") still offers the out-of-town matches. The
+// Autocomplete widget accepts the same bounds and, with `strictBounds`, uses
+// them as a filter rather than a hint, so the list holds NYC locations only.
+const NYC_BOUNDS = {
+  east: -73.700272,
+  north: 40.915256,
+  south: 40.496044,
+  west: -74.255735,
+};
+
+class NycAddressAutocomplete extends React.Component {
+  constructor(props) {
+    super(props);
+    // A map control is a plain DOM node, so render the input into a container
+    // of our own, then hand it to the map once the map has mounted and its
+    // control containers exist.
+    this.containerElement = document.createElement('div');
+  }
+
+  componentDidMount() {
+    const { onAutocompleteMounted, onPlacesChanged } = this.props;
+    this.input = this.containerElement.querySelector('input');
+    const autocomplete = new window.google.maps.places.Autocomplete(
+      this.input,
+      {
+        bounds: NYC_BOUNDS,
+        componentRestrictions: { country: 'us' },
+        strictBounds: true,
+      },
+    );
+    autocomplete.addListener('place_changed', onPlacesChanged);
+    onAutocompleteMounted(autocomplete);
+    this.controls =
+      this.context[MAP].controls[window.google.maps.ControlPosition.TOP_LEFT];
+    this.controls.push(this.input);
+  }
+
+  componentWillUnmount() {
+    // React removes the input from `containerElement` as it unmounts, so put
+    // the input back in there before that happens.
+    const index = this.controls.getArray().indexOf(this.input);
+    if (index !== -1) {
+      this.containerElement.appendChild(this.controls.removeAt(index));
+    }
+  }
+
+  render() {
+    const { onSearchInputMounted } = this.props;
+
+    return ReactDOM.createPortal(
+      <input
+        ref={onSearchInputMounted}
+        type="text"
+        placeholder="Search..."
+        style={{
+          boxSizing: `border-box`,
+          border: `1px solid transparent`,
+          width: `calc(100% - 50px)`,
+          height: `32px`,
+          marginTop: `6px`,
+          padding: `0 12px`,
+          borderRadius: `3px`,
+          boxShadow: `0 2px 6px rgba(0, 0, 0, 0.3)`,
+          fontSize: `16px`,
+          outline: `none`,
+          textOverflow: `ellipses`,
+        }}
+      />,
+      this.containerElement,
+    );
+  }
+}
+
+NycAddressAutocomplete.propTypes = {
+  onAutocompleteMounted: PropTypes.func.isRequired,
+  onSearchInputMounted: PropTypes.func.isRequired,
+  onPlacesChanged: PropTypes.func.isRequired,
+};
+
+NycAddressAutocomplete.contextTypes = {
+  [MAP]: PropTypes.object,
+};
+
 const MyMapComponentPure = props => {
   const {
     position,
@@ -3245,7 +3326,7 @@ const MyMapComponentPure = props => {
     onCenterChanged,
     onDragStart,
     onDragEnd,
-    onSearchBoxMounted,
+    onAutocompleteMounted,
     onSearchInputMounted,
     onPlacesChanged,
   } = props;
@@ -3265,36 +3346,11 @@ const MyMapComponentPure = props => {
       }}
     >
       <Marker position={position} />
-      <SearchBox
-        ref={onSearchBoxMounted}
-        controlPosition={window.google.maps.ControlPosition.TOP_LEFT}
+      <NycAddressAutocomplete
+        onAutocompleteMounted={onAutocompleteMounted}
+        onSearchInputMounted={onSearchInputMounted}
         onPlacesChanged={onPlacesChanged}
-        bounds={{
-          east: -73.700272,
-          north: 40.915256,
-          south: 40.496044,
-          west: -74.255735,
-        }}
-      >
-        <input
-          ref={onSearchInputMounted}
-          type="text"
-          placeholder="Search..."
-          style={{
-            boxSizing: `border-box`,
-            border: `1px solid transparent`,
-            width: `calc(100% - 50px)`,
-            height: `32px`,
-            marginTop: `6px`,
-            padding: `0 12px`,
-            borderRadius: `3px`,
-            boxShadow: `0 2px 6px rgba(0, 0, 0, 0.3)`,
-            fontSize: `16px`,
-            outline: `none`,
-            textOverflow: `ellipses`,
-          }}
-        />
-      </SearchBox>
+      />
     </GoogleMap>
   );
 };
@@ -3309,7 +3365,7 @@ MyMapComponentPure.propTypes = {
   onCenterChanged: PropTypes.func.isRequired,
   onDragStart: PropTypes.func.isRequired,
   onDragEnd: PropTypes.func.isRequired,
-  onSearchBoxMounted: PropTypes.func.isRequired,
+  onAutocompleteMounted: PropTypes.func.isRequired,
   onSearchInputMounted: PropTypes.func.isRequired,
   onPlacesChanged: PropTypes.func.isRequired,
 };

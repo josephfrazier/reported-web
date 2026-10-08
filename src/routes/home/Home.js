@@ -3246,7 +3246,7 @@ const NYC_BOUNDS = {
   west: -74.255735,
 };
 
-class NycAddressAutocomplete extends React.Component {
+export class NycAddressAutocomplete extends React.Component {
   constructor(props) {
     super(props);
     // A map control is a plain DOM node, so render the input into a container

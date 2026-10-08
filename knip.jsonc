@@ -52,6 +52,13 @@
     // Deliberately kept out of package.json -- `jest.globalSetup.js` installs
     // it on demand, so that Dependabot does not file against its advisories.
     "parse-server",
+
+    // Jest's own package, pinned by jest itself. The resolver test reads the
+    // copy this tree hoists to check the cache-clearing interface that
+    // `tools/lib/jestResolver.js` reaches for; declaring it here would let a
+    // bump pull in a second copy, which is the copy the resolver must not be
+    // pointed at. See that file.
+    "jest-resolve",
   ],
 
   // Started by hand, from the same kind of on-demand install.

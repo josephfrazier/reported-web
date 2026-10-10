@@ -8,6 +8,9 @@
  */
 
 import React from 'react';
+import PropTypes from 'prop-types';
+import ReactDOM from 'react-dom';
+import { act } from 'react-dom/test-utils';
 import renderer from 'react-test-renderer';
 // jsdom doesn't provide the setImmediate global, so use Node's directly.
 import { setImmediate } from 'timers';
@@ -17,8 +20,9 @@ import exifr from 'exifr/dist/full.umd.js';
 import * as blobUtil from 'blob-util';
 import { toast } from 'react-toastify';
 import Modal from 'react-modal';
+import { MAP } from 'react-google-maps/lib/constants';
 import App from '../../components/App.js';
-import Home from './Home.js';
+import Home, { NycAddressAutocomplete } from './Home.js';
 import boroughBoundariesFeatureCollection from '../../boroughBoundaries.js';
 import { HOME_STATE_COOKIE } from '../../homeStateCookie.js';
 
@@ -2539,5 +2543,168 @@ describe('Home', () => {
       axiosPost.mockRestore();
       tree.unmount();
     });
+  });
+});
+
+// A report's location has to be in NYC, so the map's search box must not offer
+// places outside it. Google's SearchBox widget cannot filter its predictions
+// -- its `bounds` only bias them -- so the box mounts the Autocomplete widget
+// with `strictBounds`, which reads those bounds as a filter. What this suite
+// can hold onto is the contract the component keeps with Google: the widget,
+// the bounds and the option. Whether Google honors `strictBounds` is Google's
+// to keep, and no test here should depend on the live API for an answer.
+describe('NycAddressAutocomplete', () => {
+  const NYC_BOUNDS = {
+    east: -73.700272,
+    north: 40.915256,
+    south: 40.496044,
+    west: -74.255735,
+  };
+
+  class FakeAutocomplete {
+    constructor(input, options) {
+      this.input = input;
+      this.options = options;
+      this.addListener = jest.fn();
+      FakeAutocomplete.instances.push(this);
+    }
+  }
+  FakeAutocomplete.instances = [];
+
+  // react-google-maps hands the map down through legacy context, so the test
+  // provides one the same way: an object whose `controls` the component can
+  // mount its input into.
+  class MapContext extends React.Component {
+    static childContextTypes = { [MAP]: PropTypes.object };
+
+    getChildContext() {
+      return {
+        [MAP]: {
+          controls: {
+            [window.google.maps.ControlPosition.TOP_LEFT]: this.props.controls,
+          },
+        },
+      };
+    }
+
+    render() {
+      return this.props.children;
+    }
+  }
+  MapContext.propTypes = {
+    children: PropTypes.node.isRequired,
+    controls: PropTypes.object.isRequired,
+  };
+
+  let controlContainer;
+  let controls;
+  let pageContainer;
+  let originalGoogle;
+
+  beforeEach(() => {
+    FakeAutocomplete.instances = [];
+
+    // Stands in for the map's `controls[TOP_LEFT]` MVCArray: pushing a node
+    // puts it in the control container, and removing it takes the node out of
+    // the DOM again, as Google's own array of control nodes does.
+    controlContainer = document.createElement('div');
+    document.body.appendChild(controlContainer);
+    controls = {
+      nodes: [],
+      push(node) {
+        controlContainer.appendChild(node);
+        this.nodes.push(node);
+        return this.nodes.length;
+      },
+      getArray() {
+        return [...this.nodes];
+      },
+      removeAt(index) {
+        const [node] = this.nodes.splice(index, 1);
+        controlContainer.removeChild(node);
+        return node;
+      },
+    };
+
+    originalGoogle = window.google;
+    window.google = {
+      maps: {
+        ControlPosition: { TOP_LEFT: 7 },
+        places: { Autocomplete: FakeAutocomplete },
+      },
+    };
+
+    pageContainer = document.createElement('div');
+    document.body.appendChild(pageContainer);
+  });
+
+  afterEach(() => {
+    window.google = originalGoogle;
+    controlContainer.remove();
+    pageContainer.remove();
+  });
+
+  const mountSearchBox = (props = {}) => {
+    act(() => {
+      ReactDOM.render(
+        <MapContext controls={controls}>
+          <NycAddressAutocomplete
+            onAutocompleteMounted={props.onAutocompleteMounted || jest.fn()}
+            onSearchInputMounted={props.onSearchInputMounted || jest.fn()}
+            onPlacesChanged={props.onPlacesChanged || jest.fn()}
+          />
+        </MapContext>,
+        pageContainer,
+      );
+    });
+
+    return FakeAutocomplete.instances[0];
+  };
+
+  test('asks Google for NYC predictions only', () => {
+    mountSearchBox();
+
+    expect(FakeAutocomplete.instances[0].options).toEqual({
+      bounds: NYC_BOUNDS,
+      componentRestrictions: { country: 'us' },
+      strictBounds: true,
+    });
+  });
+
+  test('mounts the search input as the map control', () => {
+    mountSearchBox();
+
+    const input = controls.getArray()[0];
+
+    expect(input.tagName).toBe('INPUT');
+    expect(controlContainer.contains(input)).toBe(true);
+  });
+
+  test('hands the widget over and listens for a chosen place', () => {
+    const onAutocompleteMounted = jest.fn();
+    const onPlacesChanged = jest.fn();
+
+    const autocomplete = mountSearchBox({
+      onAutocompleteMounted,
+      onPlacesChanged,
+    });
+
+    expect(onAutocompleteMounted).toHaveBeenCalledWith(autocomplete);
+    expect(autocomplete.addListener).toHaveBeenCalledWith(
+      'place_changed',
+      onPlacesChanged,
+    );
+  });
+
+  test('gives the map control back when the modal closes', () => {
+    mountSearchBox();
+    const input = controls.getArray()[0];
+
+    act(() => {
+      ReactDOM.unmountComponentAtNode(pageContainer);
+    });
+
+    expect(controls.getArray()).toEqual([]);
+    expect(controlContainer.contains(input)).toBe(false);
   });
 });

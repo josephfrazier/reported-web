@@ -1981,9 +1981,7 @@ describe('Home', () => {
       name: 'receive_nypd_sr_updates_by_email',
     });
     expect(checkbox.props.checked).toBe(false);
-    expect(
-      homeRef.current.state.receive_nypd_sr_updates_by_email,
-    ).toBe(false);
+    expect(homeRef.current.state.receive_nypd_sr_updates_by_email).toBe(false);
 
     // Checking the box sets the flag...
     renderer.act(() => {
@@ -2006,9 +2004,7 @@ describe('Home', () => {
     expect(() =>
       tree.root.findByProps({ name: 'receive_nypd_sr_updates_by_email' }),
     ).toThrow();
-    expect(
-      homeRef.current.state.receive_nypd_sr_updates_by_email,
-    ).toBe(true);
+    expect(homeRef.current.state.receive_nypd_sr_updates_by_email).toBe(true);
 
     // ...and unchecking it clears the flag once it's visible again.
     renderer.act(() => {
@@ -2025,9 +2021,7 @@ describe('Home', () => {
           },
         });
     });
-    expect(
-      homeRef.current.state.receive_nypd_sr_updates_by_email,
-    ).toBe(false);
+    expect(homeRef.current.state.receive_nypd_sr_updates_by_email).toBe(false);
 
     tree.unmount();
   });

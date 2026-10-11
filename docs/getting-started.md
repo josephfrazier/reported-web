@@ -33,13 +33,11 @@ Before you start, take a moment to see how the project structure looks like:
 │   ├── /bundle.js              # Bundles the web resources into package(s) through Webpack
 │   ├── /clean.js               # Cleans up the output (build) folder
 │   ├── /copy.js                # Copies static files to output (build) folder
-│   ├── /deploy.js              # Deploys your web application
 │   ├── /postcss.config.js      # Configuration for transforming styles with PostCSS plugins
 │   ├── /run.js                 # Helper function for running build automation tasks
 │   ├── /runServer.js           # Launches (or restarts) Node.js server
 │   ├── /start.js               # Launches the development web server with "live reload"
 │   └── /webpack.config.js      # Configurations for client-side and server-side bundles
-├── Dockerfile                  # Commands for building a Docker image for production
 ├── package.json                # The list of 3rd party libraries and utilities
 └── yarn.lock                   # Fixed versions of all the dependencies
 ```
@@ -118,12 +116,6 @@ or, for a production build:
 $ yarn run build -- --release
 ```
 
-or, for a production docker build:
-
-```shell
-$ yarn run build -- --release --docker
-```
-
 _NOTE: double dashes are required_
 
 After running this command, the `/build` folder will contain the compiled
@@ -147,18 +139,14 @@ By default, [Jest](https://jestjs.io/) test runner is looking for test files
 matching the `src/**/*.test.js` pattern. Take a look at
 `src/components/Layout/Layout.test.js` as an example.
 
-To deploy the app, run:
+To deploy the app, push to the Heroku remote:
 
 ```shell
-$ yarn run deploy
+$ git push heroku main
 ```
 
-The deployment script `tools/deploy.js` is configured to push the contents of
-the `/build` folder to a remote server via Git. You can easily deploy your app
-to
-[Azure Web Apps](https://azure.microsoft.com/en-us/services/app-service/web/),
-or [Heroku](https://www.heroku.com/) this way. Both will execute `yarn install --production` upon receiving new files from you. Note, you should only deploy
-the contents of the `/build` folder to a remote server.
+Heroku runs `yarn run build --release` through the `heroku-postbuild` script,
+then starts the server with the command in the `Procfile`.
 
 ### How to Update
 

@@ -13,12 +13,27 @@ if (process.env.BROWSER) {
   );
 }
 
+// The values below are read when this module first evaluates, which happens
+// before any statement in the importing module runs, so load .env here.
+require('dotenv').config();
+
 module.exports = {
   // Node.js app
   port: process.env.PORT || 3000,
 
   // https://expressjs.com/en/guide/behind-proxies.html
-  trustProxy: process.env.TRUST_PROXY || 'loopback',
+  //
+  // 'uniquelocal' is the private ranges: 10/8, 172.16/12, 192.168/16 and
+  // fc00::/7. Heroku's router sits in one of those, and the default used to be
+  // 'loopback', which it is not -- so `req.ip` was the router and every client
+  // shared one address. Anything keyed on it was shared with it: the rate
+  // limiter on /api/uploadAttachment allowed 30 uploads per 15 minutes for the
+  // whole app rather than per client.
+  //
+  // A client cannot use this to forge an address. The router appends the real
+  // client address to X-Forwarded-For, and Express reads the chain from the
+  // right, so entries a client sends sit to the left of the one that counts.
+  trustProxy: process.env.TRUST_PROXY || 'uniquelocal',
 
   // API Gateway
   api: {
@@ -39,5 +54,11 @@ module.exports = {
   analytics: {
     // https://analytics.google.com/
     googleTrackingId: process.env.GOOGLE_TRACKING_ID, // UA-XXXXX-X
+  },
+
+  // Errors and logs
+  sentry: {
+    // The DSN is public by design; the client bundle carries it too.
+    dsn: process.env.SENTRY_DSN,
   },
 };

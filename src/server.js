@@ -227,6 +227,10 @@ app.use('/api/logIn', (req, res) => {
         LastName: user.get('LastName'),
         Phone: user.get('Phone'),
         testify: user.get('testify'),
+        // undefined when absent, thanks to the sparse contract on the user
+        withhold_contact_info_from_nypd: user.get(
+          'withhold_contact_info_from_nypd',
+        ),
       });
     })
     .catch(handlePromiseRejection(res));

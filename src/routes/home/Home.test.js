@@ -2547,6 +2547,82 @@ describe('Home', () => {
       consoleError.mockRestore();
     });
 
+    test('restores withhold_contact_info_from_nypd from the login response when present', async () => {
+      const axiosPost = jest.spyOn(axios, 'post').mockImplementation(url => {
+        if (url === '/api/logIn') {
+          return Promise.resolve({
+            data: {
+              email: 'test@example.com',
+              FirstName: 'Test',
+              LastName: 'User',
+              Phone: '5551234567',
+              testify: true,
+              withhold_contact_info_from_nypd: true,
+            },
+          });
+        }
+        return Promise.resolve({ data: { submissions: [] } });
+      });
+      const homeRef = React.createRef();
+
+      const tree = renderHome({
+        homeRef,
+        initialState: {
+          email: 'test@example.com',
+          password: 'test-password',
+          loginSuccessful: true,
+          // The cookie disagrees with the DB, which must win.
+          withhold_contact_info_from_nypd: false,
+        },
+      });
+
+      await renderer.act(async () => {
+        await homeRef.current.handleLogIn();
+      });
+
+      expect(homeRef.current.state.withhold_contact_info_from_nypd).toBe(true);
+
+      tree.unmount();
+      axiosPost.mockRestore();
+    });
+
+    test('falls back to the cookie for withhold when the login response omits it', async () => {
+      const axiosPost = jest.spyOn(axios, 'post').mockImplementation(url => {
+        if (url === '/api/logIn') {
+          return Promise.resolve({
+            data: {
+              email: 'test@example.com',
+              FirstName: 'Test',
+              LastName: 'User',
+              Phone: '5551234567',
+              testify: false,
+            },
+          });
+        }
+        return Promise.resolve({ data: { submissions: [] } });
+      });
+      const homeRef = React.createRef();
+
+      const tree = renderHome({
+        homeRef,
+        initialState: {
+          email: 'test@example.com',
+          password: 'test-password',
+          loginSuccessful: true,
+          withhold_contact_info_from_nypd: true,
+        },
+      });
+
+      await renderer.act(async () => {
+        await homeRef.current.handleLogIn();
+      });
+
+      expect(homeRef.current.state.withhold_contact_info_from_nypd).toBe(true);
+
+      tree.unmount();
+      axiosPost.mockRestore();
+    });
+
     test('logging out revokes the session server-side', async () => {
       const axiosPost = jest
         .spyOn(axios, 'post')

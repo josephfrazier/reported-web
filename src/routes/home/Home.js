@@ -1791,13 +1791,26 @@ class Home extends React.Component {
         email: this.state.email,
         password: this.state.password,
       });
-      const { FirstName, LastName, Phone, testify } = data;
+      const {
+        FirstName,
+        LastName,
+        Phone,
+        testify,
+        withhold_contact_info_from_nypd: withholdContactInfoFromNypd,
+      } = data;
       this.setState(
         state => ({
           FirstName: FirstName || state.FirstName,
           LastName: LastName || state.LastName,
           Phone: Phone || state.Phone,
           testify: typeof testify === 'boolean' ? testify : state.testify,
+          // The server sends the user's stored flag when it was saved
+          // (sparse), so a present boolean wins over the cookie; an absent
+          // one falls back to the cookie value.
+          withhold_contact_info_from_nypd:
+            typeof withholdContactInfoFromNypd === 'boolean'
+              ? withholdContactInfoFromNypd
+              : state.withhold_contact_info_from_nypd,
           isUserInfoSaving: false,
           isAuthModalOpen: false,
           loginSuccessful: true,

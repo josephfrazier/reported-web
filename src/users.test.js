@@ -190,6 +190,43 @@ describe('users', () => {
     });
   });
 
+  test('updateUserProfile stores withhold_contact_info_from_nypd only when true', async () => {
+    const user = await logIn({ email, password });
+    const sessionToken = user.getSessionToken();
+    const base = {
+      user,
+      sessionToken,
+      email,
+      FirstName: 'Test',
+      LastName: 'User',
+      Phone: '5551234567',
+      testify: true,
+    };
+
+    // true: stored on the user...
+    await updateUserProfile({
+      ...base,
+      withhold_contact_info_from_nypd: true,
+    });
+    expect(user.get('withhold_contact_info_from_nypd')).toBe(true);
+
+    // false: unset, so non-opt-ins don't carry the field...
+    await updateUserProfile({
+      ...base,
+      withhold_contact_info_from_nypd: false,
+    });
+    expect(user.get('withhold_contact_info_from_nypd')).toBeUndefined();
+
+    // ...and absent: left alone, so clients that don't know about the
+    // flag don't clobber a previous opt-in.
+    await updateUserProfile({
+      ...base,
+      withhold_contact_info_from_nypd: true,
+    });
+    await updateUserProfile(base);
+    expect(user.get('withhold_contact_info_from_nypd')).toBe(true);
+  });
+
   test('updateUserProfile rejects when a required field is missing', async () => {
     const user = await logIn({ email, password });
 

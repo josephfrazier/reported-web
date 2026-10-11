@@ -292,6 +292,8 @@ app.use('/saveUser', (req, res) => {
         LastName: req.body.LastName,
         Phone: req.body.Phone,
         testify: req.body.testify,
+        withhold_contact_info_from_nypd:
+          req.body.withhold_contact_info_from_nypd,
       }),
     )
     .then(user => res.json(user))

@@ -69,6 +69,7 @@ export async function updateUserProfile({
   LastName,
   Phone,
   testify,
+  withhold_contact_info_from_nypd, // eslint-disable-line camelcase
 }) {
   // make sure all required fields are present
   Object.entries({
@@ -88,6 +89,18 @@ export async function updateUserProfile({
     Phone,
     testify,
   });
+
+  // Sparse on the user, like on submissions: only stored when true.
+  // unset() on false keeps non-opt-ins clean, while an absent param (from
+  // clients that don't know about the flag) leaves any previous opt-in
+  // alone.
+  // eslint-disable-next-line camelcase
+  const withholdContactInfoFromNypd = withhold_contact_info_from_nypd;
+  if (withholdContactInfoFromNypd === true) {
+    user.set('withhold_contact_info_from_nypd', true);
+  } else if (withholdContactInfoFromNypd === false) {
+    user.unset('withhold_contact_info_from_nypd');
+  }
 
   return user.save(null, { sessionToken });
 }

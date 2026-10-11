@@ -47,6 +47,7 @@ const createSubmission = async ({
     LastName,
     Phone,
     testify,
+    withhold_contact_info_from_nypd, // eslint-disable-line camelcase
   });
 
   // make sure all required fields are present

@@ -65,8 +65,10 @@ import getNycTimezoneOffset from '../../timezone.js';
 import { isPointInNycMemoized } from '../../isPointInNyc.js';
 import vehicleTypeUrl from '../../vehicleTypeUrl.js';
 import {
+  addCachedSubmission,
   clearCachedSubmissions,
   readCachedSubmissions,
+  removeCachedSubmission,
   writeCachedSubmissions,
 } from './submissionsCache.js';
 
@@ -948,6 +950,10 @@ class Home extends React.Component {
         objectId,
       })
       .then(() => {
+        // Drop it from the cache too, so it doesn't come back on the next
+        // page load before the background fetch replaces the cached list.
+        removeCachedSubmission(objectId);
+
         this.setState(state => ({
           submissions: state.submissions.filter(
             sub => sub.objectId !== objectId,
@@ -2692,6 +2698,11 @@ class Home extends React.Component {
                           2,
                         )}`,
                       );
+                      // Cache the new submission now, so the next page load
+                      // can show it immediately instead of waiting for the
+                      // full fetch of previous submissions to finish.
+                      addCachedSubmission(submission);
+
                       this.setState(state => ({
                         attachmentData: [],
                         submissions: [submission].concat(state.submissions),

@@ -23,7 +23,10 @@ process.env.TESTING = '1';
 jest.setTimeout(30000);
 
 const username = 'test@example.com';
-const saveUser = jest.fn(() => Promise.resolve({ get: () => username }));
+// Stand-in for src/session.js's authenticate: resolves the request's user.
+const authenticate = jest.fn(() =>
+  Promise.resolve({ user: { get: () => username } }),
+);
 
 describe('getSubmissionsWithTasks', () => {
   let mongo;
@@ -82,7 +85,9 @@ describe('getSubmissionsWithTasks', () => {
       parseServer.server.once('error', reject);
     });
     // parse-server initializes its own nested parse SDK; ours needs it too.
-    Parse.initialize('test-app');
+    // The master key is passed for getSubmissions()'s listing query; the task
+    // join itself runs without it, since task records carry no ACL.
+    Parse.initialize('test-app', undefined, 'test-master');
     Parse.serverURL = `http://localhost:${parseServer.server.address().port}/parse`;
 
     const Submission = Parse.Object.extend('submission');
@@ -133,10 +138,10 @@ describe('getSubmissionsWithTasks', () => {
   test('returns the submissions newest-first, each with its tasks joined', async () => {
     const results = await getSubmissionsWithTasks({
       req: { body: { email: username } },
-      saveUser,
+      authenticate,
     });
 
-    expect(saveUser).toHaveBeenCalledWith({ email: username });
+    expect(authenticate).toHaveBeenCalled();
     expect(results).toHaveLength(2);
 
     expect(results[0]).toMatchObject({

@@ -9,7 +9,7 @@
 import net from 'net';
 
 import Parse from 'parse/node';
-import { logIn, saveUser } from './users.js';
+import { logIn, updateUserProfile } from './users.js';
 
 const { MongoMemoryServer } = require('mongodb-memory-server');
 // parse-server is deliberately installed on demand instead of being a project
@@ -73,6 +73,16 @@ describe('users', () => {
         mountPath: '/parse',
         port: 0,
         verbose: false,
+        // Production requires a verified address and refuses to log in
+        // without one. In that configuration sign-up returns no session
+        // token at all (parse-server's RestWrite#createSessionTokenIfNeeded),
+        // which is what makes logIn() skip its verification-email resend.
+        verifyUserEmails: true,
+        preventLoginWithUnverifiedEmail: true,
+        appName: 'test',
+        publicServerURL: 'http://localhost/parse',
+        // Nothing reads the mail; the calls just have to succeed.
+        emailAdapter: { sendMail: () => Promise.resolve() },
       },
       () => {},
     );
@@ -81,12 +91,11 @@ describe('users', () => {
       parseServer.server.once('error', reject);
     });
     // parse-server initializes its own nested parse SDK; ours needs it too.
-    // The master key is passed like prod's Parse.initialize() does, and
-    // server.js's import-time useMasterKey() call is mirrored, so the
-    // modules under test see the master key on their requests like in prod.
-    // (Only the master key lets parse-server accept an emailVerified update.)
+    // The master key is passed only for the seeding save below: parse-server
+    // treats emailVerified as a protected field that no client may set on
+    // itself. The modules under test need no master key: logIn() and
+    // updateUserProfile() authorize with the session token logIn() returns.
     Parse.initialize('test-app', undefined, 'test-master');
-    Parse.Cloud.useMasterKey();
     Parse.serverURL = `http://localhost:${parseServer.server.address().port}/parse`;
 
     // Parse Server 2.8.4 leaves emailVerified unset on signUp, and logIn()
@@ -98,9 +107,7 @@ describe('users', () => {
     verifiedUser.setPassword(password);
     await verifiedUser.signUp();
     verifiedUser.set('emailVerified', true);
-    await verifiedUser.save(null, {
-      sessionToken: verifiedUser.getSessionToken(),
-    });
+    await verifiedUser.save(null, { useMasterKey: true });
   });
 
   afterAll(async () => {
@@ -122,7 +129,7 @@ describe('users', () => {
 
   test('logIn refuses a user that signed up but has not verified their email', async () => {
     // signUp() succeeds for the new address, but emailVerified is unset, so
-    // logIn() re-sets the email (to trigger a verification email) and throws.
+    // logIn() throws the "check your email" error.
     await expect(
       logIn({ email: 'unverified@example.com', password }),
     ).rejects.toMatchObject({
@@ -131,24 +138,50 @@ describe('users', () => {
     });
   });
 
+  test('an unverified signup leaves no unauthenticated save behind', async () => {
+    // The verification-email resend writes to the user's own _User row, and
+    // with preventLoginWithUnverifiedEmail sign-up hands back no session
+    // token to authorize it. Sending it anyway comes back as a 206, "Cannot
+    // modify user", whose rejection exits the process.
+    const save = jest.spyOn(Parse.User.prototype, 'save');
+
+    await expect(
+      logIn({ email: 'unverified-resend@example.com', password }),
+    ).rejects.toMatchObject({
+      message:
+        'We just sent you an email with a link to confirm your address, please find and click that.',
+    });
+
+    // signUp() saves with only an installationId; the resend would be the
+    // one call naming a sessionToken, and without a token it must not happen.
+    const resends = save.mock.calls.filter(
+      ([, options]) => options && 'sessionToken' in options,
+    );
+    save.mockRestore();
+    expect(resends).toEqual([]);
+  });
+
   test('logIn rejects a wrong password', async () => {
     await expect(
       logIn({ email, password: 'wrong-password' }),
     ).rejects.toMatchObject({ code: 101 });
   });
 
-  test('saveUser saves the profile fields onto the logged-in user', async () => {
-    const user = await saveUser({
+  test('updateUserProfile saves the fields with the session token', async () => {
+    const user = await logIn({ email, password });
+
+    const saved = await updateUserProfile({
+      user,
+      sessionToken: user.getSessionToken(),
       email,
-      password,
       FirstName: 'Test',
       LastName: 'User',
       Phone: '5551234567',
       testify: true,
     });
 
-    expect(user.id).toBe(verifiedUser.id);
-    expect(user.toJSON()).toMatchObject({
+    expect(saved.id).toBe(verifiedUser.id);
+    expect(saved.toJSON()).toMatchObject({
       useremail: email,
       FirstName: 'Test',
       LastName: 'User',
@@ -157,16 +190,19 @@ describe('users', () => {
     });
   });
 
-  test('saveUser rejects when a required field is missing', async () => {
+  test('updateUserProfile rejects when a required field is missing', async () => {
+    const user = await logIn({ email, password });
+
     await expect(
-      saveUser({
+      updateUserProfile({
+        user,
+        sessionToken: user.getSessionToken(),
         email,
-        password,
-        FirstName: '',
-        LastName: 'User',
+        FirstName: 'Test',
+        LastName: '',
         Phone: '5551234567',
         testify: true,
       }),
-    ).rejects.toMatchObject({ message: 'FirstName is required' });
+    ).rejects.toMatchObject({ message: 'LastName is required' });
   });
 });

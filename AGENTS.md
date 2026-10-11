@@ -4,6 +4,8 @@
 
 - `reported-web` is a server-rendered React Starter Kit app for submitting and reviewing Reported reports.
 - The app has both an Express server/API layer and a React client. Most feature work touches `src/server.js`, `src/routes/home/Home.js`, or shared components in `src/components/`.
+- Production is https://web.reported.nyc (not reportedweb.com). The domain appears nowhere else in the repo. The sandbox proxy allows this domain, so `curl https://web.reported.nyc/<path>` shows what a route serves in production. This check settles questions that the code alone leaves ambiguous.
+- Deployment is Heroku: the `git remote -v` list carries a `heroku` remote. A merge to `main` on GitHub deploys the app automatically through the Heroku GitHub integration, a few minutes after the merge. A manual `git push heroku main` also deploys, and `docs/getting-started.md` describes that flow. Heroku runs `yarn run build --release` through `heroku-postbuild`. `src/config.js` falls back to `https://${HEROKU_APP_NAME}.herokuapp.com` when `API_SERVER_URL` is unset.
 
 ## Repository map
 
@@ -54,12 +56,51 @@
 - If you change API or submission behavior, inspect both `src/server.js` and `src/routes/home/Home.js`; client and server responsibilities are split between them.
 - Keep tests near the affected module when possible; this repo uses a mix of colocated tests and snapshots under `src/**/__snapshots__/`.
 - Do not "clean up" existing warnings unless your task is specifically about them.
+- Write each code comment for a reader who never saw the previous version. Do not explain what changed or what was removed ("no longer", "used to"). Delete the comment with the code it described, unless the remaining code needs one.
+- `src/session.js` still accepts legacy email+password auth. The transition away from client-stored passwords needs it. Each use logs `[session] legacy credential auth used`. Delete the fallback and the `viaCredentials` plumbing after that log line stays quiet for about 90 days.
 - Before committing changes, run `yarn fix` to auto-fix lint issues.
 - When asked to update AGENTS.md in the middle of other work: find an unmerged branch that only touches AGENTS.md (or create one if it doesn't exist), switch to it, make the changes there, commit, run `git show` so the diff is visible, then switch back to the previous branch.
+
+### Commit messages
+
+- **Do not include CI results.** No test or suite counts, and no "`yarn lint` exits 0" line. A message says what changed and why; it does not report the run that checked it. Run the suite and the linter all the same — just keep them out of the message.
+- **Name in-flight work by its pull request**, rather than only by branch name, so a reader can follow it. If you're not sure whether there's a PR, ask the user, or if that's not acceptable (e.g. in non-interactive work), generate a github link to the branch name, for example https://github.com/josephfrazier/reported-web/tree/add-semi-automatic-mode-plan
+- **Say when a change came out of other in-flight work.** If a fix turned up while building something that has a pull request open, name that PR and say what it was doing that surfaced the problem. The change still has to stand on its own — a reader should not need the other work to follow it — but knowing where it came from is the context for why it was made.
+
+## Refactoring `server.js`
+
+Extract a route's logic into its own module as **three commits**, in this order:
+
+1. **Characterization test first** — a real-HTTP test through the actual express app against a real Parse Server + in-memory MongoDB, in the new module's own test file. Step 3 rewrites that file, so no example stays in the tree; the most recent one is `git show f91bb664:src/getAttachmentData.test.js`. Its shape: env vars set before `require('./server.js')`, `app.listen` replacement, `jest.mock` on chunk-manifest.json, `X-Forwarded-Proto: https`, explicit `emailVerified: true` seeding.
+2. **Extract the implementation** — move the logic verbatim into its own module so routes become thin adapters; the characterization test must stay green.
+3. **Simplify the test** — replace the HTTP-level test with a direct module test against the real Parse server; the fetch/FormData/forceSsl/env-var/app.listen workarounds go away.
+
+Never squash the trio together: each step is independently reviewable, and the history is checked for this shape. The `/submit` → `createSubmission.js` extraction is the precedent.
+
+## Browser targets
+
+- `browserslist` is `[">1%", "last 4 versions", "Firefox ESR", "not dead"]`. IE and the other dead browsers were dropped deliberately — don't cite IE (or bb/baidu) as a reason to add a polyfill, avoid a native API, or keep a dependency.
+- The two consumers of that target differ fundamentally, so judge an edit by comparing the *whole* build:
+  - `@babel/preset-env` reads `@babel/compat-data`, which has **no data** for `op_mini`, `kaios`, `bb`, `baidu`, `and_qq` (only `ie`), so it ignores them and they never hold JS transforms back.
+  - `autoprefixer` reads caniuse-lite, which **does** cover `bb` and `baidu`, so removing them changes prefixed CSS.
+
+## Verifying UI changes
+
+- `playwright` is a devDependency and its browsers are installed, so real-browser verification needs no extra setup; `tools/test-client-smoke.js` and `tools/test-dev-server-smoke.js` show the harness pattern. Boot `yarn start --silent` (browser-sync on `http://localhost:3000`), then drive headless chromium — `toast.screenshot({ path })` captures a single element rather than the whole page. Screenshots from an actual browser are the only way to settle CSS/rendering questions.
+- Write these scratch scripts outside the repo, and require playwright by **absolute path** (`require('<repo>/node_modules/playwright')`): node resolves a bare `require` from the script's own directory, so a script outside the repo fails with `MODULE_NOT_FOUND`.
+- `yarn start`'s HMR does **not** re-render an edited component. `src/client.js` accepts `./router` and calls `deepForceUpdate(appInstance)` plus `onLocationChange`, which re-runs the module that is already loaded instead of re-mounting the component, so a toast fired from `componentDidMount` doesn't re-fire and keeps its old text. For throwaway previews, register `module.hot.dispose(() => window.location.reload())` in the module being edited, guarded by `typeof window !== 'undefined' && module.hot` so SSR, jest and release builds are unaffected.
 
 ## Git push
 
 - **Do not try to `git push` to GitHub from the sandbox** — authentication is not configured and attempts will fail with "Invalid username or token." Instead, commit changes here and ask the user to push from their host.
+- **Create working branches with `--no-track`, and push them with an explicit destination:**
+
+  ```bash
+  git checkout -b my-branch --no-track origin/main
+  git push -u origin my-branch:refs/heads/my-branch
+  ```
+
+  `git checkout -b my-branch origin/main` records `branch.my-branch.merge = refs/heads/main`, so the new branch tracks `main` rather than a same-named branch. With `push.default = upstream` (or `tracking`) in the user's global config, which is not visible from the sandbox, `git push origin my-branch` then resolves its destination from that upstream and **tries to push onto `main`** — rejected here with `GH006: Protected branch update failed` because `main` is protected, but it would land on an unprotected branch. `--no-track` leaves the branch with no upstream, so a push defaults to the same name, and the explicit `:refs/heads/<name>` destination overrides `push.default` and records the correct tracking ref. To repair a branch created the old way, point its upstream at itself with `git config branch.<name>.merge refs/heads/<name>` (or `git branch --unset-upstream <name>`).
 
 ## Validation and CI gotchas
 
@@ -72,6 +113,24 @@
   - `src/srlookup.test.js` calls `portal.311.nyc.gov`
   - `src/geoclient.test.js` depends on Google Geocoding and NYC Geoclient
 - In a restricted sandbox with no outbound access, those tests fail with DNS/network errors or timeouts. Work around this by running the narrowest relevant tests, or at least `yarn test:no-flaky` when you want parity with the main CI workflow.
+- Run tests as `yarn test [path]`, never `npx jest`: the `test` script is `node -r dotenv/config node_modules/.bin/jest`, and that `-r dotenv/config` is the only thing loading `.env`. Under `npx jest` the API-backed suites go out with undefined credentials and fail in a misleading way — it reads like the environment has no credentials rather than like jest was invoked without dotenv.
+
+## Logging and countable events
+
+- Count things with one-line `console.info('[topic] message')` calls, like `[session] legacy credential auth used` and `[home] legacy localStorage state migrated`. A search in the log service finds every event of one kind, so a count needs no new metrics code.
+- The default `heroku logs` window is short. Pull a longer tail with `heroku logs -n 9999`, and check it periodically. A line that stays absent across the checks is the signal that ends a transitional block.
+
+## Writing style
+
+Write all prose in Simplified Technical English (ASD-STE100). The user asked for this style as the default for all prose.
+
+- Keep each sentence at or below 20 words.
+- Use active voice.
+- Use simple tenses only. Do not use `-ing` verbs or the present perfect.
+- Put one instruction in each sentence.
+- Use a vertical list for two or more items.
+- Keep each paragraph at or below 6 sentences.
+- Keep code identifiers, file paths, command names, and the git trailer unchanged. STE permits technical names.
 
 ## Commit message style
 
@@ -80,6 +139,20 @@
 - Include before/after code blocks (fenced with `\`\`\`js`) when the mechanism isn't obvious from the diff alone.
 - Link to relevant docs (MDN, Node.js, library docs) using markdown reference-style links at the bottom of the message, e.g. `[AbortController]: https://...`.
 - For memory, timeout, or leak fixes: describe the closure/retention chain, what held what, and how the fix breaks the chain.
+- Record the dead ends: after stating the fix, list the approaches that were tried and rejected, with the reason each failed, so future developers don't repeat them. This applies to PR bodies too.
+- Hard-wrap commit and PR bodies at ~72 columns. Keep the markdown when wrapping — never leave long unbroken paragraphs, and don't let the wrapping strip backticks or list structure.
+
+### Dependency bumps
+
+Every added or updated dependency must be linked so the change can be reviewed for dangerous or buggy code:
+
+- **Advisory**: `[GHSA-xxxx-xxxx-xxxx]: https://github.com/advisories/GHSA-...`, found via `https://github.com/advisories?query=<pkg>` when npm's advisory page returns 403.
+- **Updated package**: `https://my.diffend.io/npm/<pkg>/<from>/<to>`.
+- **Newly added package**: `https://unpkg.com/<pkg>@<version>/`, since diffend has no single-version syntax.
+- **npm page**: `https://www.npmjs.com/package/<pkg>?activeTab=versions` for every added or updated package, but not removed ones.
+- **Removed packages**: listed plainly in the body, with no links.
+
+In the commit body keep the dependency-changes bullet list, with each package name linking to its diff/unpkg URL and the link definitions collected at the bottom.
 
 ## Git Identity
 
@@ -88,4 +161,4 @@ Git config is not set in this environment. Use env vars when committing:
 GIT_COMMITTER_NAME="Joseph Frazier" GIT_COMMITTER_EMAIL="1212jtraceur@gmail.com" git commit --author="Joseph Frazier <1212jtraceur@gmail.com>" -m "message"
 ```
 
-Instead of Claude Code's default git commit trailer of `Co-Authored-By: Claude <noreply@anthropic.com>`, use `Co-Authored-By: Claude Code with DeepSeek`
+Instead of Claude Code's default git commit trailer of `Co-Authored-By: Claude <noreply@anthropic.com>`, use `Co-Authored-By: Claude Code with DeepSeek` — with no email address, and not on commits the user authored themselves.

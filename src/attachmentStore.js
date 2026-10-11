@@ -10,7 +10,7 @@ import path from 'path';
 // wiping temp files – the existing "not found" error handling covers that case).
 export const ATTACHMENT_TTL_MS = 60 * 60 * 1000; // 1 hour
 
-export const ATTACHMENT_ID_RE = /^[0-9a-f]{64}$/; // SHA-256 hex string
+const ATTACHMENT_ID_RE = /^[0-9a-f]{64}$/; // SHA-256 hex string
 
 // The id an attachment is known by: the SHA-256 hash of its bytes (which is
 // exactly what ATTACHMENT_ID_RE accepts), so identical uploads share a file.
@@ -34,6 +34,12 @@ export async function writeAttachment(id, buffer) {
   // Don't hold the process open just for cleanup; jest's fake timers don't
   // implement unref(), hence the optional call.
   cleanupTimer.unref?.();
+}
+
+// Remove an attachment before its TTL would have. The timer writeAttachment
+// set will find nothing when it fires, and ignore that.
+export async function deleteAttachment(id) {
+  await fs.promises.unlink(attachmentFilePath(id)).catch(() => {});
 }
 
 export async function readAttachment(id) {

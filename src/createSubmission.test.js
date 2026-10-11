@@ -292,6 +292,24 @@ describe('createSubmission', () => {
     expect(absent.withhold_contact_info_from_nypd).toBeUndefined();
   });
 
+  test('sets receive_nypd_sr_updates_by_email on the submission when true', async () => {
+    const submission = await createSubmission(
+      validParams({ receive_nypd_sr_updates_by_email: true }),
+    );
+
+    expect(submission.receive_nypd_sr_updates_by_email).toBe(true);
+  });
+
+  test('leaves receive_nypd_sr_updates_by_email off when false or absent', async () => {
+    const withFalse = await createSubmission(
+      validParams({ receive_nypd_sr_updates_by_email: false }),
+    );
+    const absent = await createSubmission(validParams());
+
+    expect(withFalse.receive_nypd_sr_updates_by_email).toBeUndefined();
+    expect(absent.receive_nypd_sr_updates_by_email).toBeUndefined();
+  });
+
   test('rejects submissions missing a required field', async () => {
     await expect(
       createSubmission(validParams({ plate: '' })),

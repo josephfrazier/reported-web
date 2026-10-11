@@ -730,6 +730,7 @@ class Home extends React.Component {
       reportDescription: '',
       can_be_shared_publicly: false,
       withhold_contact_info_from_nypd: false,
+      receive_nypd_sr_updates_by_email: false,
       latitude: defaultLatitude,
       longitude: defaultLongitude,
       coordsAreInNyc: true,
@@ -2246,6 +2247,32 @@ class Home extends React.Component {
                       about your service requests.
                     </small>
                   </label>
+
+                  {/* Email updates only make sense while contact info is
+                      withheld, so the checkbox is only shown then. The flag
+                      stays in state (and the cookie) either way, matching the
+                      other per-submission checkboxes. */}
+                  {this.state.withhold_contact_info_from_nypd && (
+                    <div style={{ marginLeft: '1.5em' }}>
+                      <label htmlFor="receive_nypd_sr_updates_by_email">
+                        <input
+                          id="receive_nypd_sr_updates_by_email"
+                          type="checkbox"
+                          checked={
+                            this.state.receive_nypd_sr_updates_by_email
+                          }
+                          name="receive_nypd_sr_updates_by_email"
+                          onChange={this.handleInputChange}
+                        />{' '}
+                        Email me updates about my NYPD service request
+                        <br />
+                        <small>
+                          Your email will be shared with 311 for this request;
+                          your name and phone stay withheld.
+                        </small>
+                      </label>
+                    </div>
+                  )}
 
                   <button
                     type="submit"

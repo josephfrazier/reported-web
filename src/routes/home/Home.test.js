@@ -1922,7 +1922,7 @@ describe('Home', () => {
     expect(checkbox.props.checked).toBe(false);
     expect(homeRef.current.state.withhold_contact_info_from_nypd).toBe(false);
 
-    // Checking the box sets the omit flag...
+    // Checking the box sets the withhold flag...
     renderer.act(() => {
       checkbox.props.onChange({
         target: {
@@ -1947,6 +1947,87 @@ describe('Home', () => {
         });
     });
     expect(homeRef.current.state.withhold_contact_info_from_nypd).toBe(false);
+
+    tree.unmount();
+  });
+
+  test('shows the email-updates checkbox only while withholding, and sets its flag', () => {
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+    };
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ initialState, homeRef });
+    });
+    renderer.act(() => {
+      homeRef.current.setState({ isEditProfileOpen: true });
+    });
+
+    // Hidden while contact info isn't withheld: email updates to the NYPD SR
+    // are only possible when the reporter's email would otherwise be absent.
+    expect(() =>
+      tree.root.findByProps({ name: 'receive_nypd_sr_updates_by_email' }),
+    ).toThrow();
+
+    renderer.act(() => {
+      homeRef.current.setState({ withhold_contact_info_from_nypd: true });
+    });
+    expect(tree.toJSON()).toMatchSnapshot();
+
+    const checkbox = tree.root.findByProps({
+      name: 'receive_nypd_sr_updates_by_email',
+    });
+    expect(checkbox.props.checked).toBe(false);
+    expect(
+      homeRef.current.state.receive_nypd_sr_updates_by_email,
+    ).toBe(false);
+
+    // Checking the box sets the flag...
+    renderer.act(() => {
+      checkbox.props.onChange({
+        target: {
+          type: 'checkbox',
+          checked: true,
+          name: 'receive_nypd_sr_updates_by_email',
+        },
+      });
+    });
+    expect(homeRef.current.state.receive_nypd_sr_updates_by_email).toBe(true);
+
+    // Hiding the checkbox (by un-withholding) doesn't clear the flag: it
+    // stays in state (and the cookie) like the other per-submission
+    // checkboxes, ready to reappear checked if withholding is re-enabled.
+    renderer.act(() => {
+      homeRef.current.setState({ withhold_contact_info_from_nypd: false });
+    });
+    expect(() =>
+      tree.root.findByProps({ name: 'receive_nypd_sr_updates_by_email' }),
+    ).toThrow();
+    expect(
+      homeRef.current.state.receive_nypd_sr_updates_by_email,
+    ).toBe(true);
+
+    // ...and unchecking it clears the flag once it's visible again.
+    renderer.act(() => {
+      homeRef.current.setState({ withhold_contact_info_from_nypd: true });
+    });
+    renderer.act(() => {
+      tree.root
+        .findByProps({ name: 'receive_nypd_sr_updates_by_email' })
+        .props.onChange({
+          target: {
+            type: 'checkbox',
+            checked: false,
+            name: 'receive_nypd_sr_updates_by_email',
+          },
+        });
+    });
+    expect(
+      homeRef.current.state.receive_nypd_sr_updates_by_email,
+    ).toBe(false);
 
     tree.unmount();
   });
@@ -2412,9 +2493,11 @@ describe('Home', () => {
         'uploaded-photo.jpg',
       ]);
       expect(submitBody.get('attachmentData')).toBeNull();
-      // The omit flag is sent alongside the rest of the per-submission
-      // state, so the server can store it (sparsely) when true.
+      // The withhold and email-updates flags are sent alongside the rest of
+      // the per-submission state, so the server can store them (sparsely)
+      // when true.
       expect(submitBody.get('withhold_contact_info_from_nypd')).toBe('false');
+      expect(submitBody.get('receive_nypd_sr_updates_by_email')).toBe('false');
 
       // The upload must have started before the submit request went out,
       // i.e. in the background rather than as part of submitting.

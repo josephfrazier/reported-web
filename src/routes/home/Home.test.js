@@ -2631,7 +2631,11 @@ describe('Home', () => {
 
       const tree = renderHome({
         homeRef,
-        initialState: { email: 'test@example.com', loginSuccessful: true },
+        initialState: {
+          email: 'test@example.com',
+          loginSuccessful: true,
+          withhold_contact_info_from_nypd: true,
+        },
       });
       homeRef.current.handleLogOut();
       await new Promise(resolve => setTimeout(resolve, 0));
@@ -2639,9 +2643,44 @@ describe('Home', () => {
       expect(axiosPost).toHaveBeenCalledWith('/api/logOut');
       expect(homeRef.current.state.loginSuccessful).toBe(false);
       expect(homeRef.current.state.email).toBe('');
+      // Reset with the rest of the profile fields, like testify.
+      expect(homeRef.current.state.withhold_contact_info_from_nypd).toBe(false);
 
       tree.unmount();
       axiosPost.mockRestore();
+    });
+
+    test('includes withhold_contact_info_from_nypd when saving the profile', async () => {
+      const axiosPost = jest
+        .spyOn(axios, 'post')
+        .mockResolvedValue({ data: {} });
+      const originalQuerySelector = document.querySelector;
+      document.querySelector = jest.fn(() => ({ scrollTo() {} }));
+      const homeRef = React.createRef();
+
+      const tree = renderHome({
+        homeRef,
+        initialState: { email: 'test@example.com', loginSuccessful: true },
+      });
+      renderer.act(() => {
+        homeRef.current.setState({ withhold_contact_info_from_nypd: true });
+      });
+
+      await renderer.act(async () => {
+        await homeRef.current.handleSaveProfile({ preventDefault() {} });
+      });
+
+      expect(axiosPost).toHaveBeenCalledWith(
+        '/saveUser',
+        expect.objectContaining({
+          testify: false,
+          withhold_contact_info_from_nypd: true,
+        }),
+      );
+
+      tree.unmount();
+      axiosPost.mockRestore();
+      document.querySelector = originalQuerySelector;
     });
 
     test('an expired session clears the login state and reopens the auth modal', async () => {

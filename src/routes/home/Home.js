@@ -1873,8 +1873,22 @@ class Home extends React.Component {
   // The fields /saveUser accepts. The password is never among them: the
   // session cookie identifies the user.
   profileFields = () => {
-    const { email, FirstName, LastName, Phone, testify } = this.state;
-    return { email, FirstName, LastName, Phone, testify };
+    const {
+      email,
+      FirstName,
+      LastName,
+      Phone,
+      testify,
+      withhold_contact_info_from_nypd: withholdContactInfoFromNypd,
+    } = this.state;
+    return {
+      email,
+      FirstName,
+      LastName,
+      Phone,
+      testify,
+      withhold_contact_info_from_nypd: withholdContactInfoFromNypd,
+    };
   };
 
   clearAuthState = (extraState = {}) => {
@@ -1886,6 +1900,7 @@ class Home extends React.Component {
         LastName: '',
         Phone: '',
         testify: false,
+        withhold_contact_info_from_nypd: false,
         submissions: [],
         isEditProfileOpen: false,
         isPreferencesOpen: false,

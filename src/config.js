@@ -13,6 +13,10 @@ if (process.env.BROWSER) {
   );
 }
 
+// The values below are read when this module first evaluates, which happens
+// before any statement in the importing module runs, so load .env here.
+require('dotenv').config();
+
 module.exports = {
   // Node.js app
   port: process.env.PORT || 3000,
@@ -50,5 +54,11 @@ module.exports = {
   analytics: {
     // https://analytics.google.com/
     googleTrackingId: process.env.GOOGLE_TRACKING_ID, // UA-XXXXX-X
+  },
+
+  // Errors and logs
+  sentry: {
+    // The DSN is public by design; the client bundle carries it too.
+    dsn: process.env.SENTRY_DSN,
   },
 };

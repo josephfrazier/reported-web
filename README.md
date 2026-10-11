@@ -88,13 +88,14 @@ What to tell an affected user: remove and re-add the photos/videos before submit
 again — reusing a selection that already failed keeps failing — or use a device that
 isn't on the affected browser version.
 
-Worth checking while looking at this: `/api/uploadAttachment`'s rate limiter keys on
-`req.ip`, and `src/config.js` trusts the private ranges for `trust proxy`, which is where
-Heroku's router sits. If that is wrong for a deployment — a router somewhere else — then
-every request carries the router's address as `req.ip`, and all users share one
-30-per-15-minutes bucket. Background uploads then fail (silently, since the client only
-logs those) and each submission falls back to re-sending every file through `/submit` —
-the route that shows this error. `TRUST_PROXY` overrides the default.
+Worth checking while looking at this: `/api/uploadAttachment`'s byte budget and its
+flood stop both key on `req.ip`, and `src/config.js` trusts the private ranges for
+`trust proxy`, which is where Heroku's router sits. If that is wrong for a deployment — a
+router somewhere else — then every request carries the router's address as `req.ip`, and
+all users share one quarter-gigabyte of unsubmitted attachments and one flood-stop bucket.
+Background uploads then fail (silently, since the client only logs those) and each
+submission falls back to re-sending every file through `/submit` — the route that shows
+this error. `TRUST_PROXY` overrides the default.
 
 ## Context on `localStorage` use (w.r.t performance concerns about lag/delay/slowness/latency when typing)
 
@@ -241,6 +242,20 @@ On 8 February 2026, Claude Code helped me fix the performance issue with commits
 so hopefully that will be the end of this saga.
 
 </details>
+
+## Staying logged in
+
+The browser holds its Parse session token in an **HttpOnly** `reportedWebSession`
+cookie, which the server sets on login and clears (revoking the session with Parse)
+on logout. The password is sent only to `/api/logIn` and is never stored: the
+`reportedWebHomeState` cookie keeps form state and preferences, nothing else.
+
+A client (or tab) that predates this still sends the email+password it has in that
+state cookie. The server accepts them when there is no session cookie, and rewrites
+the state cookie without the password in the same response, so those visitors
+migrate without noticing. That transitional path lives in `src/session.js`
+(`authenticate` and `resolveSsrSession`) and can be deleted once old clients are
+gone; it logs `[session] legacy credential auth used` on each fallback hit.
 
 ---
 

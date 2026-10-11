@@ -188,6 +188,173 @@ exports[`Home hides form fields when logged in with no photos uploaded 1`] = `
 </div>
 `;
 
+exports[`Home links the banner to the PR the review app was deployed from 1`] = `
+<div
+  aria-disabled={false}
+  className="root"
+  onClick={[Function]}
+  onDragEnter={[Function]}
+  onDragLeave={[Function]}
+  onDragOver={[Function]}
+  onDragStart={[Function]}
+  onDrop={[Function]}
+  style={
+    {
+      "bottom": 0,
+      "left": 0,
+      "overflowY": "scroll",
+      "position": "fixed",
+      "right": 0,
+      "top": 0,
+    }
+  }
+>
+  <div
+    className="non-production-banner"
+    role="alert"
+  >
+    <span
+      aria-label="warning"
+      role="img"
+    >
+      ⚠️
+    </span>
+     
+    NOT PRODUCTION — using Parse server:
+     
+    <code>
+      https://reported-parse.webabot.com/parse
+    </code>
+     
+    — deployed from
+     
+    <a
+      href="https://github.com/josephfrazier/reported-web/pull/1046"
+    >
+      PR #1046 (review-app-source-link)
+    </a>
+  </div>
+  <div
+    className="container"
+  >
+    <main>
+      <h1>
+        <a
+          href="https://reportedly.weebly.com/"
+          style={
+            {
+              "textDecoration": "underline",
+            }
+          }
+        >
+          Reported
+        </a>
+      </h1>
+      <div
+        className="Toastify"
+      />
+      <div
+        className="user-status-bar"
+      >
+        <div
+          className="user-greeting"
+        >
+          Not logged in
+        </div>
+        <div
+          className="user-actions"
+        >
+          <button
+            className="status-bar-btn"
+            onClick={[Function]}
+            type="button"
+          >
+            Log In
+          </button>
+          <button
+            className="status-bar-btn-primary"
+            onClick={[Function]}
+            type="button"
+          >
+            Sign Up
+          </button>
+        </div>
+      </div>
+      <div
+        className="auth-prompt"
+      >
+        <p>
+          Please
+           
+          <button
+            onClick={[Function]}
+            type="button"
+          >
+            log in
+          </button>
+           
+          or
+           
+          <button
+            onClick={[Function]}
+            type="button"
+          >
+            sign up
+          </button>
+           
+          to submit a report.
+        </p>
+      </div>
+      <br />
+      <div
+        style={
+          {
+            "float": "right",
+          }
+        }
+      >
+        <a
+          href="/submissions-map"
+          style={
+            {
+              "background": "black",
+              "border": "1em solid black",
+              "borderRadius": "2em",
+              "textDecoration": "none",
+            }
+          }
+        >
+          <span
+            aria-label="world map"
+            role="img"
+          >
+            🗺️
+          </span>
+        </a>
+      </div>
+    </main>
+  </div>
+  <input
+    autoComplete="off"
+    disabled={false}
+    multiple={true}
+    onChange={[Function]}
+    style={
+      {
+        "bottom": 0,
+        "left": 0,
+        "opacity": 0.00001,
+        "pointerEvents": "none",
+        "position": "absolute",
+        "right": 0,
+        "top": 0,
+      }
+    }
+    type="file"
+  />
+</div>
+`;
+
 exports[`Home renders Edit Profile UI 1`] = `
 <div
   aria-disabled={false}
@@ -349,6 +516,23 @@ exports[`Home renders Edit Profile UI 1`] = `
             />
              
             Allow the photos/videos, description, category, and location to be publicly displayed
+          </label>
+          <label
+            htmlFor="withhold_contact_info_from_nypd"
+          >
+            <input
+              checked={false}
+              id="withhold_contact_info_from_nypd"
+              name="withhold_contact_info_from_nypd"
+              onChange={[Function]}
+              type="checkbox"
+            />
+             
+            Withhold my contact info from NYPD service requests
+            <br />
+            <small>
+              If you leave this unchecked, NYPD may call or email you about your service requests.
+            </small>
           </label>
           <button
             className="auth-submit-btn"
@@ -942,7 +1126,7 @@ exports[`Home renders Sign Up modal UI 1`] = `
         <label
           htmlFor="auth-signup-password"
         >
-          Password (this is saved on your device, so use a password you don't use anywhere else):
+          Password:
           <div
             className="auth-field-row"
           >

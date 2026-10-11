@@ -69,6 +69,12 @@ module.exports = {
     '\\.(css|less|styl|scss|sass|sss)$': 'identity-obj-proxy',
   },
 
+  // Jest's own resolver, with one retry for a lookup that comes back empty:
+  // the checkout is a `virtiofs` share, where a stat can miss for a moment
+  // under the load of a full run, and jest-resolve keeps a miss for the life
+  // of the worker. See the file for the failure it causes.
+  resolver: '<rootDir>/tools/lib/jestResolver.js',
+
   // modulePathIgnorePatterns: // [array<string>]
   // modulePaths: // [array<string>]
   // notify: false, // [boolean]

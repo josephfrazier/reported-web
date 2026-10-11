@@ -7,9 +7,10 @@
  * be shown instantly while the fresh list loads in the background (see
  * Home.loadPreviousSubmissions).
  *
- * The cache is not keyed per user: the home-state cookie already stores the
- * user's credentials in plaintext, so anyone who can read localStorage on
- * this machine can log in as that user anyway. Logging out clears the cache,
+ * The cache is not keyed per user: a script that can read it can also call
+ * the API, and the browser attaches the session cookie to that request —
+ * HttpOnly stops a script from reading the token, not from using it — so
+ * caching these results exposes nothing new. Logging out clears the cache,
  * which keeps one account's submissions from appearing for another account
  * that logs in later on the same machine.
  *

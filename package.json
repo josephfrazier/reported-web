@@ -59,7 +59,7 @@
     "lodash.sortby": "^4.7.0",
     "marx-css": "^3.0.3",
     "mem": "^4.0.0",
-    "mime-bytes": "^0.30.0",
+    "mime-bytes": "^0.33.0",
     "mp4box": "https://github.com/josephfrazier/mp4box.js#commonjs",
     "multer": "^2.4.0",
     "normalize.css": "^8.0.0",

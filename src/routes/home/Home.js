@@ -2258,9 +2258,7 @@ class Home extends React.Component {
                         <input
                           id="receive_nypd_sr_updates_by_email"
                           type="checkbox"
-                          checked={
-                            this.state.receive_nypd_sr_updates_by_email
-                          }
+                          checked={this.state.receive_nypd_sr_updates_by_email}
                           name="receive_nypd_sr_updates_by_email"
                           onChange={this.handleInputChange}
                         />{' '}

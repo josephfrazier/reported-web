@@ -86,7 +86,7 @@
     "sharp": "^0.35.4",
     "source-map-support": "^0.5.9",
     "universal-router": "^6.0.0",
-    "video-extensions": "^1.1.0",
+    "video-extensions": "^2.0.0",
     "whatwg-fetch": "^3.0.0",
     "wreq-js": "^3.2.0",
     "zip-array": "^1.0.1"

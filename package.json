@@ -39,7 +39,7 @@
     "capitalize": "^2.0.4",
     "capture-frame": "^4.0.0",
     "cheerio": "^1.2.0",
-    "compression": "^1.7.2",
+    "compression": "^1.8.2",
     "cookie": "^0.7.0",
     "datasets-us-states-abbr-names": "^1.0.0",
     "debounce-promise": "^3.1.0",

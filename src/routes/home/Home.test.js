@@ -1922,7 +1922,8 @@ describe('Home', () => {
     expect(checkbox.props.checked).toBe(false);
     expect(homeRef.current.state.withhold_contact_info_from_nypd).toBe(false);
 
-    // Checking the box sets the omit flag...
+    // Checking the box sets the withhold flag, and counts as having seen
+    // the feature notice...
     renderer.act(() => {
       checkbox.props.onChange({
         target: {
@@ -1933,6 +1934,7 @@ describe('Home', () => {
       });
     });
     expect(homeRef.current.state.withhold_contact_info_from_nypd).toBe(true);
+    expect(homeRef.current.state.hasSeenWithholdNotice).toBe(true);
 
     // ...and unchecking it clears the flag.
     renderer.act(() => {
@@ -1948,6 +1950,122 @@ describe('Home', () => {
     });
     expect(homeRef.current.state.withhold_contact_info_from_nypd).toBe(false);
 
+    tree.unmount();
+  });
+
+  test('shows the withhold notice once, until dismissed or the box is checked', () => {
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+    };
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ initialState, homeRef });
+    });
+
+    const findBanner = () =>
+      tree.root.findByProps({ className: 'withhold-notice-banner' });
+
+    // Shown to logged-in users who haven't withheld and haven't seen it.
+    expect(findBanner()).toBeTruthy();
+
+    // Its button opens Edit Profile, where the checkbox lives.
+    renderer.act(() => {
+      tree.root
+        .findByProps({ children: 'Withhold my contact info' })
+        .props.onClick();
+    });
+    expect(homeRef.current.state.isEditProfileOpen).toBe(true);
+
+    // Dismissing hides it and remembers, so it stays gone (the flag is
+    // part of the persistent state, i.e. the cookie).
+    renderer.act(() => {
+      tree.root.findByProps({ children: 'Dismiss' }).props.onClick();
+    });
+    expect(homeRef.current.state.hasSeenWithholdNotice).toBe(true);
+    expect(() => findBanner()).toThrow();
+
+    tree.unmount();
+  });
+
+  test('hides the withhold notice when logged out, withholding, or already seen', () => {
+    // Logged out: no banner.
+    let tree = renderHome();
+    expect(() =>
+      tree.root.findByProps({ className: 'withhold-notice-banner' }),
+    ).toThrow();
+    tree.unmount();
+
+    // Logged in but already withholding: no banner.
+    tree = renderHome({
+      initialState: {
+        email: 'test@example.com',
+        loginSuccessful: true,
+        withhold_contact_info_from_nypd: true,
+      },
+    });
+    expect(() =>
+      tree.root.findByProps({ className: 'withhold-notice-banner' }),
+    ).toThrow();
+    tree.unmount();
+
+    // Logged in but already seen (restored from the cookie via SSR
+    // initialState): no banner.
+    tree = renderHome({
+      initialState: {
+        email: 'test@example.com',
+        loginSuccessful: true,
+        hasSeenWithholdNotice: true,
+      },
+    });
+    expect(() =>
+      tree.root.findByProps({ className: 'withhold-notice-banner' }),
+    ).toThrow();
+    tree.unmount();
+
+    // Checking the box counts as seen: unchecking it afterwards does not
+    // bring the banner back.
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({
+        homeRef,
+        initialState: { email: 'test@example.com', loginSuccessful: true },
+      });
+    });
+    renderer.act(() => {
+      homeRef.current.setState({ isEditProfileOpen: true });
+    });
+    renderer.act(() => {
+      tree.root
+        .findByProps({ name: 'withhold_contact_info_from_nypd' })
+        .props.onChange({
+          target: {
+            type: 'checkbox',
+            checked: true,
+            name: 'withhold_contact_info_from_nypd',
+          },
+        });
+    });
+    expect(() =>
+      tree.root.findByProps({ className: 'withhold-notice-banner' }),
+    ).toThrow();
+    renderer.act(() => {
+      tree.root
+        .findByProps({ name: 'withhold_contact_info_from_nypd' })
+        .props.onChange({
+          target: {
+            type: 'checkbox',
+            checked: false,
+            name: 'withhold_contact_info_from_nypd',
+          },
+        });
+    });
+    expect(homeRef.current.state.withhold_contact_info_from_nypd).toBe(false);
+    expect(() =>
+      tree.root.findByProps({ className: 'withhold-notice-banner' }),
+    ).toThrow();
     tree.unmount();
   });
 

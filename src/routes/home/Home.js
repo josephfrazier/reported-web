@@ -744,6 +744,7 @@ class Home extends React.Component {
       isLoadPreviousSubmissionsEnabled: false,
       isMapOpen: false,
       isPreviousSubmissionsOpen: false,
+      hasSeenWithholdNotice: false,
       loginSuccessful: false,
     };
 
@@ -1702,11 +1703,21 @@ class Home extends React.Component {
           : target.value;
     const { name } = target;
 
-    this.setState(
-      {
-        [name]: value,
-      },
-      () => debouncedSavePersistentStateToCookie(this),
+    const stateChange = { [name]: value };
+    // Checking the withhold box counts as having seen the notice, so it
+    // stays gone if the box is later unchecked.
+    if (name === 'withhold_contact_info_from_nypd' && value === true) {
+      stateChange.hasSeenWithholdNotice = true;
+    }
+
+    this.setState(stateChange, () =>
+      debouncedSavePersistentStateToCookie(this),
+    );
+  };
+
+  dismissWithholdNotice = () => {
+    this.setState({ hasSeenWithholdNotice: true }, () =>
+      debouncedSavePersistentStateToCookie(this),
     );
   };
 
@@ -1873,6 +1884,7 @@ class Home extends React.Component {
         LastName: '',
         Phone: '',
         testify: false,
+        hasSeenWithholdNotice: false,
         submissions: [],
         isEditProfileOpen: false,
         isPreferencesOpen: false,
@@ -2162,6 +2174,47 @@ class Home extends React.Component {
                 )}
               </div>
             </div>
+
+            {/* One-time notice about the withhold checkbox, until dismissed
+                or the box is checked. Not sticky: the non-production banner
+                above owns the sticky spot. */}
+            {this.isLoggedIn() &&
+              !this.state.withhold_contact_info_from_nypd &&
+              !this.state.hasSeenWithholdNotice && (
+                <div
+                  role="alert"
+                  className={homeStyles['withhold-notice-banner']}
+                >
+                  <span>
+                    <span role="img" aria-label="privacy">
+                      🙈
+                    </span>{' '}
+                    New: you can keep the NYPD from calling or emailing you
+                    about your report.
+                  </span>
+                  <span className={homeStyles['user-actions']}>
+                    <button
+                      type="button"
+                      className={homeStyles['status-bar-btn-primary']}
+                      onClick={() =>
+                        this.setState({
+                          isEditProfileOpen: true,
+                          isPreferencesOpen: false,
+                        })
+                      }
+                    >
+                      Withhold my contact info
+                    </button>
+                    <button
+                      type="button"
+                      className={homeStyles['status-bar-btn']}
+                      onClick={this.dismissWithholdNotice}
+                    >
+                      Dismiss
+                    </button>
+                  </span>
+                </div>
+              )}
 
             {/* Edit Profile (shown inline when toggled) */}
             {this.state.isEditProfileOpen && (

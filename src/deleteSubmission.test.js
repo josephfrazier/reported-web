@@ -1,7 +1,8 @@
 /**
  * @jest-environment node
  *
- * Runs against a real Parse Server 9.4.0 (the version prod runs) backed by a
+ * Runs against a real Parse Server 9.4.0 (the version production will run once
+ * https://github.com/josephfrazier/reported-web/pull/713 is merged) backed by a
  * real MongoDB 4.4 started in-memory by mongodb-memory-server, so the actual
  * deletion and ownership-check semantics are exercised instead of a fake.
  */

@@ -1,8 +1,9 @@
 /**
  * @jest-environment node
  *
- * The cookie helpers and the Origin guard are pure, but `authenticate`
- * resolves tokens against a real Parse Server 9.4.0 (the version prod runs),
+ * The cookie helpers and the Origin guard are pure, but `authenticate` resolves
+ * tokens against a real Parse Server 9.4.0 (the version production will run
+ * once https://github.com/josephfrazier/reported-web/pull/713 is merged),
  * backed by MongoDB 4.4 from mongodb-memory-server, so the session semantics
  * under test are the real ones.
  */

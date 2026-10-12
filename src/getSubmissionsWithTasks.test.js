@@ -13,8 +13,6 @@ import Parse from 'parse/node';
 import getSubmissionsWithTasks from './getSubmissionsWithTasks.js';
 
 const { MongoMemoryServer } = require('mongodb-memory-server');
-// parse-server is deliberately installed on demand instead of being a project
-// dependency (see jest.globalSetup.js)
 const { ParseServer } = require('parse-server');
 
 // parse-server skips its cloud/URL verification (and test-unfriendly process

@@ -13,8 +13,6 @@ import Parse from 'parse/node';
 import createSubmission from './createSubmission.js';
 
 const { MongoMemoryServer } = require('mongodb-memory-server');
-// parse-server is deliberately installed on demand instead of being a project
-// dependency (see jest.globalSetup.js)
 const { ParseServer } = require('parse-server');
 
 // In-memory stand-in for a files adapter: the submission logic under test

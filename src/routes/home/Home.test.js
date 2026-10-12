@@ -3005,6 +3005,18 @@ describe('NycAddressAutocomplete', () => {
   });
 });
 
+// The rendered tree keeps every JSX child as its own entry, so a sentence with
+// interpolations in it is not one string in there: the error message serializes
+// as "Could not look up make/model of ", "ABC123", " in", " ", "ON", ",". Join
+// the text back together before asserting on a sentence, the way a reader sees
+// it.
+function renderedText(node) {
+  if (node == null) return '';
+  if (typeof node === 'string') return node;
+  if (Array.isArray(node)) return node.map(renderedText).join('');
+  return renderedText(node.children);
+}
+
 describe('license state', () => {
   // Regression test: a plate read whose region code would not parse reported
   // the state as '', and the state field showed that as an empty value --
@@ -3040,11 +3052,18 @@ describe('license state', () => {
     axiosGet.mockRestore();
   });
 
-  // Regression test: the dataset holds the 50 states plus DC, so a state it
-  // has no name for rendered as nothing at all in the lookup message.
-  test('shows the code for a state the dataset has no name for', async () => {
+  // A plate read carries whichever region code the reader saw, and the state
+  // dataset has no name for some of them -- a Canadian province, a federal
+  // fleet code. The lookup messages looked the name up unguarded, so a plate
+  // like that lost the state from the sentence:
+  //
+  //   Looking up make/model for ABC123 in undefined
+  //   Could not look up make/model of ABC123 in , click here for details
+  //
+  // The first is a template literal, which prints the word; the second is a
+  // JSX child, which renders nothing at all.
+  test('names a state the dataset has no name for by its code', async () => {
     const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
-    // The form only renders for a logged-in reader with a photo attached.
     const originalCreateObjectURL = global.URL.createObjectURL;
     global.URL.createObjectURL = jest.fn(() => 'blob:mock');
 
@@ -3068,13 +3087,56 @@ describe('license state', () => {
       homeRef.current.setLicensePlate({ plate: 'ABC123', licenseState: 'ON' });
     });
 
-    const rendered = JSON.stringify(tree.toJSON());
+    const rendered = renderedText(tree.toJSON());
     expect(rendered).toContain('Looking up make/model for ABC123 in ON');
     expect(rendered).toContain('Looking up violations for ABC123 in ON');
 
     await renderer.act(async () => {
       await new Promise(resolve => setTimeout(resolve, 700));
     });
+    renderer.act(() => tree.unmount());
+    global.URL.createObjectURL = originalCreateObjectURL;
+    axiosGet.mockRestore();
+  });
+
+  // The same message once the lookup has failed, which is where the missing
+  // name reads as "in ," right before the comma.
+  test('names a state the dataset has no name for when a lookup fails', async () => {
+    const axiosGet = jest
+      .spyOn(axios, 'get')
+      .mockRejectedValue(new Error('lookup failed'));
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+    const homeRef = React.createRef();
+    let tree;
+    renderer.act(() => {
+      tree = renderHome({
+        initialState: { email: 'test@example.com', loginSuccessful: true },
+        homeRef,
+      });
+    });
+    renderer.act(() => {
+      homeRef.current.setState({
+        attachmentData: [
+          new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }),
+        ],
+      });
+    });
+
+    renderer.act(() => {
+      homeRef.current.setLicensePlate({ plate: 'ABC123', licenseState: 'ON' });
+    });
+
+    // The vehicle lookup is debounced by 1000ms, so the failed lookup that
+    // swaps in the error message needs longer than the usual settle.
+    await renderer.act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 1500));
+    });
+
+    const rendered = renderedText(tree.toJSON());
+    expect(rendered).toContain('Could not look up make/model of ABC123 in ON,');
+
     renderer.act(() => tree.unmount());
     global.URL.createObjectURL = originalCreateObjectURL;
     axiosGet.mockRestore();

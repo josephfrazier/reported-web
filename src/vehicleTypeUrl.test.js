@@ -7,10 +7,11 @@ describe('vehicleTypeUrl', () => {
     );
   });
 
-  // Regression test: the dataset holds the 50 states plus DC, so a plate from
-  // anywhere else -- a Canadian province, a federal fleet code -- has no name
-  // to look up, and building the URL threw on the undefined name. That broke
-  // rendering the whole vehicle info line for such a plate.
+  // The dataset holds the 50 states plus DC, and a plate can carry a state
+  // that is not in it: ALPR reads the region code straight off the plate, so a
+  // Canadian province or a federal fleet code arrives here too. Building the
+  // URL then threw on the undefined name, which took down the whole vehicle
+  // info line for such a plate.
   test('falls back to the code for a state the dataset has no name for', () => {
     expect(vehicleTypeUrl({ licensePlate: 'ABC123', licenseState: 'ON' })).toBe(
       'https://www.lookupaplate.com/on/ABC123/',

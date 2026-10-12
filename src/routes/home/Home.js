@@ -1196,7 +1196,10 @@ class Home extends React.Component {
     });
 
   setLicensePlate = ({ plate, licenseState }) => {
-    if (licenseState == null || licenseState === undefined) {
+    // Both a read that found no state (null) and a caller that left the key
+    // off (undefined) leave the current state alone; an empty string is a
+    // cleared field and is kept.
+    if (licenseState == null) {
       licenseState = this.state.licenseState; // eslint-disable-line no-param-reassign
     }
 

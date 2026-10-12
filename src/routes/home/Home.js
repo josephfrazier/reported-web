@@ -34,7 +34,6 @@ import pEvent from 'p-event';
 import omit from 'object.omit';
 import bufferToArrayBuffer from 'buffer-to-arraybuffer';
 import { serialize } from 'object-to-formdata';
-import usStateNames from 'datasets-us-states-abbr-names';
 import fileExtension from 'file-extension';
 import diceware from 'diceware-generator';
 import wordlist from 'diceware-wordlist-en-eff';
@@ -47,6 +46,7 @@ import PolygonLookup from 'polygon-lookup';
 import CircularProgress from '@mui/material/CircularProgress';
 
 import marx from 'marx-css/css/marx.css';
+import usStateNames, { licenseStateName } from '../../usStateNames.js';
 import homeStyles from './Home.css';
 
 import PreviousSubmissionsList from '../../components/PreviousSubmissionsList.js';
@@ -71,8 +71,6 @@ import {
   removeCachedSubmission,
   writeCachedSubmissions,
 } from './submissionsCache.js';
-
-usStateNames.DC = 'District of Columbia';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyDlwm2ykA0ohTXeVepQYvkcmdjz2M2CKEI';
 
@@ -285,11 +283,13 @@ async function getVideoScreenshot({ attachmentFile }) {
 const attachmentPlateCache = new WeakMap();
 
 function getLicenseStateFromPlateResult(result) {
+  // ALPR results may not always include a parseable region code. Report that
+  // as null rather than an empty string: setLicensePlate leaves the current
+  // state alone for null, where '' would clear the field.
   try {
-    return result.region.code.split('-')[1].toUpperCase();
+    return result.region.code.split('-')[1].toUpperCase() || null;
   } catch {
-    // ALPR results may not always include a parseable region code.
-    return '';
+    return null;
   }
 }
 
@@ -407,7 +407,9 @@ async function extractPlate({
 
     if (isAlprEnabled === false) {
       console.info('ALPR is disabled, skipping');
-      return { plate: '', licenseState: '' };
+      // Nothing was read, so leave the state field as the person left it:
+      // null keeps it, where '' would clear it.
+      return { plate: '', licenseState: null };
     }
 
     const data = await fetchPlateResults({
@@ -547,8 +549,8 @@ class Home extends React.Component {
           target="_blank"
           rel="noopener noreferrer"
         >
-          {plate} in {usStateNames[licenseState]}: {vehicleYear} {vehicleMake}{' '}
-          {vehicleModel} ({vehicleBody})
+          {plate} in {licenseStateName(licenseState)}: {vehicleYear}{' '}
+          {vehicleMake} {vehicleModel} ({vehicleBody})
         </a>
         <img
           src={Home.getVehicleMakeLogoUrl({ vehicleMake })}
@@ -566,7 +568,8 @@ class Home extends React.Component {
   static buildVehicleLookupErrorComponent({ plate, licenseState }) {
     return (
       <React.Fragment>
-        Could not look up make/model of {plate} in {usStateNames[licenseState]},{' '}
+        Could not look up make/model of {plate} in{' '}
+        {licenseStateName(licenseState)},{' '}
         <a
           href="https://github.com/josephfrazier/Reported-Web/issues/295"
           target="_blank"
@@ -712,6 +715,27 @@ class Home extends React.Component {
     requestAnimationFrame(attemptFocus);
   }
 
+  // `setLicensePlate` runs on every keystroke -- the state field is a text
+  // input, so typing "NY" is two of them -- and a plate matching an earlier
+  // submission matches at each of them. Wait for the typing to stop before
+  // saying so, rather than stacking a toast per character. Reusing one toast
+  // id means a second pause refreshes the toast that is already up instead of
+  // adding another, the way the geosearch warning does.
+  debouncedWarnAboutPriorSubmission = debounce(
+    ({ priorCount, plate, selectedDateDay }) => {
+      const pluralReport = priorCount === 1 ? 'report' : 'reports';
+
+      Home.notifyWarning(
+        <p>
+          You have already submitted {priorCount} {pluralReport} for {plate} on{' '}
+          {selectedDateDay}, are you sure you want to submit another?
+        </p>,
+        { toastId: 'prior-submission-warning' },
+      );
+    },
+    500,
+  );
+
   constructor(props) {
     super(props);
 
@@ -730,6 +754,7 @@ class Home extends React.Component {
       reportDescription: '',
       can_be_shared_publicly: false,
       withhold_contact_info_from_nypd: false,
+      receive_nypd_sr_updates_by_email: false,
       latitude: defaultLatitude,
       longitude: defaultLongitude,
       coordsAreInNyc: true,
@@ -744,6 +769,7 @@ class Home extends React.Component {
       isLoadPreviousSubmissionsEnabled: false,
       isMapOpen: false,
       isPreviousSubmissionsOpen: false,
+      hasSeenWithholdNotice: false,
       loginSuccessful: false,
     };
 
@@ -773,6 +799,7 @@ class Home extends React.Component {
       authModalTab: 'login',
       isEditProfileOpen: false,
       isPreferencesOpen: false,
+      isWithholdFieldHighlighted: false,
       authError: null,
     };
 
@@ -1190,7 +1217,12 @@ class Home extends React.Component {
     });
 
   setLicensePlate = ({ plate, licenseState }) => {
-    licenseState = licenseState || this.state.licenseState; // eslint-disable-line no-param-reassign
+    // Both a read that found no state (null) and a caller that left the key
+    // off (undefined) leave the current state alone; an empty string is a
+    // cleared field and is kept.
+    if (licenseState == null) {
+      licenseState = this.state.licenseState; // eslint-disable-line no-param-reassign
+    }
 
     // Selecting the plate/state that is already selected (e.g. clicking the
     // overlay for the current plate) is a no-op: skip the
@@ -1227,19 +1259,25 @@ class Home extends React.Component {
         violationsResponse: cachedViolationsResponse,
       });
 
+    // LookupAPlate matches a plate together with its state, so a plate with
+    // no state is not something it can answer. Ask for the state instead of
+    // sending a request that cannot come back with anything.
+    const needsLicenseState = Boolean(plate && !licenseState);
+    const vehicleInfoMessage = needsLicenseState
+      ? `Enter the state to look up make/model for ${plate}`
+      : `Looking up make/model for ${plate} in ${licenseStateName(licenseState)}`;
+    const violationSummaryMessage = needsLicenseState
+      ? `Enter the state to look up violations for ${plate}`
+      : `Looking up violations for ${plate} in ${licenseStateName(licenseState)}`;
+
     this.setState({
       plate,
       licenseState,
       vehicleInfoComponent:
-        cachedVehicleInfoComponent ||
-        (plate
-          ? `Looking up make/model for ${plate} in ${usStateNames[licenseState]}`
-          : null),
+        cachedVehicleInfoComponent || (plate ? vehicleInfoMessage : null),
       violationSummaryComponent:
         cachedViolationSummaryComponent ||
-        (plate
-          ? `Looking up violations for ${plate} in ${usStateNames[licenseState]}`
-          : null),
+        (plate ? violationSummaryMessage : null),
     });
 
     const selectedDate = new Date(this.state.CreateDate);
@@ -1255,23 +1293,28 @@ class Home extends React.Component {
       return submission.license === plate || submission.medallionNo === plate;
     });
 
+    // The warning is about the plate, and the state is deliberately not part of
+    // what counts as a duplicate: a state read off a plate is a guess, and an
+    // earlier report may simply have got it wrong. So a change to the state on
+    // its own says nothing about one -- only a plate that has just become this
+    // one is news.
     const priorCount = priorSubmissions.length;
+    const plateChanged = plate !== this.state.plate;
 
-    if (priorCount > 0) {
-      const pluralReport = priorCount === 1 ? 'report' : 'reports';
-
-      Home.notifyWarning(
-        <p>
-          You have already submitted {priorCount} {pluralReport} for {plate} on{' '}
-          {selectedDateDay}, are you sure you want to submit another?
-        </p>,
-      );
+    if (priorCount > 0 && plateChanged) {
+      this.debouncedWarnAboutPriorSubmission({
+        priorCount,
+        plate,
+        selectedDateDay,
+      });
     }
 
     // An empty plate (after a submission, or when the field is cleared) has
     // nothing to look up: the request would be /getVehicleType//NY, which the
-    // server answers with a 404.
-    if (plate && !cachedVehicleInfoComponent) {
+    // server answers with a 404. Neither has a plate with no state, for the
+    // same reason: the lookup matches on both, and the message above already
+    // asks for the missing half.
+    if (plate && licenseState && !cachedVehicleInfoComponent) {
       debouncedGetVehicleType({
         plate,
         licenseState,
@@ -1342,7 +1385,7 @@ class Home extends React.Component {
         });
     }
 
-    if (plate && !cachedViolationSummaryComponent) {
+    if (plate && licenseState && !cachedViolationSummaryComponent) {
       debouncedGetViolations({
         plate,
         licenseState,
@@ -1702,12 +1745,47 @@ class Home extends React.Component {
           : target.value;
     const { name } = target;
 
+    const stateChange = { [name]: value };
+    // Checking the withhold box counts as having seen the notice, so it
+    // stays gone if the box is later unchecked.
+    if (name === 'withhold_contact_info_from_nypd' && value === true) {
+      stateChange.hasSeenWithholdNotice = true;
+    }
+
+    this.setState(stateChange, () =>
+      debouncedSavePersistentStateToCookie(this),
+    );
+  };
+
+  dismissWithholdNotice = () => {
+    this.setState({ hasSeenWithholdNotice: true }, () =>
+      debouncedSavePersistentStateToCookie(this),
+    );
+  };
+
+  // Opens Edit Profile and flash-highlights the withhold field so the
+  // notice's "Show me how" button points at it.
+  showWithholdField = () => {
     this.setState(
       {
-        [name]: value,
+        isEditProfileOpen: true,
+        isPreferencesOpen: false,
+        isWithholdFieldHighlighted: true,
       },
-      () => debouncedSavePersistentStateToCookie(this),
+      () => {
+        // The flash should be seen: on narrow screens the checkbox can be
+        // below the fold, so bring it into view once the panel is open.
+        requestAnimationFrame(() => {
+          document
+            .getElementById('withhold_contact_info_from_nypd')
+            ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+      },
     );
+    clearTimeout(this.withholdHighlightTimeout);
+    this.withholdHighlightTimeout = setTimeout(() => {
+      this.setState({ isWithholdFieldHighlighted: false });
+    }, 3000);
   };
 
   loadPreviousSubmissions = () => {
@@ -1901,6 +1979,7 @@ class Home extends React.Component {
         Phone: '',
         testify: false,
         withhold_contact_info_from_nypd: false,
+        hasSeenWithholdNotice: false,
         submissions: [],
         isEditProfileOpen: false,
         isPreferencesOpen: false,
@@ -2160,7 +2239,7 @@ class Home extends React.Component {
                         }))
                       }
                     >
-                      {this.state.isPreferencesOpen ? 'Cancel' : 'Preferences'}
+                      {this.state.isPreferencesOpen ? 'Done' : 'Preferences'}
                     </button>
                     <button
                       type="button"
@@ -2190,6 +2269,39 @@ class Home extends React.Component {
                 )}
               </div>
             </div>
+
+            {/* One-time notice about the withhold checkbox, until dismissed
+                or the box is checked. Not sticky: the non-production banner
+                above owns the sticky spot. */}
+            {this.isLoggedIn() &&
+              !this.state.withhold_contact_info_from_nypd &&
+              !this.state.hasSeenWithholdNotice && (
+                <div
+                  role="alert"
+                  className={homeStyles['withhold-notice-banner']}
+                >
+                  <span>
+                    Getting unwanted phone calls after making submissions? Now
+                    you can stop sending your number and email to the cops!
+                  </span>
+                  <span className={homeStyles['user-actions']}>
+                    <button
+                      type="button"
+                      className={homeStyles['status-bar-btn-primary']}
+                      onClick={this.showWithholdField}
+                    >
+                      Show me how
+                    </button>
+                    <button
+                      type="button"
+                      className={homeStyles['status-bar-btn']}
+                      onClick={this.dismissWithholdNotice}
+                    >
+                      Dismiss
+                    </button>
+                  </span>
+                </div>
+              )}
 
             {/* Edit Profile (shown inline when toggled) */}
             {this.state.isEditProfileOpen && (
@@ -2259,7 +2371,14 @@ class Home extends React.Component {
                     to be publicly displayed
                   </label>
 
-                  <label htmlFor="withhold_contact_info_from_nypd">
+                  <label
+                    htmlFor="withhold_contact_info_from_nypd"
+                    className={
+                      this.state.isWithholdFieldHighlighted
+                        ? homeStyles['withhold-field-highlight']
+                        : undefined
+                    }
+                  >
                     <input
                       id="withhold_contact_info_from_nypd"
                       type="checkbox"
@@ -2274,6 +2393,31 @@ class Home extends React.Component {
                       about your service requests.
                     </small>
                   </label>
+
+                  {/* Email updates only make sense while contact info is
+                      withheld, so the checkbox is only shown then. The flag
+                      stays in state (and the cookie) either way, matching the
+                      other per-submission checkboxes. */}
+                  {this.state.withhold_contact_info_from_nypd && (
+                    <div style={{ marginLeft: '1.5em' }}>
+                      <label htmlFor="receive_nypd_sr_updates_by_email">
+                        <input
+                          id="receive_nypd_sr_updates_by_email"
+                          type="checkbox"
+                          checked={this.state.receive_nypd_sr_updates_by_email}
+                          name="receive_nypd_sr_updates_by_email"
+                          onChange={this.handleInputChange}
+                        />{' '}
+                        But still email me status updates about my NYPD service
+                        requests
+                        <br />
+                        <small>
+                          Your email will be shared with 311 for your requests;
+                          your name and phone stay withheld.
+                        </small>
+                      </label>
+                    </div>
+                  )}
 
                   <button
                     type="submit"
@@ -2931,19 +3075,26 @@ class Home extends React.Component {
                                 <option value={result.plate?.toUpperCase()} />
                               ))}
                             </datalist>
-                            <select
+                            <input
+                              type="search"
                               style={{
                                 marginTop: '0.5rem',
                               }}
                               value={this.state.licenseState}
                               name="licenseState"
+                              list="stateSuggestion"
+                              autoComplete="off"
+                              placeholder="State"
                               onChange={event => {
                                 this.setLicensePlate({
                                   plate: this.state.plate,
-                                  licenseState: event.target.value,
+                                  licenseState: upperCaseInputValueInPlace(
+                                    event.target,
+                                  ),
                                 });
                               }}
-                            >
+                            />
+                            <datalist id="stateSuggestion">
                               {Object.entries(usStateNames)
                                 .sort(([, name1], [, name2]) =>
                                   name1
@@ -2952,10 +3103,10 @@ class Home extends React.Component {
                                 )
                                 .map(([abbr, name]) => (
                                   <option key={abbr} value={abbr}>
-                                    {name}
+                                    {name} ({abbr})
                                   </option>
                                 ))}
-                            </select>
+                            </datalist>
                           </div>
                           {matchingPlateThumbnail && (
                             <img

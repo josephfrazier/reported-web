@@ -442,6 +442,7 @@ app.use('/submit', (req, res) => {
       reportDescription,
       can_be_shared_publicly: can_be_shared_publiclyString, // eslint-disable-line camelcase
       withhold_contact_info_from_nypd: withhold_contact_info_from_nypdString, // eslint-disable-line camelcase
+      receive_nypd_sr_updates_by_email: receive_nypd_sr_updates_by_emailString, // eslint-disable-line camelcase
       latitude: latitudeString,
       longitude: longitudeString,
       formatted_address, // eslint-disable-line camelcase
@@ -453,6 +454,9 @@ app.use('/submit', (req, res) => {
     // eslint-disable-next-line camelcase
     const withhold_contact_info_from_nypd =
       withhold_contact_info_from_nypdString === 'true'; // eslint-disable-line camelcase
+    // eslint-disable-next-line camelcase
+    const receive_nypd_sr_updates_by_email =
+      receive_nypd_sr_updates_by_emailString === 'true'; // eslint-disable-line camelcase
     const latitude = Number(latitudeString);
     const longitude = Number(longitudeString);
 
@@ -489,6 +493,7 @@ app.use('/submit', (req, res) => {
       attachmentData,
       versionNumber: Number(HEROKU_RELEASE_VERSION.slice(1)),
       withhold_contact_info_from_nypd, // eslint-disable-line camelcase
+      receive_nypd_sr_updates_by_email, // eslint-disable-line camelcase
     })
       .then(submission => {
         console.info({ submission });

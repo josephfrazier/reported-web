@@ -1922,7 +1922,8 @@ describe('Home', () => {
     expect(checkbox.props.checked).toBe(false);
     expect(homeRef.current.state.withhold_contact_info_from_nypd).toBe(false);
 
-    // Checking the box sets the omit flag...
+    // Checking the box sets the withhold flag, and counts as having seen
+    // the feature notice...
     renderer.act(() => {
       checkbox.props.onChange({
         target: {
@@ -1933,6 +1934,7 @@ describe('Home', () => {
       });
     });
     expect(homeRef.current.state.withhold_contact_info_from_nypd).toBe(true);
+    expect(homeRef.current.state.hasSeenWithholdNotice).toBe(true);
 
     // ...and unchecking it clears the flag.
     renderer.act(() => {
@@ -1947,6 +1949,199 @@ describe('Home', () => {
         });
     });
     expect(homeRef.current.state.withhold_contact_info_from_nypd).toBe(false);
+
+    tree.unmount();
+  });
+
+  test('shows the withhold notice once, until dismissed or the box is checked', () => {
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+    };
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ initialState, homeRef });
+    });
+
+    const findBanner = () =>
+      tree.root.findByProps({ className: 'withhold-notice-banner' });
+
+    // Shown to logged-in users who haven't withheld and haven't seen it.
+    expect(findBanner()).toBeTruthy();
+
+    // Its button opens Edit Profile (and scrolls the withhold field into
+    // view, which jsdom doesn't implement).
+    const originalScrollIntoView = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = jest.fn();
+    renderer.act(() => {
+      tree.root.findByProps({ children: 'Show me how' }).props.onClick();
+    });
+    expect(homeRef.current.state.isEditProfileOpen).toBe(true);
+    Element.prototype.scrollIntoView = originalScrollIntoView;
+
+    // Dismissing hides it and remembers, so it stays gone (the flag is
+    // part of the persistent state, i.e. the cookie).
+    renderer.act(() => {
+      tree.root.findByProps({ children: 'Dismiss' }).props.onClick();
+    });
+    expect(homeRef.current.state.hasSeenWithholdNotice).toBe(true);
+    expect(() => findBanner()).toThrow();
+
+    tree.unmount();
+  });
+
+  test('hides the withhold notice when logged out, withholding, or already seen', () => {
+    // Logged out: no banner.
+    let tree = renderHome();
+    expect(() =>
+      tree.root.findByProps({ className: 'withhold-notice-banner' }),
+    ).toThrow();
+    tree.unmount();
+
+    // Logged in but already withholding: no banner.
+    tree = renderHome({
+      initialState: {
+        email: 'test@example.com',
+        loginSuccessful: true,
+        withhold_contact_info_from_nypd: true,
+      },
+    });
+    expect(() =>
+      tree.root.findByProps({ className: 'withhold-notice-banner' }),
+    ).toThrow();
+    tree.unmount();
+
+    // Logged in but already seen (restored from the cookie via SSR
+    // initialState): no banner.
+    tree = renderHome({
+      initialState: {
+        email: 'test@example.com',
+        loginSuccessful: true,
+        hasSeenWithholdNotice: true,
+      },
+    });
+    expect(() =>
+      tree.root.findByProps({ className: 'withhold-notice-banner' }),
+    ).toThrow();
+    tree.unmount();
+
+    // Checking the box counts as seen: unchecking it afterwards does not
+    // bring the banner back.
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({
+        homeRef,
+        initialState: { email: 'test@example.com', loginSuccessful: true },
+      });
+    });
+    renderer.act(() => {
+      homeRef.current.setState({ isEditProfileOpen: true });
+    });
+    renderer.act(() => {
+      tree.root
+        .findByProps({ name: 'withhold_contact_info_from_nypd' })
+        .props.onChange({
+          target: {
+            type: 'checkbox',
+            checked: true,
+            name: 'withhold_contact_info_from_nypd',
+          },
+        });
+    });
+    expect(() =>
+      tree.root.findByProps({ className: 'withhold-notice-banner' }),
+    ).toThrow();
+    renderer.act(() => {
+      tree.root
+        .findByProps({ name: 'withhold_contact_info_from_nypd' })
+        .props.onChange({
+          target: {
+            type: 'checkbox',
+            checked: false,
+            name: 'withhold_contact_info_from_nypd',
+          },
+        });
+    });
+    expect(homeRef.current.state.withhold_contact_info_from_nypd).toBe(false);
+    expect(() =>
+      tree.root.findByProps({ className: 'withhold-notice-banner' }),
+    ).toThrow();
+    tree.unmount();
+  });
+
+  test('shows the email-updates checkbox only while withholding, and sets its flag', () => {
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+    };
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ initialState, homeRef });
+    });
+    renderer.act(() => {
+      homeRef.current.setState({ isEditProfileOpen: true });
+    });
+
+    // Hidden while contact info isn't withheld: email updates to the NYPD SR
+    // are only possible when the reporter's email would otherwise be absent.
+    expect(() =>
+      tree.root.findByProps({ name: 'receive_nypd_sr_updates_by_email' }),
+    ).toThrow();
+
+    renderer.act(() => {
+      homeRef.current.setState({ withhold_contact_info_from_nypd: true });
+    });
+    expect(tree.toJSON()).toMatchSnapshot();
+
+    const checkbox = tree.root.findByProps({
+      name: 'receive_nypd_sr_updates_by_email',
+    });
+    expect(checkbox.props.checked).toBe(false);
+    expect(homeRef.current.state.receive_nypd_sr_updates_by_email).toBe(false);
+
+    // Checking the box sets the flag...
+    renderer.act(() => {
+      checkbox.props.onChange({
+        target: {
+          type: 'checkbox',
+          checked: true,
+          name: 'receive_nypd_sr_updates_by_email',
+        },
+      });
+    });
+    expect(homeRef.current.state.receive_nypd_sr_updates_by_email).toBe(true);
+
+    // Hiding the checkbox (by un-withholding) doesn't clear the flag: it
+    // stays in state (and the cookie) like the other per-submission
+    // checkboxes, ready to reappear checked if withholding is re-enabled.
+    renderer.act(() => {
+      homeRef.current.setState({ withhold_contact_info_from_nypd: false });
+    });
+    expect(() =>
+      tree.root.findByProps({ name: 'receive_nypd_sr_updates_by_email' }),
+    ).toThrow();
+    expect(homeRef.current.state.receive_nypd_sr_updates_by_email).toBe(true);
+
+    // ...and unchecking it clears the flag once it's visible again.
+    renderer.act(() => {
+      homeRef.current.setState({ withhold_contact_info_from_nypd: true });
+    });
+    renderer.act(() => {
+      tree.root
+        .findByProps({ name: 'receive_nypd_sr_updates_by_email' })
+        .props.onChange({
+          target: {
+            type: 'checkbox',
+            checked: false,
+            name: 'receive_nypd_sr_updates_by_email',
+          },
+        });
+    });
+    expect(homeRef.current.state.receive_nypd_sr_updates_by_email).toBe(false);
 
     tree.unmount();
   });
@@ -2412,9 +2607,11 @@ describe('Home', () => {
         'uploaded-photo.jpg',
       ]);
       expect(submitBody.get('attachmentData')).toBeNull();
-      // The omit flag is sent alongside the rest of the per-submission
-      // state, so the server can store it (sparsely) when true.
+      // The withhold and email-updates flags are sent alongside the rest of
+      // the per-submission state, so the server can store them (sparsely)
+      // when true.
       expect(submitBody.get('withhold_contact_info_from_nypd')).toBe('false');
+      expect(submitBody.get('receive_nypd_sr_updates_by_email')).toBe('false');
 
       // The upload must have started before the submit request went out,
       // i.e. in the background rather than as part of submitting.
@@ -2920,5 +3117,314 @@ describe('NycAddressAutocomplete', () => {
 
     expect(controls.getArray()).toEqual([]);
     expect(controlContainer.contains(input)).toBe(false);
+  });
+});
+
+// The rendered tree keeps every JSX child as its own entry, so a sentence with
+// interpolations in it is not one string in there: the error message serializes
+// as "Could not look up make/model of ", "ABC123", " in", " ", "ON", ",". Join
+// the text back together before asserting on a sentence, the way a reader sees
+// it.
+function renderedText(node) {
+  if (node == null) return '';
+  if (typeof node === 'string') return node;
+  if (Array.isArray(node)) return node.map(renderedText).join('');
+  return renderedText(node.children);
+}
+
+describe('license state', () => {
+  // The form only renders for a logged-in reader with a photo attached.
+  function renderForm(initialState = {}) {
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+    const homeRef = React.createRef();
+    let tree;
+    renderer.act(() => {
+      tree = renderHome({
+        initialState: {
+          email: 'test@example.com',
+          loginSuccessful: true,
+          ...initialState,
+        },
+        homeRef,
+      });
+    });
+    renderer.act(() => {
+      homeRef.current.setState({
+        attachmentData: [
+          new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }),
+        ],
+      });
+    });
+
+    return {
+      homeRef,
+      tree,
+      stateInput: tree.root.findByProps({ name: 'licenseState' }),
+      plateInput: tree.root.findByProps({ name: 'plate' }),
+      cleanup: () => {
+        renderer.act(() => tree.unmount());
+        global.URL.createObjectURL = originalCreateObjectURL;
+      },
+    };
+  }
+
+  // Regression test: a plate read whose region code would not parse reported
+  // the state as '', and the state field showed that as an empty value --
+  // "Could not look up make/model of T683780C in , click here for details".
+  // A read with nothing to say about the state reports null instead, which
+  // leaves whichever state the reader already had.
+  test('keeps the current state when a plate read has none to report', async () => {
+    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+    const { homeRef, cleanup } = renderForm();
+    const { current: home } = homeRef;
+    expect(home.state.licenseState).toBe('NY');
+
+    renderer.act(() => {
+      home.setLicensePlate({ plate: 'T683780C', licenseState: null });
+    });
+    expect(home.state.licenseState).toBe('NY');
+
+    // Clearing the field still clears it: accepting a state the list does not
+    // offer is what the field is for.
+    renderer.act(() => {
+      home.setLicensePlate({ plate: 'T683780C', licenseState: '' });
+    });
+    expect(home.state.licenseState).toBe('');
+
+    await renderer.act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 700));
+    });
+    cleanup();
+    axiosGet.mockRestore();
+  });
+
+  // A plate read carries whichever region code the reader saw, and the state
+  // dataset has no name for some of them -- a Canadian province, a federal
+  // fleet code. The lookup messages looked the name up unguarded, so a plate
+  // like that lost the state from the sentence:
+  //
+  //   Looking up make/model for ABC123 in undefined
+  //   Could not look up make/model of ABC123 in , click here for details
+  //
+  // The first is a template literal, which prints the word; the second is a
+  // JSX child, which renders nothing at all.
+  test('names a state the dataset has no name for by its code', async () => {
+    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+    const { homeRef, tree, cleanup } = renderForm();
+
+    renderer.act(() => {
+      homeRef.current.setLicensePlate({ plate: 'ABC123', licenseState: 'ON' });
+    });
+
+    const rendered = renderedText(tree.toJSON());
+    expect(rendered).toContain('Looking up make/model for ABC123 in ON');
+    expect(rendered).toContain('Looking up violations for ABC123 in ON');
+
+    await renderer.act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 700));
+    });
+    cleanup();
+    axiosGet.mockRestore();
+  });
+
+  // The same message once the lookup has failed, which is where the missing
+  // name reads as "in ," right before the comma.
+  test('names a state the dataset has no name for when a lookup fails', async () => {
+    const axiosGet = jest
+      .spyOn(axios, 'get')
+      .mockRejectedValue(new Error('lookup failed'));
+    const { homeRef, tree, cleanup } = renderForm();
+
+    renderer.act(() => {
+      homeRef.current.setLicensePlate({ plate: 'ABC123', licenseState: 'ON' });
+    });
+
+    // The vehicle lookup is debounced by 1000ms, so the failed lookup that
+    // swaps in the error message needs longer than the usual settle.
+    await renderer.act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 1500));
+    });
+
+    const rendered = renderedText(tree.toJSON());
+    expect(rendered).toContain('Could not look up make/model of ABC123 in ON,');
+
+    cleanup();
+    axiosGet.mockRestore();
+  });
+
+  // The list is US-centric, so a plate can arrive with a state it does not
+  // have, or with none at all; neither is a reason to refuse the submission.
+  test('leaves the state field optional', () => {
+    const { stateInput, cleanup } = renderForm();
+
+    expect(stateInput.props.required).toBeUndefined();
+
+    cleanup();
+  });
+
+  // LookupAPlate matches a plate together with its state, so a plate with no
+  // state is nothing it can answer. The reader is asked for the state rather
+  // than being sent on a request that could not come back with anything.
+  test('asks for the state rather than looking a plate up without one', async () => {
+    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+    const { homeRef, tree, cleanup } = renderForm();
+
+    renderer.act(() => {
+      homeRef.current.setLicensePlate({ plate: 'ABC123', licenseState: '' });
+    });
+
+    // Past the 1000ms debounce, so a lookup would have gone out by now.
+    await renderer.act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 1500));
+    });
+
+    const rendered = renderedText(tree.toJSON());
+    expect(rendered).toContain(
+      'Enter the state to look up make/model for ABC123',
+    );
+    expect(rendered).toContain(
+      'Enter the state to look up violations for ABC123',
+    );
+
+    // Neither lookup was asked for. Other requests may legitimately be in
+    // flight, so this looks for the two that would have carried the plate.
+    const lookupCalls = axiosGet.mock.calls.filter(([url]) =>
+      /getVehicleType|howsmydrivingny/.test(String(url)),
+    );
+    expect(lookupCalls).toEqual([]);
+
+    cleanup();
+    axiosGet.mockRestore();
+  });
+
+  // The other half of that guard: a plate that does have a state is still
+  // looked up.
+  test('looks a plate up once it has a state', async () => {
+    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+    const { homeRef, cleanup } = renderForm();
+
+    renderer.act(() => {
+      homeRef.current.setLicensePlate({ plate: 'ABC123', licenseState: 'NY' });
+    });
+
+    await renderer.act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 1500));
+    });
+
+    const lookupCalls = axiosGet.mock.calls.filter(([url]) =>
+      String(url).includes('/getVehicleType/'),
+    );
+    expect(lookupCalls).toHaveLength(1);
+    expect(String(lookupCalls[0][0])).toContain('/getVehicleType/ABC123/NY');
+
+    cleanup();
+    axiosGet.mockRestore();
+  });
+
+  // Regression test: the state is not part of what counts as a duplicate, so
+  // changing it says nothing about one. Every keystroke in this field used to
+  // run the check and warn, one toast per character typed.
+  test('says nothing about a prior submission for a state change alone', async () => {
+    const warn = jest.spyOn(toast, 'warn').mockImplementation(() => {});
+    // The prior submission has to fall on the day the form is reporting for,
+    // so both dates are pinned rather than left to the mocked clock.
+    const day = '2016-11-17T20:00:00';
+    const { stateInput, cleanup } = renderForm({
+      plate: 'ABC123',
+      CreateDate: day,
+      submissions: [{ license: 'ABC123', timeofreport: day }],
+    });
+
+    // Typing "CAL" a character at a time, as the field reports it.
+    for (const value of ['C', 'CA', 'CAL']) {
+      const input = createFakeInput({ value, caret: value.length });
+      renderer.act(() => {
+        stateInput.props.onChange({ target: input });
+      });
+    }
+
+    // Past the debounce, so anything scheduled would have fired by now.
+    await renderer.act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    });
+
+    expect(warn).not.toHaveBeenCalled();
+
+    cleanup();
+    warn.mockRestore();
+  });
+
+  // The other half: a plate that has just become one with an earlier
+  // submission does warn, once the typing stops rather than mid-word.
+  test('warns once when the plate becomes one already submitted', async () => {
+    const warn = jest.spyOn(toast, 'warn').mockImplementation(() => {});
+    const day = '2016-11-17T20:00:00';
+    const { plateInput, cleanup } = renderForm({
+      plate: '',
+      CreateDate: day,
+      submissions: [{ license: 'ABC123', timeofreport: day }],
+    });
+
+    // Typing "ABC123" a character at a time, as the field reports it.
+    for (const value of ['A', 'AB', 'ABC', 'ABC1', 'ABC12', 'ABC123']) {
+      const input = createFakeInput({ value, caret: value.length });
+      renderer.act(() => {
+        plateInput.props.onChange({ target: input });
+      });
+    }
+
+    // Nothing while the reader is still typing.
+    expect(warn).not.toHaveBeenCalled();
+
+    await renderer.act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    });
+
+    expect(warn).toHaveBeenCalledTimes(1);
+
+    cleanup();
+    warn.mockRestore();
+  });
+
+  // The state is held and sent as the abbreviation, so it takes whatever case
+  // it is typed in, the way the plate field does.
+  test('uppercases the state as it is typed', () => {
+    const { homeRef, stateInput, cleanup } = renderForm();
+
+    // The user replaced the whole field with "ca".
+    const input = createFakeInput({ value: 'ca', caret: 2 });
+    renderer.act(() => {
+      stateInput.props.onChange({ target: input });
+    });
+    reRenderControlledInput(input, homeRef.current.state.licenseState);
+
+    expect(homeRef.current.state.licenseState).toBe('CA');
+    expect(input.value).toBe('CA');
+
+    cleanup();
+  });
+
+  // Uppercasing inside an onChange handler is what sends the caret to the end
+  // of a controlled field, which is why this goes through the same helper the
+  // plate field uses.
+  test('keeps the caret in place when typing a letter into the middle of the state', () => {
+    const { homeRef, stateInput, cleanup } = renderForm();
+
+    // The user typed "a" between the "N" and the "Y" of "NY".
+    const input = createFakeInput({ value: 'NaY', caret: 2 });
+    renderer.act(() => {
+      stateInput.props.onChange({ target: input });
+    });
+    reRenderControlledInput(input, homeRef.current.state.licenseState);
+
+    expect(homeRef.current.state.licenseState).toBe('NAY');
+    expect(input.value).toBe('NAY');
+    // ...and the caret stays after the "A", rather than jumping to the end.
+    expect(input.selectionStart).toBe(2);
+    expect(input.selectionEnd).toBe(2);
+
+    cleanup();
   });
 });

@@ -1,20 +1,15 @@
 /**
  * @jest-environment node
  *
- * Runs against a real Parse Server 2.8.4 (the version prod runs) backed by a
+ * Runs against a real Parse Server 9.4.0 (the version production will run once
+ * https://github.com/josephfrazier/reported-web/pull/713 is merged) backed by a
  * real MongoDB 4.4 started in-memory by mongodb-memory-server, so the actual
  * save/ACL/file-upload semantics are exercised instead of a fake.
  */
 
-import net from 'net';
-
 import Parse from 'parse/node';
 import createSubmission from './createSubmission.js';
-
-const { MongoMemoryServer } = require('mongodb-memory-server');
-// parse-server is deliberately installed on demand instead of being a project
-// dependency (see jest.globalSetup.js)
-const { ParseServer } = require('parse-server');
+import startRealParseServer from './testUtils/realParseServer.js';
 
 // In-memory stand-in for a files adapter: the submission logic under test
 // only cares that Parse.File#save() succeeds and produces a URL, not where
@@ -46,10 +41,6 @@ class InMemoryFilesAdapter {
   }
 }
 
-// parse-server skips its cloud/URL verification (and test-unfriendly process
-// listeners) when TESTING is set. Must be set before it is constructed.
-process.env.TESTING = '1';
-
 jest.setTimeout(30000);
 
 const email = 'test@example.com';
@@ -73,68 +64,24 @@ const mp4Buffer = Buffer.concat([
 ]);
 
 describe('createSubmission', () => {
-  let mongo;
-  let parseServer;
+  let stopParseServer;
   let user;
   let sessionToken;
   let otherUserSessionToken;
 
   beforeAll(async () => {
-    // MongoDB 4.4 is the newest version whose wire protocol parse-server
-    // 2.8.4's bundled mongodb driver can talk to. Note: the binary must be
-    // downloaded once (mongodb-memory-server caches it), and on Ubuntu 24+
-    // mongod 4.4 needs libssl1.1 installed.
-    mongo = await MongoMemoryServer.create({ binary: { version: '4.4.14' } });
-
-    // create() can resolve a moment before mongod accepts connections;
-    // parse-server connects to it in its constructor, so wait until the
-    // port actually accepts a TCP connection.
-    const { port } = new URL(mongo.getUri());
-    const attemptConnection = (resolve, reject, attempts) => {
-      const socket = net.connect(Number(port), '127.0.0.1');
-      socket.once('connect', () => {
-        socket.destroy();
-        resolve();
-      });
-      socket.once('error', () => {
-        socket.destroy();
-        if (attempts < 100) {
-          setTimeout(
-            () => attemptConnection(resolve, reject, attempts + 1),
-            50,
-          );
-        } else {
-          reject(new Error('mongod never accepted connections'));
-        }
-      });
-    };
-    await new Promise((resolve, reject) => {
-      attemptConnection(resolve, reject, 0);
-    });
-
-    parseServer = ParseServer.start(
-      {
-        databaseURI: mongo.getUri(),
-        appId: 'test-app',
-        masterKey: 'test-master',
-        // Only used as a placeholder; the client points at the real port.
-        serverURL: 'http://localhost/parse',
-        mountPath: '/parse',
-        port: 0,
-        verbose: false,
-        filesAdapter: new InMemoryFilesAdapter(),
-      },
-      () => {},
-    );
-    await new Promise((resolve, reject) => {
-      parseServer.server.once('listening', resolve);
-      parseServer.server.once('error', reject);
-    });
-    // parse-server initializes its own nested parse SDK; ours needs it too.
     // No master key is passed: the submission is saved with the reporter's
     // session token, so nothing here should need to bypass ACLs.
-    Parse.initialize('test-app');
-    Parse.serverURL = `http://localhost:${parseServer.server.address().port}/parse`;
+    const { stop } = await startRealParseServer({
+      serverOptions: {
+        // parse-server 5+ defaults client class creation to off. These tests
+        // save `submission`/`tasks` objects as an ordinary client, and in
+        // production both classes already exist in the schema.
+        allowClientClassCreation: true,
+        filesAdapter: new InMemoryFilesAdapter(),
+      },
+    });
+    stopParseServer = stop;
 
     user = new Parse.User();
     user.setUsername(email);
@@ -152,11 +99,7 @@ describe('createSubmission', () => {
     otherUserSessionToken = otherUser.getSessionToken();
   });
 
-  afterAll(async () => {
-    await new Promise(resolve => parseServer.server.close(resolve));
-    parseServer.handleShutdown();
-    await mongo.stop();
-  });
+  afterAll(() => stopParseServer());
 
   afterEach(() => {
     // Same delete-vs-assign subtlety as the module itself: assigning an
@@ -292,10 +235,39 @@ describe('createSubmission', () => {
     expect(absent.withhold_contact_info_from_nypd).toBeUndefined();
   });
 
+  test('sets receive_nypd_sr_updates_by_email on the submission when true', async () => {
+    const submission = await createSubmission(
+      validParams({ receive_nypd_sr_updates_by_email: true }),
+    );
+
+    expect(submission.receive_nypd_sr_updates_by_email).toBe(true);
+  });
+
+  test('leaves receive_nypd_sr_updates_by_email off when false or absent', async () => {
+    const withFalse = await createSubmission(
+      validParams({ receive_nypd_sr_updates_by_email: false }),
+    );
+    const absent = await createSubmission(validParams());
+
+    expect(withFalse.receive_nypd_sr_updates_by_email).toBeUndefined();
+    expect(absent.receive_nypd_sr_updates_by_email).toBeUndefined();
+  });
+
   test('rejects submissions missing a required field', async () => {
     await expect(
       createSubmission(validParams({ plate: '' })),
     ).rejects.toMatchObject({ message: 'plate is required' });
+  });
+
+  // The state list is US-centric, so a plate can arrive with a state it does
+  // not hold, or with none the reporter can name. The form asks for it without
+  // insisting, so neither is a reason to refuse the submission.
+  test('accepts a submission with no license state', async () => {
+    const submission = await createSubmission(
+      validParams({ licenseState: '' }),
+    );
+
+    expect(submission.state).toBe('');
   });
 
   test('rejects timestamps in the future, restoring the previous timezone', async () => {

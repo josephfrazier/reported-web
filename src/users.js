@@ -69,7 +69,7 @@ export async function updateUserProfile({
   LastName,
   Phone,
   testify,
-  can_be_shared_publicly: canBeSharedPublicly, // eslint-disable-line camelcase
+  can_be_shared_publicly: canBeSharedPublicly,
   withhold_contact_info_from_nypd, // eslint-disable-line camelcase
 }) {
   // make sure all required fields are present

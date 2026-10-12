@@ -1,0 +1,37 @@
+name: Node.js CI - test (except flaky ones)
+
+on: [push]
+
+jobs:
+  test:
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    strategy:
+      matrix:
+        node-version: [24.20.0]
+
+    steps:
+    - uses: actions/checkout@v7
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v7
+      with:
+        node-version: ${{ matrix.node-version }}
+    # The mongod 4.4 binary that mongodb-memory-server downloads for the
+    # getSubmissions test needs libssl1.1, which the runner's Ubuntu doesn't ship.
+    - name: Install libssl1.1
+      run: |
+        wget -q https://archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2_amd64.deb
+        sudo dpkg -i libssl1.1_1.1.1f-1ubuntu2_amd64.deb
+    - run: curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.22.19
+    - run: export PATH=$HOME/.yarn/bin:$PATH
+    - run: yarn
+    - shell: bash
+      env:
+        GEO_APP_ID: ${{ secrets.GEO_APP_ID }}
+        GEO_APP_KEY: ${{ secrets.GEO_APP_KEY }}
+        GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+      run: yarn test:no-flaky

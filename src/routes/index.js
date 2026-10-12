@@ -7,8 +7,6 @@
  * LICENSE.txt file in the root directory of this source tree.
  */
 
-/* eslint-disable global-require */
-
 // The top-level (parent) route
 const routes = {
   path: '',
@@ -17,38 +15,14 @@ const routes = {
   children: [
     {
       path: '',
-      load: () => import(/* webpackChunkName: 'home' */ './home'),
-    },
-    {
-      path: '/electricitibikes',
-      load: () =>
-        import(/* webpackChunkName: 'electricitibikes' */ './electricitibikes'),
-    },
-    {
-      path: '/login',
-      load: () => import(/* webpackChunkName: 'login' */ './login'),
-    },
-    {
-      path: '/register',
-      load: () => import(/* webpackChunkName: 'register' */ './register'),
-    },
-    {
-      path: '/about',
-      load: () => import(/* webpackChunkName: 'about' */ './about'),
-    },
-    {
-      path: '/privacy',
-      load: () => import(/* webpackChunkName: 'privacy' */ './privacy'),
-    },
-    {
-      path: '/admin',
-      load: () => import(/* webpackChunkName: 'admin' */ './admin'),
+      load: () => import(/* webpackChunkName: 'home' */ './home/index.js'),
     },
 
     // Wildcard routes, e.g. { path: '(.*)', ... } (must go last)
     {
       path: '(.*)',
-      load: () => import(/* webpackChunkName: 'not-found' */ './not-found'),
+      load: () =>
+        import(/* webpackChunkName: 'not-found' */ './not-found/index.js'),
     },
   ],
 
@@ -63,13 +37,5 @@ const routes = {
     return route;
   },
 };
-
-// The error page is available by permanent url for development mode
-if (__DEV__) {
-  routes.children.unshift({
-    path: '/error',
-    action: require('./error').default,
-  });
-}
 
 export default routes;

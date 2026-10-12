@@ -14,16 +14,25 @@ class SubmissionDetails extends React.Component {
     };
   }
 
+  shouldComponentUpdate(nextProps, nextState) {
+    return (
+      this.props.submission !== nextProps.submission ||
+      this.props.onDeleteSubmission !== nextProps.onDeleteSubmission ||
+      this.state.isDetailsOpen !== nextState.isDetailsOpen
+    );
+  }
+
   render() {
     const {
-      reqnumber,
       medallionNo,
       license,
+      state: licenseState,
       typeofcomplaint,
       loc1_address, // eslint-disable-line camelcase
       timeofreport,
       reportDescription,
       status,
+      reqnumber,
 
       photoData,
       photoData0,
@@ -35,9 +44,24 @@ class SubmissionDetails extends React.Component {
       videoData2,
 
       objectId,
+      tasks,
     } = this.props.submission;
 
     const humanTimeString = new Date(timeofreport).toLocaleString();
+
+    const tlcTask = (tasks || []).find(
+      task => task.action === 'submit 311 complaint',
+    );
+    const tlcCaseId = tlcTask
+      ? tlcTask.case_id
+      : tasks?.length === 0 &&
+        reqnumber !== 'N/A until submitted to 311' &&
+        reqnumber;
+
+    const nypdTask = (tasks || []).find(
+      task => task.action === 'submit 311 illegal parking complaint',
+    );
+    const nypdCaseId = nypdTask && nypdTask.case_id;
 
     const ImagesAndVideos = () => {
       const images = [photoData, photoData0, photoData1, photoData2]
@@ -71,26 +95,44 @@ class SubmissionDetails extends React.Component {
       );
     };
 
-    const LoadableServiceRequestStatus = Loadable({
-      loader: () =>
-        axios.get(`/srlookup/${reqnumber}`).then(({ data }) => () => {
-          const items = Object.entries(data).map(([key, value]) => (
-            <React.Fragment key={key}>
-              <dt>{key}:</dt>
-              <dd>{value}</dd>
-            </React.Fragment>
-          ));
-          return <dl>{items}</dl>;
-        }),
-      loading: () => 'Loading Service Request Status...',
-    });
+    const makeLoadableSrStatus = caseId =>
+      Loadable({
+        loader: () =>
+          axios.get(`/srlookup/${caseId}`).then(({ data }) => () => {
+            const items = Object.entries(data).map(([key, value]) => (
+              <React.Fragment key={key}>
+                <dt>{key}:</dt>
+                <dd>{value}</dd>
+              </React.Fragment>
+            ));
+            return <dl>{items}</dl>;
+          }),
+        loading: () => 'Loading Service Request Status...',
+      });
 
-    const srStatusOrDeleteButton = () =>
-      (status !== 0 && (
-        <div>
-          <LoadableServiceRequestStatus />
-        </div>
-      )) || (
+    const srStatusOrDeleteButton = () => {
+      const hasSrStatus = status !== 0 && (tlcCaseId || nypdCaseId);
+      if (hasSrStatus) {
+        const TlcStatus = tlcCaseId && makeLoadableSrStatus(tlcCaseId);
+        const NypdStatus = nypdCaseId && makeLoadableSrStatus(nypdCaseId);
+        return (
+          <React.Fragment>
+            {TlcStatus && (
+              <div>
+                <strong>TLC Service Request:</strong>
+                <TlcStatus />
+              </div>
+            )}
+            {NypdStatus && (
+              <div>
+                <strong>NYPD Service Request:</strong>
+                <NypdStatus />
+              </div>
+            )}
+          </React.Fragment>
+        );
+      }
+      return (
         <button
           type="button"
           style={{
@@ -108,11 +150,7 @@ class SubmissionDetails extends React.Component {
           Delete Submission
         </button>
       );
-
-    const displayReqnumber =
-      reqnumber === 'N/A until submitted to 311'
-        ? 'N/A: Either not yet submitted to 311, or is a non-TLC vehicle and therefore does not have a TLC SR'
-        : reqnumber;
+    };
 
     return (
       <details
@@ -124,11 +162,35 @@ class SubmissionDetails extends React.Component {
         }}
       >
         <summary>
-          {medallionNo || license} {typeofcomplaint} near{' '}
+          {medallionNo || license} ({licenseState}) {typeofcomplaint} near{' '}
           {/* eslint-disable-next-line camelcase */}
           {(loc1_address || '').split(',')[0]} on {humanTimeString}
-          <br />
-          TLC Service Request Number: {displayReqnumber}
+          {tlcCaseId && (
+            <React.Fragment>
+              <br />
+              TLC Service Request Number:{' '}
+              <a
+                href={`https://portal.311.nyc.gov/sr-details/?srnum=${tlcCaseId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {tlcCaseId}
+              </a>
+            </React.Fragment>
+          )}
+          {nypdCaseId && (
+            <React.Fragment>
+              <br />
+              NYPD SR #:{' '}
+              <a
+                href={`https://portal.311.nyc.gov/sr-details/?srnum=${nypdCaseId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {nypdCaseId}
+              </a>
+            </React.Fragment>
+          )}
         </summary>
 
         {this.state.isDetailsOpen && (
@@ -148,14 +210,15 @@ SubmissionDetails.propTypes = {
   isDetailsOpen: PropTypes.bool,
   onDeleteSubmission: PropTypes.func.isRequired,
   submission: PropTypes.shape({
-    reqnumber: PropTypes.string,
     medallionNo: PropTypes.string,
     license: PropTypes.string,
+    state: PropTypes.string,
     typeofcomplaint: PropTypes.string,
     loc1_address: PropTypes.string,
     timeofreport: PropTypes.string,
     reportDescription: PropTypes.string,
     status: PropTypes.number,
+    reqnumber: PropTypes.string,
 
     photoData: PropTypes.object,
     photoData0: PropTypes.object,
@@ -167,6 +230,7 @@ SubmissionDetails.propTypes = {
     videoData2: PropTypes.string,
 
     objectId: PropTypes.string,
+    tasks: PropTypes.arrayOf(PropTypes.object),
   }).isRequired,
 };
 

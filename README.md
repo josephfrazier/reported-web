@@ -35,11 +35,78 @@ yarn dashboard # Runs a dashboard for the Parse server
 yarn mongo-stop # Stops MongoDB
 ```
 
+## `Unexpected end of form` errors
+
+These have been seen a few times from a couple users, mostly limited to iOS (on both Safari and Chrome),
+but I have seen it myself on Android Firefox at least once (on August 30, 2026: see [Slack context](https://reportedcab.slack.com/archives/C9VNM3DL4/p1788125345566229?thread_ts=1783902255.721759&cid=C9VNM3DL4)).
+Chrome on iOS has worked at least once for an affected user, but not consistently.
+The error turned out not to be ours: it's what `busboy` (the multipart parser behind
+`multer`) reports when a request's body ends before the closing boundary, i.e. when the
+browser sent an empty or truncated upload. The server then answers `/submit` with a
+`500` whose message is passed straight through to the "Error: Unexpected end of form"
+toast, which is why users see it.
+
+Two things make browsers do that:
+
+- **iOS/Safari 26.5.2 and later**: a multipart `FormData` upload containing a `File` from
+  a file input arrives with `Content-Length: 0` and no body at all. The page itself can
+  read the file fine; it's the process that puts the request on the wire that fails to.
+  This is [WebKit bug 319985](https://bugs.webkit.org/show_bug.cgi?id=319985) (duplicates
+  [#319396](https://bugs.webkit.org/show_bug.cgi?id=319396) and
+  [#320904](https://bugs.webkit.org/show_bug.cgi?id=320904)), still unfixed, and the
+  reporters measured ~3.4% of multipart POSTs failing on 26.5.2 versus none on 26.5 or
+  earlier. It explains the mostly-iOS pattern above, and why retrying keeps
+  failing until the file is re-selected.
+- **Service workers**: WebKit's root-cause analysis of #319396 points at a service worker
+  re-issuing an intercepted POST with `fetch(event.request)`, which drops the body
+  ([#319396 comment](https://bugs.webkit.org/show_bug.cgi?id=319396#c0)). Firefox has its
+  own request-body-through-a-service-worker bugs, and that's the likeliest way this
+  shows up outside iOS/WebKit.
+
+The September 2026 uptick has two causes: the WebKit regression shipped with Safari/iOS
+26.5.2 on 2026-06-29 and is still present in 26.6/26.7/27, so the share of affected users
+has been climbing as people update; and
+[#711](https://github.com/josephfrazier/reported-web/pull/711) (background uploads,
+2026-08-31) made each attachment upload twice (once in the background, once again through
+`/submit` when the first attempt fails), which doubles the chances of a hit until the
+first one succeeds.
+
+What we do about it:
+
+- `public/sw.js` only intercepts navigations, so no upload is re-issued through the
+  service worker.
+- Uploads send bytes the page has already read (`new File([...])` in
+  `inMemoryAttachment`) instead of the `File` from the file input, which is the
+  workaround the WebKit bug's reporters recommend. `/platerecognizer` already did this
+  with `blobUtil.arrayBufferToBlob`, so it should show fewer of these in the logs than
+  `/submit` and `/api/uploadAttachment` — a useful thing to check.
+- `src/server.js` logs `Multipart body ended early:` with the URL, `content-length`,
+  `transfer-encoding` and user agent, so Heroku logs tell the two cases above apart
+  (a `contentLength` of `0` from an iOS 26.5+ user agent is the WebKit one).
+
+What to tell an affected user: remove and re-add the photos/videos before submitting
+again — reusing a selection that already failed keeps failing — or use a device that
+isn't on the affected browser version.
+
+Worth checking while looking at this: `/api/uploadAttachment`'s byte budget and its
+flood stop both key on `req.ip`, and `src/config.js` trusts the private ranges for
+`trust proxy`, which is where Heroku's router sits. If that is wrong for a deployment — a
+router somewhere else — then every request carries the router's address as `req.ip`, and
+all users share one quarter-gigabyte of unsubmitted attachments and one flood-stop bucket.
+Background uploads then fail (silently, since the client only logs those) and each
+submission falls back to re-sending every file through `/submit` — the route that shows
+this error. `TRUST_PROXY` overrides the default.
+
 ## Context on `localStorage` use (w.r.t performance concerns about lag/delay/slowness/latency when typing)
 
 Over the years, reports of slow typing have come from multiple users, and it periodically gets (re)discussed in our Slack.
 Since our Slack currently doesn't preserve old messages, I often find myself re-investigating the issue and re-typing previous responses.
 This section is meant to provide more central and permanent documentation of these investigations.
+I think it's solved as of 8 February 2026, with commits 834b055234b6b62e58e890684c923d500780198e and 8c6d124a57eb42e486693239f315a1f50231ddf8
+(https://github.com/josephfrazier/reported-web/pull/676 and https://github.com/josephfrazier/reported-web/pull/677)
+but I'll leave it here for a bit just in case it comes up again.
+
+<details>
 
 For example: here's one of my posts from a conversation from July 2023 where this came up: https://reportedcab.slack.com/archives/C9VNM3DL4/p1690221553212389?thread_ts=1690137347.880569&cid=C9VNM3DL4
 
@@ -170,9 +237,29 @@ We've managed to work around the problem by not loading Previous Submissions unt
 > for me in that I can type quickly as long as I don't expand that
 > section, but it's still available to me if I want it
 
+On 8 February 2026, Claude Code helped me fix the performance issue with commits 834b055234b6b62e58e890684c923d500780198e and 8c6d124a57eb42e486693239f315a1f50231ddf8
+(https://github.com/josephfrazier/reported-web/pull/676 and https://github.com/josephfrazier/reported-web/pull/677)
+so hopefully that will be the end of this saga.
+
+</details>
+
+## Staying logged in
+
+The browser holds its Parse session token in an **HttpOnly** `reportedWebSession`
+cookie, which the server sets on login and clears (revoking the session with Parse)
+on logout. The password is sent only to `/api/logIn` and is never stored: the
+`reportedWebHomeState` cookie keeps form state and preferences, nothing else.
+
+A client (or tab) that predates this still sends the email+password it has in that
+state cookie. The server accepts them when there is no session cookie, and rewrites
+the state cookie without the password in the same response, so those visitors
+migrate without noticing. That transitional path lives in `src/session.js`
+(`authenticate` and `resolveSsrSession`) and can be deleted once old clients are
+gone; it logs `[session] legacy credential auth used` on each fallback hit.
+
 ---
 
-This project is based on [React Starter Kit](https://github.com/kriasoft/react-starter-kit). See its README below:
+This project is based on [React Starter Kit](https://github.com/kriasoft/react-starter-kit/tree/b821a03895ff6901722ed6f4be100699cc72a674). See its README below:
 
 <details><summary>React Starter Kit README</summary>
 

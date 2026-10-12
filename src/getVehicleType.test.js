@@ -1,17 +1,16 @@
 /**
  * @jest-environment node
  */
-/* eslint-env jest */
 
 import getVehicleType from './getVehicleType.js';
 
 describe('getVehicleType', () => {
-  test.skip('returns the right object', async () => {
+  test('returns the right object', async () => {
     const result = await getVehicleType({
-      licensePlate: 'T716540C',
+      licensePlate: 'T144594C',
       licenseState: 'NY',
     });
 
     expect(result).toMatchSnapshot();
-  });
+  }, 10000);
 });

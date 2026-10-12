@@ -9,16 +9,19 @@
 
 import path from 'path';
 import express from 'express';
-import browserSync from 'browser-sync';
 import webpack from 'webpack';
 import webpackDevMiddleware from 'webpack-dev-middleware';
 import webpackHotMiddleware from 'webpack-hot-middleware';
 import errorOverlayMiddleware from 'react-dev-utils/errorOverlayMiddleware';
-import webpackConfig from './webpack.config';
-import run, { format } from './run';
-import clean from './clean';
+import webpackConfig from './webpack.config.js';
+import run, { format } from './run.js';
+import clean from './clean.js';
+import copy from './copy.js';
+import openBrowser from './lib/openBrowser.js';
 
-const isDebug = !process.argv.includes('--release');
+// Same default as the production server (see src/config.js), so the pages
+// the docs, the smoke tests and the Playwright scripts point at don't move.
+const port = process.env.PORT || 3000;
 
 // https://webpack.js.org/configuration/watch/#watchoptions
 const watchOptions = {
@@ -61,8 +64,15 @@ function createCompilationPromise(name, compiler, config) {
 let server;
 
 /**
- * Launches a development web server with "live reload" functionality -
- * synchronizing URLs, interactions and code changes across multiple devices.
+ * Launches the development web server: the middleware stack below, listening
+ * on its own port.
+ *
+ * Code changes reach the browser through webpack-hot-middleware, whose client
+ * (tools/lib/webpackHotDevClient.js) applies hot updates and reloads the page
+ * for the ones that can't be hot-applied. Browsersync used to wrap all of
+ * this in a second HTTP server that added live reload on top of that HMR and
+ * dragged in forty transitive dependencies, so it's gone; `--silent` now only
+ * means "don't open a browser".
  */
 async function start() {
   if (server) return server;
@@ -100,6 +110,7 @@ async function start() {
 
   // Configure compilation
   await run(clean);
+  await run(copy);
   const multiCompiler = webpack(webpackConfig);
   const clientCompiler = multiCompiler.compilers.find(
     compiler => compiler.name === 'client',
@@ -122,8 +133,6 @@ async function start() {
   server.use(
     webpackDevMiddleware(clientCompiler, {
       publicPath: clientConfig.output.publicPath,
-      logLevel: 'silent',
-      watchOptions,
     }),
   );
 
@@ -178,8 +187,7 @@ async function start() {
         if (['abort', 'fail'].includes(app.hot.status())) {
           console.warn(`${hmrPrefix}Cannot apply update.`);
           delete require.cache[require.resolve('../build/server')];
-          // eslint-disable-next-line global-require, import/no-unresolved
-          app = require('../build/server').default;
+          app = require('../build/server.js').default;
           console.warn(`${hmrPrefix}App has been reloaded.`);
         } else {
           console.warn(
@@ -206,28 +214,25 @@ async function start() {
   console.info(`[${format(timeStart)}] Launching server...`);
 
   // Load compiled src/server.js as a middleware
-  // eslint-disable-next-line global-require, import/no-unresolved
-  app = require('../build/server').default;
+  app = require('../build/server.js').default;
   appPromiseIsResolved = true;
   appPromiseResolve();
 
-  // Launch the development server with Browsersync and HMR
-  await new Promise((resolve, reject) =>
-    browserSync.create().init(
-      {
-        // https://www.browsersync.io/docs/options
-        server: 'src/server.js',
-        middleware: [server],
-        open: !process.argv.includes('--silent'),
-        ...(isDebug ? {} : { notify: false, ui: false }),
-      },
-      (error, bs) => (error ? reject(error) : resolve(bs)),
-    ),
-  );
+  // Launch the development server. Binding without a host listens on every
+  // interface, the way Browsersync did, so a published sandbox port or a
+  // phone on the LAN reaches it too.
+  await new Promise((resolve, reject) => {
+    const listener = server.listen(port, () => resolve());
+    listener.on('error', reject);
+  });
 
   const timeEnd = new Date();
   const time = timeEnd.getTime() - timeStart.getTime();
   console.info(`[${format(timeEnd)}] Server launched after ${time} ms`);
+  console.info(`Dev server listening at http://localhost:${port}/`);
+  if (!process.argv.includes('--silent')) {
+    openBrowser(`http://localhost:${port}/`);
+  }
   return server;
 }
 

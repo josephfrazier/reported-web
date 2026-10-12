@@ -11,13 +11,18 @@ import React from 'react';
 import PropTypes from 'prop-types';
 
 const ContextType = {
-  // Enables critical path CSS rendering
-  // https://github.com/kriasoft/isomorphic-style-loader
-  insertCss: PropTypes.func.isRequired,
   // Universal HTTP client
   fetch: PropTypes.func.isRequired,
   pathname: PropTypes.string.isRequired,
   query: PropTypes.object,
+  commitHash: PropTypes.string,
+  parseServerUrl: PropTypes.string,
+  showParseServerBanner: PropTypes.bool,
+  reviewAppUrl: PropTypes.string,
+  reviewAppLabel: PropTypes.string,
+  // Whether the request carried a session cookie. The cookie itself is
+  // HttpOnly, so this is how route actions learn the logged-in state.
+  sessionPresent: PropTypes.bool,
 };
 
 /**
@@ -51,13 +56,21 @@ class App extends React.PureComponent {
   static childContextTypes = ContextType;
 
   getChildContext() {
-    return this.props.context;
+    // Only return non-insertCss, non-cookies context for legacy components.
+    // insertCss is handled via StyleContext; cookies are server-only and
+    // don't belong in the React child context.
+    const { insertCss, cookies, ...legacyContext } = this.props.context;
+    return legacyContext;
   }
 
   render() {
     // NOTE: If you need to add or modify header, footer etc. of the app,
     // please do that inside the Layout component.
-    return React.Children.only(this.props.children);
+    return (
+      <React.StrictMode>
+        {React.Children.only(this.props.children)}
+      </React.StrictMode>
+    );
   }
 }
 

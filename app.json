@@ -1,11 +1,18 @@
 {
-  "stack": "heroku-22",
+  "environments": {
+    "review": {
+      "env": {
+        "SHOW_PARSE_SERVER_BANNER": {
+          "description": "Show the NOT PRODUCTION banner on the home page, displaying whichever Parse server this app is actually configured to use. Set only for review apps, never production.",
+          "value": "true"
+        }
+      }
+    }
+  },
+  "stack": "heroku-26",
   "buildpacks": [
     {
       "url": "heroku/nodejs"
-    },
-    {
-      "url": "https://buildpack-registry.s3.amazonaws.com/buildpacks/jontewks/puppeteer.tgz"
     }
   ]
 }

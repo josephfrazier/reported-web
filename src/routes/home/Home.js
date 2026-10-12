@@ -2132,7 +2132,7 @@ class Home extends React.Component {
                         }))
                       }
                     >
-                      {this.state.isPreferencesOpen ? 'Cancel' : 'Preferences'}
+                      {this.state.isPreferencesOpen ? 'Done' : 'Preferences'}
                     </button>
                     <button
                       type="button"

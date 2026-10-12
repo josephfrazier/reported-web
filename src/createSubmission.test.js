@@ -1,7 +1,8 @@
 /**
  * @jest-environment node
  *
- * Runs against a real Parse Server 2.8.4 (the version prod runs) backed by a
+ * Runs against a real Parse Server 9.4.0 (the version production will run once
+ * https://github.com/josephfrazier/reported-web/pull/713 is merged) backed by a
  * real MongoDB 4.4 started in-memory by mongodb-memory-server, so the actual
  * save/ACL/file-upload semantics are exercised instead of a fake.
  */
@@ -80,10 +81,8 @@ describe('createSubmission', () => {
   let otherUserSessionToken;
 
   beforeAll(async () => {
-    // MongoDB 4.4 is the newest version whose wire protocol parse-server
-    // 2.8.4's bundled mongodb driver can talk to. Note: the binary must be
-    // downloaded once (mongodb-memory-server caches it), and on Ubuntu 24+
-    // mongod 4.4 needs libssl1.1 installed.
+    // Note: the binary must be downloaded once (mongodb-memory-server caches
+    // it), and on Ubuntu 24+ mongod 4.4 needs libssl1.1 installed.
     mongo = await MongoMemoryServer.create({ binary: { version: '4.4.14' } });
 
     // create() can resolve a moment before mongod accepts connections;
@@ -112,23 +111,22 @@ describe('createSubmission', () => {
       attemptConnection(resolve, reject, 0);
     });
 
-    parseServer = ParseServer.start(
-      {
-        databaseURI: mongo.getUri(),
-        appId: 'test-app',
-        masterKey: 'test-master',
-        // Only used as a placeholder; the client points at the real port.
-        serverURL: 'http://localhost/parse',
-        mountPath: '/parse',
-        port: 0,
-        verbose: false,
-        filesAdapter: new InMemoryFilesAdapter(),
-      },
-      () => {},
-    );
-    await new Promise((resolve, reject) => {
-      parseServer.server.once('listening', resolve);
-      parseServer.server.once('error', reject);
+    // startApp() resolves once the HTTP server is listening, so no separate
+    // wait for the 'listening' event is needed.
+    parseServer = await ParseServer.startApp({
+      databaseURI: mongo.getUri(),
+      appId: 'test-app',
+      masterKey: 'test-master',
+      // Only used as a placeholder; the client points at the real port.
+      serverURL: 'http://localhost/parse',
+      mountPath: '/parse',
+      port: 0,
+      verbose: false,
+      // parse-server 5+ defaults client class creation to off. These tests
+      // save `submission`/`tasks` objects as an ordinary client, and in
+      // production both classes already exist in the schema.
+      allowClientClassCreation: true,
+      filesAdapter: new InMemoryFilesAdapter(),
     });
     // parse-server initializes its own nested parse SDK; ours needs it too.
     // No master key is passed: the submission is saved with the reporter's
@@ -153,8 +151,8 @@ describe('createSubmission', () => {
   });
 
   afterAll(async () => {
-    await new Promise(resolve => parseServer.server.close(resolve));
-    parseServer.handleShutdown();
+    // handleShutdown() closes the HTTP server itself.
+    await parseServer.handleShutdown();
     await mongo.stop();
   });
 

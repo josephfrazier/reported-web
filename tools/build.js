@@ -7,13 +7,10 @@
  * LICENSE.txt file in the root directory of this source tree.
  */
 
-import cp from 'child_process';
 import run from './run.js';
 import clean from './clean.js';
 import copy from './copy.js';
 import bundle from './bundle.js';
-import render from './render.js';
-import pkg from '../package.json';
 
 /**
  * Compiles the project from source files into a distributable
@@ -23,16 +20,6 @@ async function build() {
   await run(clean);
   await run(copy);
   await run(bundle);
-
-  if (process.argv.includes('--static')) {
-    await run(render);
-  }
-
-  if (process.argv.includes('--docker')) {
-    cp.spawnSync('docker', ['build', '-t', pkg.name, '.'], {
-      stdio: 'inherit',
-    });
-  }
 }
 
 export default build;

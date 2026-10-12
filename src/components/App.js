@@ -16,6 +16,13 @@ const ContextType = {
   pathname: PropTypes.string.isRequired,
   query: PropTypes.object,
   commitHash: PropTypes.string,
+  parseServerUrl: PropTypes.string,
+  showParseServerBanner: PropTypes.bool,
+  reviewAppUrl: PropTypes.string,
+  reviewAppLabel: PropTypes.string,
+  // Whether the request carried a session cookie. The cookie itself is
+  // HttpOnly, so this is how route actions learn the logged-in state.
+  sessionPresent: PropTypes.bool,
 };
 
 /**

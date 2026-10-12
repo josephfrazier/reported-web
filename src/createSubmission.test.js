@@ -1,20 +1,15 @@
 /**
  * @jest-environment node
  *
- * Runs against a real Parse Server 2.8.4 (the version prod runs) backed by a
+ * Runs against a real Parse Server 9.4.0 (the version production will run once
+ * https://github.com/josephfrazier/reported-web/pull/713 is merged) backed by a
  * real MongoDB 4.4 started in-memory by mongodb-memory-server, so the actual
  * save/ACL/file-upload semantics are exercised instead of a fake.
  */
 
-import net from 'net';
-
 import Parse from 'parse/node';
 import createSubmission from './createSubmission.js';
-
-const { MongoMemoryServer } = require('mongodb-memory-server');
-// parse-server is deliberately installed on demand instead of being a project
-// dependency (see jest.globalSetup.js)
-const { ParseServer } = require('parse-server');
+import startRealParseServer from './testUtils/realParseServer.js';
 
 // In-memory stand-in for a files adapter: the submission logic under test
 // only cares that Parse.File#save() succeeds and produces a URL, not where
@@ -46,10 +41,6 @@ class InMemoryFilesAdapter {
   }
 }
 
-// parse-server skips its cloud/URL verification (and test-unfriendly process
-// listeners) when TESTING is set. Must be set before it is constructed.
-process.env.TESTING = '1';
-
 jest.setTimeout(30000);
 
 const email = 'test@example.com';
@@ -73,85 +64,42 @@ const mp4Buffer = Buffer.concat([
 ]);
 
 describe('createSubmission', () => {
-  let mongo;
-  let parseServer;
+  let stopParseServer;
   let user;
-  let saveUser;
+  let sessionToken;
+  let otherUserSessionToken;
 
   beforeAll(async () => {
-    // MongoDB 4.4 is the newest version whose wire protocol parse-server
-    // 2.8.4's bundled mongodb driver can talk to. Note: the binary must be
-    // downloaded once (mongodb-memory-server caches it), and on Ubuntu 24+
-    // mongod 4.4 needs libssl1.1 installed.
-    mongo = await MongoMemoryServer.create({ binary: { version: '4.4.14' } });
-
-    // create() can resolve a moment before mongod accepts connections;
-    // parse-server connects to it in its constructor, so wait until the
-    // port actually accepts a TCP connection.
-    const { port } = new URL(mongo.getUri());
-    const attemptConnection = (resolve, reject, attempts) => {
-      const socket = net.connect(Number(port), '127.0.0.1');
-      socket.once('connect', () => {
-        socket.destroy();
-        resolve();
-      });
-      socket.once('error', () => {
-        socket.destroy();
-        if (attempts < 100) {
-          setTimeout(
-            () => attemptConnection(resolve, reject, attempts + 1),
-            50,
-          );
-        } else {
-          reject(new Error('mongod never accepted connections'));
-        }
-      });
-    };
-    await new Promise((resolve, reject) => {
-      attemptConnection(resolve, reject, 0);
-    });
-
-    parseServer = ParseServer.start(
-      {
-        databaseURI: mongo.getUri(),
-        appId: 'test-app',
-        masterKey: 'test-master',
-        // Only used as a placeholder; the client points at the real port.
-        serverURL: 'http://localhost/parse',
-        mountPath: '/parse',
-        port: 0,
-        verbose: false,
+    // No master key is passed: the submission is saved with the reporter's
+    // session token, so nothing here should need to bypass ACLs.
+    const { stop } = await startRealParseServer({
+      serverOptions: {
+        // parse-server 5+ defaults client class creation to off. These tests
+        // save `submission`/`tasks` objects as an ordinary client, and in
+        // production both classes already exist in the schema.
+        allowClientClassCreation: true,
         filesAdapter: new InMemoryFilesAdapter(),
       },
-      () => {},
-    );
-    await new Promise((resolve, reject) => {
-      parseServer.server.once('listening', resolve);
-      parseServer.server.once('error', reject);
     });
-    // parse-server initializes its own nested parse SDK; ours needs it too.
-    // The master key is passed like prod's Parse.initialize() does, so that
-    // submission.save(null) and Parse.File#save() are authorized the same way.
-    Parse.initialize('test-app', undefined, 'test-master');
-    Parse.serverURL = `http://localhost:${parseServer.server.address().port}/parse`;
+    stopParseServer = stop;
 
     user = new Parse.User();
     user.setUsername(email);
     user.setPassword('test-password');
     await user.signUp();
+    // The sign-up session. Captured once: a save or fetch response without a
+    // sessionToken in it clears the attribute getSessionToken() reads.
+    sessionToken = user.getSessionToken();
+
+    // A second user, to prove the submission's ACL keeps everyone else out.
+    const otherUser = new Parse.User();
+    otherUser.setUsername('other@example.com');
+    otherUser.setPassword('test-password');
+    await otherUser.signUp();
+    otherUserSessionToken = otherUser.getSessionToken();
   });
 
-  afterAll(async () => {
-    await new Promise(resolve => parseServer.server.close(resolve));
-    parseServer.handleShutdown();
-    await mongo.stop();
-  });
-
-  beforeEach(() => {
-    // Stand-in for server.js's saveUser, which logs the user in (or creates
-    // them) and resolves to the Parse user.
-    saveUser = jest.fn(() => Promise.resolve(user));
-  });
+  afterAll(() => stopParseServer());
 
   afterEach(() => {
     // Same delete-vs-assign subtlety as the module itself: assigning an
@@ -164,9 +112,11 @@ describe('createSubmission', () => {
   });
 
   const validParams = overrides => ({
-    saveUser,
+    // The signed-in account and the token that authenticated it, as the route
+    // resolves them from the session cookie.
+    user,
+    sessionToken,
     email,
-    password: 'test-password',
     FirstName: 'Test',
     LastName: 'User',
     Phone: '5551234567',
@@ -190,9 +140,11 @@ describe('createSubmission', () => {
     const params = validParams();
     const submission = await createSubmission(params);
 
-    expect(saveUser).toHaveBeenCalledWith({
-      email,
-      password: 'test-password',
+    // The submit form doubles as a profile edit, so its fields land on the
+    // reporter's account.
+    const savedUser = await Parse.User.me(sessionToken);
+    expect(savedUser.toJSON()).toMatchObject({
+      useremail: email,
       FirstName: 'Test',
       LastName: 'User',
       Phone: '5551234567',
@@ -238,12 +190,67 @@ describe('createSubmission', () => {
     expect(submission.objectId).toEqual(expect.any(String));
   });
 
+  test("ACLs the submission to the reporter, so other users can't read it", async () => {
+    const params = validParams();
+    const submission = await createSubmission(params);
+
+    const Submission = Parse.Object.extend('submission');
+    const query = new Parse.Query(Submission);
+
+    // The reporter (whose session token createSubmission saved with) can read
+    // it back...
+    await expect(
+      query.get(submission.objectId, { sessionToken }),
+    ).resolves.toMatchObject({ id: submission.objectId });
+
+    // ...and a different user gets the ACL's "not found" for the same id.
+    await expect(
+      query.get(submission.objectId, { sessionToken: otherUserSessionToken }),
+    ).rejects.toMatchObject({ code: 101 });
+  });
+
   test('marks non-complaint reports differently via selectedReport', async () => {
     const submission = await createSubmission(
       validParams({ typeofreport: 'compliment' }),
     );
 
     expect(submission.selectedReport).toBe(0);
+  });
+
+  test('sets withhold_contact_info_from_nypd on the submission when true', async () => {
+    const submission = await createSubmission(
+      validParams({ withhold_contact_info_from_nypd: true }),
+    );
+
+    expect(submission.withhold_contact_info_from_nypd).toBe(true);
+  });
+
+  test('leaves withhold_contact_info_from_nypd off when false or absent', async () => {
+    const withFalse = await createSubmission(
+      validParams({ withhold_contact_info_from_nypd: false }),
+    );
+    const absent = await createSubmission(validParams());
+
+    expect(withFalse.withhold_contact_info_from_nypd).toBeUndefined();
+    expect(absent.withhold_contact_info_from_nypd).toBeUndefined();
+  });
+
+  test('sets receive_nypd_sr_updates_by_email on the submission when true', async () => {
+    const submission = await createSubmission(
+      validParams({ receive_nypd_sr_updates_by_email: true }),
+    );
+
+    expect(submission.receive_nypd_sr_updates_by_email).toBe(true);
+  });
+
+  test('leaves receive_nypd_sr_updates_by_email off when false or absent', async () => {
+    const withFalse = await createSubmission(
+      validParams({ receive_nypd_sr_updates_by_email: false }),
+    );
+    const absent = await createSubmission(validParams());
+
+    expect(withFalse.receive_nypd_sr_updates_by_email).toBeUndefined();
+    expect(absent.receive_nypd_sr_updates_by_email).toBeUndefined();
   });
 
   test('rejects submissions missing a required field', async () => {

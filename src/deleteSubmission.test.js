@@ -1,92 +1,48 @@
 /**
  * @jest-environment node
  *
- * Runs against a real Parse Server 2.8.4 (the version prod runs) backed by a
+ * Runs against a real Parse Server 9.4.0 (the version production will run once
+ * https://github.com/josephfrazier/reported-web/pull/713 is merged) backed by a
  * real MongoDB 4.4 started in-memory by mongodb-memory-server, so the actual
  * deletion and ownership-check semantics are exercised instead of a fake.
  */
-
-import net from 'net';
 
 import Parse from 'parse/node';
 import stringify from 'json-stringify-safe';
 
 import deleteSubmission from './deleteSubmission.js';
-
-const { MongoMemoryServer } = require('mongodb-memory-server');
-// parse-server is deliberately installed on demand instead of being a project
-// dependency (see jest.globalSetup.js)
-const { ParseServer } = require('parse-server');
-
-// parse-server skips its cloud/URL verification (and test-unfriendly process
-// listeners) when TESTING is set. Must be set before it is constructed.
-process.env.TESTING = '1';
+import startRealParseServer from './testUtils/realParseServer.js';
 
 jest.setTimeout(30000);
 
 const username = 'test@example.com';
-const saveUser = jest.fn(() => Promise.resolve({ get: () => username }));
+// Stand-in for src/session.js's authenticate: resolves the request's user.
+const authenticate = jest.fn(() =>
+  Promise.resolve({ user: { get: () => username } }),
+);
 
 describe('deleteSubmission', () => {
-  let mongo;
-  let parseServer;
+  let stopParseServer;
   let ownedSubmission;
   let iosStyleSubmission;
   let otherUsersSubmission;
+  let emailAccount;
+  let emailOwnedSubmission;
+  let pointerAccount;
+  let pointerOnlySubmission;
 
   beforeAll(async () => {
-    // MongoDB 4.4 is the newest version whose wire protocol parse-server
-    // 2.8.4's bundled mongodb driver can talk to. Note: the binary must be
-    // downloaded once (mongodb-memory-server caches it), and on Ubuntu 24+
-    // mongod 4.4 needs libssl1.1 installed.
-    mongo = await MongoMemoryServer.create({ binary: { version: '4.4.14' } });
-
-    // create() can resolve a moment before mongod accepts connections;
-    // parse-server connects to it in its constructor, so wait until the
-    // port actually accepts a TCP connection.
-    const { port } = new URL(mongo.getUri());
-    const attemptConnection = (resolve, reject, attempts) => {
-      const socket = net.connect(Number(port), '127.0.0.1');
-      socket.once('connect', () => {
-        socket.destroy();
-        resolve();
-      });
-      socket.once('error', () => {
-        socket.destroy();
-        if (attempts < 100) {
-          setTimeout(
-            () => attemptConnection(resolve, reject, attempts + 1),
-            50,
-          );
-        } else {
-          reject(new Error('mongod never accepted connections'));
-        }
-      });
-    };
-    await new Promise((resolve, reject) => {
-      attemptConnection(resolve, reject, 0);
+    // deleteSubmission() fetches and destroys with the master key, because a
+    // submission made by the mobile client belongs to a different Parse user
+    // (see the iOS-style entry below), so it is passed here.
+    const { stop } = await startRealParseServer({
+      masterKey: 'test-master',
+      // parse-server 5+ defaults client class creation to off. These tests
+      // save `submission`/`tasks` objects as an ordinary client, and in
+      // production both classes already exist in the schema.
+      serverOptions: { allowClientClassCreation: true },
     });
-
-    parseServer = ParseServer.start(
-      {
-        databaseURI: mongo.getUri(),
-        appId: 'test-app',
-        masterKey: 'test-master',
-        // Only used as a placeholder; the client points at the real port.
-        serverURL: 'http://localhost/parse',
-        mountPath: '/parse',
-        port: 0,
-        verbose: false,
-      },
-      () => {},
-    );
-    await new Promise((resolve, reject) => {
-      parseServer.server.once('listening', resolve);
-      parseServer.server.once('error', reject);
-    });
-    // parse-server initializes its own nested parse SDK; ours needs it too.
-    Parse.initialize('test-app');
-    Parse.serverURL = `http://localhost:${parseServer.server.address().port}/parse`;
+    stopParseServer = stop;
 
     const Submission = Parse.Object.extend('submission');
 
@@ -112,22 +68,49 @@ describe('deleteSubmission', () => {
       new Date('2026-09-03T13:00:00.000Z'),
     );
     await otherUsersSubmission.save();
+
+    // The mobile clients create accounts whose username is not the address
+    // that ends up on their reports (their email is). The ownership check
+    // must accept the account's email too, so this report is deletable.
+    emailAccount = new Parse.User();
+    emailAccount.setUsername('mobile-account');
+    emailAccount.set('email', 'reports@example.com');
+    emailAccount.setPassword('password');
+    await emailAccount.signUp();
+
+    emailOwnedSubmission = new Submission();
+    emailOwnedSubmission.set('Username', 'reports@example.com');
+    emailOwnedSubmission.set(
+      'timeofreport',
+      new Date('2026-09-03T12:00:00.000Z'),
+    );
+    await emailOwnedSubmission.save();
+
+    // A native-client report: the `user` pointer, and neither address field.
+    pointerAccount = new Parse.User();
+    pointerAccount.setUsername('pointer-account');
+    pointerAccount.setPassword('password');
+    await pointerAccount.signUp();
+
+    pointerOnlySubmission = new Submission();
+    pointerOnlySubmission.set('user', pointerAccount);
+    pointerOnlySubmission.set(
+      'timeofreport',
+      new Date('2026-09-03T11:00:00.000Z'),
+    );
+    await pointerOnlySubmission.save();
   });
 
-  afterAll(async () => {
-    await new Promise(resolve => parseServer.server.close(resolve));
-    parseServer.handleShutdown();
-    await mongo.stop();
-  });
+  afterAll(() => stopParseServer());
 
   const Submission = Parse.Object.extend('submission');
   const callDeleteSubmission = objectId =>
-    deleteSubmission({ req: { body: { objectId } }, saveUser });
+    deleteSubmission({ req: { body: { objectId } }, authenticate });
 
   test('deletes the submission with the given objectId', async () => {
     const result = await callDeleteSubmission(ownedSubmission.id);
 
-    expect(saveUser).toHaveBeenCalledWith({ objectId: ownedSubmission.id });
+    expect(authenticate).toHaveBeenCalled();
     expect(result).toEqual({ objectId: ownedSubmission.id });
 
     // The submission is really gone from Parse.
@@ -144,6 +127,50 @@ describe('deleteSubmission', () => {
 
     const query = new Parse.Query(Submission);
     await expect(query.get(iosStyleSubmission.id)).rejects.toMatchObject({
+      code: 101,
+    });
+  });
+
+  test("deletes a submission that carries the account's email, not its username", async () => {
+    const result = await deleteSubmission({
+      req: { body: { objectId: emailOwnedSubmission.id } },
+      authenticate: () => Promise.resolve({ user: emailAccount }),
+    });
+
+    expect(result).toEqual({ objectId: emailOwnedSubmission.id });
+
+    const query = new Parse.Query(Submission);
+    await expect(query.get(emailOwnedSubmission.id)).rejects.toMatchObject({
+      code: 101,
+    });
+  });
+
+  test("does not treat another account's pointer as ownership", async () => {
+    await expect(
+      deleteSubmission({
+        req: { body: { objectId: pointerOnlySubmission.id } },
+        authenticate: () => Promise.resolve({ user: emailAccount }),
+      }),
+    ).rejects.toMatchObject({
+      message: 'the submission was not found or was not made by this user',
+    });
+
+    // The other account's submission is still there.
+    const query = new Parse.Query(Submission);
+    const stillThere = await query.get(pointerOnlySubmission.id);
+    expect(stillThere.id).toBe(pointerOnlySubmission.id);
+  });
+
+  test('deletes a submission matched by its user pointer without address fields', async () => {
+    const result = await deleteSubmission({
+      req: { body: { objectId: pointerOnlySubmission.id } },
+      authenticate: () => Promise.resolve({ user: pointerAccount }),
+    });
+
+    expect(result).toEqual({ objectId: pointerOnlySubmission.id });
+
+    const query = new Parse.Query(Submission);
+    await expect(query.get(pointerOnlySubmission.id)).rejects.toMatchObject({
       code: 101,
     });
   });

@@ -259,6 +259,17 @@ describe('createSubmission', () => {
     ).rejects.toMatchObject({ message: 'plate is required' });
   });
 
+  // The state list is US-centric, so a plate can arrive with a state it does
+  // not hold, or with none the reporter can name. The form asks for it without
+  // insisting, so neither is a reason to refuse the submission.
+  test('accepts a submission with no license state', async () => {
+    const submission = await createSubmission(
+      validParams({ licenseState: '' }),
+    );
+
+    expect(submission.state).toBe('');
+  });
+
   test('rejects timestamps in the future, restoring the previous timezone', async () => {
     await expect(
       createSubmission(

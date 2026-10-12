@@ -2744,6 +2744,92 @@ describe('Home', () => {
       consoleError.mockRestore();
     });
 
+    test('restores withhold_contact_info_from_nypd from the login response when present', async () => {
+      const axiosPost = jest.spyOn(axios, 'post').mockImplementation(url => {
+        if (url === '/api/logIn') {
+          return Promise.resolve({
+            data: {
+              email: 'test@example.com',
+              FirstName: 'Test',
+              LastName: 'User',
+              Phone: '5551234567',
+              testify: true,
+              can_be_shared_publicly: true,
+              withhold_contact_info_from_nypd: true,
+              receive_nypd_sr_updates_by_email: true,
+            },
+          });
+        }
+        return Promise.resolve({ data: { submissions: [] } });
+      });
+      const homeRef = React.createRef();
+
+      const tree = renderHome({
+        homeRef,
+        initialState: {
+          email: 'test@example.com',
+          password: 'test-password',
+          loginSuccessful: true,
+          // The cookie disagrees with the DB, which must win.
+          can_be_shared_publicly: false,
+          withhold_contact_info_from_nypd: false,
+          receive_nypd_sr_updates_by_email: false,
+        },
+      });
+
+      await renderer.act(async () => {
+        await homeRef.current.handleLogIn();
+      });
+
+      expect(homeRef.current.state.can_be_shared_publicly).toBe(true);
+      expect(homeRef.current.state.withhold_contact_info_from_nypd).toBe(true);
+      expect(homeRef.current.state.receive_nypd_sr_updates_by_email).toBe(true);
+
+      tree.unmount();
+      axiosPost.mockRestore();
+    });
+
+    test('falls back to the cookie for withhold when the login response omits it', async () => {
+      const axiosPost = jest.spyOn(axios, 'post').mockImplementation(url => {
+        if (url === '/api/logIn') {
+          return Promise.resolve({
+            data: {
+              email: 'test@example.com',
+              FirstName: 'Test',
+              LastName: 'User',
+              Phone: '5551234567',
+              testify: false,
+            },
+          });
+        }
+        return Promise.resolve({ data: { submissions: [] } });
+      });
+      const homeRef = React.createRef();
+
+      const tree = renderHome({
+        homeRef,
+        initialState: {
+          email: 'test@example.com',
+          password: 'test-password',
+          loginSuccessful: true,
+          can_be_shared_publicly: false,
+          withhold_contact_info_from_nypd: true,
+          receive_nypd_sr_updates_by_email: true,
+        },
+      });
+
+      await renderer.act(async () => {
+        await homeRef.current.handleLogIn();
+      });
+
+      expect(homeRef.current.state.can_be_shared_publicly).toBe(false);
+      expect(homeRef.current.state.withhold_contact_info_from_nypd).toBe(true);
+      expect(homeRef.current.state.receive_nypd_sr_updates_by_email).toBe(true);
+
+      tree.unmount();
+      axiosPost.mockRestore();
+    });
+
     test('logging out revokes the session server-side', async () => {
       const axiosPost = jest
         .spyOn(axios, 'post')
@@ -2752,7 +2838,12 @@ describe('Home', () => {
 
       const tree = renderHome({
         homeRef,
-        initialState: { email: 'test@example.com', loginSuccessful: true },
+        initialState: {
+          email: 'test@example.com',
+          loginSuccessful: true,
+          withhold_contact_info_from_nypd: true,
+          receive_nypd_sr_updates_by_email: true,
+        },
       });
       homeRef.current.handleLogOut();
       await new Promise(resolve => setTimeout(resolve, 0));
@@ -2760,9 +2851,53 @@ describe('Home', () => {
       expect(axiosPost).toHaveBeenCalledWith('/api/logOut');
       expect(homeRef.current.state.loginSuccessful).toBe(false);
       expect(homeRef.current.state.email).toBe('');
+      // Reset with the rest of the profile fields, like testify.
+      expect(homeRef.current.state.withhold_contact_info_from_nypd).toBe(false);
+      expect(homeRef.current.state.receive_nypd_sr_updates_by_email).toBe(
+        false,
+      );
 
       tree.unmount();
       axiosPost.mockRestore();
+    });
+
+    test('includes withhold_contact_info_from_nypd when saving the profile', async () => {
+      const axiosPost = jest
+        .spyOn(axios, 'post')
+        .mockResolvedValue({ data: {} });
+      const originalQuerySelector = document.querySelector;
+      document.querySelector = jest.fn(() => ({ scrollTo() {} }));
+      const homeRef = React.createRef();
+
+      const tree = renderHome({
+        homeRef,
+        initialState: { email: 'test@example.com', loginSuccessful: true },
+      });
+      renderer.act(() => {
+        homeRef.current.setState({
+          can_be_shared_publicly: true,
+          withhold_contact_info_from_nypd: true,
+          receive_nypd_sr_updates_by_email: true,
+        });
+      });
+
+      await renderer.act(async () => {
+        await homeRef.current.handleSaveProfile({ preventDefault() {} });
+      });
+
+      expect(axiosPost).toHaveBeenCalledWith(
+        '/saveUser',
+        expect.objectContaining({
+          testify: false,
+          can_be_shared_publicly: true,
+          withhold_contact_info_from_nypd: true,
+          receive_nypd_sr_updates_by_email: true,
+        }),
+      );
+
+      tree.unmount();
+      axiosPost.mockRestore();
+      document.querySelector = originalQuerySelector;
     });
 
     test('an expired session clears the login state and reopens the auth modal', async () => {

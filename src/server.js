@@ -227,6 +227,14 @@ app.use('/api/logIn', (req, res) => {
         LastName: user.get('LastName'),
         Phone: user.get('Phone'),
         testify: user.get('testify'),
+        can_be_shared_publicly: user.get('can_be_shared_publicly'),
+        // undefined when absent, thanks to the sparse contract on the user
+        withhold_contact_info_from_nypd: user.get(
+          'withhold_contact_info_from_nypd',
+        ),
+        receive_nypd_sr_updates_by_email: user.get(
+          'receive_nypd_sr_updates_by_email',
+        ),
       });
     })
     .catch(handlePromiseRejection(res));
@@ -292,6 +300,11 @@ app.use('/saveUser', (req, res) => {
         LastName: req.body.LastName,
         Phone: req.body.Phone,
         testify: req.body.testify,
+        can_be_shared_publicly: req.body.can_be_shared_publicly,
+        withhold_contact_info_from_nypd:
+          req.body.withhold_contact_info_from_nypd,
+        receive_nypd_sr_updates_by_email:
+          req.body.receive_nypd_sr_updates_by_email,
       }),
     )
     .then(user => res.json(user))
@@ -676,7 +689,8 @@ app.get('*', async (req, res, next) => {
     // Decide whether this page is logged in, and migrate a legacy visitor
     // whose state cookie still holds their password (see session.js). Never
     // rejects: the page renders even if Parse is unreachable.
-    const { sessionPresent, homeState } = await resolveSsrSession({ req, res });
+    const { sessionPresent, homeState, sessionUserFields } =
+      await resolveSsrSession({ req, res });
     if (homeState) {
       // resolveSsrSession may have rewritten the state cookie (stripping the
       // password); the route must render the rewritten state, not the
@@ -696,6 +710,7 @@ app.get('*', async (req, res, next) => {
       reviewAppLabel,
       cookies,
       sessionPresent,
+      sessionUserFields,
       // The twins below are wild, be careful!
       pathname: req.path,
       query: req.query,

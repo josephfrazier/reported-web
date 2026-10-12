@@ -1869,13 +1869,37 @@ class Home extends React.Component {
         email: this.state.email,
         password: this.state.password,
       });
-      const { FirstName, LastName, Phone, testify } = data;
+      const {
+        FirstName,
+        LastName,
+        Phone,
+        testify,
+        can_be_shared_publicly: canBeSharedPublicly,
+        withhold_contact_info_from_nypd: withholdContactInfoFromNypd,
+        receive_nypd_sr_updates_by_email: receiveNypdSrUpdatesByEmail,
+      } = data;
       this.setState(
         state => ({
           FirstName: FirstName || state.FirstName,
           LastName: LastName || state.LastName,
           Phone: Phone || state.Phone,
           testify: typeof testify === 'boolean' ? testify : state.testify,
+          // The server sends the user's stored flag when it was saved,
+          // so a present boolean wins over the cookie; an absent one
+          // falls back to the cookie value.
+          can_be_shared_publicly:
+            typeof canBeSharedPublicly === 'boolean'
+              ? canBeSharedPublicly
+              : state.can_be_shared_publicly,
+          // Sparse on the user, so absent means the cookie value.
+          withhold_contact_info_from_nypd:
+            typeof withholdContactInfoFromNypd === 'boolean'
+              ? withholdContactInfoFromNypd
+              : state.withhold_contact_info_from_nypd,
+          receive_nypd_sr_updates_by_email:
+            typeof receiveNypdSrUpdatesByEmail === 'boolean'
+              ? receiveNypdSrUpdatesByEmail
+              : state.receive_nypd_sr_updates_by_email,
           isUserInfoSaving: false,
           isAuthModalOpen: false,
           loginSuccessful: true,
@@ -1938,8 +1962,26 @@ class Home extends React.Component {
   // The fields /saveUser accepts. The password is never among them: the
   // session cookie identifies the user.
   profileFields = () => {
-    const { email, FirstName, LastName, Phone, testify } = this.state;
-    return { email, FirstName, LastName, Phone, testify };
+    const {
+      email,
+      FirstName,
+      LastName,
+      Phone,
+      testify,
+      can_be_shared_publicly: canBeSharedPublicly,
+      withhold_contact_info_from_nypd: withholdContactInfoFromNypd,
+      receive_nypd_sr_updates_by_email: receiveNypdSrUpdatesByEmail,
+    } = this.state;
+    return {
+      email,
+      FirstName,
+      LastName,
+      Phone,
+      testify,
+      can_be_shared_publicly: canBeSharedPublicly,
+      withhold_contact_info_from_nypd: withholdContactInfoFromNypd,
+      receive_nypd_sr_updates_by_email: receiveNypdSrUpdatesByEmail,
+    };
   };
 
   clearAuthState = (extraState = {}) => {
@@ -1951,6 +1993,8 @@ class Home extends React.Component {
         LastName: '',
         Phone: '',
         testify: false,
+        withhold_contact_info_from_nypd: false,
+        receive_nypd_sr_updates_by_email: false,
         hasSeenWithholdNotice: false,
         submissions: [],
         isEditProfileOpen: false,

@@ -118,6 +118,7 @@ describe('users', () => {
       LastName: 'User',
       Phone: '5551234567',
       testify: true,
+      can_be_shared_publicly: false,
     });
 
     expect(saved.id).toBe(verifiedUser.id);
@@ -127,7 +128,42 @@ describe('users', () => {
       LastName: 'User',
       Phone: '5551234567',
       testify: true,
+      // Always stored, like testify: the native app reads a default of
+      // true when the field is absent, so false must be explicit.
+      can_be_shared_publicly: false,
     });
+  });
+
+  test('updateUserProfile stores the sparse NYPD flags only when true', async () => {
+    const user = await logIn({ email, password });
+    const sessionToken = user.getSessionToken();
+    const base = {
+      user,
+      sessionToken,
+      email,
+      FirstName: 'Test',
+      LastName: 'User',
+      Phone: '5551234567',
+      testify: true,
+    };
+    const exerciseSparseFlag = async flag => {
+      // true: stored on the user...
+      await updateUserProfile({ ...base, [flag]: true });
+      expect(user.get(flag)).toBe(true);
+
+      // false: unset, so non-opt-ins don't carry the field...
+      await updateUserProfile({ ...base, [flag]: false });
+      expect(user.get(flag)).toBeUndefined();
+
+      // ...and absent: left alone, so clients that don't know about the
+      // flag don't clobber a previous opt-in.
+      await updateUserProfile({ ...base, [flag]: true });
+      await updateUserProfile(base);
+      expect(user.get(flag)).toBe(true);
+    };
+
+    await exerciseSparseFlag('withhold_contact_info_from_nypd');
+    await exerciseSparseFlag('receive_nypd_sr_updates_by_email');
   });
 
   test('updateUserProfile rejects when a required field is missing', async () => {

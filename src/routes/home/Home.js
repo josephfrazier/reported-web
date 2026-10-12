@@ -744,6 +744,7 @@ class Home extends React.Component {
       isLoadPreviousSubmissionsEnabled: false,
       isMapOpen: false,
       isPreviousSubmissionsOpen: false,
+      hasSeenWithholdNotice: false,
       loginSuccessful: false,
     };
 
@@ -773,6 +774,7 @@ class Home extends React.Component {
       authModalTab: 'login',
       isEditProfileOpen: false,
       isPreferencesOpen: false,
+      isWithholdFieldHighlighted: false,
       authError: null,
     };
 
@@ -1702,12 +1704,47 @@ class Home extends React.Component {
           : target.value;
     const { name } = target;
 
+    const stateChange = { [name]: value };
+    // Checking the withhold box counts as having seen the notice, so it
+    // stays gone if the box is later unchecked.
+    if (name === 'withhold_contact_info_from_nypd' && value === true) {
+      stateChange.hasSeenWithholdNotice = true;
+    }
+
+    this.setState(stateChange, () =>
+      debouncedSavePersistentStateToCookie(this),
+    );
+  };
+
+  dismissWithholdNotice = () => {
+    this.setState({ hasSeenWithholdNotice: true }, () =>
+      debouncedSavePersistentStateToCookie(this),
+    );
+  };
+
+  // Opens Edit Profile and flash-highlights the withhold field so the
+  // notice's "Show me how" button points at it.
+  showWithholdField = () => {
     this.setState(
       {
-        [name]: value,
+        isEditProfileOpen: true,
+        isPreferencesOpen: false,
+        isWithholdFieldHighlighted: true,
       },
-      () => debouncedSavePersistentStateToCookie(this),
+      () => {
+        // The flash should be seen: on narrow screens the checkbox can be
+        // below the fold, so bring it into view once the panel is open.
+        requestAnimationFrame(() => {
+          document
+            .getElementById('withhold_contact_info_from_nypd')
+            ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+      },
     );
+    clearTimeout(this.withholdHighlightTimeout);
+    this.withholdHighlightTimeout = setTimeout(() => {
+      this.setState({ isWithholdFieldHighlighted: false });
+    }, 3000);
   };
 
   loadPreviousSubmissions = () => {
@@ -1873,6 +1910,7 @@ class Home extends React.Component {
         LastName: '',
         Phone: '',
         testify: false,
+        hasSeenWithholdNotice: false,
         submissions: [],
         isEditProfileOpen: false,
         isPreferencesOpen: false,
@@ -2163,6 +2201,39 @@ class Home extends React.Component {
               </div>
             </div>
 
+            {/* One-time notice about the withhold checkbox, until dismissed
+                or the box is checked. Not sticky: the non-production banner
+                above owns the sticky spot. */}
+            {this.isLoggedIn() &&
+              !this.state.withhold_contact_info_from_nypd &&
+              !this.state.hasSeenWithholdNotice && (
+                <div
+                  role="alert"
+                  className={homeStyles['withhold-notice-banner']}
+                >
+                  <span>
+                    Getting unwanted phone calls after making submissions? Now
+                    you can stop sending your number and email to the cops!
+                  </span>
+                  <span className={homeStyles['user-actions']}>
+                    <button
+                      type="button"
+                      className={homeStyles['status-bar-btn-primary']}
+                      onClick={this.showWithholdField}
+                    >
+                      Show me how
+                    </button>
+                    <button
+                      type="button"
+                      className={homeStyles['status-bar-btn']}
+                      onClick={this.dismissWithholdNotice}
+                    >
+                      Dismiss
+                    </button>
+                  </span>
+                </div>
+              )}
+
             {/* Edit Profile (shown inline when toggled) */}
             {this.state.isEditProfileOpen && (
               <form
@@ -2231,7 +2302,14 @@ class Home extends React.Component {
                     to be publicly displayed
                   </label>
 
-                  <label htmlFor="withhold_contact_info_from_nypd">
+                  <label
+                    htmlFor="withhold_contact_info_from_nypd"
+                    className={
+                      this.state.isWithholdFieldHighlighted
+                        ? homeStyles['withhold-field-highlight']
+                        : undefined
+                    }
+                  >
                     <input
                       id="withhold_contact_info_from_nypd"
                       type="checkbox"

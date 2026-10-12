@@ -1971,13 +1971,15 @@ describe('Home', () => {
     // Shown to logged-in users who haven't withheld and haven't seen it.
     expect(findBanner()).toBeTruthy();
 
-    // Its button opens Edit Profile, where the checkbox lives.
+    // Its button opens Edit Profile (and scrolls the withhold field into
+    // view, which jsdom doesn't implement).
+    const originalScrollIntoView = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = jest.fn();
     renderer.act(() => {
-      tree.root
-        .findByProps({ children: 'Withhold my contact info' })
-        .props.onClick();
+      tree.root.findByProps({ children: 'Show me how' }).props.onClick();
     });
     expect(homeRef.current.state.isEditProfileOpen).toBe(true);
+    Element.prototype.scrollIntoView = originalScrollIntoView;
 
     // Dismissing hides it and remembers, so it stays gone (the flag is
     // part of the persistent state, i.e. the cookie).

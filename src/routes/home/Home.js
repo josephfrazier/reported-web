@@ -774,6 +774,7 @@ class Home extends React.Component {
       authModalTab: 'login',
       isEditProfileOpen: false,
       isPreferencesOpen: false,
+      isWithholdFieldHighlighted: false,
       authError: null,
     };
 
@@ -1721,6 +1722,31 @@ class Home extends React.Component {
     );
   };
 
+  // Opens Edit Profile and flash-highlights the withhold field so the
+  // notice's "Show me how" button points at it.
+  showWithholdField = () => {
+    this.setState(
+      {
+        isEditProfileOpen: true,
+        isPreferencesOpen: false,
+        isWithholdFieldHighlighted: true,
+      },
+      () => {
+        // The flash should be seen: on narrow screens the checkbox can be
+        // below the fold, so bring it into view once the panel is open.
+        requestAnimationFrame(() => {
+          document
+            .getElementById('withhold_contact_info_from_nypd')
+            ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+      },
+    );
+    clearTimeout(this.withholdHighlightTimeout);
+    this.withholdHighlightTimeout = setTimeout(() => {
+      this.setState({ isWithholdFieldHighlighted: false });
+    }, 3000);
+  };
+
   loadPreviousSubmissions = () => {
     if (this.state.isPreviousSubmissionsLoading) {
       return;
@@ -2186,24 +2212,16 @@ class Home extends React.Component {
                   className={homeStyles['withhold-notice-banner']}
                 >
                   <span>
-                    <span role="img" aria-label="privacy">
-                      🙈
-                    </span>{' '}
-                    New: you can keep the NYPD from calling or emailing you
-                    about your report.
+                    Getting unwanted phone calls after making submissions? Now
+                    you can stop sending your number and email to the cops!
                   </span>
                   <span className={homeStyles['user-actions']}>
                     <button
                       type="button"
                       className={homeStyles['status-bar-btn-primary']}
-                      onClick={() =>
-                        this.setState({
-                          isEditProfileOpen: true,
-                          isPreferencesOpen: false,
-                        })
-                      }
+                      onClick={this.showWithholdField}
                     >
-                      Withhold my contact info
+                      Show me how
                     </button>
                     <button
                       type="button"
@@ -2284,7 +2302,14 @@ class Home extends React.Component {
                     to be publicly displayed
                   </label>
 
-                  <label htmlFor="withhold_contact_info_from_nypd">
+                  <label
+                    htmlFor="withhold_contact_info_from_nypd"
+                    className={
+                      this.state.isWithholdFieldHighlighted
+                        ? homeStyles['withhold-field-highlight']
+                        : undefined
+                    }
+                  >
                     <input
                       id="withhold_contact_info_from_nypd"
                       type="checkbox"

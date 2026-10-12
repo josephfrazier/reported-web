@@ -139,6 +139,17 @@ input[type='search']::-webkit-search-cancel-button {
   border: 1px solid #b6d4fe;
 }
 
+.withhold-field-highlight {
+  animation: withhold-flash 1s ease-in-out 3;
+}
+
+@keyframes withhold-flash {
+  50% {
+    background: #ffe58f;
+    box-shadow: 0 0 0 3px #ffe58f;
+  }
+}
+
 .user-greeting {
   font-weight: 500;
   font-size: 1rem;

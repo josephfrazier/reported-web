@@ -86,14 +86,7 @@ exports[`Home hides form fields when logged in with no photos uploaded 1`] = `
         role="alert"
       >
         <span>
-          <span
-            aria-label="privacy"
-            role="img"
-          >
-            🙈
-          </span>
-           
-          New: you can keep the NYPD from calling or emailing you about your report.
+          Getting unwanted phone calls after making submissions? Now you can stop sending your number and email to the cops!
         </span>
         <span
           className="user-actions"
@@ -103,7 +96,7 @@ exports[`Home hides form fields when logged in with no photos uploaded 1`] = `
             onClick={[Function]}
             type="button"
           >
-            Withhold my contact info
+            Show me how
           </button>
           <button
             className="status-bar-btn"
@@ -474,14 +467,7 @@ exports[`Home renders Edit Profile UI 1`] = `
         role="alert"
       >
         <span>
-          <span
-            aria-label="privacy"
-            role="img"
-          >
-            🙈
-          </span>
-           
-          New: you can keep the NYPD from calling or emailing you about your report.
+          Getting unwanted phone calls after making submissions? Now you can stop sending your number and email to the cops!
         </span>
         <span
           className="user-actions"
@@ -491,7 +477,7 @@ exports[`Home renders Edit Profile UI 1`] = `
             onClick={[Function]}
             type="button"
           >
-            Withhold my contact info
+            Show me how
           </button>
           <button
             className="status-bar-btn"
@@ -995,14 +981,7 @@ exports[`Home renders Preferences UI 1`] = `
         role="alert"
       >
         <span>
-          <span
-            aria-label="privacy"
-            role="img"
-          >
-            🙈
-          </span>
-           
-          New: you can keep the NYPD from calling or emailing you about your report.
+          Getting unwanted phone calls after making submissions? Now you can stop sending your number and email to the cops!
         </span>
         <span
           className="user-actions"
@@ -1012,7 +991,7 @@ exports[`Home renders Preferences UI 1`] = `
             onClick={[Function]}
             type="button"
           >
-            Withhold my contact info
+            Show me how
           </button>
           <button
             className="status-bar-btn"
@@ -1624,14 +1603,7 @@ exports[`Home renders submission form and Previous Submissions when logged in wi
         role="alert"
       >
         <span>
-          <span
-            aria-label="privacy"
-            role="img"
-          >
-            🙈
-          </span>
-           
-          New: you can keep the NYPD from calling or emailing you about your report.
+          Getting unwanted phone calls after making submissions? Now you can stop sending your number and email to the cops!
         </span>
         <span
           className="user-actions"
@@ -1641,7 +1613,7 @@ exports[`Home renders submission form and Previous Submissions when logged in wi
             onClick={[Function]}
             type="button"
           >
-            Withhold my contact info
+            Show me how
           </button>
           <button
             className="status-bar-btn"
@@ -2313,14 +2285,7 @@ exports[`Home renders with allPlateResults entry missing plate and photos 1`] = 
         role="alert"
       >
         <span>
-          <span
-            aria-label="privacy"
-            role="img"
-          >
-            🙈
-          </span>
-           
-          New: you can keep the NYPD from calling or emailing you about your report.
+          Getting unwanted phone calls after making submissions? Now you can stop sending your number and email to the cops!
         </span>
         <span
           className="user-actions"
@@ -2330,7 +2295,7 @@ exports[`Home renders with allPlateResults entry missing plate and photos 1`] = 
             onClick={[Function]}
             type="button"
           >
-            Withhold my contact info
+            Show me how
           </button>
           <button
             className="status-bar-btn"
@@ -3002,14 +2967,7 @@ exports[`Home renders with undefined allPlateResults and photos 1`] = `
         role="alert"
       >
         <span>
-          <span
-            aria-label="privacy"
-            role="img"
-          >
-            🙈
-          </span>
-           
-          New: you can keep the NYPD from calling or emailing you about your report.
+          Getting unwanted phone calls after making submissions? Now you can stop sending your number and email to the cops!
         </span>
         <span
           className="user-actions"
@@ -3019,7 +2977,7 @@ exports[`Home renders with undefined allPlateResults and photos 1`] = `
             onClick={[Function]}
             type="button"
           >
-            Withhold my contact info
+            Show me how
           </button>
           <button
             className="status-bar-btn"

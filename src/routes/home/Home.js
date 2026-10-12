@@ -34,7 +34,6 @@ import pEvent from 'p-event';
 import omit from 'object.omit';
 import bufferToArrayBuffer from 'buffer-to-arraybuffer';
 import { serialize } from 'object-to-formdata';
-import usStateNames from 'datasets-us-states-abbr-names';
 import fileExtension from 'file-extension';
 import diceware from 'diceware-generator';
 import wordlist from 'diceware-wordlist-en-eff';
@@ -47,6 +46,7 @@ import PolygonLookup from 'polygon-lookup';
 import CircularProgress from '@mui/material/CircularProgress';
 
 import marx from 'marx-css/css/marx.css';
+import usStateNames, { licenseStateName } from '../../usStateNames.js';
 import homeStyles from './Home.css';
 
 import PreviousSubmissionsList from '../../components/PreviousSubmissionsList.js';
@@ -71,8 +71,6 @@ import {
   removeCachedSubmission,
   writeCachedSubmissions,
 } from './submissionsCache.js';
-
-usStateNames.DC = 'District of Columbia';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyDlwm2ykA0ohTXeVepQYvkcmdjz2M2CKEI';
 
@@ -547,8 +545,8 @@ class Home extends React.Component {
           target="_blank"
           rel="noopener noreferrer"
         >
-          {plate} in {usStateNames[licenseState]}: {vehicleYear} {vehicleMake}{' '}
-          {vehicleModel} ({vehicleBody})
+          {plate} in {licenseStateName(licenseState)}: {vehicleYear}{' '}
+          {vehicleMake} {vehicleModel} ({vehicleBody})
         </a>
         <img
           src={Home.getVehicleMakeLogoUrl({ vehicleMake })}
@@ -566,7 +564,8 @@ class Home extends React.Component {
   static buildVehicleLookupErrorComponent({ plate, licenseState }) {
     return (
       <React.Fragment>
-        Could not look up make/model of {plate} in {usStateNames[licenseState]},{' '}
+        Could not look up make/model of {plate} in{' '}
+        {licenseStateName(licenseState)},{' '}
         <a
           href="https://github.com/josephfrazier/Reported-Web/issues/295"
           target="_blank"
@@ -1236,12 +1235,12 @@ class Home extends React.Component {
       vehicleInfoComponent:
         cachedVehicleInfoComponent ||
         (plate
-          ? `Looking up make/model for ${plate} in ${usStateNames[licenseState]}`
+          ? `Looking up make/model for ${plate} in ${licenseStateName(licenseState)}`
           : null),
       violationSummaryComponent:
         cachedViolationSummaryComponent ||
         (plate
-          ? `Looking up violations for ${plate} in ${usStateNames[licenseState]}`
+          ? `Looking up violations for ${plate} in ${licenseStateName(licenseState)}`
           : null),
     });
 

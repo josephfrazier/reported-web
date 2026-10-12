@@ -3018,6 +3018,73 @@ function renderedText(node) {
 }
 
 describe('license state', () => {
+  // The form only renders for a logged-in reader with a photo attached.
+  function renderForm(initialState = {}) {
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+    const homeRef = React.createRef();
+    let tree;
+    renderer.act(() => {
+      tree = renderHome({
+        initialState: {
+          email: 'test@example.com',
+          loginSuccessful: true,
+          ...initialState,
+        },
+        homeRef,
+      });
+    });
+    renderer.act(() => {
+      homeRef.current.setState({
+        attachmentData: [
+          new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }),
+        ],
+      });
+    });
+
+    return {
+      homeRef,
+      tree,
+      stateInput: tree.root.findByProps({ name: 'licenseState' }),
+      plateInput: tree.root.findByProps({ name: 'plate' }),
+      cleanup: () => {
+        renderer.act(() => tree.unmount());
+        global.URL.createObjectURL = originalCreateObjectURL;
+      },
+    };
+  }
+
+  // Regression test: a plate read whose region code would not parse reported
+  // the state as '', and the state field showed that as an empty value --
+  // "Could not look up make/model of T683780C in , click here for details".
+  // A read with nothing to say about the state reports null instead, which
+  // leaves whichever state the reader already had.
+  test('keeps the current state when a plate read has none to report', async () => {
+    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+    const { homeRef, cleanup } = renderForm();
+    const { current: home } = homeRef;
+    expect(home.state.licenseState).toBe('NY');
+
+    renderer.act(() => {
+      home.setLicensePlate({ plate: 'T683780C', licenseState: null });
+    });
+    expect(home.state.licenseState).toBe('NY');
+
+    // Clearing the field still clears it: accepting a state the list does not
+    // offer is what the field is for.
+    renderer.act(() => {
+      home.setLicensePlate({ plate: 'T683780C', licenseState: '' });
+    });
+    expect(home.state.licenseState).toBe('');
+
+    await renderer.act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 700));
+    });
+    cleanup();
+    axiosGet.mockRestore();
+  });
+
   // A plate read carries whichever region code the reader saw, and the state
   // dataset has no name for some of them -- a Canadian province, a federal
   // fleet code. The lookup messages looked the name up unguarded, so a plate
@@ -3030,24 +3097,7 @@ describe('license state', () => {
   // JSX child, which renders nothing at all.
   test('names a state the dataset has no name for by its code', async () => {
     const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
-    const originalCreateObjectURL = global.URL.createObjectURL;
-    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
-
-    const homeRef = React.createRef();
-    let tree;
-    renderer.act(() => {
-      tree = renderHome({
-        initialState: { email: 'test@example.com', loginSuccessful: true },
-        homeRef,
-      });
-    });
-    renderer.act(() => {
-      homeRef.current.setState({
-        attachmentData: [
-          new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }),
-        ],
-      });
-    });
+    const { homeRef, tree, cleanup } = renderForm();
 
     renderer.act(() => {
       homeRef.current.setLicensePlate({ plate: 'ABC123', licenseState: 'ON' });
@@ -3060,8 +3110,7 @@ describe('license state', () => {
     await renderer.act(async () => {
       await new Promise(resolve => setTimeout(resolve, 700));
     });
-    renderer.act(() => tree.unmount());
-    global.URL.createObjectURL = originalCreateObjectURL;
+    cleanup();
     axiosGet.mockRestore();
   });
 
@@ -3071,24 +3120,7 @@ describe('license state', () => {
     const axiosGet = jest
       .spyOn(axios, 'get')
       .mockRejectedValue(new Error('lookup failed'));
-    const originalCreateObjectURL = global.URL.createObjectURL;
-    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
-
-    const homeRef = React.createRef();
-    let tree;
-    renderer.act(() => {
-      tree = renderHome({
-        initialState: { email: 'test@example.com', loginSuccessful: true },
-        homeRef,
-      });
-    });
-    renderer.act(() => {
-      homeRef.current.setState({
-        attachmentData: [
-          new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }),
-        ],
-      });
-    });
+    const { homeRef, tree, cleanup } = renderForm();
 
     renderer.act(() => {
       homeRef.current.setLicensePlate({ plate: 'ABC123', licenseState: 'ON' });
@@ -3103,8 +3135,181 @@ describe('license state', () => {
     const rendered = renderedText(tree.toJSON());
     expect(rendered).toContain('Could not look up make/model of ABC123 in ON,');
 
-    renderer.act(() => tree.unmount());
-    global.URL.createObjectURL = originalCreateObjectURL;
+    cleanup();
     axiosGet.mockRestore();
+  });
+
+  // The list is US-centric, so a plate can arrive with a state it does not
+  // have, or with none at all; neither is a reason to refuse the submission.
+  test('leaves the state field optional', () => {
+    const { stateInput, cleanup } = renderForm();
+
+    expect(stateInput.props.required).toBeUndefined();
+
+    cleanup();
+  });
+
+  // LookupAPlate matches a plate together with its state, so a plate with no
+  // state is nothing it can answer. The reader is asked for the state rather
+  // than being sent on a request that could not come back with anything.
+  test('asks for the state rather than looking a plate up without one', async () => {
+    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+    const { homeRef, tree, cleanup } = renderForm();
+
+    renderer.act(() => {
+      homeRef.current.setLicensePlate({ plate: 'ABC123', licenseState: '' });
+    });
+
+    // Past the 1000ms debounce, so a lookup would have gone out by now.
+    await renderer.act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 1500));
+    });
+
+    const rendered = renderedText(tree.toJSON());
+    expect(rendered).toContain(
+      'Enter the state to look up make/model for ABC123',
+    );
+    expect(rendered).toContain(
+      'Enter the state to look up violations for ABC123',
+    );
+
+    // Neither lookup was asked for. Other requests may legitimately be in
+    // flight, so this looks for the two that would have carried the plate.
+    const lookupCalls = axiosGet.mock.calls.filter(([url]) =>
+      /getVehicleType|howsmydrivingny/.test(String(url)),
+    );
+    expect(lookupCalls).toEqual([]);
+
+    cleanup();
+    axiosGet.mockRestore();
+  });
+
+  // The other half of that guard: a plate that does have a state is still
+  // looked up.
+  test('looks a plate up once it has a state', async () => {
+    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+    const { homeRef, cleanup } = renderForm();
+
+    renderer.act(() => {
+      homeRef.current.setLicensePlate({ plate: 'ABC123', licenseState: 'NY' });
+    });
+
+    await renderer.act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 1500));
+    });
+
+    const lookupCalls = axiosGet.mock.calls.filter(([url]) =>
+      String(url).includes('/getVehicleType/'),
+    );
+    expect(lookupCalls).toHaveLength(1);
+    expect(String(lookupCalls[0][0])).toContain('/getVehicleType/ABC123/NY');
+
+    cleanup();
+    axiosGet.mockRestore();
+  });
+
+  // Regression test: the state is not part of what counts as a duplicate, so
+  // changing it says nothing about one. Every keystroke in this field used to
+  // run the check and warn, one toast per character typed.
+  test('says nothing about a prior submission for a state change alone', async () => {
+    const warn = jest.spyOn(toast, 'warn').mockImplementation(() => {});
+    // The prior submission has to fall on the day the form is reporting for,
+    // so both dates are pinned rather than left to the mocked clock.
+    const day = '2016-11-17T20:00:00';
+    const { stateInput, cleanup } = renderForm({
+      plate: 'ABC123',
+      CreateDate: day,
+      submissions: [{ license: 'ABC123', timeofreport: day }],
+    });
+
+    // Typing "CAL" a character at a time, as the field reports it.
+    for (const value of ['C', 'CA', 'CAL']) {
+      const input = createFakeInput({ value, caret: value.length });
+      renderer.act(() => {
+        stateInput.props.onChange({ target: input });
+      });
+    }
+
+    // Past the debounce, so anything scheduled would have fired by now.
+    await renderer.act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    });
+
+    expect(warn).not.toHaveBeenCalled();
+
+    cleanup();
+    warn.mockRestore();
+  });
+
+  // The other half: a plate that has just become one with an earlier
+  // submission does warn, once the typing stops rather than mid-word.
+  test('warns once when the plate becomes one already submitted', async () => {
+    const warn = jest.spyOn(toast, 'warn').mockImplementation(() => {});
+    const day = '2016-11-17T20:00:00';
+    const { plateInput, cleanup } = renderForm({
+      plate: '',
+      CreateDate: day,
+      submissions: [{ license: 'ABC123', timeofreport: day }],
+    });
+
+    // Typing "ABC123" a character at a time, as the field reports it.
+    for (const value of ['A', 'AB', 'ABC', 'ABC1', 'ABC12', 'ABC123']) {
+      const input = createFakeInput({ value, caret: value.length });
+      renderer.act(() => {
+        plateInput.props.onChange({ target: input });
+      });
+    }
+
+    // Nothing while the reader is still typing.
+    expect(warn).not.toHaveBeenCalled();
+
+    await renderer.act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    });
+
+    expect(warn).toHaveBeenCalledTimes(1);
+
+    cleanup();
+    warn.mockRestore();
+  });
+
+  // The state is held and sent as the abbreviation, so it takes whatever case
+  // it is typed in, the way the plate field does.
+  test('uppercases the state as it is typed', () => {
+    const { homeRef, stateInput, cleanup } = renderForm();
+
+    // The user replaced the whole field with "ca".
+    const input = createFakeInput({ value: 'ca', caret: 2 });
+    renderer.act(() => {
+      stateInput.props.onChange({ target: input });
+    });
+    reRenderControlledInput(input, homeRef.current.state.licenseState);
+
+    expect(homeRef.current.state.licenseState).toBe('CA');
+    expect(input.value).toBe('CA');
+
+    cleanup();
+  });
+
+  // Uppercasing inside an onChange handler is what sends the caret to the end
+  // of a controlled field, which is why this goes through the same helper the
+  // plate field uses.
+  test('keeps the caret in place when typing a letter into the middle of the state', () => {
+    const { homeRef, stateInput, cleanup } = renderForm();
+
+    // The user typed "a" between the "N" and the "Y" of "NY".
+    const input = createFakeInput({ value: 'NaY', caret: 2 });
+    renderer.act(() => {
+      stateInput.props.onChange({ target: input });
+    });
+    reRenderControlledInput(input, homeRef.current.state.licenseState);
+
+    expect(homeRef.current.state.licenseState).toBe('NAY');
+    expect(input.value).toBe('NAY');
+    // ...and the caret stays after the "A", rather than jumping to the end.
+    expect(input.selectionStart).toBe(2);
+    expect(input.selectionEnd).toBe(2);
+
+    cleanup();
   });
 });

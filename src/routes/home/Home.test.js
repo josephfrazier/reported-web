@@ -3005,6 +3005,18 @@ describe('NycAddressAutocomplete', () => {
   });
 });
 
+// The rendered tree keeps every JSX child as its own entry, so a sentence with
+// interpolations in it is not one string in there: the error message serializes
+// as "Could not look up make/model of ", "ABC123", " in", " ", "ON", ",". Join
+// the text back together before asserting on a sentence, the way a reader sees
+// it.
+function renderedText(node) {
+  if (node == null) return '';
+  if (typeof node === 'string') return node;
+  if (Array.isArray(node)) return node.map(renderedText).join('');
+  return renderedText(node.children);
+}
+
 describe('license state', () => {
   // A plate read carries whichever region code the reader saw, and the state
   // dataset has no name for some of them -- a Canadian province, a federal
@@ -3041,7 +3053,7 @@ describe('license state', () => {
       homeRef.current.setLicensePlate({ plate: 'ABC123', licenseState: 'ON' });
     });
 
-    const rendered = JSON.stringify(tree.toJSON());
+    const rendered = renderedText(tree.toJSON());
     expect(rendered).toContain('Looking up make/model for ABC123 in ON');
     expect(rendered).toContain('Looking up violations for ABC123 in ON');
 
@@ -3088,8 +3100,8 @@ describe('license state', () => {
       await new Promise(resolve => setTimeout(resolve, 1500));
     });
 
-    const rendered = JSON.stringify(tree.toJSON());
-    expect(rendered).toContain('Could not look up make/model of ABC123 in ON');
+    const rendered = renderedText(tree.toJSON());
+    expect(rendered).toContain('Could not look up make/model of ABC123 in ON,');
 
     renderer.act(() => tree.unmount());
     global.URL.createObjectURL = originalCreateObjectURL;

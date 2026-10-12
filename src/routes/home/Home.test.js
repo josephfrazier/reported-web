@@ -3004,3 +3004,79 @@ describe('NycAddressAutocomplete', () => {
     expect(controlContainer.contains(input)).toBe(false);
   });
 });
+
+describe('license state', () => {
+  // Regression test: a plate read whose region code would not parse reported
+  // the state as '', and the state field showed that as an empty value --
+  // "Could not look up make/model of T683780C in , click here for details".
+  // A read with nothing to say about the state reports null instead, which
+  // leaves whichever state the reader already had.
+  test('keeps the current state when a plate read has none to report', async () => {
+    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+    const homeRef = React.createRef();
+    let tree;
+    renderer.act(() => {
+      tree = renderHome({ homeRef });
+    });
+    const { current: home } = homeRef;
+    expect(home.state.licenseState).toBe('NY');
+
+    renderer.act(() => {
+      home.setLicensePlate({ plate: 'T683780C', licenseState: null });
+    });
+    expect(home.state.licenseState).toBe('NY');
+
+    // Clearing the field still clears it: accepting a state the list does not
+    // offer is what the field is for.
+    renderer.act(() => {
+      home.setLicensePlate({ plate: 'T683780C', licenseState: '' });
+    });
+    expect(home.state.licenseState).toBe('');
+
+    await renderer.act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 700));
+    });
+    renderer.act(() => tree.unmount());
+    axiosGet.mockRestore();
+  });
+
+  // Regression test: the dataset holds the 50 states plus DC, so a state it
+  // has no name for rendered as nothing at all in the lookup message.
+  test('shows the code for a state the dataset has no name for', async () => {
+    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+    // The form only renders for a logged-in reader with a photo attached.
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+    const homeRef = React.createRef();
+    let tree;
+    renderer.act(() => {
+      tree = renderHome({
+        initialState: { email: 'test@example.com', loginSuccessful: true },
+        homeRef,
+      });
+    });
+    renderer.act(() => {
+      homeRef.current.setState({
+        attachmentData: [
+          new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }),
+        ],
+      });
+    });
+
+    renderer.act(() => {
+      homeRef.current.setLicensePlate({ plate: 'ABC123', licenseState: 'ON' });
+    });
+
+    const rendered = JSON.stringify(tree.toJSON());
+    expect(rendered).toContain('Looking up make/model for ABC123 in ON');
+    expect(rendered).toContain('Looking up violations for ABC123 in ON');
+
+    await renderer.act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 700));
+    });
+    renderer.act(() => tree.unmount());
+    global.URL.createObjectURL = originalCreateObjectURL;
+    axiosGet.mockRestore();
+  });
+});

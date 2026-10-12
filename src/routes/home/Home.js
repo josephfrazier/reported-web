@@ -715,6 +715,27 @@ class Home extends React.Component {
     requestAnimationFrame(attemptFocus);
   }
 
+  // `setLicensePlate` runs on every keystroke -- the state field is a text
+  // input, so typing "NY" is two of them -- and a plate matching an earlier
+  // submission matches at each of them. Wait for the typing to stop before
+  // saying so, rather than stacking a toast per character. Reusing one toast
+  // id means a second pause refreshes the toast that is already up instead of
+  // adding another, the way the geosearch warning does.
+  debouncedWarnAboutPriorSubmission = debounce(
+    ({ priorCount, plate, selectedDateDay }) => {
+      const pluralReport = priorCount === 1 ? 'report' : 'reports';
+
+      Home.notifyWarning(
+        <p>
+          You have already submitted {priorCount} {pluralReport} for {plate} on{' '}
+          {selectedDateDay}, are you sure you want to submit another?
+        </p>,
+        { toastId: 'prior-submission-warning' },
+      );
+    },
+    500,
+  );
+
   constructor(props) {
     super(props);
 
@@ -1275,14 +1296,11 @@ class Home extends React.Component {
     const priorCount = priorSubmissions.length;
 
     if (priorCount > 0) {
-      const pluralReport = priorCount === 1 ? 'report' : 'reports';
-
-      Home.notifyWarning(
-        <p>
-          You have already submitted {priorCount} {pluralReport} for {plate} on{' '}
-          {selectedDateDay}, are you sure you want to submit another?
-        </p>,
-      );
+      this.debouncedWarnAboutPriorSubmission({
+        priorCount,
+        plate,
+        selectedDateDay,
+      });
     }
 
     // An empty plate (after a submission, or when the field is cleared) has

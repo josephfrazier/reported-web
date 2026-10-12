@@ -3019,7 +3019,7 @@ function renderedText(node) {
 
 describe('license state', () => {
   // The form only renders for a logged-in reader with a photo attached.
-  function renderForm() {
+  function renderForm(initialState = {}) {
     const originalCreateObjectURL = global.URL.createObjectURL;
     global.URL.createObjectURL = jest.fn(() => 'blob:mock');
 
@@ -3027,7 +3027,11 @@ describe('license state', () => {
     let tree;
     renderer.act(() => {
       tree = renderHome({
-        initialState: { email: 'test@example.com', loginSuccessful: true },
+        initialState: {
+          email: 'test@example.com',
+          loginSuccessful: true,
+          ...initialState,
+        },
         homeRef,
       });
     });
@@ -3201,6 +3205,42 @@ describe('license state', () => {
 
     cleanup();
     axiosGet.mockRestore();
+  });
+
+  // Regression test: the state field is a text input, so every keystroke runs
+  // setLicensePlate, and a plate matching an earlier submission matched on each
+  // of them -- one toast per character typed. The warning waits for the typing
+  // to stop now.
+  test('warns once about a prior submission, not once per keystroke', async () => {
+    const warn = jest.spyOn(toast, 'warn').mockImplementation(() => {});
+    // The prior submission has to fall on the day the form is reporting for,
+    // so both dates are pinned rather than left to the mocked clock.
+    const day = '2016-11-17T20:00:00';
+    const { stateInput, cleanup } = renderForm({
+      plate: 'ABC123',
+      CreateDate: day,
+      submissions: [{ license: 'ABC123', timeofreport: day }],
+    });
+
+    // Typing "CAL" a character at a time, as the field reports it.
+    for (const value of ['C', 'CA', 'CAL']) {
+      const input = createFakeInput({ value, caret: value.length });
+      renderer.act(() => {
+        stateInput.props.onChange({ target: input });
+      });
+    }
+
+    expect(warn).not.toHaveBeenCalled();
+
+    // Past the debounce, so a warning would have fired by now.
+    await renderer.act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    });
+
+    expect(warn).toHaveBeenCalledTimes(1);
+
+    cleanup();
+    warn.mockRestore();
   });
 
   // The state is held and sent as the abbreviation, so it takes whatever case

@@ -560,7 +560,7 @@ exports[`Home renders Edit Profile UI 1`] = `
             htmlFor="can_be_shared_publicly"
           >
             <input
-              checked={false}
+              checked={true}
               id="can_be_shared_publicly"
               name="can_be_shared_publicly"
               onChange={[Function]}
@@ -4355,7 +4355,7 @@ exports[`Home shows the email-updates checkbox only while withholding, and sets 
             htmlFor="can_be_shared_publicly"
           >
             <input
-              checked={false}
+              checked={true}
               id="can_be_shared_publicly"
               name="can_be_shared_publicly"
               onChange={[Function]}

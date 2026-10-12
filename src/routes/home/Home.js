@@ -1238,19 +1238,25 @@ class Home extends React.Component {
         violationsResponse: cachedViolationsResponse,
       });
 
+    // LookupAPlate matches a plate together with its state, so a plate with
+    // no state is not something it can answer. Ask for the state instead of
+    // sending a request that cannot come back with anything.
+    const needsLicenseState = Boolean(plate && !licenseState);
+    const vehicleInfoMessage = needsLicenseState
+      ? `Enter the state to look up make/model for ${plate}`
+      : `Looking up make/model for ${plate} in ${licenseStateName(licenseState)}`;
+    const violationSummaryMessage = needsLicenseState
+      ? `Enter the state to look up violations for ${plate}`
+      : `Looking up violations for ${plate} in ${licenseStateName(licenseState)}`;
+
     this.setState({
       plate,
       licenseState,
       vehicleInfoComponent:
-        cachedVehicleInfoComponent ||
-        (plate
-          ? `Looking up make/model for ${plate} in ${licenseStateName(licenseState)}`
-          : null),
+        cachedVehicleInfoComponent || (plate ? vehicleInfoMessage : null),
       violationSummaryComponent:
         cachedViolationSummaryComponent ||
-        (plate
-          ? `Looking up violations for ${plate} in ${licenseStateName(licenseState)}`
-          : null),
+        (plate ? violationSummaryMessage : null),
     });
 
     const selectedDate = new Date(this.state.CreateDate);
@@ -1281,8 +1287,10 @@ class Home extends React.Component {
 
     // An empty plate (after a submission, or when the field is cleared) has
     // nothing to look up: the request would be /getVehicleType//NY, which the
-    // server answers with a 404.
-    if (plate && !cachedVehicleInfoComponent) {
+    // server answers with a 404. Neither has a plate with no state, for the
+    // same reason: the lookup matches on both, and the message above already
+    // asks for the missing half.
+    if (plate && licenseState && !cachedVehicleInfoComponent) {
       debouncedGetVehicleType({
         plate,
         licenseState,
@@ -1353,7 +1361,7 @@ class Home extends React.Component {
         });
     }
 
-    if (plate && !cachedViolationSummaryComponent) {
+    if (plate && licenseState && !cachedViolationSummaryComponent) {
       debouncedGetViolations({
         plate,
         licenseState,

@@ -3144,6 +3144,65 @@ describe('license state', () => {
     cleanup();
   });
 
+  // LookupAPlate matches a plate together with its state, so a plate with no
+  // state is nothing it can answer. The reader is asked for the state rather
+  // than being sent on a request that could not come back with anything.
+  test('asks for the state rather than looking a plate up without one', async () => {
+    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+    const { homeRef, tree, cleanup } = renderForm();
+
+    renderer.act(() => {
+      homeRef.current.setLicensePlate({ plate: 'ABC123', licenseState: '' });
+    });
+
+    // Past the 1000ms debounce, so a lookup would have gone out by now.
+    await renderer.act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 1500));
+    });
+
+    const rendered = renderedText(tree.toJSON());
+    expect(rendered).toContain(
+      'Enter the state to look up make/model for ABC123',
+    );
+    expect(rendered).toContain(
+      'Enter the state to look up violations for ABC123',
+    );
+
+    // Neither lookup was asked for. Other requests may legitimately be in
+    // flight, so this looks for the two that would have carried the plate.
+    const lookupCalls = axiosGet.mock.calls.filter(([url]) =>
+      /getVehicleType|howsmydrivingny/.test(String(url)),
+    );
+    expect(lookupCalls).toEqual([]);
+
+    cleanup();
+    axiosGet.mockRestore();
+  });
+
+  // The other half of that guard: a plate that does have a state is still
+  // looked up.
+  test('looks a plate up once it has a state', async () => {
+    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+    const { homeRef, cleanup } = renderForm();
+
+    renderer.act(() => {
+      homeRef.current.setLicensePlate({ plate: 'ABC123', licenseState: 'NY' });
+    });
+
+    await renderer.act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 1500));
+    });
+
+    const lookupCalls = axiosGet.mock.calls.filter(([url]) =>
+      String(url).includes('/getVehicleType/'),
+    );
+    expect(lookupCalls).toHaveLength(1);
+    expect(String(lookupCalls[0][0])).toContain('/getVehicleType/ABC123/NY');
+
+    cleanup();
+    axiosGet.mockRestore();
+  });
+
   // The state is held and sent as the abbreviation, so it takes whatever case
   // it is typed in, the way the plate field does.
   test('uppercases the state as it is typed', () => {

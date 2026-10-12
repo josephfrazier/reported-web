@@ -49,10 +49,6 @@
     "jest-mock-now",
     "timezone-mock",
 
-    // Deliberately kept out of package.json -- `jest.globalSetup.js` installs
-    // it on demand, so that Dependabot does not file against its advisories.
-    "parse-server",
-
     // Jest's own package, pinned by jest itself. The resolver test reads the
     // copy this tree hoists to check the cache-clearing interface that
     // `tools/lib/jestResolver.js` reaches for; declaring it here would let a
@@ -61,6 +57,6 @@
     "jest-resolve",
   ],
 
-  // Started by hand, from the same kind of on-demand install.
-  "ignoreBinaries": ["mongodb-runner", "parse-server", "parse-dashboard"],
+  // Started by hand, after installing them on demand.
+  "ignoreBinaries": ["mongodb-runner", "parse-dashboard"],
 }

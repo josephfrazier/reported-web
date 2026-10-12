@@ -162,7 +162,8 @@ class SubmissionDetails extends React.Component {
         }}
       >
         <summary>
-          {medallionNo || license} ({licenseState}) {typeofcomplaint} near{' '}
+          {medallionNo || license}
+          {licenseState ? ` (${licenseState})` : ''} {typeofcomplaint} near{' '}
           {/* eslint-disable-next-line camelcase */}
           {(loc1_address || '').split(',')[0]} on {humanTimeString}
           {tlcCaseId && (

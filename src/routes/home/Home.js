@@ -74,6 +74,15 @@ import {
 
 usStateNames.DC = 'District of Columbia';
 
+// The dataset holds the 50 states, and DC is added above. A plate read does
+// not go through that list: extractPlate takes the region code off whatever
+// the reader saw, so a Canadian province or a federal fleet code has no name
+// here. Fall back to the code itself rather than dropping the name and
+// leaving the sentence half-written.
+function licenseStateName(licenseState) {
+  return usStateNames[licenseState] ?? licenseState;
+}
+
 const GOOGLE_MAPS_API_KEY = 'AIzaSyDlwm2ykA0ohTXeVepQYvkcmdjz2M2CKEI';
 
 // The value is an object; the serialization (and the cookie's attributes)
@@ -547,8 +556,8 @@ class Home extends React.Component {
           target="_blank"
           rel="noopener noreferrer"
         >
-          {plate} in {usStateNames[licenseState]}: {vehicleYear} {vehicleMake}{' '}
-          {vehicleModel} ({vehicleBody})
+          {plate} in {licenseStateName(licenseState)}: {vehicleYear}{' '}
+          {vehicleMake} {vehicleModel} ({vehicleBody})
         </a>
         <img
           src={Home.getVehicleMakeLogoUrl({ vehicleMake })}
@@ -566,7 +575,8 @@ class Home extends React.Component {
   static buildVehicleLookupErrorComponent({ plate, licenseState }) {
     return (
       <React.Fragment>
-        Could not look up make/model of {plate} in {usStateNames[licenseState]},{' '}
+        Could not look up make/model of {plate} in{' '}
+        {licenseStateName(licenseState)},{' '}
         <a
           href="https://github.com/josephfrazier/Reported-Web/issues/295"
           target="_blank"
@@ -1236,12 +1246,12 @@ class Home extends React.Component {
       vehicleInfoComponent:
         cachedVehicleInfoComponent ||
         (plate
-          ? `Looking up make/model for ${plate} in ${usStateNames[licenseState]}`
+          ? `Looking up make/model for ${plate} in ${licenseStateName(licenseState)}`
           : null),
       violationSummaryComponent:
         cachedViolationSummaryComponent ||
         (plate
-          ? `Looking up violations for ${plate} in ${usStateNames[licenseState]}`
+          ? `Looking up violations for ${plate} in ${licenseStateName(licenseState)}`
           : null),
     });
 

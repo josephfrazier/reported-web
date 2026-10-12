@@ -3,10 +3,10 @@
  * pages.
  *
  * The previous `start.yml` check only grepped the startup log for
- * `Finished 'start' after` — browser-sync prints that line even when
- * its middleware stack is broken and every request 404s (see the
- * revert of #936/#942, where a forced `immutable@4` resolution made
- * browser-sync drop the user middleware). This script makes real
+ * `Finished 'start' after` — that line gets printed even when the
+ * middleware stack is broken and every request 404s (see the revert of
+ * #936/#942, where a forced `immutable@4` resolution made Browsersync
+ * drop the user middleware it was wrapping). This script makes real
  * HTTP requests instead.
  *
  * The probes are network-independent: they only assert status codes
@@ -52,7 +52,7 @@ function runChecks(checks) {
 
 const run = async () => {
   // Same command as the `start` npm script, minus `--inspect` and plus
-  // `--silent` so browser-sync doesn't try to open a browser.
+  // `--silent` so the server doesn't try to open a browser.
   const child = spawn(
     'node',
     [
@@ -133,10 +133,10 @@ const run = async () => {
         detail: `status ${home.status}, body starts: ${home.body.slice(0, 80)}`,
       },
       {
-        // Served only by the user `express.static` middleware from
-        // `tools/start.js` — browser-sync's own static server serves
-        // from the vestigial `src/server.js` baseDir, so this 404s
-        // whenever the user middleware stack is dropped.
+        // Served only by the `express.static` middleware from
+        // `tools/start.js` (the SSR catch-all below it answers every
+        // other path), so this 404s whenever that middleware stack is
+        // dropped or not reached.
         name: 'GET /favicon.ico is served by the user middleware',
         ok: favicon.status === 200,
         detail: `status ${favicon.status}`,

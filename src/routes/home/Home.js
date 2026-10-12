@@ -927,6 +927,7 @@ class Home extends React.Component {
       reportDescription: '',
       can_be_shared_publicly: false,
       withhold_contact_info_from_nypd: false,
+      receive_nypd_sr_updates_by_email: false,
       latitude: defaultLatitude,
       longitude: defaultLongitude,
       coordsAreInNyc: true,
@@ -941,6 +942,7 @@ class Home extends React.Component {
       isLoadPreviousSubmissionsEnabled: false,
       isMapOpen: false,
       isPreviousSubmissionsOpen: false,
+      hasSeenWithholdNotice: false,
       loginSuccessful: false,
       isSemiAutomaticMode: false,
     };
@@ -983,6 +985,7 @@ class Home extends React.Component {
       authModalTab: 'login',
       isEditProfileOpen: false,
       isPreferencesOpen: false,
+      isWithholdFieldHighlighted: false,
       authError: null,
     };
 
@@ -2572,12 +2575,47 @@ class Home extends React.Component {
           : target.value;
     const { name } = target;
 
+    const stateChange = { [name]: value };
+    // Checking the withhold box counts as having seen the notice, so it
+    // stays gone if the box is later unchecked.
+    if (name === 'withhold_contact_info_from_nypd' && value === true) {
+      stateChange.hasSeenWithholdNotice = true;
+    }
+
+    this.setState(stateChange, () =>
+      debouncedSavePersistentStateToCookie(this),
+    );
+  };
+
+  dismissWithholdNotice = () => {
+    this.setState({ hasSeenWithholdNotice: true }, () =>
+      debouncedSavePersistentStateToCookie(this),
+    );
+  };
+
+  // Opens Edit Profile and flash-highlights the withhold field so the
+  // notice's "Show me how" button points at it.
+  showWithholdField = () => {
     this.setState(
       {
-        [name]: value,
+        isEditProfileOpen: true,
+        isPreferencesOpen: false,
+        isWithholdFieldHighlighted: true,
       },
-      () => debouncedSavePersistentStateToCookie(this),
+      () => {
+        // The flash should be seen: on narrow screens the checkbox can be
+        // below the fold, so bring it into view once the panel is open.
+        requestAnimationFrame(() => {
+          document
+            .getElementById('withhold_contact_info_from_nypd')
+            ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+      },
     );
+    clearTimeout(this.withholdHighlightTimeout);
+    this.withholdHighlightTimeout = setTimeout(() => {
+      this.setState({ isWithholdFieldHighlighted: false });
+    }, 3000);
   };
 
   loadPreviousSubmissions = () => {
@@ -2743,6 +2781,7 @@ class Home extends React.Component {
         LastName: '',
         Phone: '',
         testify: false,
+        hasSeenWithholdNotice: false,
         submissions: [],
         isEditProfileOpen: false,
         isPreferencesOpen: false,
@@ -3184,7 +3223,7 @@ class Home extends React.Component {
                         }))
                       }
                     >
-                      {this.state.isPreferencesOpen ? 'Cancel' : 'Preferences'}
+                      {this.state.isPreferencesOpen ? 'Done' : 'Preferences'}
                     </button>
                     <button
                       type="button"
@@ -3214,6 +3253,39 @@ class Home extends React.Component {
                 )}
               </div>
             </div>
+
+            {/* One-time notice about the withhold checkbox, until dismissed
+                or the box is checked. Not sticky: the non-production banner
+                above owns the sticky spot. */}
+            {this.isLoggedIn() &&
+              !this.state.withhold_contact_info_from_nypd &&
+              !this.state.hasSeenWithholdNotice && (
+                <div
+                  role="alert"
+                  className={homeStyles['withhold-notice-banner']}
+                >
+                  <span>
+                    Getting unwanted phone calls after making submissions? Now
+                    you can stop sending your number and email to the cops!
+                  </span>
+                  <span className={homeStyles['user-actions']}>
+                    <button
+                      type="button"
+                      className={homeStyles['status-bar-btn-primary']}
+                      onClick={this.showWithholdField}
+                    >
+                      Show me how
+                    </button>
+                    <button
+                      type="button"
+                      className={homeStyles['status-bar-btn']}
+                      onClick={this.dismissWithholdNotice}
+                    >
+                      Dismiss
+                    </button>
+                  </span>
+                </div>
+              )}
 
             {/* Edit Profile (shown inline when toggled) */}
             {this.state.isEditProfileOpen && (
@@ -3283,7 +3355,14 @@ class Home extends React.Component {
                     to be publicly displayed
                   </label>
 
-                  <label htmlFor="withhold_contact_info_from_nypd">
+                  <label
+                    htmlFor="withhold_contact_info_from_nypd"
+                    className={
+                      this.state.isWithholdFieldHighlighted
+                        ? homeStyles['withhold-field-highlight']
+                        : undefined
+                    }
+                  >
                     <input
                       id="withhold_contact_info_from_nypd"
                       type="checkbox"
@@ -3298,6 +3377,31 @@ class Home extends React.Component {
                       about your service requests.
                     </small>
                   </label>
+
+                  {/* Email updates only make sense while contact info is
+                      withheld, so the checkbox is only shown then. The flag
+                      stays in state (and the cookie) either way, matching the
+                      other per-submission checkboxes. */}
+                  {this.state.withhold_contact_info_from_nypd && (
+                    <div style={{ marginLeft: '1.5em' }}>
+                      <label htmlFor="receive_nypd_sr_updates_by_email">
+                        <input
+                          id="receive_nypd_sr_updates_by_email"
+                          type="checkbox"
+                          checked={this.state.receive_nypd_sr_updates_by_email}
+                          name="receive_nypd_sr_updates_by_email"
+                          onChange={this.handleInputChange}
+                        />{' '}
+                        But still email me status updates about my NYPD service
+                        requests
+                        <br />
+                        <small>
+                          Your email will be shared with 311 for your requests;
+                          your name and phone stay withheld.
+                        </small>
+                      </label>
+                    </div>
+                  )}
 
                   <button
                     type="submit"

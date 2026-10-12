@@ -1874,6 +1874,7 @@ class Home extends React.Component {
         LastName,
         Phone,
         testify,
+        can_be_shared_publicly: canBeSharedPublicly,
         withhold_contact_info_from_nypd: withholdContactInfoFromNypd,
       } = data;
       this.setState(
@@ -1882,9 +1883,14 @@ class Home extends React.Component {
           LastName: LastName || state.LastName,
           Phone: Phone || state.Phone,
           testify: typeof testify === 'boolean' ? testify : state.testify,
-          // The server sends the user's stored flag when it was saved
-          // (sparse), so a present boolean wins over the cookie; an absent
-          // one falls back to the cookie value.
+          // The server sends the user's stored flag when it was saved,
+          // so a present boolean wins over the cookie; an absent one
+          // falls back to the cookie value.
+          can_be_shared_publicly:
+            typeof canBeSharedPublicly === 'boolean'
+              ? canBeSharedPublicly
+              : state.can_be_shared_publicly,
+          // Sparse on the user, so absent means the cookie value.
           withhold_contact_info_from_nypd:
             typeof withholdContactInfoFromNypd === 'boolean'
               ? withholdContactInfoFromNypd
@@ -1957,6 +1963,7 @@ class Home extends React.Component {
       LastName,
       Phone,
       testify,
+      can_be_shared_publicly: canBeSharedPublicly,
       withhold_contact_info_from_nypd: withholdContactInfoFromNypd,
     } = this.state;
     return {
@@ -1965,6 +1972,7 @@ class Home extends React.Component {
       LastName,
       Phone,
       testify,
+      can_be_shared_publicly: canBeSharedPublicly,
       withhold_contact_info_from_nypd: withholdContactInfoFromNypd,
     };
   };

@@ -69,6 +69,7 @@ export async function updateUserProfile({
   LastName,
   Phone,
   testify,
+  can_be_shared_publicly: canBeSharedPublicly, // eslint-disable-line camelcase
   withhold_contact_info_from_nypd, // eslint-disable-line camelcase
 }) {
   // make sure all required fields are present
@@ -88,6 +89,11 @@ export async function updateUserProfile({
     LastName,
     Phone,
     testify,
+    // Unlike withhold_contact_info_from_nypd below, this one is always
+    // stored, like testify: the native app defaults it to true when the
+    // user record lacks it, so leaving false implicit would make the two
+    // apps disagree about the same account.
+    can_be_shared_publicly: canBeSharedPublicly,
   });
 
   // Sparse on the user, like on submissions: only stored when true.

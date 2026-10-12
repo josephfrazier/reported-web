@@ -48,6 +48,7 @@ const createSubmission = async ({
     LastName,
     Phone,
     testify,
+    can_be_shared_publicly, // eslint-disable-line camelcase
     withhold_contact_info_from_nypd, // eslint-disable-line camelcase
   });
 

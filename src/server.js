@@ -227,6 +227,7 @@ app.use('/api/logIn', (req, res) => {
         LastName: user.get('LastName'),
         Phone: user.get('Phone'),
         testify: user.get('testify'),
+        can_be_shared_publicly: user.get('can_be_shared_publicly'),
         // undefined when absent, thanks to the sparse contract on the user
         withhold_contact_info_from_nypd: user.get(
           'withhold_contact_info_from_nypd',
@@ -296,6 +297,7 @@ app.use('/saveUser', (req, res) => {
         LastName: req.body.LastName,
         Phone: req.body.Phone,
         testify: req.body.testify,
+        can_be_shared_publicly: req.body.can_be_shared_publicly,
         withhold_contact_info_from_nypd:
           req.body.withhold_contact_info_from_nypd,
       }),

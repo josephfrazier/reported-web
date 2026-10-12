@@ -118,6 +118,7 @@ describe('users', () => {
       LastName: 'User',
       Phone: '5551234567',
       testify: true,
+      can_be_shared_publicly: false,
     });
 
     expect(saved.id).toBe(verifiedUser.id);
@@ -127,6 +128,9 @@ describe('users', () => {
       LastName: 'User',
       Phone: '5551234567',
       testify: true,
+      // Always stored, like testify: the native app reads a default of
+      // true when the field is absent, so false must be explicit.
+      can_be_shared_publicly: false,
     });
   });
 

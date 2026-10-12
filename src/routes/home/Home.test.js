@@ -2754,6 +2754,7 @@ describe('Home', () => {
               LastName: 'User',
               Phone: '5551234567',
               testify: true,
+              can_be_shared_publicly: true,
               withhold_contact_info_from_nypd: true,
             },
           });
@@ -2769,6 +2770,7 @@ describe('Home', () => {
           password: 'test-password',
           loginSuccessful: true,
           // The cookie disagrees with the DB, which must win.
+          can_be_shared_publicly: false,
           withhold_contact_info_from_nypd: false,
         },
       });
@@ -2777,6 +2779,7 @@ describe('Home', () => {
         await homeRef.current.handleLogIn();
       });
 
+      expect(homeRef.current.state.can_be_shared_publicly).toBe(true);
       expect(homeRef.current.state.withhold_contact_info_from_nypd).toBe(true);
 
       tree.unmount();
@@ -2806,6 +2809,7 @@ describe('Home', () => {
           email: 'test@example.com',
           password: 'test-password',
           loginSuccessful: true,
+          can_be_shared_publicly: false,
           withhold_contact_info_from_nypd: true,
         },
       });
@@ -2814,6 +2818,7 @@ describe('Home', () => {
         await homeRef.current.handleLogIn();
       });
 
+      expect(homeRef.current.state.can_be_shared_publicly).toBe(false);
       expect(homeRef.current.state.withhold_contact_info_from_nypd).toBe(true);
 
       tree.unmount();
@@ -2860,7 +2865,10 @@ describe('Home', () => {
         initialState: { email: 'test@example.com', loginSuccessful: true },
       });
       renderer.act(() => {
-        homeRef.current.setState({ withhold_contact_info_from_nypd: true });
+        homeRef.current.setState({
+          can_be_shared_publicly: true,
+          withhold_contact_info_from_nypd: true,
+        });
       });
 
       await renderer.act(async () => {
@@ -2871,6 +2879,7 @@ describe('Home', () => {
         '/saveUser',
         expect.objectContaining({
           testify: false,
+          can_be_shared_publicly: true,
           withhold_contact_info_from_nypd: true,
         }),
       );

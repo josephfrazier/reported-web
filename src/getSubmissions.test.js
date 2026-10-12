@@ -7,17 +7,9 @@
  * query semantics are exercised instead of a fake.
  */
 
-import net from 'net';
-
 import Parse from 'parse/node';
 import getSubmissions from './getSubmissions.js';
-
-const { MongoMemoryServer } = require('mongodb-memory-server');
-const { ParseServer } = require('parse-server');
-
-// parse-server skips its cloud/URL verification (and test-unfriendly process
-// listeners) when TESTING is set. Must be set before it is constructed.
-process.env.TESTING = '1';
+import startRealParseServer from './testUtils/realParseServer.js';
 
 jest.setTimeout(30000);
 
@@ -28,8 +20,7 @@ const authenticate = jest.fn(() =>
 );
 
 describe('getSubmissions', () => {
-  let mongo;
-  let parseServer;
+  let stopParseServer;
   let labelsById;
   let emailAccount;
   let emailOnlySubmission;
@@ -37,58 +28,17 @@ describe('getSubmissions', () => {
   let pointerOnlySubmission;
 
   beforeAll(async () => {
-    // Note: the binary must be downloaded once (mongodb-memory-server caches
-    // it), and on Ubuntu 24+ mongod 4.4 needs libssl1.1 installed.
-    mongo = await MongoMemoryServer.create({ binary: { version: '4.4.14' } });
-
-    // create() can resolve a moment before mongod accepts connections;
-    // parse-server connects to it in its constructor, so wait until the
-    // port actually accepts a TCP connection.
-    const { port } = new URL(mongo.getUri());
-    const attemptConnection = (resolve, reject, attempts) => {
-      const socket = net.connect(Number(port), '127.0.0.1');
-      socket.once('connect', () => {
-        socket.destroy();
-        resolve();
-      });
-      socket.once('error', () => {
-        socket.destroy();
-        if (attempts < 100) {
-          setTimeout(
-            () => attemptConnection(resolve, reject, attempts + 1),
-            50,
-          );
-        } else {
-          reject(new Error('mongod never accepted connections'));
-        }
-      });
-    };
-    await new Promise((resolve, reject) => {
-      attemptConnection(resolve, reject, 0);
-    });
-
-    // startApp() resolves once the HTTP server is listening, so no separate
-    // wait for the 'listening' event is needed.
-    parseServer = await ParseServer.startApp({
-      databaseURI: mongo.getUri(),
-      appId: 'test-app',
-      masterKey: 'test-master',
-      // Only used as a placeholder; the client points at the real port.
-      serverURL: 'http://localhost/parse',
-      mountPath: '/parse',
-      port: 0,
-      verbose: false,
-      // parse-server 5+ defaults client class creation to off. These tests
-      // save `submission`/`tasks` objects as an ordinary client, and in
-      // production both classes already exist in the schema.
-      allowClientClassCreation: true,
-    });
-    // parse-server initializes its own nested parse SDK; ours needs it too.
     // getSubmissions() lists with the master key, because submissions made by
     // the mobile clients belong to a different Parse user with the same email
     // address (see the test's iOS-style entries below), so it is passed here.
-    Parse.initialize('test-app', undefined, 'test-master');
-    Parse.serverURL = `http://localhost:${parseServer.server.address().port}/parse`;
+    const { stop } = await startRealParseServer({
+      masterKey: 'test-master',
+      // parse-server 5+ defaults client class creation to off. These tests
+      // save `submission`/`tasks` objects as an ordinary client, and in
+      // production both classes already exist in the schema.
+      serverOptions: { allowClientClassCreation: true },
+    });
+    stopParseServer = stop;
 
     // Create the newest-photo submissions FIRST and the oldest-photo ones
     // LAST, so photo time is anti-correlated with createdAt (which the server
@@ -151,11 +101,7 @@ describe('getSubmissions', () => {
     await pointerOnlySubmission.save();
   });
 
-  afterAll(async () => {
-    // handleShutdown() closes the HTTP server itself.
-    await parseServer.handleShutdown();
-    await mongo.stop();
-  });
+  afterAll(() => stopParseServer());
 
   test('sorts by photo time, breaking ties by when they were submitted', async () => {
     const results = await getSubmissions({

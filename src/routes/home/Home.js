@@ -2340,10 +2340,11 @@ class Home extends React.Component {
                           name="receive_nypd_sr_updates_by_email"
                           onChange={this.handleInputChange}
                         />{' '}
-                        Email me updates about my NYPD service request
+                        But still email me status updates about my NYPD service
+                        requests
                         <br />
                         <small>
-                          Your email will be shared with 311 for this request;
+                          Your email will be shared with 311 for your requests;
                           your name and phone stay withheld.
                         </small>
                       </label>

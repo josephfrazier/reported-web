@@ -3028,7 +3028,9 @@ class Home extends React.Component {
                               onChange={event => {
                                 this.setLicensePlate({
                                   plate: this.state.plate,
-                                  licenseState: event.target.value,
+                                  licenseState: upperCaseInputValueInPlace(
+                                    event.target,
+                                  ),
                                 });
                               }}
                             />

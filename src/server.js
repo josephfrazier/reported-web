@@ -684,7 +684,8 @@ app.get('*', async (req, res, next) => {
     // Decide whether this page is logged in, and migrate a legacy visitor
     // whose state cookie still holds their password (see session.js). Never
     // rejects: the page renders even if Parse is unreachable.
-    const { sessionPresent, homeState } = await resolveSsrSession({ req, res });
+    const { sessionPresent, homeState, sessionUserFields } =
+      await resolveSsrSession({ req, res });
     if (homeState) {
       // resolveSsrSession may have rewritten the state cookie (stripping the
       // password); the route must render the rewritten state, not the
@@ -704,6 +705,7 @@ app.get('*', async (req, res, next) => {
       reviewAppLabel,
       cookies,
       sessionPresent,
+      sessionUserFields,
       // The twins below are wild, be careful!
       pathname: req.path,
       query: req.query,

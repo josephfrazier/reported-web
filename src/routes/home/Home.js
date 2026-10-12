@@ -3016,7 +3016,6 @@ class Home extends React.Component {
                               ))}
                             </datalist>
                             <input
-                              required
                               type="search"
                               style={{
                                 marginTop: '0.5rem',

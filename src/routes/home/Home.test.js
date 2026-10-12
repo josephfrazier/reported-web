@@ -3134,6 +3134,16 @@ describe('license state', () => {
     axiosGet.mockRestore();
   });
 
+  // The list is US-centric, so a plate can arrive with a state it does not
+  // have, or with none at all; neither is a reason to refuse the submission.
+  test('leaves the state field optional', () => {
+    const { stateInput, cleanup } = renderForm();
+
+    expect(stateInput.props.required).toBeUndefined();
+
+    cleanup();
+  });
+
   // The state is held and sent as the abbreviation, so it takes whatever case
   // it is typed in, the way the plate field does.
   test('uppercases the state as it is typed', () => {

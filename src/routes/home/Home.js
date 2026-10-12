@@ -752,7 +752,7 @@ class Home extends React.Component {
       licenseState: 'NY',
       typeofcomplaint: typeofcomplaintValues[0],
       reportDescription: '',
-      can_be_shared_publicly: false,
+      can_be_shared_publicly: true,
       withhold_contact_info_from_nypd: false,
       receive_nypd_sr_updates_by_email: false,
       latitude: defaultLatitude,

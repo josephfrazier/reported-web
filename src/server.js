@@ -232,6 +232,9 @@ app.use('/api/logIn', (req, res) => {
         withhold_contact_info_from_nypd: user.get(
           'withhold_contact_info_from_nypd',
         ),
+        receive_nypd_sr_updates_by_email: user.get(
+          'receive_nypd_sr_updates_by_email',
+        ),
       });
     })
     .catch(handlePromiseRejection(res));
@@ -300,6 +303,8 @@ app.use('/saveUser', (req, res) => {
         can_be_shared_publicly: req.body.can_be_shared_publicly,
         withhold_contact_info_from_nypd:
           req.body.withhold_contact_info_from_nypd,
+        receive_nypd_sr_updates_by_email:
+          req.body.receive_nypd_sr_updates_by_email,
       }),
     )
     .then(user => res.json(user))

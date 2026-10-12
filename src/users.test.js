@@ -134,7 +134,7 @@ describe('users', () => {
     });
   });
 
-  test('updateUserProfile stores withhold_contact_info_from_nypd only when true', async () => {
+  test('updateUserProfile stores the sparse NYPD flags only when true', async () => {
     const user = await logIn({ email, password });
     const sessionToken = user.getSessionToken();
     const base = {
@@ -146,29 +146,24 @@ describe('users', () => {
       Phone: '5551234567',
       testify: true,
     };
+    const exerciseSparseFlag = async flag => {
+      // true: stored on the user...
+      await updateUserProfile({ ...base, [flag]: true });
+      expect(user.get(flag)).toBe(true);
 
-    // true: stored on the user...
-    await updateUserProfile({
-      ...base,
-      withhold_contact_info_from_nypd: true,
-    });
-    expect(user.get('withhold_contact_info_from_nypd')).toBe(true);
+      // false: unset, so non-opt-ins don't carry the field...
+      await updateUserProfile({ ...base, [flag]: false });
+      expect(user.get(flag)).toBeUndefined();
 
-    // false: unset, so non-opt-ins don't carry the field...
-    await updateUserProfile({
-      ...base,
-      withhold_contact_info_from_nypd: false,
-    });
-    expect(user.get('withhold_contact_info_from_nypd')).toBeUndefined();
+      // ...and absent: left alone, so clients that don't know about the
+      // flag don't clobber a previous opt-in.
+      await updateUserProfile({ ...base, [flag]: true });
+      await updateUserProfile(base);
+      expect(user.get(flag)).toBe(true);
+    };
 
-    // ...and absent: left alone, so clients that don't know about the
-    // flag don't clobber a previous opt-in.
-    await updateUserProfile({
-      ...base,
-      withhold_contact_info_from_nypd: true,
-    });
-    await updateUserProfile(base);
-    expect(user.get('withhold_contact_info_from_nypd')).toBe(true);
+    await exerciseSparseFlag('withhold_contact_info_from_nypd');
+    await exerciseSparseFlag('receive_nypd_sr_updates_by_email');
   });
 
   test('updateUserProfile rejects when a required field is missing', async () => {

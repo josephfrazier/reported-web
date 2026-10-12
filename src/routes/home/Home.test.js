@@ -2756,6 +2756,7 @@ describe('Home', () => {
               testify: true,
               can_be_shared_publicly: true,
               withhold_contact_info_from_nypd: true,
+              receive_nypd_sr_updates_by_email: true,
             },
           });
         }
@@ -2772,6 +2773,7 @@ describe('Home', () => {
           // The cookie disagrees with the DB, which must win.
           can_be_shared_publicly: false,
           withhold_contact_info_from_nypd: false,
+          receive_nypd_sr_updates_by_email: false,
         },
       });
 
@@ -2781,6 +2783,7 @@ describe('Home', () => {
 
       expect(homeRef.current.state.can_be_shared_publicly).toBe(true);
       expect(homeRef.current.state.withhold_contact_info_from_nypd).toBe(true);
+      expect(homeRef.current.state.receive_nypd_sr_updates_by_email).toBe(true);
 
       tree.unmount();
       axiosPost.mockRestore();
@@ -2811,6 +2814,7 @@ describe('Home', () => {
           loginSuccessful: true,
           can_be_shared_publicly: false,
           withhold_contact_info_from_nypd: true,
+          receive_nypd_sr_updates_by_email: true,
         },
       });
 
@@ -2820,6 +2824,7 @@ describe('Home', () => {
 
       expect(homeRef.current.state.can_be_shared_publicly).toBe(false);
       expect(homeRef.current.state.withhold_contact_info_from_nypd).toBe(true);
+      expect(homeRef.current.state.receive_nypd_sr_updates_by_email).toBe(true);
 
       tree.unmount();
       axiosPost.mockRestore();
@@ -2837,6 +2842,7 @@ describe('Home', () => {
           email: 'test@example.com',
           loginSuccessful: true,
           withhold_contact_info_from_nypd: true,
+          receive_nypd_sr_updates_by_email: true,
         },
       });
       homeRef.current.handleLogOut();
@@ -2847,6 +2853,9 @@ describe('Home', () => {
       expect(homeRef.current.state.email).toBe('');
       // Reset with the rest of the profile fields, like testify.
       expect(homeRef.current.state.withhold_contact_info_from_nypd).toBe(false);
+      expect(homeRef.current.state.receive_nypd_sr_updates_by_email).toBe(
+        false,
+      );
 
       tree.unmount();
       axiosPost.mockRestore();
@@ -2868,6 +2877,7 @@ describe('Home', () => {
         homeRef.current.setState({
           can_be_shared_publicly: true,
           withhold_contact_info_from_nypd: true,
+          receive_nypd_sr_updates_by_email: true,
         });
       });
 
@@ -2881,6 +2891,7 @@ describe('Home', () => {
           testify: false,
           can_be_shared_publicly: true,
           withhold_contact_info_from_nypd: true,
+          receive_nypd_sr_updates_by_email: true,
         }),
       );
 

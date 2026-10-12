@@ -50,6 +50,7 @@ const createSubmission = async ({
     testify,
     can_be_shared_publicly, // eslint-disable-line camelcase
     withhold_contact_info_from_nypd, // eslint-disable-line camelcase
+    receive_nypd_sr_updates_by_email, // eslint-disable-line camelcase
   });
 
   // Make sure all required fields are present. `licenseState` is deliberately

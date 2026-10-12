@@ -71,6 +71,7 @@ export async function updateUserProfile({
   testify,
   can_be_shared_publicly: canBeSharedPublicly,
   withhold_contact_info_from_nypd, // eslint-disable-line camelcase
+  receive_nypd_sr_updates_by_email, // eslint-disable-line camelcase
 }) {
   // make sure all required fields are present
   Object.entries({
@@ -106,6 +107,14 @@ export async function updateUserProfile({
     user.set('withhold_contact_info_from_nypd', true);
   } else if (withholdContactInfoFromNypd === false) {
     user.unset('withhold_contact_info_from_nypd');
+  }
+
+  // eslint-disable-next-line camelcase
+  const receiveNypdSrUpdatesByEmail = receive_nypd_sr_updates_by_email;
+  if (receiveNypdSrUpdatesByEmail === true) {
+    user.set('receive_nypd_sr_updates_by_email', true);
+  } else if (receiveNypdSrUpdatesByEmail === false) {
+    user.unset('receive_nypd_sr_updates_by_email');
   }
 
   return user.save(null, { sessionToken });

@@ -133,6 +133,7 @@ const PROFILE_BOOLEANS = [
   'testify',
   'can_be_shared_publicly',
   'withhold_contact_info_from_nypd',
+  'receive_nypd_sr_updates_by_email',
 ];
 
 const pickProfileBooleans = user => {

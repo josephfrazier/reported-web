@@ -307,6 +307,7 @@ describe('authenticate', () => {
         testify: true,
         can_be_shared_publicly: false,
         withhold_contact_info_from_nypd: true,
+        receive_nypd_sr_updates_by_email: true,
       });
       await flaggedUser.save(null, {
         sessionToken: flaggedUser.getSessionToken(),
@@ -321,6 +322,7 @@ describe('authenticate', () => {
         testify: true,
         can_be_shared_publicly: false,
         withhold_contact_info_from_nypd: true,
+        receive_nypd_sr_updates_by_email: true,
       });
     });
 

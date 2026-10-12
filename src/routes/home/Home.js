@@ -1876,6 +1876,7 @@ class Home extends React.Component {
         testify,
         can_be_shared_publicly: canBeSharedPublicly,
         withhold_contact_info_from_nypd: withholdContactInfoFromNypd,
+        receive_nypd_sr_updates_by_email: receiveNypdSrUpdatesByEmail,
       } = data;
       this.setState(
         state => ({
@@ -1895,6 +1896,10 @@ class Home extends React.Component {
             typeof withholdContactInfoFromNypd === 'boolean'
               ? withholdContactInfoFromNypd
               : state.withhold_contact_info_from_nypd,
+          receive_nypd_sr_updates_by_email:
+            typeof receiveNypdSrUpdatesByEmail === 'boolean'
+              ? receiveNypdSrUpdatesByEmail
+              : state.receive_nypd_sr_updates_by_email,
           isUserInfoSaving: false,
           isAuthModalOpen: false,
           loginSuccessful: true,
@@ -1965,6 +1970,7 @@ class Home extends React.Component {
       testify,
       can_be_shared_publicly: canBeSharedPublicly,
       withhold_contact_info_from_nypd: withholdContactInfoFromNypd,
+      receive_nypd_sr_updates_by_email: receiveNypdSrUpdatesByEmail,
     } = this.state;
     return {
       email,
@@ -1974,6 +1980,7 @@ class Home extends React.Component {
       testify,
       can_be_shared_publicly: canBeSharedPublicly,
       withhold_contact_info_from_nypd: withholdContactInfoFromNypd,
+      receive_nypd_sr_updates_by_email: receiveNypdSrUpdatesByEmail,
     };
   };
 
@@ -1987,6 +1994,7 @@ class Home extends React.Component {
         Phone: '',
         testify: false,
         withhold_contact_info_from_nypd: false,
+        receive_nypd_sr_updates_by_email: false,
         hasSeenWithholdNotice: false,
         submissions: [],
         isEditProfileOpen: false,

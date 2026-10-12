@@ -1293,9 +1293,15 @@ class Home extends React.Component {
       return submission.license === plate || submission.medallionNo === plate;
     });
 
+    // The warning is about the plate, and the state is deliberately not part of
+    // what counts as a duplicate: a state read off a plate is a guess, and an
+    // earlier report may simply have got it wrong. So a change to the state on
+    // its own says nothing about one -- only a plate that has just become this
+    // one is news.
     const priorCount = priorSubmissions.length;
+    const plateChanged = plate !== this.state.plate;
 
-    if (priorCount > 0) {
+    if (priorCount > 0 && plateChanged) {
       this.debouncedWarnAboutPriorSubmission({
         priorCount,
         plate,

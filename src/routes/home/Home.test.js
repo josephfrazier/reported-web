@@ -3047,6 +3047,7 @@ describe('license state', () => {
       homeRef,
       tree,
       stateInput: tree.root.findByProps({ name: 'licenseState' }),
+      plateInput: tree.root.findByProps({ name: 'plate' }),
       cleanup: () => {
         renderer.act(() => tree.unmount());
         global.URL.createObjectURL = originalCreateObjectURL;
@@ -3207,11 +3208,10 @@ describe('license state', () => {
     axiosGet.mockRestore();
   });
 
-  // Regression test: the state field is a text input, so every keystroke runs
-  // setLicensePlate, and a plate matching an earlier submission matched on each
-  // of them -- one toast per character typed. The warning waits for the typing
-  // to stop now.
-  test('warns once about a prior submission, not once per keystroke', async () => {
+  // Regression test: the state is not part of what counts as a duplicate, so
+  // changing it says nothing about one. Every keystroke in this field used to
+  // run the check and warn, one toast per character typed.
+  test('says nothing about a prior submission for a state change alone', async () => {
     const warn = jest.spyOn(toast, 'warn').mockImplementation(() => {});
     // The prior submission has to fall on the day the form is reporting for,
     // so both dates are pinned rather than left to the mocked clock.
@@ -3230,9 +3230,39 @@ describe('license state', () => {
       });
     }
 
+    // Past the debounce, so anything scheduled would have fired by now.
+    await renderer.act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    });
+
     expect(warn).not.toHaveBeenCalled();
 
-    // Past the debounce, so a warning would have fired by now.
+    cleanup();
+    warn.mockRestore();
+  });
+
+  // The other half: a plate that has just become one with an earlier
+  // submission does warn, once the typing stops rather than mid-word.
+  test('warns once when the plate becomes one already submitted', async () => {
+    const warn = jest.spyOn(toast, 'warn').mockImplementation(() => {});
+    const day = '2016-11-17T20:00:00';
+    const { plateInput, cleanup } = renderForm({
+      plate: '',
+      CreateDate: day,
+      submissions: [{ license: 'ABC123', timeofreport: day }],
+    });
+
+    // Typing "ABC123" a character at a time, as the field reports it.
+    for (const value of ['A', 'AB', 'ABC', 'ABC1', 'ABC12', 'ABC123']) {
+      const input = createFakeInput({ value, caret: value.length });
+      renderer.act(() => {
+        plateInput.props.onChange({ target: input });
+      });
+    }
+
+    // Nothing while the reader is still typing.
+    expect(warn).not.toHaveBeenCalled();
+
     await renderer.act(async () => {
       await new Promise(resolve => setTimeout(resolve, 1000));
     });

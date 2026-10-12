@@ -133,7 +133,7 @@
     "mkdirp": "^0.5.1",
     "mongodb-memory-server": "^11.2.0",
     "null-loader": "^0.1.1",
-    "parse-server": "9.4.0",
+    "parse-server": "9.10.0",
     "playwright": "^1.62.1",
     "postcss": "^8.5.23",
     "postcss-calc": "^10.1.1",

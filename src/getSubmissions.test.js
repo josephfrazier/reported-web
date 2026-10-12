@@ -1,7 +1,7 @@
 /**
  * @jest-environment node
  *
- * Runs against a real Parse Server 9.4.0 (the version production runs) backed by a
+ * Runs against a real Parse Server 9.4.0 (the version prod runs) backed by a
  * real MongoDB 4.4 started in-memory by mongodb-memory-server, so the actual
  * query semantics are exercised instead of a fake.
  */
@@ -12,6 +12,8 @@ import Parse from 'parse/node';
 import getSubmissions from './getSubmissions.js';
 
 const { MongoMemoryServer } = require('mongodb-memory-server');
+// parse-server is deliberately installed on demand instead of being a project
+// dependency (see jest.globalSetup.js)
 const { ParseServer } = require('parse-server');
 
 // parse-server skips its cloud/URL verification (and test-unfriendly process
@@ -21,12 +23,19 @@ process.env.TESTING = '1';
 jest.setTimeout(30000);
 
 const username = 'test@example.com';
-const saveUser = jest.fn(() => Promise.resolve({ get: () => username }));
+// Stand-in for src/session.js's authenticate: resolves the request's user.
+const authenticate = jest.fn(() =>
+  Promise.resolve({ user: { get: () => username } }),
+);
 
 describe('getSubmissions', () => {
   let mongo;
   let parseServer;
   let labelsById;
+  let emailAccount;
+  let emailOnlySubmission;
+  let pointerAccount;
+  let pointerOnlySubmission;
 
   beforeAll(async () => {
     // Note: the binary must be downloaded once (mongodb-memory-server caches
@@ -70,13 +79,16 @@ describe('getSubmissions', () => {
       mountPath: '/parse',
       port: 0,
       verbose: false,
+      // parse-server 5+ defaults client class creation to off. These tests
+      // save `submission`/`tasks` objects as an ordinary client, and in
+      // production both classes already exist in the schema.
+      allowClientClassCreation: true,
     });
     // parse-server initializes its own nested parse SDK; ours needs it too.
-    // The master key is passed like production's Parse.initialize() does, and
-    // server.js's import-time useMasterKey() call is mirrored, so the
-    // module under test sees the master key on its requests like in production.
+    // getSubmissions() lists with the master key, because submissions made by
+    // the mobile clients belong to a different Parse user with the same email
+    // address (see the test's iOS-style entries below), so it is passed here.
     Parse.initialize('test-app', undefined, 'test-master');
-    Parse.Cloud.useMasterKey();
     Parse.serverURL = `http://localhost:${parseServer.server.address().port}/parse`;
 
     // Create the newest-photo submissions FIRST and the oldest-photo ones
@@ -106,6 +118,38 @@ describe('getSubmissions', () => {
     });
     const s2 = await create({ timeofreport: '2026-09-03T14:58:00.000Z' });
     labelsById = { [f1.id]: 'F1', [f2.id]: 'F2', [s1.id]: 'S1', [s2.id]: 'S2' };
+
+    // The mobile clients create accounts whose username is not the address
+    // that ends up on their reports (their email is). This is one of those
+    // accounts, and a report carrying its email address.
+    emailAccount = new Parse.User();
+    emailAccount.setUsername('mobile-account');
+    emailAccount.set('email', 'reports@example.com');
+    emailAccount.setPassword('password');
+    await emailAccount.signUp();
+
+    emailOnlySubmission = new Submission();
+    emailOnlySubmission.set('Username', 'reports@example.com');
+    emailOnlySubmission.set(
+      'timeofreport',
+      new Date('2026-09-03T13:00:00.000Z'),
+    );
+    await emailOnlySubmission.save();
+
+    // A native-client report: the `user` pointer, and neither address field,
+    // so only the pointer can find it.
+    pointerAccount = new Parse.User();
+    pointerAccount.setUsername('pointer-account');
+    pointerAccount.setPassword('password');
+    await pointerAccount.signUp();
+
+    pointerOnlySubmission = new Submission();
+    pointerOnlySubmission.set('user', pointerAccount);
+    pointerOnlySubmission.set(
+      'timeofreport',
+      new Date('2026-09-03T12:00:00.000Z'),
+    );
+    await pointerOnlySubmission.save();
   });
 
   afterAll(async () => {
@@ -117,17 +161,40 @@ describe('getSubmissions', () => {
   test('sorts by photo time, breaking ties by when they were submitted', async () => {
     const results = await getSubmissions({
       req: { body: { email: username } },
-      saveUser,
+      authenticate,
     });
 
     // F1 and F2 both have a photo timestamp of 3:00 PM; F2 was created after
     // F1, so F2 must come first. The same holds for S2/S1 at 2:58 PM.
-    expect(saveUser).toHaveBeenCalledWith({ email: username });
+    expect(authenticate).toHaveBeenCalled();
     expect(results.map(result => labelsById[result.id])).toEqual([
       'F2',
       'F1',
       'S2',
       'S1',
+    ]);
+  });
+
+  test("matches the account's email as well as its username", async () => {
+    const results = await getSubmissions({
+      req: { body: {} },
+      authenticate: () => Promise.resolve({ user: emailAccount }),
+    });
+
+    // Only the report carrying the account's email comes back; the entries
+    // above use a different address, and emailAccount's username (which no
+    // submission carries) must not matter.
+    expect(results.map(result => result.id)).toEqual([emailOnlySubmission.id]);
+  });
+
+  test('matches a submission by its user pointer when it has no address fields', async () => {
+    const results = await getSubmissions({
+      req: { body: {} },
+      authenticate: () => Promise.resolve({ user: pointerAccount }),
+    });
+
+    expect(results.map(result => result.id)).toEqual([
+      pointerOnlySubmission.id,
     ]);
   });
 });

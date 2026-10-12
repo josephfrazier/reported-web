@@ -1,7 +1,7 @@
 /**
  * @jest-environment node
  *
- * Runs against a real Parse Server 9.4.0 (the version production runs) backed by a
+ * Runs against a real Parse Server 9.4.0 (the version prod runs) backed by a
  * real MongoDB 4.4 started in-memory by mongodb-memory-server, so the actual
  * deletion and ownership-check semantics are exercised instead of a fake.
  */
@@ -14,6 +14,8 @@ import stringify from 'json-stringify-safe';
 import deleteSubmission from './deleteSubmission.js';
 
 const { MongoMemoryServer } = require('mongodb-memory-server');
+// parse-server is deliberately installed on demand instead of being a project
+// dependency (see jest.globalSetup.js)
 const { ParseServer } = require('parse-server');
 
 // parse-server skips its cloud/URL verification (and test-unfriendly process
@@ -23,7 +25,10 @@ process.env.TESTING = '1';
 jest.setTimeout(30000);
 
 const username = 'test@example.com';
-const saveUser = jest.fn(() => Promise.resolve({ get: () => username }));
+// Stand-in for src/session.js's authenticate: resolves the request's user.
+const authenticate = jest.fn(() =>
+  Promise.resolve({ user: { get: () => username } }),
+);
 
 describe('deleteSubmission', () => {
   let mongo;
@@ -31,6 +36,10 @@ describe('deleteSubmission', () => {
   let ownedSubmission;
   let iosStyleSubmission;
   let otherUsersSubmission;
+  let emailAccount;
+  let emailOwnedSubmission;
+  let pointerAccount;
+  let pointerOnlySubmission;
 
   beforeAll(async () => {
     // Note: the binary must be downloaded once (mongodb-memory-server caches
@@ -74,13 +83,16 @@ describe('deleteSubmission', () => {
       mountPath: '/parse',
       port: 0,
       verbose: false,
+      // parse-server 5+ defaults client class creation to off. These tests
+      // save `submission`/`tasks` objects as an ordinary client, and in
+      // production both classes already exist in the schema.
+      allowClientClassCreation: true,
     });
     // parse-server initializes its own nested parse SDK; ours needs it too.
-    // The master key is passed like production's Parse.initialize() does, and
-    // server.js's import-time useMasterKey() call is mirrored, so the
-    // module under test sees the master key on its requests like in production.
+    // deleteSubmission() fetches and destroys with the master key, because a
+    // submission made by the mobile client belongs to a different Parse user
+    // (see the iOS-style entry below), so it is passed here.
     Parse.initialize('test-app', undefined, 'test-master');
-    Parse.Cloud.useMasterKey();
     Parse.serverURL = `http://localhost:${parseServer.server.address().port}/parse`;
 
     const Submission = Parse.Object.extend('submission');
@@ -107,6 +119,37 @@ describe('deleteSubmission', () => {
       new Date('2026-09-03T13:00:00.000Z'),
     );
     await otherUsersSubmission.save();
+
+    // The mobile clients create accounts whose username is not the address
+    // that ends up on their reports (their email is). The ownership check
+    // must accept the account's email too, so this report is deletable.
+    emailAccount = new Parse.User();
+    emailAccount.setUsername('mobile-account');
+    emailAccount.set('email', 'reports@example.com');
+    emailAccount.setPassword('password');
+    await emailAccount.signUp();
+
+    emailOwnedSubmission = new Submission();
+    emailOwnedSubmission.set('Username', 'reports@example.com');
+    emailOwnedSubmission.set(
+      'timeofreport',
+      new Date('2026-09-03T12:00:00.000Z'),
+    );
+    await emailOwnedSubmission.save();
+
+    // A native-client report: the `user` pointer, and neither address field.
+    pointerAccount = new Parse.User();
+    pointerAccount.setUsername('pointer-account');
+    pointerAccount.setPassword('password');
+    await pointerAccount.signUp();
+
+    pointerOnlySubmission = new Submission();
+    pointerOnlySubmission.set('user', pointerAccount);
+    pointerOnlySubmission.set(
+      'timeofreport',
+      new Date('2026-09-03T11:00:00.000Z'),
+    );
+    await pointerOnlySubmission.save();
   });
 
   afterAll(async () => {
@@ -117,12 +160,12 @@ describe('deleteSubmission', () => {
 
   const Submission = Parse.Object.extend('submission');
   const callDeleteSubmission = objectId =>
-    deleteSubmission({ req: { body: { objectId } }, saveUser });
+    deleteSubmission({ req: { body: { objectId } }, authenticate });
 
   test('deletes the submission with the given objectId', async () => {
     const result = await callDeleteSubmission(ownedSubmission.id);
 
-    expect(saveUser).toHaveBeenCalledWith({ objectId: ownedSubmission.id });
+    expect(authenticate).toHaveBeenCalled();
     expect(result).toEqual({ objectId: ownedSubmission.id });
 
     // The submission is really gone from Parse.
@@ -139,6 +182,50 @@ describe('deleteSubmission', () => {
 
     const query = new Parse.Query(Submission);
     await expect(query.get(iosStyleSubmission.id)).rejects.toMatchObject({
+      code: 101,
+    });
+  });
+
+  test("deletes a submission that carries the account's email, not its username", async () => {
+    const result = await deleteSubmission({
+      req: { body: { objectId: emailOwnedSubmission.id } },
+      authenticate: () => Promise.resolve({ user: emailAccount }),
+    });
+
+    expect(result).toEqual({ objectId: emailOwnedSubmission.id });
+
+    const query = new Parse.Query(Submission);
+    await expect(query.get(emailOwnedSubmission.id)).rejects.toMatchObject({
+      code: 101,
+    });
+  });
+
+  test("does not treat another account's pointer as ownership", async () => {
+    await expect(
+      deleteSubmission({
+        req: { body: { objectId: pointerOnlySubmission.id } },
+        authenticate: () => Promise.resolve({ user: emailAccount }),
+      }),
+    ).rejects.toMatchObject({
+      message: 'the submission was not found or was not made by this user',
+    });
+
+    // The other account's submission is still there.
+    const query = new Parse.Query(Submission);
+    const stillThere = await query.get(pointerOnlySubmission.id);
+    expect(stillThere.id).toBe(pointerOnlySubmission.id);
+  });
+
+  test('deletes a submission matched by its user pointer without address fields', async () => {
+    const result = await deleteSubmission({
+      req: { body: { objectId: pointerOnlySubmission.id } },
+      authenticate: () => Promise.resolve({ user: pointerAccount }),
+    });
+
+    expect(result).toEqual({ objectId: pointerOnlySubmission.id });
+
+    const query = new Parse.Query(Submission);
+    await expect(query.get(pointerOnlySubmission.id)).rejects.toMatchObject({
       code: 101,
     });
   });

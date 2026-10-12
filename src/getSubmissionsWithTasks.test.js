@@ -1,7 +1,7 @@
 /**
  * @jest-environment node
  *
- * Runs against a real Parse Server 9.4.0 (the version production runs) backed by a
+ * Runs against a real Parse Server 9.4.0 (the version prod runs) backed by a
  * real MongoDB 4.4 started in-memory by mongodb-memory-server, so the actual
  * query and task-join semantics are exercised instead of a fake.
  */
@@ -12,6 +12,8 @@ import Parse from 'parse/node';
 import getSubmissionsWithTasks from './getSubmissionsWithTasks.js';
 
 const { MongoMemoryServer } = require('mongodb-memory-server');
+// parse-server is deliberately installed on demand instead of being a project
+// dependency (see jest.globalSetup.js)
 const { ParseServer } = require('parse-server');
 
 // parse-server skips its cloud/URL verification (and test-unfriendly process
@@ -21,7 +23,10 @@ process.env.TESTING = '1';
 jest.setTimeout(30000);
 
 const username = 'test@example.com';
-const saveUser = jest.fn(() => Promise.resolve({ get: () => username }));
+// Stand-in for src/session.js's authenticate: resolves the request's user.
+const authenticate = jest.fn(() =>
+  Promise.resolve({ user: { get: () => username } }),
+);
 
 describe('getSubmissionsWithTasks', () => {
   let mongo;
@@ -71,13 +76,15 @@ describe('getSubmissionsWithTasks', () => {
       mountPath: '/parse',
       port: 0,
       verbose: false,
+      // parse-server 5+ defaults client class creation to off. These tests
+      // save `submission`/`tasks` objects as an ordinary client, and in
+      // production both classes already exist in the schema.
+      allowClientClassCreation: true,
     });
     // parse-server initializes its own nested parse SDK; ours needs it too.
-    // The master key is passed like production's Parse.initialize() does, and
-    // server.js's import-time useMasterKey() call is mirrored, so the
-    // module under test sees the master key on its requests like in production.
+    // The master key is passed for getSubmissions()'s listing query; the task
+    // join itself runs without it, since task records carry no ACL.
     Parse.initialize('test-app', undefined, 'test-master');
-    Parse.Cloud.useMasterKey();
     Parse.serverURL = `http://localhost:${parseServer.server.address().port}/parse`;
 
     const Submission = Parse.Object.extend('submission');
@@ -97,7 +104,7 @@ describe('getSubmissionsWithTasks', () => {
     const createTask = async ({
       submission,
       action,
-      // The Parse field is named in snake_case, like production's task records.
+      // The Parse field is named in snake_case, like prod's task records.
       case_id, // eslint-disable-line camelcase
     }) => {
       const task = new Task();
@@ -128,10 +135,10 @@ describe('getSubmissionsWithTasks', () => {
   test('returns the submissions newest-first, each with its tasks joined', async () => {
     const results = await getSubmissionsWithTasks({
       req: { body: { email: username } },
-      saveUser,
+      authenticate,
     });
 
-    expect(saveUser).toHaveBeenCalledWith({ email: username });
+    expect(authenticate).toHaveBeenCalled();
     expect(results).toHaveLength(2);
 
     expect(results[0]).toMatchObject({

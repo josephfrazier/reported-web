@@ -34,7 +34,6 @@ import pEvent from 'p-event';
 import omit from 'object.omit';
 import bufferToArrayBuffer from 'buffer-to-arraybuffer';
 import { serialize } from 'object-to-formdata';
-import usStateNames from 'datasets-us-states-abbr-names';
 import fileExtension from 'file-extension';
 import diceware from 'diceware-generator';
 import wordlist from 'diceware-wordlist-en-eff';
@@ -47,6 +46,7 @@ import PolygonLookup from 'polygon-lookup';
 import CircularProgress from '@mui/material/CircularProgress';
 
 import marx from 'marx-css/css/marx.css';
+import usStateNames, { licenseStateName } from '../../usStateNames.js';
 import homeStyles from './Home.css';
 
 import PreviousSubmissionsList from '../../components/PreviousSubmissionsList.js';
@@ -71,17 +71,6 @@ import {
   removeCachedSubmission,
   writeCachedSubmissions,
 } from './submissionsCache.js';
-
-usStateNames.DC = 'District of Columbia';
-
-// The dataset holds the 50 states, and DC is added above. A plate read does
-// not go through that list: extractPlate takes the region code off whatever
-// the reader saw, so a Canadian province or a federal fleet code has no name
-// here. Fall back to the code itself rather than dropping the name and
-// leaving the sentence half-written.
-function licenseStateName(licenseState) {
-  return usStateNames[licenseState] ?? licenseState;
-}
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyDlwm2ykA0ohTXeVepQYvkcmdjz2M2CKEI';
 

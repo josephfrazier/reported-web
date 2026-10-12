@@ -1781,6 +1781,7 @@ exports[`Home renders submission form and Previous Submissions when logged in wi
                   list="stateSuggestion"
                   name="licenseState"
                   onChange={[Function]}
+                  placeholder="State"
                   style={
                     {
                       "marginTop": "0.5rem",
@@ -2622,6 +2623,7 @@ exports[`Home renders with allPlateResults entry missing plate and photos 1`] = 
                   list="stateSuggestion"
                   name="licenseState"
                   onChange={[Function]}
+                  placeholder="State"
                   style={
                     {
                       "marginTop": "0.5rem",
@@ -3463,6 +3465,7 @@ exports[`Home renders with undefined allPlateResults and photos 1`] = `
                   list="stateSuggestion"
                   name="licenseState"
                   onChange={[Function]}
+                  placeholder="State"
                   style={
                     {
                       "marginTop": "0.5rem",

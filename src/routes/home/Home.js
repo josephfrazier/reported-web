@@ -3032,6 +3032,7 @@ class Home extends React.Component {
                               name="licenseState"
                               list="stateSuggestion"
                               autoComplete="off"
+                              placeholder="State"
                               onChange={event => {
                                 this.setLicensePlate({
                                   plate: this.state.plate,

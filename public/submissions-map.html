@@ -591,12 +591,15 @@ function formatDate(iso) {
   } catch(e) { return iso; }
 }
 
-// Only a real Service Request number has a page on the 311 portal. A
-// submission that never reached 311 carries a placeholder instead.
-function srNumberHtml(reqnumber) {
-  if (!/^311-/.test(reqnumber)) return `<span class="val">${reqnumber}</span>`;
-  const url = `https://portal.311.nyc.gov/sr-details/?srnum=${encodeURIComponent(reqnumber)}`;
-  return `<a href="${url}" target="_blank" rel="noopener noreferrer">${reqnumber}</a>`;
+// The reqnumber field holds one Service Request number, or several
+// separated by commas (`311-12345,311-67890`). Only a 311- number has a
+// page on the 311 portal. Link those, and keep any other text as it is.
+function reqNumberHtml(reqnumber) {
+  const linked = reqnumber.replace(
+    /\b311-\d+\b/g,
+    number => `<a href="https://portal.311.nyc.gov/sr-details/?srnum=${number}" target="_blank" rel="noopener noreferrer">${number}</a>`,
+  );
+  return `<span class="val">${linked}</span>`;
 }
 
 // Parse: JSON array OR newline-delimited JSON objects
@@ -668,7 +671,7 @@ function populatePopup(s) {
   if (s.loc1_address) rows.push(`<span class="val">${s.loc1_address}</span>`);
   const d = formatDate(s.timeofreport?.iso);
   if (d) rows.push(d);
-  if (s.reqnumber) rows.push(`req ${srNumberHtml(s.reqnumber)}`);
+  if (s.reqnumber) rows.push(`req ${reqNumberHtml(s.reqnumber)}`);
   popupMeta.innerHTML = rows.join('<br>');
 
   if (photos.length > 0) {

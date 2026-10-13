@@ -348,19 +348,28 @@
 
   .popup-meta .val { color: var(--text); }
 
+  .popup-meta a { color: var(--accent); }
+
   .popup-photos { display: flex; }
 
-  .popup-photos img {
+  /* Each photo links to the full-size image, so the link is the flex item
+     and the image fills it. */
+  .popup-photos a {
     flex: 1;
     min-width: 0;
-    height: 136px;
-    object-fit: contain;
-    background: #f0f3f8;
     display: block;
     border-right: 1px solid var(--border);
   }
 
-  .popup-photos img:last-child { border-right: none; }
+  .popup-photos a:last-child { border-right: none; }
+
+  .popup-photos img {
+    width: 100%;
+    height: 136px;
+    object-fit: contain;
+    background: #f0f3f8;
+    display: block;
+  }
 
   .popup-no-photo {
     height: 52px;
@@ -582,6 +591,14 @@ function formatDate(iso) {
   } catch(e) { return iso; }
 }
 
+// Only a real Service Request number has a page on the 311 portal. A
+// submission that never reached 311 carries a placeholder instead.
+function srNumberHtml(reqnumber) {
+  if (!/^311-/.test(reqnumber)) return `<span class="val">${reqnumber}</span>`;
+  const url = `https://portal.311.nyc.gov/sr-details/?srnum=${encodeURIComponent(reqnumber)}`;
+  return `<a href="${url}" target="_blank" rel="noopener noreferrer">${reqnumber}</a>`;
+}
+
 // Parse: JSON array OR newline-delimited JSON objects
 function parseInput(raw) {
   raw = raw.trim();
@@ -651,12 +668,12 @@ function populatePopup(s) {
   if (s.loc1_address) rows.push(`<span class="val">${s.loc1_address}</span>`);
   const d = formatDate(s.timeofreport?.iso);
   if (d) rows.push(d);
-  if (s.reqnumber) rows.push(`req <span class="val">${s.reqnumber}</span>`);
+  if (s.reqnumber) rows.push(`req ${srNumberHtml(s.reqnumber)}`);
   popupMeta.innerHTML = rows.join('<br>');
 
   if (photos.length > 0) {
     popupPics.innerHTML = `<div class="popup-photos">${photos.map(p =>
-      `<img src="${p.url}" loading="lazy" onerror="this.style.display='none'">`).join('')}</div>`;
+      `<a href="${p.url}" target="_blank" rel="noopener noreferrer"><img src="${p.url}" loading="lazy" onerror="this.parentElement.style.display='none'"></a>`).join('')}</div>`;
   } else {
     popupPics.innerHTML = `<div class="popup-no-photo">no photos attached</div>`;
   }

@@ -124,6 +124,27 @@ export const authenticateRequest = (req, res) => () =>
 // Never rejects: a page must render even if Parse is unreachable. A session
 // cookie whose token cannot be checked here is taken at face value -- the API
 // routes verify it, and the client reacts to their 401s.
+// The profile booleans the SSR render merges over the client's state cookie:
+// whatever the user last saved on their account must win over whatever the
+// browser last toggled without saving. Only booleans actually set on the
+// user are returned, so absent fields (the sparse contract) fall back to the
+// cookie.
+const PROFILE_BOOLEANS = [
+  'testify',
+  'can_be_shared_publicly',
+  'withhold_contact_info_from_nypd',
+  'receive_nypd_sr_updates_by_email',
+];
+
+const pickProfileBooleans = user => {
+  const fields = {};
+  PROFILE_BOOLEANS.forEach(key => {
+    const value = user.get(key);
+    if (typeof value === 'boolean') fields[key] = value;
+  });
+  return fields;
+};
+
 export const resolveSsrSession = async ({ req, res }) => {
   let homeState = parseHomeState(req.headers.cookie);
   const sessionToken = readSessionToken(req);
@@ -139,7 +160,17 @@ export const resolveSsrSession = async ({ req, res }) => {
         serializeHomeState(homeState, { secure: req.secure }),
       );
     }
-    return { sessionPresent: true, homeState };
+    // The session cookie proves login, but the page must reflect what the
+    // user last saved, not what the browser last toggled without saving.
+    // Best-effort: if Parse is unreachable, render with the cookie alone.
+    let sessionUserFields;
+    try {
+      const user = await Parse.User.me(sessionToken);
+      sessionUserFields = pickProfileBooleans(user);
+    } catch {
+      // The session is taken at face value, as documented above.
+    }
+    return { sessionPresent: true, homeState, sessionUserFields };
   }
 
   const hasLegacyCredentials =
@@ -149,6 +180,7 @@ export const resolveSsrSession = async ({ req, res }) => {
   }
 
   let sessionPresent = false;
+  let sessionUserFields;
   try {
     const user = await logIn({
       email: homeState.email,
@@ -159,6 +191,7 @@ export const resolveSsrSession = async ({ req, res }) => {
     console.info('[session] legacy credential auth used');
     setSessionCookie(res, req, user.getSessionToken());
     sessionPresent = true;
+    sessionUserFields = pickProfileBooleans(user);
   } catch (error) {
     // The stored password no longer authenticates (changed, wrong, or the
     // account needs verification). Strip it and show the logged-out page.
@@ -176,7 +209,7 @@ export const resolveSsrSession = async ({ req, res }) => {
     'Set-Cookie',
     serializeHomeState(homeState, { secure: req.secure }),
   );
-  return { sessionPresent, homeState };
+  return { sessionPresent, homeState, sessionUserFields };
 };
 
 // SameSite=Lax keeps the session cookie off cross-site POSTs in current

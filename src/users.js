@@ -69,6 +69,9 @@ export async function updateUserProfile({
   LastName,
   Phone,
   testify,
+  can_be_shared_publicly: canBeSharedPublicly,
+  withhold_contact_info_from_nypd, // eslint-disable-line camelcase
+  receive_nypd_sr_updates_by_email, // eslint-disable-line camelcase
 }) {
   // make sure all required fields are present
   Object.entries({
@@ -87,7 +90,32 @@ export async function updateUserProfile({
     LastName,
     Phone,
     testify,
+    // Unlike withhold_contact_info_from_nypd below, this one is always
+    // stored, like testify: the native app defaults it to true when the
+    // user record lacks it, so leaving false implicit would make the two
+    // apps disagree about the same account.
+    can_be_shared_publicly: canBeSharedPublicly,
   });
+
+  // Sparse on the user, like on submissions: only stored when true.
+  // unset() on false keeps non-opt-ins clean, while an absent param (from
+  // clients that don't know about the flag) leaves any previous opt-in
+  // alone.
+  // eslint-disable-next-line camelcase
+  const withholdContactInfoFromNypd = withhold_contact_info_from_nypd;
+  if (withholdContactInfoFromNypd === true) {
+    user.set('withhold_contact_info_from_nypd', true);
+  } else if (withholdContactInfoFromNypd === false) {
+    user.unset('withhold_contact_info_from_nypd');
+  }
+
+  // eslint-disable-next-line camelcase
+  const receiveNypdSrUpdatesByEmail = receive_nypd_sr_updates_by_email;
+  if (receiveNypdSrUpdatesByEmail === true) {
+    user.set('receive_nypd_sr_updates_by_email', true);
+  } else if (receiveNypdSrUpdatesByEmail === false) {
+    user.unset('receive_nypd_sr_updates_by_email');
+  }
 
   return user.save(null, { sessionToken });
 }

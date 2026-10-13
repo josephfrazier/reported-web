@@ -48,12 +48,17 @@ const createSubmission = async ({
     LastName,
     Phone,
     testify,
+    can_be_shared_publicly, // eslint-disable-line camelcase
+    withhold_contact_info_from_nypd, // eslint-disable-line camelcase
+    receive_nypd_sr_updates_by_email, // eslint-disable-line camelcase
   });
 
-  // make sure all required fields are present
+  // Make sure all required fields are present. `licenseState` is deliberately
+  // absent: the state list is US-centric, so a plate can arrive with a state
+  // it does not hold, or with none the reporter can name, and the form asks
+  // for it without insisting.
   Object.entries({
     plate,
-    licenseState,
     typeofcomplaint,
     latitude,
     longitude,

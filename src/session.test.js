@@ -295,6 +295,54 @@ describe('authenticate', () => {
   });
 
   describe('resolveSsrSession', () => {
+    test('surfaces the profile booleans saved on the user', async () => {
+      // A user whose account holds saved flags, like the web or native
+      // profile forms write them.
+      const flaggedUser = new Parse.User();
+      flaggedUser.setUsername('flagged@example.com');
+      flaggedUser.set('email', 'flagged@example.com');
+      flaggedUser.setPassword(password);
+      await flaggedUser.signUp();
+      flaggedUser.set({
+        testify: true,
+        can_be_shared_publicly: false,
+        withhold_contact_info_from_nypd: true,
+        receive_nypd_sr_updates_by_email: true,
+      });
+      await flaggedUser.save(null, {
+        sessionToken: flaggedUser.getSessionToken(),
+      });
+
+      const result = await resolveSsrSession({
+        req: cookieRequest(flaggedUser.getSessionToken()),
+        res: fakeResponse(),
+      });
+
+      expect(result.sessionUserFields).toEqual({
+        testify: true,
+        can_be_shared_publicly: false,
+        withhold_contact_info_from_nypd: true,
+        receive_nypd_sr_updates_by_email: true,
+      });
+    });
+
+    test('leaves profile booleans the user never saved to the cookie', async () => {
+      // A fresh account has none of the booleans stored, so the fields are
+      // absent and the state cookie's values stand.
+      const freshUser = new Parse.User();
+      freshUser.setUsername('fresh@example.com');
+      freshUser.set('email', 'fresh@example.com');
+      freshUser.setPassword(password);
+      await freshUser.signUp();
+
+      const result = await resolveSsrSession({
+        req: cookieRequest(freshUser.getSessionToken()),
+        res: fakeResponse(),
+      });
+
+      expect(result.sessionUserFields).toEqual({});
+    });
+
     test('reports a session and slides its cookie', async () => {
       const req = cookieRequest(verifiedUser.getSessionToken());
       const res = fakeResponse();

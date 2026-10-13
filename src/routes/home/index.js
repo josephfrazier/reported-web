@@ -22,6 +22,7 @@ async function action({
   reviewAppUrl,
   reviewAppLabel,
   sessionPresent,
+  sessionUserFields,
 }) {
   // The complaint categories haven't changed in Parse for years, so a
   // snapshot of them is bundled instead of fetched at render time.
@@ -47,6 +48,15 @@ async function action({
   // the state cookie it just wrote is the newer truth.
   if (sessionPresent) {
     initialState = { ...(initialState || {}), loginSuccessful: true };
+  }
+
+  // What the user last saved on their account wins over what the browser
+  // last toggled without saving: page loads with a session cookie never
+  // hit /api/logIn, so the saved booleans are merged here instead. Only
+  // booleans actually stored on the user are included (the sparse
+  // contract), so absent fields keep the cookie's value.
+  if (sessionUserFields) {
+    initialState = { ...(initialState || {}), ...sessionUserFields };
   }
 
   // Submissions are loaded client-side when the user expands the

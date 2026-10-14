@@ -681,6 +681,17 @@ function plateDataByAttachmentNameFor(photos) {
   return byName;
 }
 
+// The row holding `file`, which is how a row is followed from one regrouping of
+// the batch to the next: the readings replace the photo objects, and the files
+// the photos were read from are the same objects throughout.
+function rowHoldingFile(violations, file) {
+  return file
+    ? violations.find(violation =>
+        violation.photos.some(candidate => candidate.file === file),
+      )
+    : undefined;
+}
+
 // What the form says when it holds more attachments of one kind than a
 // submission carries. One copy, so the note above the button and the refusal
 // at submit say the same words.
@@ -2180,49 +2191,92 @@ class Home extends React.Component {
     }));
   };
 
+  // The rows the batch would hold if `read` were written onto `photo`.
+  //
+  // The whole batch regroups, not the row the photo happens to sit in. A read
+  // is what tells one car from another inside a time-cluster, and the reads
+  // arrive one at a time; regrouping only the row a read lands in leaves the
+  // rows the earlier reads already broke apart to stand, so a cluster of two
+  // cars settles as one row per photo read. Regrouping everything lets a read
+  // pull together what an earlier one separated -- which is what the grouping
+  // does when it can see the photos together.
+  //
+  // A row the user merged by hand is left as one row: that is a report they
+  // have already decided on, and no read is allowed to take it apart again.
+  // Its photos still take the read, and the row is rebuilt around them.
+  //
+  // The photos come from the rows rather than from `batchPhotos`, which holds
+  // the photos of the pass in hand: a second pick replaces it, so regrouping
+  // from it would drop every row the earlier picks published.
+  rowsAfterRead = (state, { photo, read }) => {
+    const replace = candidate => (candidate === photo ? read : candidate);
+
+    // Which photos the user's own rows hold, read off the rows as they stand:
+    // the reading that is being written back is a photo record of its own, and
+    // the rows are what say which photos the batch has.
+    const userMadeRows = state.batchViolations.filter(
+      violation => violation.mergedByUser,
+    );
+    const spokenFor = new Set(
+      userMadeRows.flatMap(violation =>
+        violation.photos.map(candidate => candidate.file),
+      ),
+    );
+
+    const userMade = this.withNycFlags(
+      userMadeRows.map(violation => ({
+        ...mergeViolations([
+          { ...violation, photos: violation.photos.map(replace) },
+        ]),
+        mergedByUser: true,
+      })),
+    );
+
+    const grouped = this.withNycFlags(
+      groupAttachmentsByViolation(
+        state.batchViolations
+          .flatMap(violation => violation.photos)
+          .filter(candidate => !spokenFor.has(candidate.file))
+          .map(replace),
+      ),
+    );
+
+    return [...userMade, ...grouped].sort(
+      (a, b) => a.createDateMs - b.createDateMs,
+    );
+  };
+
   // A plate read landing on the row that holds its photo, as a `setState`
   // updater.
   //
   // The record `readBatchPhotoPlate` hands back replaces the one it read
-  // everywhere that record appears -- the batch's photos and the row's -- and
-  // the row then takes the reading into account. When the readings divide a
+  // everywhere that record appears -- the batch's photos and the rows' -- and
+  // the rows then take the reading into account. When the readings divide a
   // row, the row divides with them: two cars at one kerb sit inside the
   // linking window, so a time-cluster is often several cars, and the grouping
   // is what tells them apart. Waiting for the user to press something would
   // leave a whole batch of different cars as one row, which is what the plate
   // is read for in the first place.
   //
-  // A row the form is on, when it divides, leaves the form on the group that
-  // holds the photos it has attached -- the report it was already making.
+  // The form follows the row that holds the photos it has attached -- the
+  // report it was already making -- wherever the regrouping put it.
   applyPlateRead =
     ({ photo, read }) =>
     state => {
-      const replace = candidate => (candidate === photo ? read : candidate);
-      const loaded = state.batchViolations[state.currentViolationIndex];
-      let followed = loaded;
+      const batchViolations = this.rowsAfterRead(state, { photo, read });
 
-      const batchViolations = state.batchViolations.flatMap(violation => {
-        if (!violation.photos.includes(photo)) {
-          return [violation];
-        }
-
-        const groups = this.withNycFlags(
-          groupAttachmentsByViolation(violation.photos.map(replace)),
+      const [firstAttached] = state.attachmentData;
+      const followed =
+        rowHoldingFile(batchViolations, firstAttached?.file) ||
+        rowHoldingFile(
+          batchViolations,
+          state.batchViolations[state.currentViolationIndex]?.photos[0]?.file,
         );
 
-        if (violation === loaded) {
-          const attached = new Set(state.attachmentData);
-          followed =
-            groups.find(group =>
-              group.photos.some(candidate => attached.has(candidate.file)),
-            ) || groups[0];
-        }
-
-        return groups;
-      });
-
       return {
-        batchPhotos: state.batchPhotos.map(replace),
+        batchPhotos: state.batchPhotos.map(candidate =>
+          candidate === photo ? read : candidate,
+        ),
         batchViolations,
         currentViolationIndex: followed
           ? batchViolations.indexOf(followed)
@@ -2283,22 +2337,40 @@ class Home extends React.Component {
   // that did not divide leaves the form exactly as it is, with the reading
   // filling its plate in; loading again on every reading would throw away a
   // photo the user had just swapped in.
-  // Whether a reading divides the row that holds its photo.
+  // Whether a read leaves the row the form is on holding fewer photos than it
+  // did.
   //
   // Asked before the write-back, not after: afterwards the row is whichever
   // group the form followed -- the photo may not be in it at all -- and the
   // question can no longer be answered.
+  //
+  // A row that gains photos does not count. The form renders the row's photos
+  // as they are, and reloading is what resets the photo selection to the
+  // default, so the picks the user has made survive a row that grows. A row
+  // that has lost a photo is a different report, and the form is reloaded onto
+  // it.
   readDividesRow = ({ photo, read }) => {
-    const loaded = this.state.batchViolations[this.state.currentViolationIndex];
+    const { batchViolations, currentViolationIndex, attachmentData } =
+      this.state;
+    const loaded = batchViolations[currentViolationIndex];
 
-    return Boolean(
-      loaded?.photos.includes(photo) &&
-      groupAttachmentsByViolation(
-        loaded.photos.map(candidate =>
-          candidate === photo ? read : candidate,
-        ),
-      ).length > 1,
-    );
+    if (!loaded) {
+      return false;
+    }
+
+    const next = this.rowsAfterRead(this.state, { photo, read });
+    const [firstAttached] = attachmentData;
+    const followed =
+      rowHoldingFile(next, firstAttached?.file) ||
+      rowHoldingFile(next, loaded.photos[0]?.file);
+
+    if (!followed) {
+      return false;
+    }
+
+    const remaining = new Set(followed.photos.map(candidate => candidate.file));
+
+    return loaded.photos.some(candidate => !remaining.has(candidate.file));
   };
 
   followReadInForm = ({ divides }) => {
@@ -2763,7 +2835,11 @@ class Home extends React.Component {
     const loaded = batchViolations[currentViolationIndex];
     const loadedWasMerged = loaded && chosenIdentities.has(identityOf(loaded));
 
-    const [merged] = this.withNycFlags([mergeViolations(chosen)]);
+    // Marked as the user's own work: rowsAfterRead keeps a merged row whole,
+    // whatever the reads say about the cars in it.
+    const [merged] = this.withNycFlags([
+      { ...mergeViolations(chosen), mergedByUser: true },
+    ]);
     const remaining = batchViolations.filter(
       violation => !chosenIdentities.has(identityOf(violation)),
     );

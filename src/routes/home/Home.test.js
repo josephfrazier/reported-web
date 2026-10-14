@@ -2824,6 +2824,15 @@ describe('Home', () => {
         ],
         6: [plateResult({ plate: 'lda8765' })],
         7: [plateResult({ plate: 'k73jau' })],
+        // A third photo of the first car and a second of the second, so that a
+        // car's photos can have another car's reading land between them.
+        8: [
+          plateResult({
+            plate: 't696817c',
+            candidates: [{ plate: 't6968i7c', score: 0.4 }],
+          }),
+        ],
+        9: [plateResult({ plate: 'lda8765' })],
       };
 
       return {
@@ -2841,6 +2850,8 @@ describe('Home', () => {
       5: '2024-01-01T12:00:01.000Z',
       6: '2024-01-01T12:00:02.000Z',
       7: '2024-01-01T12:01:00.000Z',
+      8: '2024-01-01T12:00:03.000Z',
+      9: '2024-01-01T12:00:04.000Z',
     };
 
     // Renders the form as a logged-in user with semi-automatic mode on, adds
@@ -3564,6 +3575,55 @@ describe('Home', () => {
       cleanup();
     });
 
+    // A batch shot inside the linking window is one time-cluster, and the
+    // readings are what tell the cars in it apart. They arrive one at a time,
+    // in whatever order the pass gets through them, and a car's photos can
+    // have another car's reading land between them. Every read has to be
+    // weighed against the whole batch: a read that only re-groups the row it
+    // lands in leaves the rows the earlier reads broke apart to stand, so a
+    // cluster of two cars settles as one row per photo read.
+    test('settles a time-cluster into one row per car, whatever order the reads arrive in', async () => {
+      // Three photos of one car and two of another, all inside the linking
+      // window, listed here in capture order.
+      const photos = [
+        jpeg({ name: 'first.jpg', size: 4 }),
+        jpeg({ name: 'second.jpg', size: 5 }),
+        jpeg({ name: 'other-car.jpg', size: 6 }),
+        jpeg({ name: 'third.jpg', size: 8 }),
+        jpeg({ name: 'other-car-again.jpg', size: 9 }),
+      ];
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, cleanup } = await renderBatchWithFiles(photos, {
+        // These answers come back 4, 6, 5, 9, 8: the other car's reading lands
+        // between the first car's first and second, and the first car's third
+        // photo is answered last of all. Three reads run at once, so the
+        // second and third photos start together and the fourth and fifth take
+        // the slots the first two leave.
+        alprDelayMsBySize: { 4: 0, 5: 200, 6: 100, 8: 800, 9: 400 },
+      });
+
+      const { batchViolations } = homeRef.current.state;
+      expect(
+        batchViolations.map(violation => [
+          violation.plate,
+          violation.photos.map(photo => photo.name),
+        ]),
+      ).toEqual([
+        ['T696817C', ['first.jpg', 'second.jpg', 'third.jpg']],
+        ['LDA8765', ['other-car.jpg', 'other-car-again.jpg']],
+      ]);
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
     test('puts the rows on screen before a plate is read', async () => {
       const photos = [
         jpeg({ name: 'a.jpg', size: 4 }),
@@ -3703,6 +3763,57 @@ describe('Home', () => {
       expect(batchViolations[0].createDateMs).toBe(farAt);
       expect(batchMergeSelection).toEqual([]);
 
+      cleanup();
+    });
+
+    test('keeps a row the user merged when a read lands on it afterwards', async () => {
+      // Two cars at one kerb, read apart by the grouping and put together by
+      // the user: their report, for whatever reason they have.
+      const first = jpeg({ name: 'first.jpg', size: 4 });
+      const other = jpeg({ name: 'other.jpg', size: 6 });
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, tickMerge, clickButton, cleanup } =
+        await renderBatchWithFiles([first, other]);
+
+      expect(
+        homeRef.current.state.batchViolations.map(violation => violation.plate),
+      ).toEqual(['T696817C', 'LDA8765']);
+
+      tickMerge('T696817C');
+      tickMerge('LDA8765');
+      clickButton('Merge');
+      expect(homeRef.current.state.batchViolations).toHaveLength(1);
+
+      // A read lands on one of the row's photos afterwards -- the second
+      // chance a failed read gets when the row is opened, say. Grouping the
+      // batch again would take the two cars apart; the row the user made is
+      // left as it is.
+      const [merged] = homeRef.current.state.batchViolations;
+      const [photo] = merged.photos;
+      renderer.act(() => {
+        homeRef.current.setState(
+          homeRef.current.applyPlateRead({
+            photo,
+            read: { ...photo, plateResults: photo.plateResults },
+          }),
+        );
+      });
+
+      const { batchViolations } = homeRef.current.state;
+      expect(batchViolations).toHaveLength(1);
+      expect(batchViolations[0].photos.map(p => p.name)).toEqual([
+        'first.jpg',
+        'other.jpg',
+      ]);
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
       cleanup();
     });
 

@@ -3268,10 +3268,9 @@ class Home extends React.Component {
     });
 
     // No body: the route reads none. It authenticates with the session cookie
-    // and answers with this reader's submissions. Posting the form's state
-    // here sent every `File` in it as a multipart file part as well, and the
-    // server's multer refuses a file field it does not take -- which is how a
-    // plate picked off a photo stopped the previous submissions from loading.
+    // and answers with this reader's submissions. Handing it the form's state
+    // meant sending everything in it, files included, for a request that uses
+    // none of it.
     axios
       .post('/submissions')
       .then(({ data }) => {

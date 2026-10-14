@@ -59,6 +59,7 @@ import formatGeosearchAddress from '../../formatGeosearchAddress.js';
 import earliestTakenPhoto from '../../earliestTakenPhoto.js';
 import createGeosearchAddressCache from '../../geosearchAddressCache.js';
 import { isImage, isVideo } from '../../isImage.js';
+import { expandZipFiles } from '../../zipAttachments.js';
 import latestLocatedPhoto from '../../latestLocatedPhoto.js';
 import plateReadRetry from '../../plateReadRetry.js';
 import getNycTimezoneOffset from '../../timezone.js';
@@ -199,6 +200,9 @@ const createDateValue = ({ millisecondsSinceEpoch, offset }) => {
 // map and the address field write their own words in its place, which is how a
 // place the user set is told from one the photos did -- and the place follows
 // the photos only while it is still theirs.
+// How many of a thing, in words: "1 picture", "2 pictures".
+const countOf = (count, thing) => `${count} ${thing}${count === 1 ? '' : 's'}`;
+
 const EXTRACTED_FROM_PHOTOS = '(extracted from picture/video)';
 
 // The plate field's provenance when the user typed it. The other two are the
@@ -704,6 +708,34 @@ class Home extends React.Component {
 
   static notifyError(notificationContent) {
     return toast.error(notificationContent);
+  }
+
+  // What to say about a zip that was picked: how much came out of it, or why
+  // nothing did. A zip is how a folder of photos arrives from a phone or a
+  // share sheet, and the person who picked it is owed the count either way.
+  static reportZip({ name, attachments, failed }) {
+    if (failed) {
+      Home.notifyError(
+        `Could not read ${name}. If it is a zip file, it may be damaged.`,
+      );
+      return;
+    }
+
+    if (attachments.length === 0) {
+      Home.notifyWarning(`${name} held no pictures or videos.`);
+      return;
+    }
+
+    const pictures = attachments.filter(file =>
+      isImage({ ext: fileExtension(file.name) }),
+    ).length;
+    const videos = attachments.length - pictures;
+    const parts = [
+      pictures > 0 && countOf(pictures, 'picture'),
+      videos > 0 && countOf(videos, 'video'),
+    ].filter(Boolean);
+
+    Home.notifySuccess(`${parts.join(' and ')} from ${name}`);
   }
 
   static handleSearchInputMounted(input) {
@@ -1471,9 +1503,15 @@ class Home extends React.Component {
 
   // adapted from https://github.com/ngokevin/react-file-reader-input/tree/f970257f271b8c3bba9d529ffdbfa4f4731e0799#usage
   handleAttachmentInput = async (_, results) => {
-    const attachmentData = results.map(([, attachmentFile]) => attachmentFile);
+    const picked = results.map(([, attachmentFile]) => attachmentFile);
+    const { files, zips } = await expandZipFiles(picked);
+    zips.forEach(archive => Home.reportZip(archive));
 
-    return this.handleAttachmentData({ attachmentData });
+    if (files.length === 0) {
+      return undefined;
+    }
+
+    return this.handleAttachmentData({ attachmentData: files });
   };
 
   // What each of a set of photos read.
@@ -3059,6 +3097,7 @@ class Home extends React.Component {
                 <fieldset disabled={this.state.isSubmitting}>
                   <FileReaderInput
                     multiple
+                    accept="image/*,video/*,.zip,application/zip,application/x-zip-compressed"
                     as="buffer"
                     onChange={this.handleAttachmentInput}
                     style={{

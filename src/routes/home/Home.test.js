@@ -2834,11 +2834,15 @@ describe('Home', () => {
 
       const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
       let alprCalls = 0;
+      // When each read was asked for, on a clock the tests do not mock: `Date`
+      // is frozen for this file, and a spacing test needs real elapsed time.
+      const alprCallTimes = [];
       const axiosPost = jest
         .spyOn(axios, 'post')
         .mockImplementation((url, body) => {
           if (url === '/platerecognizer') {
             alprCalls += 1;
+            alprCallTimes.push(Number(process.hrtime.bigint()) / 1e6);
             if (failAlprCalls.includes(alprCalls)) {
               return Promise.reject(
                 Object.assign(
@@ -2930,6 +2934,9 @@ describe('Home', () => {
         toastWarn,
         platerecognizerCalls: () =>
           axiosPost.mock.calls.filter(([url]) => url === '/platerecognizer'),
+        // When each read was asked for, in milliseconds since an arbitrary
+        // start, so a test can measure the spacing between them.
+        platerecognizerCallTimes: () => [...alprCallTimes],
         // Loading a violation reads its unread plates in the background, and
         // nothing in the form waits for that. The promise it left on the
         // instance is what to wait for here: it resolves when the last of a
@@ -3225,6 +3232,49 @@ describe('Home', () => {
       // the very method whose interceptors do the retrying.
       const [[, , config]] = platerecognizerCalls();
       expect(config['axios-retry']).toBe(plateReadRetry);
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    test('spaces the reads out once one of them is refused', async () => {
+      const photos = [
+        jpeg({ name: 'a.jpg', size: 4 }),
+        jpeg({ name: 'b.jpg', size: 5 }),
+        jpeg({ name: 'c.jpg', size: 6 }),
+        jpeg({ name: 'd.jpg', size: 7 }),
+      ];
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      // The first read is refused, and the three after it are held back just
+      // long enough that the refusal is known before the fourth read is
+      // started by whichever worker frees up first.
+      const { platerecognizerCallTimes, cleanup } = await renderBatchWithFiles(
+        photos,
+        {
+          failAlprCalls: [1],
+          alprDelayMsBySize: { 5: 300, 6: 300, 7: 300 },
+        },
+      );
+
+      // The batch's four reads; anything after them is the second chance the
+      // load gives the photo that was refused.
+      const times = platerecognizerCallTimes().slice(0, 4);
+      expect(times).toHaveLength(4);
+
+      // The first three start together, which is what the pool does until
+      // something is refused.
+      expect(times[2] - times[0]).toBeLessThan(200);
+
+      // The read after the refusal waits out the second the API asked for
+      // instead of spending itself on the same limit.
+      expect(times[3] - times[0]).toBeGreaterThanOrEqual(1000);
 
       exifr.gps.mockReset();
       exifr.parse.mockReset();

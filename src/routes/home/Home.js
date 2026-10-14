@@ -559,12 +559,27 @@ async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
   }
 }
 
-// Batch mode's ALPR calls run through a pool of this size. Plate Recognizer
-// has no rate limit of its own (unlike /api/uploadAttachment), so the cap is
-// politeness rather than enforcement: a forty-photo folder must not become
-// forty simultaneous uploads, each holding its own copies of the image
-// buffers.
+// Batch mode's ALPR calls run through a pool of this size, so that a
+// forty-photo folder does not become forty simultaneous uploads, each holding
+// its own copies of the image buffers.
+//
+// The pool is not what keeps the reads under Plate Recognizer's rate limit:
+// that is the wait below, and the limit is real -- a third of a batch's reads
+// came back refused before it (see ALPR_THROTTLE_WAIT_MS).
 const BATCH_ALPR_CONCURRENCY = 3;
+
+// What one refused read costs the reads that follow it.
+//
+// Plate Recognizer throttles by the second and says so in the refusal:
+// "Request was throttled. Expected available in 1 second." Three reads at once
+// is over what the account allows, and each refusal costs two calls -- the
+// first token is refused and the second is spent straight after -- so the pass
+// pays the wait rather than the refusal. A read that is refused starts the
+// clock; every read after it waits for its slot.
+//
+// Nothing is spaced until a read is refused, so a batch that the limit is
+// keeping up with reads as fast as it always did.
+const ALPR_THROTTLE_WAIT_MS = 1100;
 
 // Run `worker` over `items`, at most `limit` at a time, and return the results
 // in the order the items were given.
@@ -2053,10 +2068,34 @@ class Home extends React.Component {
       batchProgress: { stage: 'alpr', completed, total: inCaptureOrder.length },
     });
 
+    // When the next read may start. Zero until a read is refused: see
+    // ALPR_THROTTLE_WAIT_MS.
+    let nextReadAt = 0;
+    const waitForReadSlot = async () => {
+      if (!this.plateReadThrottled) {
+        return;
+      }
+      // `performance.now()` rather than `Date.now()`: this is a duration, and
+      // a monotonic clock cannot be moved out from under it.
+      const now = performance.now();
+      // The first read after a refusal waits out the second the API asked
+      // for; each read after it keeps that distance from the one before.
+      const startAt =
+        nextReadAt === 0
+          ? now + ALPR_THROTTLE_WAIT_MS
+          : Math.max(now, nextReadAt);
+      nextReadAt = startAt + ALPR_THROTTLE_WAIT_MS;
+      if (startAt > now) {
+        await new Promise(resolve => setTimeout(resolve, startAt - now));
+      }
+    };
+    this.plateReadThrottled = false;
+
     await mapWithConcurrency({
       items: inCaptureOrder,
       limit: BATCH_ALPR_CONCURRENCY,
       worker: async (photo, index) => {
+        await waitForReadSlot();
         const result = await this.readBatchPhotoPlate(photo);
         readSoFar[index] = result;
         completed += 1;
@@ -2299,6 +2338,12 @@ class Home extends React.Component {
       });
     } catch (err) {
       console.error(err);
+      // A refusal is worth remembering: the reads after it wait out the
+      // second the API asks for, rather than spending themselves on the same
+      // limit. See ALPR_THROTTLE_WAIT_MS.
+      if (err?.response?.status === 429) {
+        this.plateReadThrottled = true;
+      }
       // A photo ALPR could not read still belongs to the batch: it groups by
       // time and place, and the queue flags the group for manual entry.
       return undefined;

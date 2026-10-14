@@ -33,8 +33,7 @@ summary {
    keeps them as line breaks (space runs still collapse, and long lines still
    wrap), so a message can separate an addendum from the error with a blank
    line. Single-line messages render exactly as before. */
-:global(.Toastify__toast-body) {
-  /* stylelint-disable-line selector-class-pattern */
+:global(.Toastify__toast-body) { /* stylelint-disable-line selector-class-pattern */
   white-space: pre-line;
 }
 

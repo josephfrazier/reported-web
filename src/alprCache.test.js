@@ -104,9 +104,7 @@ describe('alprCache', () => {
   });
 });
 
-// A real image, so sharp does the work the route does. The bytes that go on
-// the wire are sharp's, not these, which is the point: the cache is keyed
-// where the request is made, not where the photo comes in.
+// A real image, so sharp does the work the route does.
 function photoBuffer() {
   return sharp({
     create: { width: 64, height: 64, channels: 3, background: '#888' },
@@ -171,6 +169,19 @@ describe('readLicenseViaALPR', () => {
 
       expect(fetchSpy).toHaveBeenCalledTimes(1);
       expect(second).toEqual(first);
+    });
+  });
+
+  test('answers from the entry stored under the bytes the request carries', async () => {
+    // Not a photo at all: the entry is found by hashing what came in, before
+    // anything looks at the image, so the reading comes back without sharp
+    // having a say. That is the point of keying there -- a hit costs a hash.
+    const uploaded = Buffer.from('the bytes the request carries');
+    await writeCachedReading(alprCacheKey(uploaded), reading);
+
+    await withStubbedFetch(readingAnswer, async fetchSpy => {
+      await expect(readPhoto(uploaded)).resolves.toEqual(reading);
+      expect(fetchSpy).not.toHaveBeenCalled();
     });
   });
 

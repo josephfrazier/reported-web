@@ -3020,6 +3020,96 @@ describe('Home', () => {
     consoleError.mockRestore();
   });
 
+  // A folder is how a camera roll arrives, and the form wants the pictures
+  // and videos in it rather than everything the folder happens to hold.
+  test('takes the pictures and videos inside a picked folder', async () => {
+    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+    const axiosPost = jest.spyOn(axios, 'post').mockResolvedValue({ data: {} });
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    const folder = [
+      new File([photoBytes('older')], 'album/older.jpg', {
+        type: 'image/jpeg',
+      }),
+      new File([photoBytes('newer')], 'album/newer.jpg', {
+        type: 'image/jpeg',
+      }),
+      new File([Buffer.from('x')], 'album/.DS_Store', { type: '' }),
+      new File([Buffer.from('notes')], 'album/notes.txt', {
+        type: 'text/plain',
+      }),
+    ];
+
+    exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+    exifr.parse.mockImplementation(async () => ({
+      CreateDate: new Date(Date.UTC(2024, 0, 1, 12, 0, 0)),
+      OffsetTimeDigitized: '+00:00',
+    }));
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ homeRef });
+    });
+
+    await renderer.act(async () => {
+      await homeRef.current.handleFolderInput({
+        target: { files: folder, value: '' },
+      });
+    });
+    // The extraction pass runs from a setState callback through jsdom's
+    // FileReader, so it needs real time rather than a microtask.
+    await renderer.act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 700));
+    });
+
+    // The pictures, as the folder named them; the text file and the macOS
+    // entry are not attachments and are not here.
+    expect(homeRef.current.state.attachmentData.map(file => file.name)).toEqual(
+      ['album/older.jpg', 'album/newer.jpg'],
+    );
+
+    tree.unmount();
+    exifr.gps.mockReset();
+    exifr.parse.mockReset();
+    axiosGet.mockRestore();
+    axiosPost.mockRestore();
+    consoleError.mockRestore();
+  });
+
+  test('says so when a picked folder holds no pictures or videos', async () => {
+    const toastWarn = jest.spyOn(toast, 'warn').mockImplementation(() => null);
+
+    const homeRef = React.createRef();
+    let tree;
+    renderer.act(() => {
+      tree = renderHome({ homeRef });
+    });
+
+    await renderer.act(async () => {
+      await homeRef.current.handleFolderInput({
+        target: {
+          files: [
+            new File([Buffer.from('notes')], 'notes.txt', {
+              type: 'text/plain',
+            }),
+          ],
+          value: '',
+        },
+      });
+    });
+
+    expect(toastWarn.mock.calls[0][0]).toBe(
+      'That folder held no pictures or videos.',
+    );
+    expect(homeRef.current.state.attachmentData).toEqual([]);
+
+    tree.unmount();
+    toastWarn.mockRestore();
+  });
+
   describe('session handling', () => {
     test('does not send stored credentials on mount', async () => {
       // A legacy cookie may still hold email+password; the client must not

@@ -774,6 +774,19 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         pattern.
       </p>
 
+      <div class="note">
+        <span class="note__label">A photo can be in more than one violation</span>
+        <p>
+          Photo&nbsp;1's frame read two other cars as well — <span class="mono">k73jau</span> and
+          <span class="mono">lda8765</span> — and each of them is a violation of its own, holding
+          that frame. A round of the split takes the winning car's plate <em>strings</em> out of the
+          pool rather than its photos, so the frame is still there for the next car's round; a
+          second pass gives it to any car that won no photo of its own. A photo is evidence for
+          every car in it, and a car whose only photo is a wide shot that another car's row claimed
+          would otherwise never be reported at all.
+        </p>
+      </div>
+
       <div class="note note--warn">
         <span class="note__label">Order of operations matters</span>
         <p>

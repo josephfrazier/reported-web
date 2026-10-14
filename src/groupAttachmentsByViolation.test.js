@@ -249,13 +249,32 @@ describe('groupAttachmentsByViolation', () => {
 
     const violations = groupAttachmentsByViolation(photos);
 
-    expect(violations).toHaveLength(1);
-    expect(violations[0].photos).toEqual(photos);
+    // The medallion's three photos are one violation, and folding is what
+    // keeps them together: counted as exact strings, no two of them share a
+    // plate and each reading would be a violation of its own.
+    const [medallion] = violations;
+    expect(medallion.photos).toEqual(photos);
     // The clean read, the only variant matching ^T\d{6}C$. Plates come back
     // uppercased, the same normalisation `extractPlate` applies to what the
     // plate input shows.
-    expect(violations[0].plate).toBe('T696817C');
-    expect(violations[0].licenseState).toBe('NY');
+    expect(medallion.plate).toBe('T696817C');
+    expect(medallion.licenseState).toBe('NY');
+
+    // The frame read two more cars as well, and each of them is reported from
+    // it. The medallion's round wins the frame and is the photo's own car, so
+    // it keeps it; the other two have nothing else, and would go unreported if
+    // the frame went with the round.
+    expect(
+      violations
+        .slice(1)
+        .map(violation => [
+          violation.plate,
+          violation.photos.map(photo => photo.name),
+        ]),
+    ).toEqual([
+      ['K73JAU', ['variants.jpg']],
+      ['LDA8765', ['variants.jpg']],
+    ]);
   });
 
   test('splits two cars photographed back-to-back into two violations', () => {
@@ -822,18 +841,24 @@ describe('groupAttachmentsByViolation', () => {
       })),
     ).toEqual([
       { plate: 'T696817C', photos: ['1.jpg', '2.jpg', '3.jpg'] },
+      // The third car in `1.jpg`'s frame, which has no photo of its own. Its
+      // time is that photo's, so it sorts with the medallion's row.
+      { plate: 'K73JAU', photos: ['1.jpg'] },
       { plate: 'LDA8765', photos: ['4.jpg', '5.jpg'] },
       { plate: '', photos: ['6.jpg'] },
     ]);
 
-    const [first, second, third] = violations;
-    expect(first.createDateMs).toBe(startTime);
-    expect(second.createDateMs).toBe(startTime + 27000);
-    expect(third.createDateMs).toBe(startTime + 158000);
+    const [medallion, passenger, later, unread] = violations;
+    expect(medallion.createDateMs).toBe(startTime);
+    // The passenger's only photo is the medallion's first one, so its row
+    // starts at that same moment and sorts next to it.
+    expect(passenger.createDateMs).toBe(startTime);
+    expect(later.createDateMs).toBe(startTime + 27000);
+    expect(unread.createDateMs).toBe(startTime + 158000);
     // The walk carries on down the block, so the last photo of each group is
     // the furthest along, and its fix is the one the report takes.
-    expect(first.latitude).toBe(latitudeMetersNorthOf(5));
-    expect(second.latitude).toBe(latitudeMetersNorthOf(151));
+    expect(medallion.latitude).toBe(latitudeMetersNorthOf(5));
+    expect(later.latitude).toBe(latitudeMetersNorthOf(151));
   });
 
   test('leaves the caller’s photo array alone', () => {

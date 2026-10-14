@@ -4490,6 +4490,100 @@ describe('Home', () => {
       },
     );
 
+    // One wide shot of several cars is evidence for every car in it, so the
+    // rows share the photo: it is in each of their reports, and what happens
+    // to one row must not take it from the others.
+    const sharedPhotoRows = async () => {
+      const photo = (name, createDateMs) => ({
+        file: new File(['picture'], name, { type: 'image/jpeg' }),
+        name,
+        createDateMs,
+        latitude: 40.7129,
+        longitude: -74.0061,
+      });
+      const wide = photo('wide.jpg', 1704110400000);
+      const later = photo('later.jpg', 1704110600000);
+      const row = (plate, photos, createDateMs) => ({
+        photos,
+        plate,
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs,
+      });
+
+      const rendered = await renderBatchWithFiles([]);
+      const { homeRef } = rendered;
+
+      renderer.act(() => {
+        homeRef.current.geosearchAddressCache.set({
+          latitude: 40.7129,
+          longitude: -74.0061,
+          address: '123 Main St, Manhattan',
+        });
+        homeRef.current.setState({
+          batchPhotos: [wide, later],
+          batchViolations: [
+            row('AAA111', [wide], 1704110400000),
+            row('BBB222', [wide], 1704110400000),
+            row('FFF666', [later], 1704110600000),
+          ],
+        });
+      });
+
+      return { ...rendered, wide, later };
+    };
+
+    test('leaves the other rows their shared photo when one row is deleted', async () => {
+      const { homeRef, clickRowDelete, wide, cleanup } =
+        await sharedPhotoRows();
+
+      clickRowDelete('AAA111');
+
+      const { batchViolations } = homeRef.current.state;
+      expect(batchViolations.map(violation => violation.plate)).toEqual([
+        'BBB222',
+        'FFF666',
+      ]);
+      // The photo itself stays in the batch, and in the row that still needs
+      // it: the row that went was one of the two that held it.
+      expect(batchViolations[0].photos).toEqual([wide]);
+      expect(
+        homeRef.current.state.batchPhotos.map(photo => photo.name),
+      ).toEqual(['wide.jpg', 'later.jpg']);
+
+      cleanup();
+    });
+
+    test('submits one row that shares a photo without touching the others', async () => {
+      const { homeRef, clickQueueLoad, submit, wide, cleanup } =
+        await sharedPhotoRows();
+
+      clickQueueLoad('AAA111');
+      expect(homeRef.current.state.attachmentData).toEqual([wide.file]);
+
+      await submit();
+
+      await renderer.act(async () => {
+        for (let i = 0; i < 3; i += 1) {
+          // eslint-disable-next-line no-await-in-loop -- one round per pending promise chain.
+          await new Promise(resolve => setImmediate(resolve));
+        }
+      });
+
+      const { batchViolations } = homeRef.current.state;
+
+      // The row that was submitted is gone; the rows that shared its photo
+      // are not, and neither gained a second copy of it.
+      expect(batchViolations.map(violation => violation.plate)).toEqual([
+        'BBB222',
+        'FFF666',
+      ]);
+      expect(batchViolations[0].photos).toEqual([wide]);
+
+      cleanup();
+    });
+
     test('attaches a fourth picture, warns, and holds Submit until one is dropped', async () => {
       const pictures = ['p1', 'p2', 'p3', 'p4'].map(
         name => new File(['picture'], `${name}.jpg`, { type: 'image/jpeg' }),

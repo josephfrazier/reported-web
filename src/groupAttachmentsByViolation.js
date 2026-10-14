@@ -189,7 +189,7 @@ function meanCenterDistance(boxes) {
 
 // Per plate string: which photos could be reading it, the boxes it was found
 // in, and the best score ALPR gave it.
-function buildPlateStats(photos) {
+function buildPlateStats(photos, { ignore = new Set() } = {}) {
   const parents = new Map();
   const find = plate => {
     let root = plate;
@@ -211,7 +211,9 @@ function buildPlateStats(photos) {
   photos.forEach(photo => {
     const results = photo.plateResults?.results || [];
     results.forEach(result => {
-      const plates = candidatePlateStrings(result);
+      const plates = candidatePlateStrings(result).filter(
+        plate => !ignore.has(plate),
+      );
       if (plates.length === 0) {
         return;
       }
@@ -436,12 +438,36 @@ function photoIsClaimedBy({ photo, memberSet }) {
 
 // Passes 3 and 4 of one candidate cluster: split it into violations on the
 // plate, and hand back whatever is left over.
+//
+// A round takes the winning car's plate strings out of the pool rather than
+// its photos. A photo is evidence for every car in it, and one wide shot of a
+// block is the only evidence four of those cars have: a round that takes the
+// photo leaves them nothing to win with, so they are never reported, and
+// nothing on screen says so -- the row that won still shows their plates in
+// its overlays.
+//
+// So the first pass claims, for each car it picks, only the photos that are
+// *of* that car -- the plate nearest the middle of the frame, see
+// `photoIsClaimedBy` -- which is what keeps a close-up of one car out of the
+// row of the car parked behind it. A car left with no photo of its own after
+// that pass is a passenger in somebody else's wide shot, and the second pass
+// gives it the photos that read its plate: a car reported from a frame it
+// appears in beats a car reported not at all. The two passes are why a photo
+// can now be in more than one violation.
 function splitCluster(cluster) {
   const groups = [];
-  let remaining = cluster;
+  const claimedPlates = new Set();
+  const passengers = [];
 
-  while (remaining.length > 0) {
-    const { stats, find } = buildPlateStats(remaining);
+  const platesOf = photo => [...plateDistances(photo).keys()];
+  const hasUnclaimedPlate = photo =>
+    platesOf(photo).some(plate => !claimedPlates.has(plate));
+
+  while (true) {
+    const remaining = cluster.filter(hasUnclaimedPlate);
+    const { stats, find } = buildPlateStats(remaining, {
+      ignore: claimedPlates,
+    });
     if (stats.size === 0) {
       break;
     }
@@ -455,21 +481,39 @@ function splitCluster(cluster) {
     const claimed = remaining.filter(photo =>
       photoIsClaimedBy({ photo, memberSet }),
     );
-    if (claimed.length === 0) {
-      break;
+
+    if (claimed.length > 0) {
+      groups.push({
+        photos: claimed,
+        plate,
+        licenseState: licenseStateForPlate({ photos: claimed, plate }),
+      });
+    } else {
+      passengers.push({ members, plate });
     }
 
-    groups.push({
-      photos: claimed,
-      plate,
-      licenseState: licenseStateForPlate({ photos: claimed, plate }),
-    });
-
-    const claimedPhotos = new Set(claimed);
-    remaining = remaining.filter(photo => !claimedPhotos.has(photo));
+    members.forEach(member => claimedPlates.add(member));
   }
 
-  return { groups, orphans: remaining };
+  passengers.forEach(({ members, plate }) => {
+    const memberSet = new Set(members);
+    const photos = cluster.filter(photo =>
+      platesOf(photo).some(candidate => memberSet.has(candidate)),
+    );
+
+    groups.push({
+      photos,
+      plate,
+      licenseState: licenseStateForPlate({ photos, plate }),
+    });
+  });
+
+  // Whatever read no plate at all. A photo that read plates is in a group:
+  // either one claimed it, or it read the plate of a car that had none of its
+  // own and was picked up by the second pass.
+  const orphans = cluster.filter(photo => platesOf(photo).length === 0);
+
+  return { groups, orphans };
 }
 
 // Photos ALPR read nothing in still belong to whatever they were shot
@@ -557,7 +601,11 @@ function buildViolation({ photos, plate, licenseState }) {
 // The plate comes from whichever violation read one, and from the one with more
 // photos behind it when both did -- the reading the user can see wins.
 export function mergeViolations(violations) {
-  const photos = violations.flatMap(violation => [...violation.photos]);
+  // Once each. A photo can be in more than one violation -- a wide shot
+  // belongs to every car in it -- and a report holds a picture once.
+  const photos = [
+    ...new Set(violations.flatMap(violation => [...violation.photos])),
+  ];
 
   const [withPlate] = violations
     .filter(violation => violation.plate)

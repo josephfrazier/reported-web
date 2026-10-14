@@ -2338,13 +2338,17 @@ class Home extends React.Component {
       })),
     );
 
+    // Once per photo: a wide shot belongs to every car in it, so the rows
+    // mention it more than once, and grouping is what decides which rows it
+    // ends up in.
+    const photosByFile = new Map();
+    state.batchViolations
+      .flatMap(violation => violation.photos)
+      .filter(candidate => !spokenFor.has(candidate.file))
+      .forEach(candidate => photosByFile.set(candidate.file, candidate));
+
     const grouped = this.withNycFlags(
-      groupAttachmentsByViolation(
-        state.batchViolations
-          .flatMap(violation => violation.photos)
-          .filter(candidate => !spokenFor.has(candidate.file))
-          .map(replace),
-      ),
+      groupAttachmentsByViolation([...photosByFile.values()].map(replace)),
     );
 
     return [...userMade, ...grouped].sort(
@@ -3017,8 +3021,18 @@ class Home extends React.Component {
       return;
     }
 
-    const removedPhotos = new Set(violation.photos);
     const remainingViolations = batchViolations.filter((_, i) => i !== index);
+
+    // The row's photos go with it, except the ones another row still holds:
+    // one wide shot is evidence for every car in it, and deleting the row of
+    // one of those cars says nothing about the photo the others were reported
+    // from.
+    const keptElsewhere = new Set(
+      remainingViolations.flatMap(each => each.photos),
+    );
+    const removedPhotos = new Set(
+      violation.photos.filter(photo => !keptElsewhere.has(photo)),
+    );
 
     this.setState(
       {

@@ -124,6 +124,7 @@ exports[`Home hides form fields when logged in with no photos uploaded 1`] = `
             }
           >
             <input
+              accept="image/*,video/*,.zip,application/zip,application/x-zip-compressed"
               multiple={true}
               onChange={[Function]}
               onClick={[Function]}
@@ -1654,6 +1655,7 @@ exports[`Home renders submission form and Previous Submissions when logged in wi
             }
           >
             <input
+              accept="image/*,video/*,.zip,application/zip,application/x-zip-compressed"
               multiple={true}
               onChange={[Function]}
               onClick={[Function]}
@@ -2496,6 +2498,7 @@ exports[`Home renders with allPlateResults entry missing plate and photos 1`] = 
             }
           >
             <input
+              accept="image/*,video/*,.zip,application/zip,application/x-zip-compressed"
               multiple={true}
               onChange={[Function]}
               onClick={[Function]}
@@ -3338,6 +3341,7 @@ exports[`Home renders with undefined allPlateResults and photos 1`] = `
             }
           >
             <input
+              accept="image/*,video/*,.zip,application/zip,application/x-zip-compressed"
               multiple={true}
               onChange={[Function]}
               onClick={[Function]}

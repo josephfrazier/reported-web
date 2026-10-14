@@ -514,6 +514,27 @@ async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
   }
 }
 
+// What the form says when it holds more attachments of one kind than a
+// submission carries. One copy, so the note above the button and the refusal
+// at submit say the same words.
+const TOO_MANY_ATTACHMENTS_MESSAGE =
+  'A report can include at most 3 pictures and 3 videos. Remove the extra ones to submit it.';
+
+// Whether the form holds more of one kind of photo than a submission can
+// carry.
+//
+// A submission carries three pictures and three videos, and
+// `createSubmission.js` keeps only the first three of each kind. The form
+// refuses to send a report that is over either cap, rather than leave the
+// extras to be dropped on the way to the report without a word.
+function tooManyAttachments(attachmentData) {
+  const pictures = attachmentData.filter(file =>
+    isImage({ ext: fileExtension(file.name) }),
+  ).length;
+
+  return pictures > 3 || attachmentData.length - pictures > 3;
+}
+
 class Home extends React.Component {
   static getVehicleMakeLogoUrl({ vehicleMake }) {
     if (vehicleMake.toLowerCase() === 'nissan') {
@@ -2779,6 +2800,14 @@ class Home extends React.Component {
                 onSubmit={async e => {
                   e.preventDefault();
 
+                  // The button is off while this is true, and this catches the
+                  // submit a keyboard makes without it; the server keeps only
+                  // the first three of each kind either way.
+                  if (tooManyAttachments(this.state.attachmentData)) {
+                    Home.notifyError(TOO_MANY_ATTACHMENTS_MESSAGE);
+                    return;
+                  }
+
                   if (
                     this.state.latitude === defaultLatitude &&
                     this.state.longitude === defaultLongitude
@@ -3317,18 +3346,24 @@ class Home extends React.Component {
                           {this.state.submitProgressMax}
                         </progress>
                       ) : (
-                        <button
-                          type="submit"
-                          disabled={
-                            this.state.isSubmitting ||
-                            !this.state.coordsAreInNyc
-                          }
-                          style={{
-                            width: '100%',
-                          }}
-                        >
-                          Submit
-                        </button>
+                        <React.Fragment>
+                          {tooManyAttachments(this.state.attachmentData) && (
+                            <p>{TOO_MANY_ATTACHMENTS_MESSAGE}</p>
+                          )}
+                          <button
+                            type="submit"
+                            disabled={
+                              this.state.isSubmitting ||
+                              !this.state.coordsAreInNyc ||
+                              tooManyAttachments(this.state.attachmentData)
+                            }
+                            style={{
+                              width: '100%',
+                            }}
+                          >
+                            Submit
+                          </button>
+                        </React.Fragment>
                       )}
                     </React.Fragment>
                   )}

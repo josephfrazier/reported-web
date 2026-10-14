@@ -17,6 +17,7 @@ import { setImmediate } from 'timers';
 import StyleContext from 'isomorphic-style-loader/StyleContext';
 import axios from 'axios';
 import exifr from 'exifr/dist/full.umd.js';
+import { zipSync } from 'fflate';
 import * as blobUtil from 'blob-util';
 import { toast } from 'react-toastify';
 import Modal from 'react-modal';
@@ -3079,37 +3080,68 @@ describe('Home', () => {
     consoleError.mockRestore();
   });
 
-  test('says so when a picked folder holds no pictures or videos', async () => {
-    const toastWarn = jest.spyOn(toast, 'warn').mockImplementation(() => null);
+  // A folder of pictures arrives from a phone or a share sheet as a zip, so
+  // the picker takes one and opens it out: what it holds are the attachments.
+  test('opens a picked zip into the attachments it holds', async () => {
+    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+    const axiosPost = jest.spyOn(axios, 'post').mockResolvedValue({ data: {} });
+    const toastSuccess = jest
+      .spyOn(toast, 'success')
+      .mockImplementation(() => null);
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
 
-    const homeRef = React.createRef();
+    const zip = new File(
+      [
+        zipSync({
+          'photos/older.jpg': photoBytes('older'),
+          'photos/newer.jpg': photoBytes('newer'),
+          // Not an attachment, with the metadata macOS writes into a zip.
+          'photos/notes.txt': Buffer.from('not a photo'),
+          '__MACOSX/._older.jpg': Buffer.from('resource fork'),
+        }),
+      ],
+      'photos.zip',
+      { type: 'application/zip' },
+    );
+
+    exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+    exifr.parse.mockImplementation(async () => ({
+      CreateDate: new Date(Date.UTC(2024, 0, 1, 12, 0, 0)),
+      OffsetTimeDigitized: '+00:00',
+    }));
+
     let tree;
+    const homeRef = React.createRef();
     renderer.act(() => {
       tree = renderHome({ homeRef });
     });
 
     await renderer.act(async () => {
-      await homeRef.current.handleFolderInput({
-        target: {
-          files: [
-            new File([Buffer.from('notes')], 'notes.txt', {
-              type: 'text/plain',
-            }),
-          ],
-          value: '',
-        },
-      });
+      await homeRef.current.handleAttachmentInput(null, [[null, zip]]);
+    });
+    // The extraction pass runs from a setState callback through jsdom's
+    // FileReader, so it needs real time rather than a microtask.
+    await renderer.act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 700));
     });
 
-    expect(toastWarn.mock.calls[0][0]).toBe(
-      'That folder held no pictures or videos.',
+    // The photos, named as the zip had them with the folder they shared
+    // dropped; the text file and the macOS entry are not attachments.
+    expect(homeRef.current.state.attachmentData.map(file => file.name)).toEqual(
+      ['older.jpg', 'newer.jpg'],
     );
-    expect(homeRef.current.state.attachmentData).toEqual([]);
+    expect(toastSuccess.mock.calls[0][0]).toBe('2 pictures from photos.zip');
 
     tree.unmount();
-    toastWarn.mockRestore();
+    exifr.gps.mockReset();
+    exifr.parse.mockReset();
+    axiosGet.mockRestore();
+    axiosPost.mockRestore();
+    toastSuccess.mockRestore();
+    consoleError.mockRestore();
   });
-
   describe('session handling', () => {
     test('does not send stored credentials on mount', async () => {
       // A legacy cookie may still hold email+password; the client must not

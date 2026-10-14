@@ -662,6 +662,19 @@ function defaultBatchSelection(photos) {
   return photos.filter(photo => selected.has(photo));
 }
 
+// The ALPR responses the plate overlays and the plate suggestions are drawn
+// from, keyed by the name of the photo each came from. A photo whose read
+// failed, or whose read found nothing, contributes nothing.
+function plateDataByAttachmentNameFor(photos) {
+  const byName = {};
+  photos.forEach(photo => {
+    if (photo.plateResults) {
+      byName[photo.name] = photo.plateResults;
+    }
+  });
+  return byName;
+}
+
 // Grouping and geocoding happen per violation as it is published, so the queue
 // appearing underneath is the progress for those. The bar names the two passes
 // over the files themselves.
@@ -2346,12 +2359,9 @@ class Home extends React.Component {
 
     // The overlays and the plate suggestions come from the same ALPR responses
     // the single-violation flow puts here.
-    const plateDataByAttachmentName = {};
-    violation.photos.forEach(photo => {
-      if (photo.plateResults) {
-        plateDataByAttachmentName[photo.name] = photo.plateResults;
-      }
-    });
+    const plateDataByAttachmentName = plateDataByAttachmentNameFor(
+      violation.photos,
+    );
 
     // What the report opens with. Its time and place are read from this rather
     // than from the whole violation, because they describe the report -- and
@@ -2371,14 +2381,27 @@ class Home extends React.Component {
     // submit to send the file itself.
     startBackgroundUploads(attached.map(photo => photo.file));
 
-    this.setState({
-      currentViolationIndex: index,
-      attachmentData: attached.map(photo => photo.file),
-      allPlateData:
-        violation.photos.find(photo => photo.plateResults)?.plateResults ||
-        null,
-      plateDataByAttachmentName,
-    });
+    this.setState(
+      {
+        currentViolationIndex: index,
+        attachmentData: attached.map(photo => photo.file),
+        allPlateData:
+          violation.photos.find(photo => photo.plateResults)?.plateResults ||
+          null,
+        plateDataByAttachmentName,
+      },
+      // The form is usable as it opens; this only fills in what the batch
+      // could not read. It runs from the callback so that the violation is
+      // the current one before it starts, which is what lets it stop early
+      // if the user opens another.
+      //
+      // The promise is kept rather than dropped: nothing in the form waits
+      // for it, but a test has to, and a fixed number of turns is a guess
+      // about how many reads are in flight.
+      () => {
+        this.plateReread = this.rereadFailedPlates({ index, violation });
+      },
+    );
 
     this.setLicensePlate({
       plate: violation.plate,
@@ -2391,6 +2414,96 @@ class Home extends React.Component {
     attached.forEach(photo => this.photoReadings.set(photo.file, photo));
 
     this.applyPhotosTimeAndPlace(attached.map(photo => photo.file));
+  };
+
+  // A violation whose photos could not be read gets its second chance here.
+  //
+  // The batch reads every photo once, three at a time, and Plate Recognizer
+  // rate limits by the second: a read that comes back 429 is repeated by
+  // `plateReadRetry` over about seven seconds and then given up on, and the
+  // photo keeps no `plateResults` at all. That absence used to be final -- the
+  // row said "(no plate read)" and the form opened with an empty License
+  // field, however readable the picture was.
+  //
+  // Only the photos with no result are read again, and one at a time, because
+  // the burst is what tripped the limit in the first place. A photo that read
+  // cleanly and found nothing is not worth another call, and one that did
+  // read is answered from `attachmentPlateCache`, so a violation that read
+  // cleanly costs nothing here.
+  rereadFailedPlates = async ({ index, violation }) => {
+    const failed = violation.photos.filter(photo => !photo.plateResults);
+    if (failed.length === 0) {
+      return;
+    }
+
+    const reread = await mapWithConcurrency({
+      items: failed,
+      limit: 1,
+      worker: async photo => {
+        // The user has opened another violation since. Stop reading for one
+        // they have left; a successful read is cached, so coming back costs
+        // only what is still missing.
+        if (this.state.currentViolationIndex !== index) {
+          return photo;
+        }
+        return this.readBatchPhotoPlate(photo);
+      },
+    });
+
+    const replaced = new Map(
+      failed
+        .map((photo, i) => [photo, reread[i]])
+        .filter(([, read]) => read.plateResults),
+    );
+    if (replaced.size === 0) {
+      return;
+    }
+
+    const photos = violation.photos.map(photo => replaced.get(photo) || photo);
+
+    // What the row's plate is now, by the same grouping the batch ran rather
+    // than a vote of its own: a re-read can show that one row holds two cars,
+    // and then the grouping is what says so. Only a group that comes back as
+    // one violation names a plate here -- when it comes back as two, picking
+    // one of them would be a guess, so the field stays empty for the user to
+    // fill in (the queue's merge is the inverse of this, and only the user
+    // can say two rows are one report).
+    const regrouped = groupAttachmentsByViolation(photos);
+    const plate = regrouped.length === 1 ? regrouped[0].plate : '';
+    const licenseState =
+      regrouped.length === 1 ? regrouped[0].licenseState : '';
+
+    // The row carries what was read from now on, so its label tells the user
+    // what is in it without opening it again.
+    this.setState(state => ({
+      batchPhotos: state.batchPhotos.map(photo => replaced.get(photo) || photo),
+      batchViolations: state.batchViolations.map(candidate =>
+        candidate === violation
+          ? {
+              ...candidate,
+              photos,
+              plate: candidate.plate || plate,
+              licenseState: candidate.licenseState || licenseState,
+            }
+          : candidate,
+      ),
+    }));
+
+    if (this.state.currentViolationIndex !== index) {
+      return;
+    }
+
+    this.setState({
+      allPlateData:
+        photos.find(photo => photo.plateResults)?.plateResults || null,
+      plateDataByAttachmentName: plateDataByAttachmentNameFor(photos),
+    });
+
+    // Only when the form has no plate of its own: one the user can see, or
+    // typed, wins over a reading that arrived late.
+    if (!violation.plate && plate) {
+      this.setLicensePlate({ plate, licenseState });
+    }
   };
 
   // Load a violation picked from the queue, so the order the batch was shot in

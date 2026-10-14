@@ -2809,6 +2809,13 @@ describe('Home', () => {
         // photo finish before one that was started earlier. Three concurrent
         // requests do that on their own.
         alprDelayMsBySize = {},
+        // Answers the plate reads with these call numbers (counting from
+        // one) the way a rate limit does: a rejection carrying a 429, which
+        // leaves that photo with no `plateResults` at all. The reads run in
+        // capture order, so call 1 belongs to the earliest photo. Failing
+        // only the batch's calls, and not the later ones, is what makes a
+        // second chance testable.
+        failAlprCalls = [],
       } = {},
     ) {
       const initialState = {
@@ -2826,10 +2833,21 @@ describe('Home', () => {
       document.querySelector = jest.fn(() => ({ scrollTo: jest.fn() }));
 
       const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+      let alprCalls = 0;
       const axiosPost = jest
         .spyOn(axios, 'post')
         .mockImplementation((url, body) => {
           if (url === '/platerecognizer') {
+            alprCalls += 1;
+            if (failAlprCalls.includes(alprCalls)) {
+              return Promise.reject(
+                Object.assign(
+                  new Error('Request failed with status code 429'),
+                  { response: { status: 429 } },
+                ),
+              );
+            }
+
             const { size } = body.get('attachmentFile');
             const delayMs = alprDelayMsBySize[size] || 0;
 
@@ -2912,6 +2930,14 @@ describe('Home', () => {
         toastWarn,
         platerecognizerCalls: () =>
           axiosPost.mock.calls.filter(([url]) => url === '/platerecognizer'),
+        // Loading a violation reads its unread plates in the background, and
+        // nothing in the form waits for that. The promise it left on the
+        // instance is what to wait for here: it resolves when the last of a
+        // violation's photos has been read again.
+        settle: async () =>
+          renderer.act(async () => {
+            await (homeRef.current.plateReread || Promise.resolve());
+          }),
         geosearchCalls: () =>
           axiosPost.mock.calls.filter(([url]) => url === '/api/geosearch'),
         uploadAttachmentCalls: () =>
@@ -3199,6 +3225,107 @@ describe('Home', () => {
       // the very method whose interceptors do the retrying.
       const [[, , config]] = platerecognizerCalls();
       expect(config['axios-retry']).toBe(plateReadRetry);
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    test('reads a plate again when the violation is loaded, after a read the 429 refused', async () => {
+      const photos = [jpeg({ name: 'a.jpg', size: 4 })];
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      // The batch's one read is answered the way a rate limit answers it. The
+      // photo is left with no `plateResults` at all, which is what used to be
+      // final: the row read "(no plate read)" and the form opened with an
+      // empty License field, however readable the picture was.
+      const { homeRef, settle, platerecognizerCalls, cleanup } =
+        await renderBatchWithFiles(photos, { failAlprCalls: [1] });
+
+      await settle();
+
+      // Two calls in all: the one the 429 refused, and the one the load made.
+      // A read that had succeeded is not repeated -- the test below holds
+      // that -- so the second call can only be the second chance.
+      expect(platerecognizerCalls()).toHaveLength(2);
+      expect(homeRef.current.state.batchViolations[0].plate).toBe('T696817C');
+      expect(homeRef.current.state.plate).toBe('T696817C');
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    test('reads again only the photos the batch could not read', async () => {
+      // Two photos of one medallion plate, a second apart, so they group into
+      // one violation -- the second read is the one that fails.
+      const photos = [
+        jpeg({ name: 'a.jpg', size: 4 }),
+        jpeg({ name: 'b.jpg', size: 5 }),
+      ];
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, settle, platerecognizerCalls, cleanup } =
+        await renderBatchWithFiles(photos, { failAlprCalls: [2] });
+
+      expect(homeRef.current.state.batchViolations).toHaveLength(1);
+
+      await settle();
+
+      // Three calls, not four: the photo that read is answered from the
+      // cache, so only the one that failed is read again. A photo that read
+      // cleanly and found nothing is not re-read either -- there is nothing
+      // to learn from asking twice.
+      expect(platerecognizerCalls()).toHaveLength(3);
+      expect(homeRef.current.state.batchViolations[0].plate).toBe('T696817C');
+      expect(homeRef.current.state.plate).toBe('T696817C');
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    test('leaves the plate empty when the second chance shows the row holds two cars', async () => {
+      // A photo of one car and a photo of another, a minute apart, which the
+      // time window leaves in one row. Both reads fail, so the row has no
+      // plate to split them by; the second chance reads both and finds out.
+      const photos = [
+        jpeg({ name: 'a.jpg', size: 4 }),
+        jpeg({ name: 'd.jpg', size: 7 }),
+      ];
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, settle, platerecognizerCalls, cleanup } =
+        await renderBatchWithFiles(photos, { failAlprCalls: [1, 2] });
+
+      expect(homeRef.current.state.batchViolations).toHaveLength(1);
+
+      await settle();
+
+      // Both photos were read this time, and they disagree: the row is two
+      // cars, which is what the grouping says when it splits them. Picking
+      // one of the two plates for the field would be a guess, so the field
+      // stays empty; the readings are there for the overlays and the
+      // suggestions, and splitting the row on load is the next step this
+      // leaves open.
+      expect(platerecognizerCalls()).toHaveLength(4);
+      expect(homeRef.current.state.batchViolations[0].plate).toBe('');
+      expect(homeRef.current.state.plate).toBe('');
 
       exifr.gps.mockReset();
       exifr.parse.mockReset();

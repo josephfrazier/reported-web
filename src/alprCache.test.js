@@ -104,6 +104,49 @@ describe('alprCache', () => {
   });
 });
 
+// A real image, so sharp does the work the route does.
+function photoBuffer() {
+  return sharp({
+    create: { width: 64, height: 64, channels: 3, background: '#888' },
+  })
+    .jpeg()
+    .toBuffer();
+}
+
+async function readPhoto(photo, { timings } = {}) {
+  return readLicenseViaALPR({
+    attachmentBuffer: photo,
+    PLATERECOGNIZER_TOKEN: 'one',
+    PLATERECOGNIZER_TOKEN_TWO: 'two',
+    timings,
+  });
+}
+
+// Runs `body` with Plate Recognizer's answer in place of the service itself: a
+// test must not spend a call, and it needs the same answer every time. Puts
+// back whatever fetch was there before.
+async function withStubbedFetch(answer, body) {
+  const hadFetch = 'fetch' in global;
+  const originalFetch = global.fetch;
+  const fetchSpy = jest.fn().mockResolvedValue(answer);
+  global.fetch = fetchSpy;
+
+  try {
+    return await body(fetchSpy);
+  } finally {
+    if (hadFetch) {
+      global.fetch = originalFetch;
+    } else {
+      delete global.fetch;
+    }
+  }
+}
+
+const readingAnswer = {
+  ok: true,
+  json: async () => ({ results: [], processing_time: 1 }),
+};
+
 describe('readLicenseViaALPR', () => {
   let dir;
 
@@ -118,46 +161,54 @@ describe('readLicenseViaALPR', () => {
   });
 
   test('asks Plate Recognizer once for the same bytes', async () => {
-    // A real image, so sharp does the work the route does. The bytes that go
-    // on the wire are sharp's, not these, which is the point: the cache is
-    // keyed where the request is made, not where the photo comes in.
-    const photo = await sharp({
-      create: { width: 64, height: 64, channels: 3, background: '#888' },
-    })
-      .jpeg()
-      .toBuffer();
+    const photo = await photoBuffer();
 
-    // jest's environment has no fetch of its own, so this defines one for the
-    // test and puts back whatever was there before it.
-    const hadFetch = 'fetch' in global;
-    const originalFetch = global.fetch;
-    const fetchSpy = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ results: [], processing_time: 1 }),
-    });
-    global.fetch = fetchSpy;
-
-    try {
-      const first = await readLicenseViaALPR({
-        attachmentBuffer: photo,
-        PLATERECOGNIZER_TOKEN: 'one',
-        PLATERECOGNIZER_TOKEN_TWO: 'two',
-      });
-      const second = await readLicenseViaALPR({
-        attachmentBuffer: photo,
-        PLATERECOGNIZER_TOKEN: 'one',
-        PLATERECOGNIZER_TOKEN_TWO: 'two',
-      });
+    await withStubbedFetch(readingAnswer, async fetchSpy => {
+      const first = await readPhoto(photo);
+      const second = await readPhoto(photo);
 
       expect(fetchSpy).toHaveBeenCalledTimes(1);
       expect(second).toEqual(first);
-    } finally {
-      if (hadFetch) {
-        global.fetch = originalFetch;
-      } else {
-        delete global.fetch;
-      }
-    }
+    });
+  });
+
+  test('answers from the entry stored under the bytes the request carries', async () => {
+    // Not a photo at all: the entry is found by hashing what came in, before
+    // anything looks at the image, so the reading comes back without sharp
+    // having a say. That is the point of keying there -- a hit costs a hash.
+    const uploaded = Buffer.from('the bytes the request carries');
+    await writeCachedReading(alprCacheKey(uploaded), reading);
+
+    await withStubbedFetch(readingAnswer, async fetchSpy => {
+      await expect(readPhoto(uploaded)).resolves.toEqual(reading);
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  test('reports each phase to the caller, and stores none of it', async () => {
+    const photo = await photoBuffer();
+    const firstTimings = {};
+    const cachedTimings = {};
+
+    await withStubbedFetch(readingAnswer, async () => {
+      await readPhoto(photo, { timings: firstTimings });
+      await readPhoto(photo, { timings: cachedTimings });
+    });
+
+    // The read that went to Plate Recognizer ran every phase, so the browser
+    // has a number for each; the one the cache answered never called out.
+    expect(firstTimings.plateRecognizer).toEqual(expect.any(Number));
+    expect(firstTimings.crops).toEqual(expect.any(Number));
+    expect(cachedTimings.cacheLookup).toEqual(expect.any(Number));
+    expect(cachedTimings).not.toHaveProperty('plateRecognizer');
+
+    // A stored reading is the service's answer and nothing else: timings
+    // describe one request, and the next one gets its own.
+    const [storedFile] = await fs.promises.readdir(dir);
+    const stored = JSON.parse(
+      await fs.promises.readFile(path.join(dir, storedFile), 'utf8'),
+    );
+    expect(stored).not.toHaveProperty('timings');
   });
 });
 

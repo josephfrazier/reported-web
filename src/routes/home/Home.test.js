@@ -17,6 +17,7 @@ import { setImmediate } from 'timers';
 import StyleContext from 'isomorphic-style-loader/StyleContext';
 import axios from 'axios';
 import exifr from 'exifr/dist/full.umd.js';
+import { zipSync } from 'fflate';
 import * as blobUtil from 'blob-util';
 import { toast } from 'react-toastify';
 import Modal from 'react-modal';
@@ -3265,6 +3266,7 @@ describe('Home', () => {
         homeRef,
         tree,
         axiosPost,
+        toastSuccess,
         toastWarn,
         toastError,
         platerecognizerCalls: () =>
@@ -4650,6 +4652,55 @@ describe('Home', () => {
         'FFF666',
       ]);
       expect(batchViolations[0].photos).toEqual([wide]);
+
+      cleanup();
+    });
+
+    // A folder of photos arrives from a phone or a share sheet as a zip, so a
+    // zip is a way of picking a batch rather than a file the batch could use:
+    // it is opened out, and its photos are the batch.
+    test('makes the batch from the photos inside a picked zip', async () => {
+      const zip = new File(
+        [
+          zipSync({
+            'photos/one.jpg': photoBytes('ab'),
+            'photos/two.jpg': photoBytes('abc'),
+            // `Buffer`, because this environment has neither TextEncoder nor
+            // TextDecoder.
+            'photos/notes.txt': Buffer.from('not a photo'),
+          }),
+        ],
+        'photos.zip',
+        { type: 'application/zip' },
+      );
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, toastSuccess, cleanup } = await renderBatchWithFiles([
+        zip,
+      ]);
+
+      const { batchPhotos, batchViolations } = homeRef.current.state;
+
+      // The photos, named as the zip had them, with the folder they shared
+      // dropped; the text file is not an attachment and is not here.
+      expect(batchPhotos.map(photo => photo.name)).toEqual([
+        'one.jpg',
+        'two.jpg',
+      ]);
+
+      // And they have been through the whole pass: read, grouped, and in the
+      // queue as the cars they are.
+      expect(batchViolations.map(violation => violation.plate)).toEqual([
+        'LDA8765',
+        'K73JAU',
+      ]);
+
+      expect(toastSuccess.mock.calls[0][0]).toBe('2 pictures from photos.zip');
 
       cleanup();
     });

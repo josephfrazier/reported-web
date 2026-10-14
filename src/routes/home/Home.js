@@ -62,6 +62,7 @@ import groupAttachmentsByViolation, {
   mergeViolations,
 } from '../../groupAttachmentsByViolation.js';
 import { isImage, isVideo } from '../../isImage.js';
+import { expandZipFiles } from '../../zipAttachments.js';
 import latestLocatedPhoto, {
   effectiveTimeMs,
   hasCoordinates,
@@ -697,6 +698,9 @@ function plateDataByAttachmentNameFor(photos) {
   return byName;
 }
 
+// How many of a thing, in words: "1 picture", "2 pictures".
+const countOf = (count, thing) => `${count} ${thing}${count === 1 ? '' : 's'}`;
+
 // The row holding `file`, which is how a row is followed from one regrouping of
 // the batch to the next: the readings replace the photo objects, and the files
 // the photos were read from are the same objects throughout.
@@ -985,6 +989,34 @@ class Home extends React.Component {
   // saying so, rather than stacking a toast per character. Reusing one toast
   // id means a second pause refreshes the toast that is already up instead of
   // adding another, the way the geosearch warning does.
+  // What to say about a zip that was picked: how much came out of it, or why
+  // nothing did. A zip is how a folder of photos arrives from a phone or a
+  // share sheet, and the person who picked it is owed the count either way.
+  static reportZip({ name, attachments, failed }) {
+    if (failed) {
+      Home.notifyError(
+        `Could not read ${name}. If it is a zip file, it may be damaged.`,
+      );
+      return;
+    }
+
+    if (attachments.length === 0) {
+      Home.notifyWarning(`${name} held no pictures or videos.`);
+      return;
+    }
+
+    const pictures = attachments.filter(file =>
+      isImage({ ext: fileExtension(file.name) }),
+    ).length;
+    const videos = attachments.length - pictures;
+    const parts = [
+      pictures > 0 && countOf(pictures, 'picture'),
+      videos > 0 && countOf(videos, 'video'),
+    ].filter(Boolean);
+
+    Home.notifySuccess(`${parts.join(' and ')} from ${name}`);
+  }
+
   debouncedWarnAboutPriorSubmission = debounce(
     ({ priorCount, plate, selectedDateDay }) => {
       const pluralReport = priorCount === 1 ? 'report' : 'reports';
@@ -2118,13 +2150,21 @@ class Home extends React.Component {
 
     // Chain the passes: two quick picks must not both regroup against the same
     // starting list of photos. Nothing else writes batchPhotos, so each pass
-    // sees the one before it.
-    this.batchQueue = this.batchQueue.then(() =>
-      this.processBatchFiles(files).catch(err => {
+    // sees the one before it. A zip is opened out first, so what the pass sees
+    // is the attachments it held.
+    this.batchQueue = this.batchQueue.then(async () => {
+      const { files: expanded, zips } = await expandZipFiles(files);
+      zips.forEach(archive => Home.reportZip(archive));
+
+      if (expanded.length === 0) {
+        return undefined;
+      }
+
+      return this.processBatchFiles(expanded).catch(err => {
         console.error(err);
         this.setState({ batchProgress: null });
-      }),
-    );
+      });
+    });
 
     return this.batchQueue;
   };
@@ -4649,7 +4689,7 @@ class Home extends React.Component {
                         ref={this.batchPhotosInputRef}
                         type="file"
                         multiple
-                        accept="image/*,video/*"
+                        accept="image/*,video/*,.zip,application/zip,application/x-zip-compressed"
                         style={{ display: 'none' }}
                         onChange={this.handleBatchFileInput}
                       />

@@ -538,6 +538,50 @@ describe('groupAttachmentsByViolation', () => {
     expect(violations[1].photos).toEqual([blurry, second]);
   });
 
+  test('claims a photo for the car it is of, not the one it merely mentions', () => {
+    // A close-up of one car with another parked behind it: the centred box is
+    // the car the photo was taken for, and the corner box is the car behind.
+    const shared = buildPhoto({
+      name: 'shared.jpg',
+      createDateMs: 1000,
+      ...SQUARE,
+      plateResults: alprResponse({
+        ...SQUARE,
+        results: [
+          alprResult({ plate: 'aaa111', box: CENTRED_BOX }),
+          alprResult({ plate: 'bbb222', box: CORNER_BOX }),
+        ],
+      }),
+    });
+    const behind = buildPhoto({
+      name: 'behind.jpg',
+      // A second later, so the two violations have an order of their own: the
+      // queue walks them oldest first.
+      createDateMs: 2000,
+      ...SQUARE,
+      plateResults: alprResponse({
+        ...SQUARE,
+        results: [alprResult({ plate: 'bbb222', box: CENTRED_BOX })],
+      }),
+    });
+
+    const violations = groupAttachmentsByViolation([shared, behind]);
+
+    // `bbb222` is read twice to `aaa111`'s once, so it wins the vote. It must
+    // not take the close-up of `aaa111` with it: a car whose only photo is
+    // claimed by another car is never reported at all. Both are here, each
+    // with the photo it is of.
+    expect(
+      violations.map(violation => [
+        violation.plate,
+        violation.photos.map(photo => photo.name),
+      ]),
+    ).toEqual([
+      ['AAA111', ['shared.jpg']],
+      ['BBB222', ['behind.jpg']],
+    ]);
+  });
+
   test('picks the most central reading when the photo counts tie', () => {
     const photo = buildPhoto({
       name: 'two-boxes.jpg',

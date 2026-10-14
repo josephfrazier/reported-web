@@ -603,9 +603,12 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         </li>
         <li>
           <strong>Vote the plate, then split on it.</strong> Fold OCR variants together, count how
-          many photos contain each plate, and take the winner. Photos containing it become a
-          violation; the remainder is recursed on. This is what stops two cars photographed
-          back-to-back from merging into one report.
+          many photos contain each plate, and take the winner. The photos that plate is
+          <em>of</em> become a violation — the ones whose nearest box to the centre of the frame is
+          that plate's — and the remainder is recursed on. A photo that read two plates therefore
+          goes to the car it was taken for, not to whichever car won the vote; without that, one
+          wide shot of several cars would take every car in it into a single report and leave the
+          others with no photo to be reported from at all.
         </li>
         <li>
           <strong>Adopt orphans.</strong> Photos with no plate read at all join whichever

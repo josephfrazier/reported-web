@@ -368,10 +368,71 @@ function licenseStateForPlate({ photos, plate }) {
   }
 }
 
-const photoHasAnyPlate = (photo, members) =>
-  (photo.plateResults?.results || []).some(result =>
-    candidatePlateStrings(result).some(plate => members.has(plate)),
-  );
+// Every plate string a photo read, and how far the nearest box it was found in
+// sits from the centre of the frame. A string with no box anywhere maps to
+// `null`, which is what `normalizedCenterDistance` answers when it cannot
+// place one.
+function plateDistances(photo) {
+  const distances = new Map();
+
+  (photo.plateResults?.results || []).forEach(result => {
+    const distance = normalizedCenterDistance(
+      result.box,
+      photo.uploadWidth,
+      photo.uploadHeight,
+    );
+
+    candidatePlateStrings(result).forEach(plate => {
+      if (distance === null) {
+        if (!distances.has(plate)) {
+          distances.set(plate, null);
+        }
+        return;
+      }
+
+      const nearest = distances.get(plate);
+      if (nearest === undefined || nearest === null || distance < nearest) {
+        distances.set(plate, distance);
+      }
+    });
+  });
+
+  return distances;
+}
+
+// Whether a round's plate is the one this photo is evidence for.
+//
+// A photo can read several plates at once -- a close-up of one car with
+// another parked behind it -- and it is evidence for the car it is *of*, which
+// is the plate nearest the centre of the frame. Claiming it for any other car
+// takes the photo away from the car it is of, and a car whose only photo is
+// claimed that way is never reported at all: the round that wins the cluster
+// used to take every photo that merely mentioned its plate, so one wide shot
+// of a block could leave the whole block as one violation.
+//
+// A photo with no box for any of its plates says nothing about which car it is
+// of, so any plate it read may claim it -- the older, more generous answer,
+// kept for the case where there is nothing to choose by.
+function photoIsClaimedBy({ photo, memberSet }) {
+  const distances = plateDistances(photo);
+
+  if (![...distances.keys()].some(plate => memberSet.has(plate))) {
+    return false;
+  }
+
+  const placed = [...distances.values()].filter(distance => distance !== null);
+
+  if (placed.length === 0) {
+    return true;
+  }
+
+  // Nearest rather than *the* nearest: one box can read two plates, and a
+  // photo of two cars nose to tail puts two plates at the same distance. Any
+  // of the winner's strings being that near is enough to claim the photo.
+  const nearest = Math.min(...placed);
+
+  return [...memberSet].some(plate => distances.get(plate) === nearest);
+}
 
 // Passes 3 and 4 of one candidate cluster: split it into violations on the
 // plate, and hand back whatever is left over.
@@ -392,7 +453,7 @@ function splitCluster(cluster) {
     });
     const memberSet = new Set(members);
     const claimed = remaining.filter(photo =>
-      photoHasAnyPlate(photo, memberSet),
+      photoIsClaimedBy({ photo, memberSet }),
     );
     if (claimed.length === 0) {
       break;

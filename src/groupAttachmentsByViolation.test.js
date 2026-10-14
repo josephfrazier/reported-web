@@ -582,6 +582,114 @@ describe('groupAttachmentsByViolation', () => {
     ]);
   });
 
+  // Boxes across one 1000x1000 frame, from the centre outwards. A wide shot's
+  // cars sit at different distances from the middle, which is what the vote
+  // orders them by.
+  const boxesOutwards = [
+    { xmin: 490, ymin: 490, xmax: 510, ymax: 510 },
+    { xmin: 300, ymin: 500, xmax: 320, ymax: 520 },
+    { xmin: 680, ymin: 500, xmax: 700, ymax: 520 },
+    { xmin: 60, ymin: 500, xmax: 80, ymax: 520 },
+    { xmin: 920, ymin: 500, xmax: 940, ymax: 520 },
+  ];
+
+  // The bike lane: five cars parked along the block, each plate read once, in
+  // the one frame. Every car's evidence is that frame, so a rule that gives it
+  // to one of them and drops it for the rest reports one car out of five.
+  const wideShotOfFive = () =>
+    buildPhoto({
+      name: 'wide.jpg',
+      createDateMs: 1000,
+      ...SQUARE,
+      plateResults: alprResponse({
+        ...SQUARE,
+        results: ['ccc333', 'bbb222', 'ddd444', 'aaa111', 'eee555'].map(
+          (plate, index) => alprResult({ plate, box: boxesOutwards[index] }),
+        ),
+      }),
+    });
+
+  test('gives each car in one wide shot a violation of its own', () => {
+    const violations = groupAttachmentsByViolation([wideShotOfFive()]);
+
+    // All five cars, in the plate order the boxes vote them into, each
+    // reported with the one photo there is of it.
+    expect(
+      violations.map(violation => [
+        violation.plate,
+        violation.photos.map(photo => photo.name),
+      ]),
+    ).toEqual([
+      ['CCC333', ['wide.jpg']],
+      ['BBB222', ['wide.jpg']],
+      ['DDD444', ['wide.jpg']],
+      ['AAA111', ['wide.jpg']],
+      ['EEE555', ['wide.jpg']],
+    ]);
+  });
+
+  test('shares the wide shot with the cars that have no other photo', () => {
+    // One car is also photographed close up; the two beside it are not.
+    const wide = wideShotOfFive();
+    const closeup = buildPhoto({
+      name: 'close.jpg',
+      createDateMs: 2000,
+      ...SQUARE,
+      plateResults: alprResponse({
+        ...SQUARE,
+        results: [alprResult({ plate: 'ccc333', box: CENTRED_BOX })],
+      }),
+    });
+
+    const violations = groupAttachmentsByViolation([wide, closeup]);
+
+    // The car with two photos has both. The cars with nothing but the wide
+    // shot have that, rather than nothing.
+    expect(
+      Object.fromEntries(
+        violations.map(violation => [
+          violation.plate,
+          violation.photos.map(photo => photo.name),
+        ]),
+      ),
+    ).toEqual({
+      CCC333: ['wide.jpg', 'close.jpg'],
+      BBB222: ['wide.jpg'],
+      DDD444: ['wide.jpg'],
+      AAA111: ['wide.jpg'],
+      EEE555: ['wide.jpg'],
+    });
+  });
+
+  test('lists a shared photo once when its rows are merged', () => {
+    const [wide] = groupAttachmentsByViolation([wideShotOfFive()]);
+    const other = buildPhoto({
+      name: 'other.jpg',
+      createDateMs: 9000,
+      ...SQUARE,
+      plateResults: alprResponse({
+        ...SQUARE,
+        results: [alprResult({ plate: 'fff666', box: CENTRED_BOX })],
+      }),
+    });
+
+    // Two violations the user put together by hand, both holding the wide
+    // shot: the merged report holds it once.
+    const merged = mergeViolations([
+      wide,
+      {
+        ...wide,
+        plate: 'FFF666',
+        photos: [wide.photos[0], other],
+      },
+    ]);
+
+    expect(merged.photos.map(photo => photo.name)).toEqual([
+      'wide.jpg',
+      'other.jpg',
+    ]);
+  });
+
   test('picks the most central reading when the photo counts tie', () => {
     const photo = buildPhoto({
       name: 'two-boxes.jpg',

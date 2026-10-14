@@ -520,8 +520,18 @@ app.use('/submit', (req, res) => {
 // adapted from https://docs.platerecognizer.com/?javascript#license-plate-recognition
 app.use(
   '/platerecognizer',
+  // Stamped before multer reads the body, so the handler can report how much
+  // of the request was the browser sending the photo and the parser taking it
+  // in. Express runs this as soon as the headers are in; the handler below
+  // waits for the last byte.
+  (req, res, next) => {
+    req.platerecognizerArrivedAt = Date.now();
+    next();
+  },
   upload.single('attachmentFile'),
   async (req, res) => {
+    const handlerStartedAt = Date.now();
+
     try {
       await authenticateRequest(req, res)();
     } catch (error) {
@@ -529,14 +539,35 @@ app.use(
       return;
     }
 
+    const readStartedAt = Date.now();
     const attachmentBuffer = req.file.buffer;
+
+    // Where the request's time went, in milliseconds: what this handler spent,
+    // plus the phases readLicenseViaALPR records as it works. The reading goes
+    // back with them, because the same photo added twice answers from the
+    // cache with an identical processing_time, and these numbers are the only
+    // way to tell a read that was fast from a read that never happened. A
+    // review app's log is not a place the person testing it can watch, so the
+    // response carries the same breakdown the log gets.
+    const timings = {
+      upload: handlerStartedAt - req.platerecognizerArrivedAt,
+      auth: readStartedAt - handlerStartedAt,
+    };
 
     readLicenseViaALPR({
       attachmentBuffer,
       PLATERECOGNIZER_TOKEN,
       PLATERECOGNIZER_TOKEN_TWO,
+      timings,
     })
-      .then(data => res.json(data))
+      .then(data => {
+        timings.read = Date.now() - readStartedAt;
+        // Up to the moment the response is built. What the browser measures
+        // for itself is this plus the response's trip back.
+        timings.total = Date.now() - req.platerecognizerArrivedAt;
+        console.info('/platerecognizer timings', timings);
+        res.json({ ...data, timings });
+      })
       .catch(handlePromiseRejection(res));
   },
 );

@@ -147,6 +147,29 @@ exports[`Home hides form fields when logged in with no photos uploaded 1`] = `
               Add pictures/videos (up to 3 each, 20MB max each)
             </button>
           </div>
+          <button
+            onClick={[Function]}
+            style={
+              {
+                "float": "left",
+                "margin": "1px",
+              }
+            }
+            type="button"
+          >
+            Add folder
+          </button>
+          <input
+            multiple={true}
+            onChange={[Function]}
+            style={
+              {
+                "display": "none",
+              }
+            }
+            type="file"
+            webkitdirectory=""
+          />
           <div
             style={
               {
@@ -1678,6 +1701,29 @@ exports[`Home renders submission form and Previous Submissions when logged in wi
               Add pictures/videos (up to 3 each, 20MB max each)
             </button>
           </div>
+          <button
+            onClick={[Function]}
+            style={
+              {
+                "float": "left",
+                "margin": "1px",
+              }
+            }
+            type="button"
+          >
+            Add folder
+          </button>
+          <input
+            multiple={true}
+            onChange={[Function]}
+            style={
+              {
+                "display": "none",
+              }
+            }
+            type="file"
+            webkitdirectory=""
+          />
           <div
             style={
               {
@@ -2521,6 +2567,29 @@ exports[`Home renders with allPlateResults entry missing plate and photos 1`] = 
               Add pictures/videos (up to 3 each, 20MB max each)
             </button>
           </div>
+          <button
+            onClick={[Function]}
+            style={
+              {
+                "float": "left",
+                "margin": "1px",
+              }
+            }
+            type="button"
+          >
+            Add folder
+          </button>
+          <input
+            multiple={true}
+            onChange={[Function]}
+            style={
+              {
+                "display": "none",
+              }
+            }
+            type="file"
+            webkitdirectory=""
+          />
           <div
             style={
               {
@@ -3364,6 +3433,29 @@ exports[`Home renders with undefined allPlateResults and photos 1`] = `
               Add pictures/videos (up to 3 each, 20MB max each)
             </button>
           </div>
+          <button
+            onClick={[Function]}
+            style={
+              {
+                "float": "left",
+                "margin": "1px",
+              }
+            }
+            type="button"
+          >
+            Add folder
+          </button>
+          <input
+            multiple={true}
+            onChange={[Function]}
+            style={
+              {
+                "display": "none",
+              }
+            }
+            type="file"
+            webkitdirectory=""
+          />
           <div
             style={
               {

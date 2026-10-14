@@ -1157,6 +1157,7 @@ class Home extends React.Component {
     // again whenever the photos change -- see applyPhotosToForm.
     this.photoReadings = new Map();
     this.plateRef = React.createRef();
+    this.folderInputRef = React.createRef();
     this.plateLabelRef = React.createRef();
     this.loginEmailRef = React.createRef();
     this.signupEmailRef = React.createRef();
@@ -1779,6 +1780,30 @@ class Home extends React.Component {
   };
 
   // adapted from https://github.com/ngokevin/react-file-reader-input/tree/f970257f271b8c3bba9d529ffdbfa4f4731e0799#usage
+  // A picked folder: every picture and video inside it becomes an attachment.
+  //
+  // A folder is what a camera roll is, and it holds things that are not
+  // attachments -- a stray text file, the `.DS_Store` macOS leaves in every
+  // directory -- so the pick is filtered rather than handed on whole.
+  handleFolderInput = async event => {
+    const files = [...event.target.files];
+    // Clear the input, so that picking the same folder again still fires a
+    // change event.
+    event.target.value = ''; // eslint-disable-line no-param-reassign
+
+    const attachments = files.filter(file => {
+      const ext = fileExtension(file.name);
+      return isImage({ ext }) || isVideo({ ext });
+    });
+
+    if (attachments.length === 0) {
+      Home.notifyWarning('That folder held no pictures or videos.');
+      return undefined;
+    }
+
+    return this.handleAttachmentData({ attachmentData: attachments });
+  };
+
   handleAttachmentInput = async (_, results) => {
     const picked = results.map(([, attachmentFile]) => attachmentFile);
     const { files, zips } = await expandZipFiles(picked);
@@ -4716,6 +4741,25 @@ class Home extends React.Component {
                       </button>
                     </FileReaderInput>
                   )}
+
+                  <button
+                    type="button"
+                    style={{
+                      float: 'left',
+                      margin: '1px',
+                    }}
+                    onClick={() => this.folderInputRef.current?.click()}
+                  >
+                    Add folder
+                  </button>
+                  <input
+                    ref={this.folderInputRef}
+                    type="file"
+                    multiple
+                    webkitdirectory=""
+                    style={{ display: 'none' }}
+                    onChange={this.handleFolderInput}
+                  />
 
                   <div style={{ clear: 'both' }} />
 

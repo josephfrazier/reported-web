@@ -162,18 +162,16 @@ function makeLapRecorder(timings) {
   };
 }
 
-export default function readLicenseViaALPR({
+// The reading the cache could not answer: orient and resize the photo the way
+// Plate Recognizer wants it, read it, cut the crops out, and store the reading
+// under the key the caller looked up with.
+function readFromPlateRecognizer({
   attachmentBuffer,
   PLATERECOGNIZER_TOKEN,
   PLATERECOGNIZER_TOKEN_TWO,
-  timings = {},
+  cacheKey,
+  lap,
 }) {
-  // The phases below are what the route sends back with the reading, so the
-  // browser can print where a read's time went. A photo added twice answers
-  // from the cache with an identical reading, and these numbers are the
-  // difference between a read that was fast and a read that was not done.
-  const lap = makeLapRecorder(timings);
-
   return orientImageBuffer({ attachmentBuffer })
     .then(buffer => {
       lap('orient');
@@ -185,19 +183,6 @@ export default function readLicenseViaALPR({
     })
     .then(async attachmentBufferRotated => {
       lap('downscale2048');
-
-      // A reading is a function of the bytes that were sent, so the same photo
-      // is the same answer. Off unless ALPR_CACHE_DIR is set; see alprCache.js.
-      const cacheKey = alprCacheKey(attachmentBufferRotated);
-      const cached = await readCachedReading(cacheKey);
-      lap('cacheLookup');
-
-      if (cached) {
-        // Logged in place of the STARTING line below: that line counts the
-        // calls that reach Plate Recognizer, and this one did not.
-        console.info('/platerecognizer plate-reader answered from the cache');
-        return cached;
-      }
 
       console.log('STARTING platerecognizer'); // eslint-disable-line no-console
       console.time(`/platerecognizer plate-reader`); // eslint-disable-line no-console
@@ -304,4 +289,44 @@ export default function readLicenseViaALPR({
 
       return reading;
     });
+}
+
+export default function readLicenseViaALPR({
+  attachmentBuffer,
+  PLATERECOGNIZER_TOKEN,
+  PLATERECOGNIZER_TOKEN_TWO,
+  timings = {},
+}) {
+  // The phases below are what the route sends back with the reading, so the
+  // browser can print where a read's time went. A photo added twice answers
+  // from the cache with an identical reading, and these numbers are the
+  // difference between a read that was fast and a read that was not done.
+  const lap = makeLapRecorder(timings);
+
+  // A reading is a function of the bytes the request carries, so the same
+  // photo is the same answer -- and those bytes are the key, looked up before
+  // any of the work below runs. Asking after the rotate and the resizes would
+  // make a hit pay most of what the call itself costs, which is the wait this
+  // cache exists to remove. Off unless ALPR_CACHE_DIR is set; the trade the
+  // key makes is in alprCache.js.
+  const cacheKey = alprCacheKey(attachmentBuffer);
+
+  return readCachedReading(cacheKey).then(cached => {
+    lap('cacheLookup');
+
+    if (cached) {
+      // Logged in place of the STARTING line below: that line counts the
+      // calls that reach Plate Recognizer, and this one did not.
+      console.info('/platerecognizer plate-reader answered from the cache');
+      return cached;
+    }
+
+    return readFromPlateRecognizer({
+      attachmentBuffer,
+      PLATERECOGNIZER_TOKEN,
+      PLATERECOGNIZER_TOKEN_TWO,
+      cacheKey,
+      lap,
+    });
+  });
 }

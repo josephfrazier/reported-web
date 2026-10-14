@@ -1,6 +1,5 @@
 /**
- * A disk cache for plate reads, keyed by the exact bytes sent to Plate
- * Recognizer.
+ * A disk cache for plate reads, keyed by the exact bytes the request carries.
  *
  * The reason to have one: the same photo read twice is a call spent twice.
  * A folder run through the batch again, a photo the queue reads again, and a
@@ -8,8 +7,19 @@
  * have not changed. Plate Recognizer is paid for by the call, and the plan
  * this runs on has a monthly allowance.
  *
- * The key is the SHA-256 of the bytes the request carries, so the cache cannot
- * answer with another photo's reading: the same bytes are the same picture.
+ * The key is the SHA-256 of the uploaded bytes, before anything is done to
+ * them, so a hit is answered without rotating or resizing the photo: asking
+ * after that work would make a hit pay most of what the call costs, which is
+ * the wait the cache exists to remove.
+ *
+ * The price of keying there is that the entry is the file, not the picture.
+ * Two uploads that sharp would turn into the same bytes share one entry -- the
+ * same pixels with different metadata or an EXIF orientation tag, say, or a
+ * PNG and a lossless JPEG of it -- and are now two. A photo re-encoded by
+ * another app misses either way, and a file added twice is the same bytes and
+ * hits either way. The key also no longer moves when sharp does, so a sharp
+ * upgrade does not empty the cache.
+ *
  * The same trick names attachments in `attachmentStore.js`.
  *
  * On by default, in a directory of its own under the temp directory, because
@@ -24,7 +34,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
-// What the cache is keyed on: the bytes that go on the wire.
+// What the cache is keyed on: the bytes the request carries, as uploaded.
 export function alprCacheKey(buffer) {
   return crypto.createHash('sha256').update(buffer).digest('hex');
 }

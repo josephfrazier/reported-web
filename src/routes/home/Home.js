@@ -201,6 +201,11 @@ const createDateValue = ({ millisecondsSinceEpoch, offset }) => {
 // the photos only while it is still theirs.
 const EXTRACTED_FROM_PHOTOS = '(extracted from picture/video)';
 
+// The plate field's provenance when the user typed it. The other two are the
+// photos' own reading, which is recorded as nothing, and a photo the user
+// picked a plate off, which is recorded as that photo's file.
+const PLATE_TYPED = 'typed';
+
 // What one of a photo's reads left behind: when it was taken and where, in the
 // field names the grouping uses. A value the read did not answer with stays
 // NaN, and is passed over by whichever rule is looking.
@@ -771,6 +776,12 @@ class Home extends React.Component {
 
       plate: '',
       licenseState: 'NY',
+      // Where the plate in that field came from: undefined while the photos
+      // own it, the file of a photo whose overlay the user clicked, or
+      // PLATE_TYPED when the user typed it. Like the address's provenance, it
+      // is what says whether the value follows the photos when they change --
+      // see `applyPhotosToForm`.
+      plateProvenance: undefined,
       typeofcomplaint: typeofcomplaintValues[0],
       reportDescription: '',
       can_be_shared_publicly: true,
@@ -842,7 +853,7 @@ class Home extends React.Component {
     this.geosearchAddressCache = createGeosearchAddressCache();
     // What each attached photo's reads said, keyed by the file, for as long as
     // it is attached. The form's time and place are worked out from these
-    // again whenever the photos change -- see applyPhotosTimeAndPlace.
+    // again whenever the photos change -- see applyPhotosToForm.
     this.photoReadings = new Map();
     this.plateRef = React.createRef();
     this.plateLabelRef = React.createRef();
@@ -1176,7 +1187,7 @@ class Home extends React.Component {
     this.autocomplete = autocomplete;
   };
 
-  renderPlateOverlays = ({ attachmentPlateData }) =>
+  renderPlateOverlays = ({ attachmentPlateData, attachmentFile }) =>
     attachmentPlateData?.results?.map(result => {
       const { box } = result;
       const plate = result.plate?.toUpperCase();
@@ -1218,7 +1229,13 @@ class Home extends React.Component {
           }}
           aria-label={`Select license plate ${plate}`}
           onClick={() => {
-            this.setLicensePlate({ plate, licenseState });
+            // Picked off this picture, so the plate is this picture's to give
+            // up: see `plateProvenance`.
+            this.setLicensePlate({
+              plate,
+              licenseState,
+              provenance: attachmentFile,
+            });
             // Bring the License/Medallion label to the top of the screen so
             // the user can confirm the selected plate. The optional call
             // keeps this a no-op in the test renderer, where refs point at
@@ -1237,7 +1254,7 @@ class Home extends React.Component {
       );
     });
 
-  setLicensePlate = ({ plate, licenseState }) => {
+  setLicensePlate = ({ plate, licenseState, provenance = undefined }) => {
     // Both a read that found no state (null) and a caller that left the key
     // off (undefined) leave the current state alone; an empty string is a
     // cleared field and is kept.
@@ -1247,12 +1264,19 @@ class Home extends React.Component {
 
     // Selecting the plate/state that is already selected (e.g. clicking the
     // overlay for the current plate) is a no-op: skip the
-    // duplicate-submission warning and the vehicle/violation lookups.
+    // duplicate-submission warning and the vehicle/violation lookups. Where
+    // the value came from can still have changed -- the same plate read off a
+    // photo the user clicked is that photo's to lose -- so the provenance is
+    // recorded either way.
     if (
       plate === this.state.plate &&
       licenseState === this.state.licenseState
     ) {
       console.info('ignoring unchanged plate:', plate);
+
+      if (provenance !== this.state.plateProvenance) {
+        this.setState({ plateProvenance: provenance });
+      }
       return;
     }
 
@@ -1294,6 +1318,7 @@ class Home extends React.Component {
     this.setState({
       plate,
       licenseState,
+      plateProvenance: provenance,
       vehicleInfoComponent:
         cachedVehicleInfoComponent || (plate ? vehicleInfoMessage : null),
       violationSummaryComponent:
@@ -1387,6 +1412,7 @@ class Home extends React.Component {
               this.setLicensePlate({
                 plate: plate.replace('1', 'T'),
                 licenseState,
+                provenance: this.state.plateProvenance,
               });
             } else if (plate.match(/^\d\d\d\d\d\dC$/)) {
               this.setLicensePlate({
@@ -1463,9 +1489,72 @@ class Home extends React.Component {
     return earliest ? createDateValue(momentOf(earliest)) : undefined;
   };
 
-  // The time and place a submission takes from the photos it holds, worked out
-  // again whenever that set changes: a photo dropped leaves the others to say
-  // what they are.
+  // The plate a set of photos reads: the first of them, in the order they are
+  // attached, whose read named one. What each photo read is kept by name --
+  // `plateDataByAttachmentName` is what the overlays are drawn from, and it
+  // loses a photo's entry when that photo goes, so a plate cannot outlive the
+  // picture it was read from by being looked up here.
+  //
+  // The result the reading named is chosen the way `extractPlate` chose it: a
+  // medallion's T######C plate if the read offered one, and its first result
+  // otherwise, so the field a recompute lands on is the field the reading
+  // would have filled.
+  plateFromPhotos = photos => {
+    for (const file of photos) {
+      const results =
+        this.state.plateDataByAttachmentName[file.name]?.results || [];
+      const preferred = results.find(result =>
+        result.plate?.toUpperCase().match(/^T\d{6}C$/),
+      );
+      const result = preferred || results[0];
+
+      if (result?.plate) {
+        return {
+          plate: result.plate.toUpperCase(),
+          licenseState: getLicenseStateFromPlateResult(result),
+        };
+      }
+    }
+
+    return null;
+  };
+
+  // The plate follows the photos the way the time and the place do, with one
+  // more provenance to weigh: a plate picked off a photo's overlay is evidence
+  // from that picture, so it is kept while that picture is attached and
+  // recomputed when it is not. A plate the user typed is theirs and does not
+  // move.
+  applyPhotosPlate = photos => {
+    const { plateProvenance } = this.state;
+
+    if (plateProvenance === PLATE_TYPED) {
+      return;
+    }
+
+    // The photo the plate was picked from is still attached: the evidence for
+    // that choice is here, whatever the other photos read.
+    if (plateProvenance && photos.includes(plateProvenance)) {
+      return;
+    }
+
+    const fromPhotos = this.plateFromPhotos(photos);
+
+    if (fromPhotos) {
+      this.setLicensePlate({ ...fromPhotos, provenance: undefined });
+    } else if (this.state.plate) {
+      // Nothing left reads a plate, so the field goes back to empty rather
+      // than keeping one from a photo the report no longer holds.
+      this.setLicensePlate({
+        plate: '',
+        licenseState: 'NY',
+        provenance: undefined,
+      });
+    }
+  };
+
+  // The plate, time and place a submission takes from the photos it holds,
+  // worked out again whenever that set changes: a photo dropped leaves the
+  // others to say what they are.
   //
   // Each follows the photos only while it is still what they gave it. A time
   // the user typed no longer matches what they say, and a place the user set
@@ -1475,7 +1564,9 @@ class Home extends React.Component {
   //
   // With nothing attached before, there is nothing of the user's to keep, and
   // the photos say what the time and place are.
-  applyPhotosTimeAndPlace = (photos, { previousPhotos = null } = {}) => {
+  applyPhotosToForm = (photos, { previousPhotos = null } = {}) => {
+    this.applyPhotosPlate(photos);
+
     if (photos.length === 0) {
       return;
     }
@@ -1581,7 +1672,7 @@ class Home extends React.Component {
         // still the ones on record, so the time and place they gave can be
         // told from the ones the user set. The reading goes once that is
         // settled, not before.
-        this.applyPhotosTimeAndPlace(this.state.attachmentData, {
+        this.applyPhotosToForm(this.state.attachmentData, {
           previousPhotos,
         });
 
@@ -1723,7 +1814,7 @@ class Home extends React.Component {
 
         // Every photo has now been read, so the form takes its time and its
         // place from the set as a whole, rather than from each photo in turn.
-        this.applyPhotosTimeAndPlace(this.state.attachmentData, {
+        this.applyPhotosToForm(this.state.attachmentData, {
           previousPhotos,
         });
 
@@ -3048,6 +3139,7 @@ class Home extends React.Component {
                                 </a>
                                 {this.renderPlateOverlays({
                                   attachmentPlateData,
+                                  attachmentFile,
                                 })}
                               </div>
 
@@ -3112,7 +3204,11 @@ class Home extends React.Component {
                                       matchedResult,
                                     )
                                   : null;
-                                this.setLicensePlate({ plate, licenseState });
+                                this.setLicensePlate({
+                                  plate,
+                                  licenseState,
+                                  provenance: PLATE_TYPED,
+                                });
                               }}
                             />
                             <datalist id="plateSuggestions">
@@ -3136,6 +3232,7 @@ class Home extends React.Component {
                                   licenseState: upperCaseInputValueInPlace(
                                     event.target,
                                   ),
+                                  provenance: PLATE_TYPED,
                                 });
                               }}
                             />

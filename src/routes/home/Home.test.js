@@ -157,6 +157,93 @@ async function renderAndExtract(files) {
   };
 }
 
+// The same, with the plate read answering. `platesBySize` gives each photo's
+// reading by its byte length -- `photoBytes(label).length` -- so a test can
+// say what each photo in a set read, or leave it reading nothing.
+async function renderWithPlateReads(files, { platesBySize = {} } = {}) {
+  const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+  const axiosPost = jest
+    .spyOn(axios, 'post')
+    .mockImplementation((url, body) => {
+      if (url === '/platerecognizer') {
+        const { size } = body.get('attachmentFile');
+        const plate = platesBySize[size];
+
+        return Promise.resolve({
+          data: {
+            results: plate
+              ? [
+                  {
+                    plate: plate.toLowerCase(),
+                    score: 0.9,
+                    box: { xmin: 0, ymin: 0, xmax: 10, ymax: 10 },
+                    region: { code: 'us-ny' },
+                    candidates: [],
+                  },
+                ]
+              : [],
+            uploadWidth: 1000,
+            uploadHeight: 1000,
+          },
+        });
+      }
+      if (url === '/api/geosearch') {
+        return Promise.resolve({ data: { features: [] } });
+      }
+      if (url === '/api/uploadAttachment') {
+        return Promise.resolve({ data: { id: 'a'.repeat(64) } });
+      }
+      return Promise.resolve({ data: {} });
+    });
+  const consoleError = jest
+    .spyOn(console, 'error')
+    .mockImplementation(() => {});
+
+  const originalCreateObjectURL = global.URL.createObjectURL;
+  global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+  let tree;
+  const homeRef = React.createRef();
+  renderer.act(() => {
+    // Logged in, because the plate is a field on the form and the overlays
+    // hang off the attachments the form draws.
+    tree = renderHome({
+      initialState: { email: 'test@example.com', loginSuccessful: true },
+      homeRef,
+    });
+  });
+
+  const settle = () =>
+    renderer.act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 700));
+    });
+
+  await renderer.act(async () => {
+    await homeRef.current.handleAttachmentData({ attachmentData: files });
+  });
+  await settle();
+
+  return {
+    homeRef,
+    tree,
+    settle,
+    cleanup: () => {
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      axiosGet.mockRestore();
+      axiosPost.mockRestore();
+      consoleError.mockRestore();
+      global.URL.createObjectURL = originalCreateObjectURL;
+      tree.unmount();
+    },
+  };
+}
+
+// A photo with `label` in its bytes, whose length is what the plate stub above
+// tells the photos apart by.
+const labelledPhoto = label =>
+  new File([photoBytes(label)], `${label}.jpg`, { type: 'image/jpeg' });
+
 // Stand-in for a text <input> DOM node: reading/writing `value` works, and
 // writing it moves the caret to the end of the field, just like the real thing.
 function createFakeInput({ value, caret }) {
@@ -1052,6 +1139,109 @@ describe('Home', () => {
     expect(homeRef.current.state.CreateDate).toBe('2024-06-01T09:00:00');
     // The place was still the photos', so it followed them.
     expect(homeRef.current.state.latitude).toBe(40.72);
+
+    cleanup();
+  });
+
+  test('takes the plate with the photo that read it', async () => {
+    // One photo whose read named the car, and one that read nothing at all.
+    const named = labelledPhoto('named');
+    const silent = labelledPhoto('silent');
+
+    const { homeRef, settle, cleanup } = await renderWithPlateReads(
+      [named, silent],
+      { platesBySize: { [photoBytes('named').length]: 'T696817C' } },
+    );
+
+    expect(homeRef.current.state.plate).toBe('T696817C');
+
+    // What is left says nothing about a plate, so the field goes back to
+    // empty rather than keeping one from a picture the report no longer holds.
+    await dropPhoto(homeRef, settle, 'named.jpg');
+
+    expect(homeRef.current.state.plate).toBe('');
+
+    cleanup();
+  });
+
+  test('keeps a plate the photos left still read', async () => {
+    const first = labelledPhoto('first');
+    const second = labelledPhoto('second');
+
+    const { homeRef, settle, cleanup } = await renderWithPlateReads(
+      [first, second],
+      {
+        platesBySize: {
+          [photoBytes('first').length]: 'T696817C',
+          [photoBytes('second').length]: 'T696817C',
+        },
+      },
+    );
+
+    await dropPhoto(homeRef, settle, 'first.jpg');
+
+    // The photo that read it is gone, and the one left read the same plate:
+    // the report says the same thing it did.
+    expect(homeRef.current.state.plate).toBe('T696817C');
+
+    cleanup();
+  });
+
+  test('leaves a plate the user typed alone when a photo is dropped', async () => {
+    const named = labelledPhoto('named');
+    const silent = labelledPhoto('silent');
+
+    const { homeRef, tree, settle, cleanup } = await renderWithPlateReads(
+      [named, silent],
+      { platesBySize: { [photoBytes('named').length]: 'T696817C' } },
+    );
+
+    // Typing over the reading, as the field reports it.
+    renderer.act(() => {
+      tree.root.findByProps({ name: 'plate' }).props.onChange({
+        target: createFakeInput({ value: 'ABC1234', caret: 7 }),
+      });
+    });
+    expect(homeRef.current.state.plate).toBe('ABC1234');
+
+    await dropPhoto(homeRef, settle, 'named.jpg');
+
+    // A plate the user typed is theirs: no photo has to be attached for it to
+    // be right, and the app cannot read it again from anywhere.
+    expect(homeRef.current.state.plate).toBe('ABC1234');
+
+    cleanup();
+  });
+
+  test('drops a plate picked off a photo that is then dropped', async () => {
+    // Two cars in one report: one photo read the taxi's medallion, the other
+    // read the car behind it, and the user picks the second plate off the
+    // picture it was read from.
+    const taxi = labelledPhoto('taxi');
+    const behind = labelledPhoto('behind');
+
+    const { homeRef, tree, settle, cleanup } = await renderWithPlateReads(
+      [taxi, behind],
+      {
+        platesBySize: {
+          [photoBytes('taxi').length]: 'T696817C',
+          [photoBytes('behind').length]: '8YJ1234',
+        },
+      },
+    );
+
+    renderer.act(() => {
+      tree.root
+        .findByProps({ 'aria-label': 'Select license plate 8YJ1234' })
+        .props.onClick();
+    });
+    expect(homeRef.current.state.plate).toBe('8YJ1234');
+
+    // The photo it was picked from goes. The choice was evidence from that
+    // picture, so the field falls back to what the photos left read.
+    await dropPhoto(homeRef, settle, 'behind.jpg');
+
+    expect(homeRef.current.state.plate).toBe('T696817C');
 
     cleanup();
   });

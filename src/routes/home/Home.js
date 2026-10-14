@@ -681,6 +681,12 @@ function plateDataByAttachmentNameFor(photos) {
   return byName;
 }
 
+// What the form says when it holds more attachments of one kind than a
+// submission carries. One copy, so the note above the button and the refusal
+// at submit say the same words.
+const TOO_MANY_ATTACHMENTS_MESSAGE =
+  'A report can include at most 3 pictures and 3 videos. Remove the extra ones to submit it.';
+
 // Whether the report holds more of one kind of photo than a report can carry.
 //
 // A report takes three pictures and three videos, which is what
@@ -4181,9 +4187,7 @@ class Home extends React.Component {
                   // submit a keyboard makes without it; the server keeps only
                   // the first three of each kind either way.
                   if (tooManyAttachments(this.state.attachmentData)) {
-                    Home.notifyError(
-                      'A report can include at most 3 pictures and 3 videos. Uncheck one to submit it.',
-                    );
+                    Home.notifyError(TOO_MANY_ATTACHMENTS_MESSAGE);
                     return;
                   }
 
@@ -4768,10 +4772,7 @@ class Home extends React.Component {
                       ) : (
                         <React.Fragment>
                           {tooManyAttachments(this.state.attachmentData) && (
-                            <p>
-                              A report can include at most 3 pictures and 3
-                              videos. Uncheck one to submit it.
-                            </p>
+                            <p>{TOO_MANY_ATTACHMENTS_MESSAGE}</p>
                           )}
                           <button
                             type="submit"

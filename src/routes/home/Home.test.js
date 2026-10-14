@@ -2492,6 +2492,9 @@ describe('Home', () => {
       const toastSuccess = jest
         .spyOn(toast, 'success')
         .mockImplementation(() => null);
+      const toastError = jest
+        .spyOn(toast, 'error')
+        .mockImplementation(() => null);
       const toastWarn = jest
         .spyOn(toast, 'warn')
         .mockImplementation(() => null);
@@ -2536,12 +2539,21 @@ describe('Home', () => {
             await form.props.onSubmit({ preventDefault() {} });
           });
         },
+        // The report's own Submit button, for its disabled state.
+        submitButton: () => {
+          const form = tree.root
+            .findAllByType('form')
+            .find(formEl => typeof formEl.props.onSubmit === 'function');
+          return form.findByProps({ type: 'submit' });
+        },
+        toastError,
         cleanup: () => {
           tree.unmount();
           axiosGet.mockRestore();
           axiosPost.mockRestore();
           toastSuccess.mockRestore();
           toastWarn.mockRestore();
+          toastError.mockRestore();
           consoleError.mockRestore();
           document.querySelector = originalQuerySelector;
           global.URL.createObjectURL = originalCreateObjectURL;
@@ -2705,6 +2717,44 @@ describe('Home', () => {
       await submit();
 
       expect(readCachedSubmissions()).toBeNull();
+
+      cleanup();
+    });
+
+    test('holds Submit while there are more than 3 pictures or 3 videos', async () => {
+      const pictures = ['p1', 'p2', 'p3', 'p4'].map(
+        name => new File(['picture'], `${name}.jpg`, { type: 'image/jpeg' }),
+      );
+
+      const { homeRef, submit, submitButton, toastError, cleanup } =
+        await renderWithFiles({ files: pictures });
+
+      // All four are attached: nothing here drops one, which is the point.
+      expect(homeRef.current.state.attachmentData).toHaveLength(4);
+
+      // The location is set rather than looked up, so that the refusal this
+      // test is about is the one that comes back.
+      renderer.act(() => {
+        homeRef.current.setState({ latitude: 40.7129, longitude: -74.0061 });
+      });
+
+      expect(submitButton().props.disabled).toBe(true);
+
+      // `createSubmission.js` keeps only the first three of each kind, so
+      // without this the fourth would vanish between the form and the report.
+      await submit();
+      expect(toastError.mock.calls[0][0]).toBe(
+        'A report can include at most 3 pictures and 3 videos. Remove the extra ones to submit it.',
+      );
+
+      // Three is a report, and Submit comes back.
+      renderer.act(() => {
+        const [first] = homeRef.current.state.attachmentData;
+        homeRef.current.setState(state => ({
+          attachmentData: state.attachmentData.filter(file => file !== first),
+        }));
+      });
+      expect(submitButton().props.disabled).toBe(false);
 
       cleanup();
     });

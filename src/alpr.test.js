@@ -12,6 +12,10 @@ function makeHash(dataUrl) {
   return `THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: ${shasum}`;
 }
 
+// These tests are the only ones that call Plate Recognizer. They need the
+// service to answer, and the cache is off under test, so what they see is the
+// service's own answer; see src/alprCache.js.
+
 describe('readLicenseViaALPR', () => {
   test('using only the first token', async () => {
     const attachmentBuffer = readFileSync(

@@ -33,7 +33,8 @@ summary {
    keeps them as line breaks (space runs still collapse, and long lines still
    wrap), so a message can separate an addendum from the error with a blank
    line. Single-line messages render exactly as before. */
-:global(.Toastify__toast-body) { /* stylelint-disable-line selector-class-pattern */
+:global(.Toastify__toast-body) {
+  /* stylelint-disable-line selector-class-pattern */
   white-space: pre-line;
 }
 
@@ -173,7 +174,9 @@ input[type='search']::-webkit-search-cancel-button {
   cursor: pointer;
   font-size: 0.9rem;
   font-family: inherit;
-  transition: background 0.15s, border-color 0.15s;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
 }
 
 .status-bar-btn:hover {
@@ -212,7 +215,9 @@ input[type='search']::-webkit-search-cancel-button {
   font-size: 1rem;
   font-family: inherit;
   color: #666;
-  transition: color 0.15s, border-color 0.15s;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
 }
 
 .auth-modal-tab:hover {
@@ -430,6 +435,29 @@ input[type='search']::-webkit-search-cancel-button {
 
 .batch-violation-description:hover {
   text-decoration: underline;
+}
+
+/*
+ * The note on a row whose photos are still being read, saying the row can
+ * still divide.
+ *
+ * A row is one violation, and a violation is what its photos say it is: a
+ * reading that turns out to be another car takes that photo, and the ones
+ * that read with it, into a row of their own. Until the reads are in, the row
+ * is a guess, and this is what says so -- a row that looks settled and then
+ * divides under someone halfway through a report is the thing to avoid.
+ *
+ * It sits after the row's own words as a small tag rather than in the plate's
+ * place, because the plate's place already says "reading plates…": what this
+ * adds is what that costs.
+ */
+.batch-violation-pending {
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.4rem;
+  border: 1px solid rgb(0 0 0 / 25%);
+  border-radius: 999px;
+  font-size: 0.8em;
+  white-space: nowrap;
 }
 
 /*

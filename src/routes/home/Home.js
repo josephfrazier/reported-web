@@ -613,6 +613,17 @@ async function mapWithConcurrency({ items, limit, worker }) {
   return results;
 }
 
+// Whether a photo's reading is still to come: its turn has not arrived (its
+// `plateRead` is unset while the pass runs) or a second chance is reading it
+// now, which the pass's own reads mark as `reading` before they start.
+//
+// A photo that has been through a reading says `read` or `failed` and stays
+// that way until another reading starts, so the row it is in can say whether
+// what it shows is settled.
+function photoIsBeingRead({ photo, isPassRunning }) {
+  return photo.plateRead === 'reading' || (isPassRunning && !photo.plateRead);
+}
+
 // What a row says about its plates. A row with a read still outstanding says
 // so rather than looking like a row that read nothing: a refusal and a photo
 // with no readable plate leave the same `plateResults` behind, and the two
@@ -2209,7 +2220,11 @@ class Home extends React.Component {
   // the photos of the pass in hand: a second pick replaces it, so regrouping
   // from it would drop every row the earlier picks published.
   rowsAfterRead = (state, { photo, read }) => {
-    const replace = candidate => (candidate === photo ? read : candidate);
+    // By file, not by object: the record being written back is not the one the
+    // reading was made from -- a reading is a new record, and a photo whose
+    // reading is under way is a copy of it marked as such.
+    const replace = candidate =>
+      candidate.file === photo.file ? read : candidate;
 
     // Which photos the user's own rows hold, read off the rows as they stand:
     // the reading that is being written back is a photo record of its own, and
@@ -2275,7 +2290,7 @@ class Home extends React.Component {
 
       return {
         batchPhotos: state.batchPhotos.map(candidate =>
-          candidate === photo ? read : candidate,
+          candidate.file === photo.file ? read : candidate,
         ),
         batchViolations,
         currentViolationIndex: followed
@@ -2530,6 +2545,26 @@ class Home extends React.Component {
     };
   };
 
+  // Mark a photo's reading as under way, in every row that holds it.
+  //
+  // The pass's own reads need no marking: a photo waiting its turn has no
+  // `plateRead` at all, and the rows say so while the pass runs. A second
+  // chance is different -- it happens long after the pass, to a photo that
+  // already says `failed` -- and without this the row would look settled while
+  // one of its photos is being read again.
+  markPhotoReading = photo => {
+    this.setState(state => ({
+      batchViolations: state.batchViolations.map(violation => ({
+        ...violation,
+        photos: violation.photos.map(candidate =>
+          candidate.file === photo.file
+            ? { ...candidate, plateRead: 'reading' }
+            : candidate,
+        ),
+      })),
+    }));
+  };
+
   // One photo's plate read: the network call, made once the metadata pass has
   // settled what order the batch is in.
   readBatchPhotoPlate = async photo => {
@@ -2540,7 +2575,10 @@ class Home extends React.Component {
       ({ attachmentBuffer } = await blobToBuffer({ attachmentFile }));
     } catch (err) {
       console.error(err);
-      return photo;
+      // A file that cannot be read into a buffer is a read that failed, not
+      // one still to come: the queue says so, and the second chance a loaded
+      // row gives its failed photos can take it up again.
+      return { ...photo, plateRead: 'failed' };
     }
 
     const { name: ext } = (await detectFromBuffer(attachmentBuffer)) || {
@@ -2769,6 +2807,11 @@ class Home extends React.Component {
         if (!loaded?.some(candidate => candidate.file === photo.file)) {
           return photo;
         }
+
+        // Said before the call, so the row says it while the call is out:
+        // nothing else about a second chance tells the queue that one of its
+        // rows is being read, and this one can still divide.
+        this.markPhotoReading(photo);
 
         const read = await this.readBatchPhotoPlate(photo);
         const divides = this.readDividesRow({ photo, read });
@@ -3505,9 +3548,12 @@ class Home extends React.Component {
                 // the pass is over, a photo with no `plateRead` is one whose
                 // read was refused, and that is reported as nothing readable
                 // -- the load's second chance is what reads those again.
-                const isReading =
-                  batchProgress !== null &&
-                  violation.photos.some(photo => !photo.plateRead);
+                const isReading = violation.photos.some(photo =>
+                  photoIsBeingRead({
+                    photo,
+                    isPassRunning: batchProgress !== null,
+                  }),
+                );
                 const plateLabel = batchRowPlateLabel({
                   violation,
                   isReading,
@@ -3548,6 +3594,20 @@ class Home extends React.Component {
                       {plateLabel} ({violation.photos.length} photo
                       {violation.photos.length === 1 ? '' : 's'})
                       {flags.length > 0 && ` — ${flags.join(', ')}`}
+                      {/* Only beside a plate. A row with no plate already
+                          says "reading plates…", and this says what the wait
+                          costs -- which matters most on a row that carries a
+                          plate, because that one looks settled. */}
+                      {violation.plate && isReading && (
+                        <span
+                          className={homeStyles['batch-violation-pending']}
+                          // The words carry the state; the sentence behind
+                          // them says what it costs, for whoever hovers.
+                          title="This row has photos still to read. A reading that turns out to be another car takes that photo, and the ones with it, into a row of their own."
+                        >
+                          may split
+                        </span>
+                      )}
                     </button>
                     <RemoveXButton
                       label={`Delete ${formatBatchViolationTime(

@@ -224,6 +224,18 @@ function renderPlateInput() {
   };
 }
 
+// The rendered tree keeps every JSX child as its own entry, so a sentence with
+// interpolations in it is not one string in there: the error message serializes
+// as "Could not look up make/model of ", "ABC123", " in", " ", "ON", ",". Join
+// the text back together before asserting on a sentence, the way a reader sees
+// it.
+function renderedText(node) {
+  if (node == null) return '';
+  if (typeof node === 'string') return node;
+  if (Array.isArray(node)) return node.map(renderedText).join('');
+  return renderedText(node.children);
+}
+
 describe('Home', () => {
   test('renders submission form and Previous Submissions when logged in with photos', () => {
     const initialState = {
@@ -2991,6 +3003,7 @@ describe('Home', () => {
 
       return {
         homeRef,
+        tree,
         axiosPost,
         toastWarn,
         toastError,
@@ -3811,6 +3824,90 @@ describe('Home', () => {
         'first.jpg',
         'other.jpg',
       ]);
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    // A row is one violation, and a violation is what its photos say it is: a
+    // reading still to come can take a photo, and the ones reading with it,
+    // into a row of their own. Until the readings are in, the row is a guess.
+    test('says a row may split while some of its photos are still being read', async () => {
+      // Two photos of one car. The first is read at once, which is what puts a
+      // plate on the row and makes it look settled; the second is held back.
+      const first = jpeg({ name: 'a.jpg', size: 4 });
+      const second = jpeg({ name: 'b.jpg', size: 5 });
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, tree, cleanup } = await renderBatchWithFiles([], {
+        alprDelayMsBySize: { 5: 500 },
+      });
+
+      let adding;
+      renderer.act(() => {
+        adding = homeRef.current.addFilesToBatch([first, second]);
+      });
+
+      // The row is up as soon as the local metadata pass is done, with one
+      // reading in and one still out.
+      await renderer.act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 150));
+      });
+
+      const reading = renderedText(tree.toJSON());
+      expect(reading).toContain('T696817C (2 photos)');
+      expect(reading).toContain('may split');
+
+      await renderer.act(async () => {
+        await adding;
+      });
+
+      // Every reading is in, so the row is what its photos say it is.
+      expect(renderedText(tree.toJSON())).not.toContain('may split');
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    test('says a row is still reading while a reading it lost is tried again', async () => {
+      const photo = jpeg({ name: 'a.jpg', size: 4 });
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, tree, settle, cleanup } = await renderBatchWithFiles(
+        [photo],
+        // The batch's own reading is refused, and the second chance is held
+        // back so the queue can be read while it is out.
+        { failAlprCalls: [1], alprDelayMsBySize: { 4: 500 } },
+      );
+
+      // The pass is over and the row's one photo has no reading: what the row
+      // says now is what a second chance is doing. Opening the row starts it,
+      // and the row opens itself as soon as it settles.
+      expect(homeRef.current.state.batchProgress).toBeNull();
+
+      await renderer.act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 50));
+      });
+
+      // Not "nothing readable": a reading is out, and the row says so.
+      expect(renderedText(tree.toJSON())).toContain('reading plates…');
+
+      await settle();
+
+      expect(renderedText(tree.toJSON())).toContain('T696817C');
+      expect(renderedText(tree.toJSON())).not.toContain('may split');
 
       exifr.gps.mockReset();
       exifr.parse.mockReset();
@@ -4754,18 +4851,6 @@ describe('NycAddressAutocomplete', () => {
     expect(controlContainer.contains(input)).toBe(false);
   });
 });
-
-// The rendered tree keeps every JSX child as its own entry, so a sentence with
-// interpolations in it is not one string in there: the error message serializes
-// as "Could not look up make/model of ", "ABC123", " in", " ", "ON", ",". Join
-// the text back together before asserting on a sentence, the way a reader sees
-// it.
-function renderedText(node) {
-  if (node == null) return '';
-  if (typeof node === 'string') return node;
-  if (Array.isArray(node)) return node.map(renderedText).join('');
-  return renderedText(node.children);
-}
 
 describe('license state', () => {
   // The form only renders for a logged-in reader with a photo attached.

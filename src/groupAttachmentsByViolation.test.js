@@ -1,5 +1,4 @@
 import groupAttachmentsByViolation, {
-  isViolationSettled,
   mergeViolations,
   normalizedCenterDistance,
 } from './groupAttachmentsByViolation.js';
@@ -174,66 +173,6 @@ describe('mergeViolations', () => {
 
     expect(merged.plate).toBe('AAA111');
     expect(merged.photos).toHaveLength(3);
-  });
-});
-
-describe('isViolationSettled', () => {
-  const violationEndingAt = createDateMs => ({
-    photos: [buildPhoto({ createDateMs })],
-  });
-
-  test('is not settled while the frontier is still inside the linking window', () => {
-    const end = 1_000_000;
-
-    expect(
-      isViolationSettled({
-        violation: violationEndingAt(end),
-        frontierTimeMs: end + 60000,
-      }),
-    ).toBe(false);
-  });
-
-  test('settles once the frontier is past the window', () => {
-    const end = 1_000_000;
-
-    expect(
-      isViolationSettled({
-        violation: violationEndingAt(end),
-        frontierTimeMs: end + 60001,
-      }),
-    ).toBe(true);
-  });
-
-  test('is never settled when the frontier is the violation itself', () => {
-    // The batch's last violation: nothing has been read after it, so nothing
-    // has passed it, and it cannot settle on its own.
-    const end = 1_000_000;
-
-    expect(
-      isViolationSettled({
-        violation: violationEndingAt(end),
-        frontierTimeMs: end,
-      }),
-    ).toBe(false);
-  });
-
-  test('measures from the end of the group, not its start', () => {
-    // Two photos four seconds apart, so the group ends at the later one. A
-    // frontier thirty seconds past the *start* is only twenty-six past the
-    // end, which is still inside the window.
-    const violation = {
-      photos: [
-        buildPhoto({ createDateMs: 1_000_000 }),
-        buildPhoto({ createDateMs: 1_004_000 }),
-      ],
-    };
-
-    expect(isViolationSettled({ violation, frontierTimeMs: 1_030_000 })).toBe(
-      false,
-    );
-    expect(isViolationSettled({ violation, frontierTimeMs: 1_064_001 })).toBe(
-      true,
-    );
   });
 });
 

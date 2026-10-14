@@ -59,7 +59,6 @@ import formatGeosearchAddress from '../../formatGeosearchAddress.js';
 import earliestTakenPhoto from '../../earliestTakenPhoto.js';
 import createGeosearchAddressCache from '../../geosearchAddressCache.js';
 import groupAttachmentsByViolation, {
-  isViolationSettled,
   mergeViolations,
 } from '../../groupAttachmentsByViolation.js';
 import { isImage, isVideo } from '../../isImage.js';
@@ -604,34 +603,16 @@ async function mapWithConcurrency({ items, limit, worker }) {
   return results;
 }
 
-// The effective time of the last photo that, together with every photo before
-// it, has been read -- the boundary a violation can safely be called final
-// against.
-//
-// It has to be the end of a *contiguous* run rather than simply the latest
-// photo read: three photos are read at once and they finish in whatever order
-// the network returns them, so the latest photo read can belong to a later
-// violation while an earlier one still waits for a photo of its own.
-//
-// This is sound only because the plate pass runs in effective-time order, which
-// `processBatchFiles` arranges by reading every photo's date first. Every photo
-// not yet read therefore has an effective time at or after this one, so none of
-// them can reach back into a violation that ends more than the linking window
-// before it.
-//
-// `-Infinity` means nothing has been read yet, so nothing can settle.
-function batchFrontierTimeMs(readSoFar) {
-  let frontier = -Infinity;
-
-  for (const result of readSoFar) {
-    if (result === undefined) {
-      return frontier;
-    }
-
-    frontier = effectiveTimeMs(result);
+// What a row says about its plates. A row with a read still outstanding says
+// so rather than looking like a row that read nothing: a refusal and a photo
+// with no readable plate leave the same `plateResults` behind, and the two
+// mean different things to the person reading the queue.
+function batchRowPlateLabel({ violation, isReading }) {
+  if (violation.plate) {
+    return violation.plate;
   }
 
-  return frontier;
+  return isReading ? 'reading plates…' : 'nothing readable';
 }
 
 // `extractDate` returns `{ millisecondsSinceEpoch, offset }` for a picture but
@@ -1062,6 +1043,8 @@ class Home extends React.Component {
     // instance, like plateLookupCache: a shared one would serve this render's
     // addresses to the next request's.
     this.geosearchAddressCache = createGeosearchAddressCache();
+    // Places with an address lookup in flight; see geocodeBatchViolation.
+    this.geosearchesInFlight = new Set();
     // Serialises batch passes: picks accumulate, and each pass must see the
     // results of the one before it (see addFilesToBatch).
     this.batchQueue = Promise.resolve();
@@ -2058,11 +2041,6 @@ class Home extends React.Component {
       (a, b) => effectiveTimeMs(a) - effectiveTimeMs(b),
     );
 
-    // One slot per photo, filled as each is read. The unbroken run of filled
-    // slots from the front is where the boundary comes from, so a photo that
-    // finishes before one it follows cannot pull the boundary forward.
-    const readSoFar = new Array(inCaptureOrder.length);
-
     let completed = 0;
     this.setState({
       batchProgress: { stage: 'alpr', completed, total: inCaptureOrder.length },
@@ -2091,37 +2069,59 @@ class Home extends React.Component {
     };
     this.plateReadThrottled = false;
 
+    // Every row, now, before a single plate is read.
+    //
+    // The plate only ever splits a time-cluster, never merges two, so with the
+    // dates and places in hand the rows are already decided: how many there
+    // are and which photos belong to each. Publishing them here is what puts
+    // the queue on screen about a second after the folder is picked, instead
+    // of after the last read -- which, for a batch shot inside the linking
+    // window, was the only moment any row could be called final.
+    this.setState({ batchPhotos: inCaptureOrder });
+    // Every place the batch knows about, looked up while the plate reads run.
+    // A row made later -- by a read that divides one -- takes its place from
+    // one of these photos, and the form is meant to open with the address
+    // already in hand rather than on "Finding Address...". Nothing waits for
+    // this: the queue is the thing that has to be quick.
+    this.geocodePlaces(inCaptureOrder);
+    await this.publishBatchViolations();
+
     await mapWithConcurrency({
       items: inCaptureOrder,
       limit: BATCH_ALPR_CONCURRENCY,
-      worker: async (photo, index) => {
+      worker: async photo => {
         await waitForReadSlot();
         const result = await this.readBatchPhotoPlate(photo);
-        readSoFar[index] = result;
+        const divides = this.readDividesRow({ photo, read: result });
         completed += 1;
         this.setState(
           state => ({
-            batchPhotos: state.batchPhotos.concat(result),
+            ...this.applyPlateRead({ photo, read: result })(state),
             batchProgress: {
               stage: 'alpr',
               completed,
               total: inCaptureOrder.length,
             },
           }),
-          () => {
-            this.publishBatchViolations({
-              frontierTimeMs: batchFrontierTimeMs(readSoFar),
-            });
-          },
+          () => this.followReadInForm({ divides }),
         );
         return result;
       },
     });
 
-    // Whatever the boundary could never settle on its own, the last violation
-    // above all -- nothing follows it to pass it -- is published now that
-    // nothing is left to read.
-    await this.publishBatchViolations({ includeUnsettled: true });
+    this.setState({ batchProgress: null }, () => {
+      this.loadFirstViolationWhenRead();
+
+      // The pass is over, so every read it lost is marked as failed. The row on
+      // screen -- the one that has been waiting -- takes its second chance now
+      // rather than only when it is next opened; the others take theirs then.
+      const violation =
+        this.state.batchViolations[this.state.currentViolationIndex];
+
+      if (violation) {
+        this.plateReread = this.rereadFailedPlates({ violation });
+      }
+    });
 
     this.setState({ batchProgress: null });
   };
@@ -2149,22 +2149,180 @@ class Home extends React.Component {
     }));
   };
 
+  // A plate read landing on the row that holds its photo, as a `setState`
+  // updater.
+  //
+  // The record `readBatchPhotoPlate` hands back replaces the one it read
+  // everywhere that record appears -- the batch's photos and the row's -- and
+  // the row then takes the reading into account. When the readings divide a
+  // row, the row divides with them: two cars at one kerb sit inside the
+  // linking window, so a time-cluster is often several cars, and the grouping
+  // is what tells them apart. Waiting for the user to press something would
+  // leave a whole batch of different cars as one row, which is what the plate
+  // is read for in the first place.
+  //
+  // A row the form is on, when it divides, leaves the form on the group that
+  // holds the photos it has attached -- the report it was already making.
+  applyPlateRead =
+    ({ photo, read }) =>
+    state => {
+      const replace = candidate => (candidate === photo ? read : candidate);
+      const loaded = state.batchViolations[state.currentViolationIndex];
+      let followed = loaded;
+
+      const batchViolations = state.batchViolations.flatMap(violation => {
+        if (!violation.photos.includes(photo)) {
+          return [violation];
+        }
+
+        const groups = this.withNycFlags(
+          groupAttachmentsByViolation(violation.photos.map(replace)),
+        );
+
+        if (violation === loaded) {
+          const attached = new Set(state.attachmentData);
+          followed =
+            groups.find(group =>
+              group.photos.some(candidate => attached.has(candidate.file)),
+            ) || groups[0];
+        }
+
+        return groups;
+      });
+
+      return {
+        batchPhotos: state.batchPhotos.map(replace),
+        batchViolations,
+        currentViolationIndex: followed
+          ? batchViolations.indexOf(followed)
+          : state.currentViolationIndex,
+      };
+    };
+
+  // Look up every place the batch's photos were taken, once each.
+  //
+  // The memo is what makes this cheap -- a batch shot at one kerb is one
+  // lookup, not one per photo or per row -- and filling it before any row can
+  // be loaded is what keeps the form from opening on "Finding Address..." for
+  // a place the batch already had.
+  geocodePlaces = async photos => {
+    const places = new Map();
+
+    photos.forEach(photo => {
+      if (hasCoordinates(photo)) {
+        places.set(`${photo.latitude},${photo.longitude}`, photo);
+      }
+    });
+
+    for (const photo of places.values()) {
+      // eslint-disable-next-line no-await-in-loop -- sequential on purpose: see geocodeBatchViolation.
+      await this.geocodeBatchViolation(photo);
+    }
+  };
+
+  // Load the first row once its own photos have been read, and not before.
+  //
+  // The queue is on screen from the moment the batch's dates and places are
+  // in, but a row is not the report it will end up being until its reads are:
+  // a time-cluster divides into one row per car as its plates arrive. Waiting
+  // for the first row's reads is what keeps the form from being loaded with a
+  // report that changes underneath it -- and it is a second or two, against
+  // the whole batch's reads, which is what the old settled rule waited for.
+  loadFirstViolationWhenRead = () => {
+    const { batchViolations, currentViolationIndex } = this.state;
+
+    // Only when nothing is loaded: a violation already being worked on must
+    // not be replaced because a later one arrived.
+    if (currentViolationIndex >= 0) {
+      return;
+    }
+
+    const [first] = batchViolations;
+
+    if (first && first.photos.every(photo => photo.plateRead)) {
+      this.loadBatchViolation(0);
+    }
+  };
+
+  // Where the form belongs after a plate read lands, once the state has it.
+  //
+  // A row that divided under the form leaves the form on the group holding the
+  // photos it had attached -- the report it was already making -- and the form
+  // is loaded again for it, because the report is not the one it was. A row
+  // that did not divide leaves the form exactly as it is, with the reading
+  // filling its plate in; loading again on every reading would throw away a
+  // photo the user had just swapped in.
+  // Whether a reading divides the row that holds its photo.
+  //
+  // Asked before the write-back, not after: afterwards the row is whichever
+  // group the form followed -- the photo may not be in it at all -- and the
+  // question can no longer be answered.
+  readDividesRow = ({ photo, read }) => {
+    const loaded = this.state.batchViolations[this.state.currentViolationIndex];
+
+    return Boolean(
+      loaded?.photos.includes(photo) &&
+      groupAttachmentsByViolation(
+        loaded.photos.map(candidate =>
+          candidate === photo ? read : candidate,
+        ),
+      ).length > 1,
+    );
+  };
+
+  followReadInForm = ({ divides }) => {
+    if (divides) {
+      this.loadBatchViolation(this.state.currentViolationIndex);
+    } else {
+      this.applyReadingsToForm();
+    }
+
+    this.loadFirstViolationWhenRead();
+  };
+
+  // What a row's readings mean to the form, while that row is the one on
+  // screen: the overlays and the plate suggestions are the readings, and the
+  // License field is filled from them only while it is empty. A plate the user
+  // typed, or one an earlier reading already gave, is left as it is -- a
+  // reading that arrives late does not overwrite it.
+  applyReadingsToForm = () => {
+    const { batchViolations, currentViolationIndex } = this.state;
+    const violation = batchViolations[currentViolationIndex];
+
+    if (!violation) {
+      return;
+    }
+
+    this.setState({
+      allPlateData:
+        violation.photos.find(photo => photo.plateResults)?.plateResults ||
+        null,
+      plateDataByAttachmentName: plateDataByAttachmentNameFor(violation.photos),
+    });
+
+    if (!this.state.plate && violation.plate) {
+      this.setLicensePlate({
+        plate: violation.plate,
+        licenseState: violation.licenseState,
+      });
+    }
+  };
+
   // Group the photos that no published violation has claimed, and add the
   // violations to the queue.
   //
-  // Only unclaimed photos are grouped. A published violation does not change,
-  // and leaving its photos out is what keeps it -- and the form loaded from it
-  // -- exactly as it was. `includeUnsettled` decides whether a violation has to
-  // look final to be published at all; see `isViolationSettled`.
+  // Only unclaimed photos are grouped. A published row is changed by its own
+  // photos' readings and by nothing else (see `applyPlateRead`), and leaving
+  // the claimed photos out is what keeps this from making a second row for
+  // them.
+  //
+  // The batch calls this before a plate is read, so the rows are the
+  // time-clusters and their labels fill in behind them; the leftovers after a
+  // submit call it with their readings already in.
   //
   // Each violation is geocoded before it is published, so loading one finds
   // the batch's lookup in the memo instead of starting its own.
-  publishBatchViolations = async ({
-    includeUnsettled = false,
-    // No frontier means nothing is known to be final yet. That is the safe
-    // default: the pass publishes nothing rather than publishing too early.
-    frontierTimeMs = -Infinity,
-  } = {}) => {
+  publishBatchViolations = async () => {
     const { batchPhotos, batchViolations } = this.state;
 
     const publishedPhotos = new Set(
@@ -2180,16 +2338,7 @@ class Home extends React.Component {
       return;
     }
 
-    const settled = groupAttachmentsByViolation(unpublished).filter(
-      violation =>
-        includeUnsettled || isViolationSettled({ violation, frontierTimeMs }),
-    );
-
-    if (settled.length === 0) {
-      return;
-    }
-
-    const flagged = this.withNycFlags(settled);
+    const flagged = this.withNycFlags(groupAttachmentsByViolation(unpublished));
 
     // One lookup at a time, and one per violation rather than per photo: a
     // batch shot at one curb is dozens of identical lookups, and the memo
@@ -2199,48 +2348,37 @@ class Home extends React.Component {
       await this.geocodeBatchViolation(violation);
     }
 
-    this.setState(
-      state => {
-        const published = new Set(
-          state.batchViolations.map(violation => violation.photos[0]?.name),
-        );
-        const added = flagged.filter(
-          violation => !published.has(violation.photos[0]?.name),
-        );
+    this.setState(state => {
+      const published = new Set(
+        state.batchViolations.map(violation => violation.photos[0]?.name),
+      );
+      const added = flagged.filter(
+        violation => !published.has(violation.photos[0]?.name),
+      );
 
-        if (added.length === 0) {
-          return null;
-        }
+      if (added.length === 0) {
+        return null;
+      }
 
-        // Oldest first, the way the batch was shot: the queue is walked in
-        // that order. Appending instead would list violations in whatever
-        // order they were published in.
-        const oldestFirst = state.batchViolations
-          .concat(added)
-          .sort((a, b) => a.createDateMs - b.createDateMs);
+      // Oldest first, the way the batch was shot: the queue is walked in
+      // that order. Appending instead would list violations in whatever
+      // order they were published in.
+      const oldestFirst = state.batchViolations
+        .concat(added)
+        .sort((a, b) => a.createDateMs - b.createDateMs);
 
-        // Sorting moves rows, so an index no longer identifies the loaded
-        // violation. Follow it by identity instead: these are the same objects,
-        // only reordered.
-        const loaded = state.batchViolations[state.currentViolationIndex];
+      // Sorting moves rows, so an index no longer identifies the loaded
+      // violation. Follow it by identity instead: these are the same objects,
+      // only reordered.
+      const loaded = state.batchViolations[state.currentViolationIndex];
 
-        return {
-          batchViolations: oldestFirst,
-          currentViolationIndex: loaded
-            ? oldestFirst.indexOf(loaded)
-            : state.currentViolationIndex,
-        };
-      },
-      () => {
-        // Load the first violation without waiting to be asked, so the form is
-        // ready to submit as soon as there is something to submit. Only when
-        // nothing is loaded: a violation already being worked on must not be
-        // replaced because a later one arrived.
-        if (this.state.currentViolationIndex < 0) {
-          this.loadBatchViolation(0);
-        }
-      },
-    );
+      return {
+        batchViolations: oldestFirst,
+        currentViolationIndex: loaded
+          ? oldestFirst.indexOf(loaded)
+          : state.currentViolationIndex,
+      };
+    });
   };
 
   // One photo's date and place, from its own metadata. Local work, with no
@@ -2315,6 +2453,11 @@ class Home extends React.Component {
     return {
       ...photo,
       plateResults,
+      // Whether the read happened at all. A refusal leaves no `plateResults`,
+      // which is otherwise indistinguishable from a photo still waiting its
+      // turn -- and the queue has to tell those apart to say whether a row is
+      // still being read or read nothing.
+      plateRead: plateResults ? 'read' : 'failed',
       uploadWidth: plateResults?.uploadWidth,
       uploadHeight: plateResults?.uploadHeight,
     };
@@ -2363,6 +2506,19 @@ class Home extends React.Component {
       return;
     }
 
+    // The memo only knows about lookups that have finished, so two callers
+    // racing for the same place -- the batch warming the memo for every place
+    // and a row geocoding its own, say -- would both send a request. This is
+    // the second, in-flight half of the memo, and it is deliberately not the
+    // same map: a failure must leave nothing behind, in either.
+    const key = `${latitude},${longitude}`;
+
+    if (this.geosearchesInFlight.has(key)) {
+      return;
+    }
+
+    this.geosearchesInFlight.add(key);
+
     try {
       // Not debouncedGeosearch: debounce() resolves every pending call with
       // the last call's response, so two lookups in flight at once -- this
@@ -2380,6 +2536,8 @@ class Home extends React.Component {
       // again when the user loads this violation, and geosearch being down
       // must not stop the batch.
       console.error(err);
+    } finally {
+      this.geosearchesInFlight.delete(key);
     }
   };
 
@@ -2437,14 +2595,21 @@ class Home extends React.Component {
       },
       // The form is usable as it opens; this only fills in what the batch
       // could not read. It runs from the callback so that the violation is
-      // the current one before it starts, which is what lets it stop early
-      // if the user opens another.
+      // the current one before it starts.
+      //
+      // Nothing is read again while the batch's own pass is running: a photo
+      // with no result at that point has not had its turn yet, and the pass is
+      // about to read it. What the pass loses is marked when it ends and read
+      // again then -- see `processBatchFiles` -- or here, when the row is next
+      // opened.
       //
       // The promise is kept rather than dropped: nothing in the form waits
       // for it, but a test has to, and a fixed number of turns is a guess
       // about how many reads are in flight.
       () => {
-        this.plateReread = this.rereadFailedPlates({ index, violation });
+        if (this.state.batchProgress === null) {
+          this.plateReread = this.rereadFailedPlates({ violation });
+        }
       },
     );
 
@@ -2470,85 +2635,46 @@ class Home extends React.Component {
   // row said "(no plate read)" and the form opened with an empty License
   // field, however readable the picture was.
   //
-  // Only the photos with no result are read again, and one at a time, because
-  // the burst is what tripped the limit in the first place. A photo that read
-  // cleanly and found nothing is not worth another call, and one that did
-  // read is answered from `attachmentPlateCache`, so a violation that read
-  // cleanly costs nothing here.
-  rereadFailedPlates = async ({ index, violation }) => {
-    const failed = violation.photos.filter(photo => !photo.plateResults);
+  // Only the photos whose read failed are read again, one at a time, because
+  // the burst is what tripped the limit in the first place. `plateRead` is what
+  // says a read failed: a photo it is missing from has simply not had its turn
+  // yet, and the batch's own pass is already reading it -- re-reading those
+  // here would double every read the batch makes. A photo that read cleanly and
+  // found nothing is not worth another call either.
+  //
+  // Each result goes through the same write-back the batch's own reads use, so
+  // a second chance can divide a row exactly as a first read can.
+  rereadFailedPlates = async ({ violation }) => {
+    const failed = violation.photos.filter(
+      photo => photo.plateRead === 'failed',
+    );
     if (failed.length === 0) {
       return;
     }
 
-    const reread = await mapWithConcurrency({
+    await mapWithConcurrency({
       items: failed,
       limit: 1,
       worker: async photo => {
-        // The user has opened another violation since. Stop reading for one
-        // they have left; a successful read is cached, so coming back costs
-        // only what is still missing.
-        if (this.state.currentViolationIndex !== index) {
+        // The user has opened another violation, or this row has divided and
+        // the photo is in a group they are not on. Stop reading for one they
+        // have left; a successful read is cached, so coming back costs only
+        // what is still missing.
+        const loaded =
+          this.state.batchViolations[this.state.currentViolationIndex]?.photos;
+
+        if (!loaded?.some(candidate => candidate.file === photo.file)) {
           return photo;
         }
-        return this.readBatchPhotoPlate(photo);
+
+        const read = await this.readBatchPhotoPlate(photo);
+        const divides = this.readDividesRow({ photo, read });
+        this.setState(this.applyPlateRead({ photo, read }), () =>
+          this.followReadInForm({ divides }),
+        );
+        return read;
       },
     });
-
-    const replaced = new Map(
-      failed
-        .map((photo, i) => [photo, reread[i]])
-        .filter(([, read]) => read.plateResults),
-    );
-    if (replaced.size === 0) {
-      return;
-    }
-
-    const photos = violation.photos.map(photo => replaced.get(photo) || photo);
-
-    // What the row's plate is now, by the same grouping the batch ran rather
-    // than a vote of its own: a re-read can show that one row holds two cars,
-    // and then the grouping is what says so. Only a group that comes back as
-    // one violation names a plate here -- when it comes back as two, picking
-    // one of them would be a guess, so the field stays empty for the user to
-    // fill in (the queue's merge is the inverse of this, and only the user
-    // can say two rows are one report).
-    const regrouped = groupAttachmentsByViolation(photos);
-    const plate = regrouped.length === 1 ? regrouped[0].plate : '';
-    const licenseState =
-      regrouped.length === 1 ? regrouped[0].licenseState : '';
-
-    // The row carries what was read from now on, so its label tells the user
-    // what is in it without opening it again.
-    this.setState(state => ({
-      batchPhotos: state.batchPhotos.map(photo => replaced.get(photo) || photo),
-      batchViolations: state.batchViolations.map(candidate =>
-        candidate === violation
-          ? {
-              ...candidate,
-              photos,
-              plate: candidate.plate || plate,
-              licenseState: candidate.licenseState || licenseState,
-            }
-          : candidate,
-      ),
-    }));
-
-    if (this.state.currentViolationIndex !== index) {
-      return;
-    }
-
-    this.setState({
-      allPlateData:
-        photos.find(photo => photo.plateResults)?.plateResults || null,
-      plateDataByAttachmentName: plateDataByAttachmentNameFor(photos),
-    });
-
-    // Only when the form has no plate of its own: one the user can see, or
-    // typed, wins over a reading that arrived late.
-    if (!violation.plate && plate) {
-      this.setLicensePlate({ plate, licenseState });
-    }
   };
 
   // Load a violation picked from the queue, so the order the batch was shot in
@@ -2700,7 +2826,7 @@ class Home extends React.Component {
         // Group the leftovers now. Publishing otherwise waits for the user to
         // add another photo, which would leave a violation this one produced
         // invisible until then -- and nothing on screen would say it was there.
-        this.publishBatchViolations({ includeUnsettled: true });
+        this.publishBatchViolations();
 
         this.loadBatchViolation(
           Math.min(currentViolationIndex, remainingViolations.length - 1),
@@ -3264,6 +3390,19 @@ class Home extends React.Component {
 
                 const isLoaded = index === currentViolationIndex;
 
+                // A row still waiting on a read says so, rather than looking
+                // like one that read nothing: see `batchRowPlateLabel`. Once
+                // the pass is over, a photo with no `plateRead` is one whose
+                // read was refused, and that is reported as nothing readable
+                // -- the load's second chance is what reads those again.
+                const isReading =
+                  batchProgress !== null &&
+                  violation.photos.some(photo => !photo.plateRead);
+                const plateLabel = batchRowPlateLabel({
+                  violation,
+                  isReading,
+                });
+
                 return (
                   <li
                     key={`${violation.createDateMs}-${violation.plate}-${violation.photos[0]?.name}`}
@@ -3283,7 +3422,7 @@ class Home extends React.Component {
                       onChange={() => this.toggleBatchMergeSelection(identity)}
                       aria-label={`Merge ${formatBatchViolationTime(
                         violation.createDateMs,
-                      )} — ${violation.plate || 'no plate read'}`}
+                      )} — ${plateLabel}`}
                     />
                     {/* The description is the control that loads this
                         violation, so the thing you read is the thing you
@@ -3296,15 +3435,14 @@ class Home extends React.Component {
                       onClick={() => this.selectBatchViolation(index)}
                     >
                       {formatBatchViolationTime(violation.createDateMs)} —{' '}
-                      {violation.plate || '(no plate read)'} (
-                      {violation.photos.length} photo
+                      {plateLabel} ({violation.photos.length} photo
                       {violation.photos.length === 1 ? '' : 's'})
                       {flags.length > 0 && ` — ${flags.join(', ')}`}
                     </button>
                     <RemoveXButton
                       label={`Delete ${formatBatchViolationTime(
                         violation.createDateMs,
-                      )} — ${violation.plate || 'no plate read'}`}
+                      )} — ${plateLabel}`}
                       // The row is a flex line, so this pushes the X to the
                       // far end of it. It takes no background of its own
                       // either, so the highlight of the loaded row runs behind

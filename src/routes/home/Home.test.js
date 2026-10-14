@@ -3345,10 +3345,10 @@ describe('Home', () => {
       cleanup();
     });
 
-    test('leaves the plate empty when the second chance shows the row holds two cars', async () => {
+    test('divides a row the second chance shows to be two cars', async () => {
       // A photo of one car and a photo of another, a minute apart, which the
-      // time window leaves in one row. Both reads fail, so the row has no
-      // plate to split them by; the second chance reads both and finds out.
+      // time window leaves in one row. Both reads are refused, so until the
+      // second chance reads them the row has no plate to divide it by.
       const photos = [
         jpeg({ name: 'a.jpg', size: 4 }),
         jpeg({ name: 'd.jpg', size: 7 }),
@@ -3363,19 +3363,21 @@ describe('Home', () => {
       const { homeRef, settle, platerecognizerCalls, cleanup } =
         await renderBatchWithFiles(photos, { failAlprCalls: [1, 2] });
 
-      expect(homeRef.current.state.batchViolations).toHaveLength(1);
-
       await settle();
 
-      // Both photos were read this time, and they disagree: the row is two
-      // cars, which is what the grouping says when it splits them. Picking
-      // one of the two plates for the field would be a guess, so the field
-      // stays empty; the readings are there for the overlays and the
-      // suggestions, and splitting the row on load is the next step this
-      // leaves open.
+      // The second chance read both photos, they disagree, and the row divides
+      // into the two cars it was holding. Four calls in all: the batch's two,
+      // and the two the second chance made.
       expect(platerecognizerCalls()).toHaveLength(4);
-      expect(homeRef.current.state.batchViolations[0].plate).toBe('');
-      expect(homeRef.current.state.plate).toBe('');
+      expect(
+        homeRef.current.state.batchViolations.map(violation => violation.plate),
+      ).toEqual(['T696817C', 'K73JAU']);
+
+      // The form was on the row when it divided, so it is on one of the two
+      // now -- the one holding the photos it had attached -- with that car's
+      // plate rather than an empty field.
+      expect(homeRef.current.state.plate).toBe('T696817C');
+      expect(homeRef.current.state.attachmentData).toEqual([photos[0]]);
 
       exifr.gps.mockReset();
       exifr.parse.mockReset();
@@ -3504,7 +3506,7 @@ describe('Home', () => {
       cleanup();
     });
 
-    test('publishes violations while the batch is still being read', async () => {
+    test('puts the rows on screen before a plate is read', async () => {
       const photos = [
         jpeg({ name: 'a.jpg', size: 4 }),
         jpeg({ name: 'b.jpg', size: 5 }),
@@ -3520,18 +3522,21 @@ describe('Home', () => {
 
       const { homeRef, cleanup } = await renderBatchWithFiles([]);
 
-      // Record what each publish pass left behind. `batchProgress` is still set
-      // for every pass but the last, so a pass that published anything is one
-      // the user would have seen the queue for before the plates were done.
+      // What the queue looked like when it was published. The batch's dates and
+      // places are local work and the plates are not, so this is the moment the
+      // rows can first be on screen -- and the whole point of publishing here
+      // is that it is not after the last read, which for a batch shot inside
+      // the linking window was the only moment the old rule allowed.
       const original = homeRef.current.publishBatchViolations;
       const passes = [];
       jest
         .spyOn(homeRef.current, 'publishBatchViolations')
         .mockImplementation(async options => {
           const result = await original.call(homeRef.current, options);
+          const { batchPhotos, batchViolations } = homeRef.current.state;
           passes.push({
-            stillReading: homeRef.current.state.batchProgress !== null,
-            violations: homeRef.current.state.batchViolations.length,
+            reads: batchPhotos.filter(photo => photo.plateRead).length,
+            violations: batchViolations.length,
           });
           return result;
         });
@@ -3546,13 +3551,13 @@ describe('Home', () => {
         }
       });
 
-      // The point of it: the queue was already non-empty while the bar was up.
-      expect(
-        passes.some(pass => pass.stillReading && pass.violations > 0),
-      ).toBe(true);
+      // One publish, of the whole batch, with every row in it and no plate read
+      // yet: the four photos are one time-cluster, because the plate that
+      // divides them has not been read.
+      expect(passes).toEqual([{ reads: 0, violations: 1 }]);
 
-      // And the dates-first pass is what keeps the grouping right, with the two
-      // photos a second apart staying together.
+      // And it is still the grouping that decides, once the plates are in: the
+      // row divided as they arrived, so the queue ends up with one row per car.
       expect(
         homeRef.current.state.batchViolations.map(v => [
           v.plate,
@@ -3618,7 +3623,7 @@ describe('Home', () => {
       // are two rows to combine.
       expect(mergeButton().props.disabled).toBe(true);
 
-      tickMerge('no plate read');
+      tickMerge('nothing readable');
 
       // One is not a merge.
       expect(mergeButton().props.disabled).toBe(true);

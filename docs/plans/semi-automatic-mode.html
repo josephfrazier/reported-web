@@ -512,15 +512,17 @@
     <h1>Semi-Automatic Mode</h1>
     <p class="standfirst">
       Upload a folder of photos — or just a pile of loose files — covering many violations at
-      once. The app runs ALPR and reverse-geocoding over the whole batch, groups the photos into
-      violations, and starts walking you through them one at a time as soon as the first settles —
-      form pre-filled, ready to submit, while the rest of the photos are still being read.
+      once. The app takes each photo's date and place, puts the whole batch on screen as rows as
+      soon as it has them, and reads plates behind the queue: each row's label fills in as its
+      photos are read, and a row divides when its photos turn out to be two cars. The first row
+      loads itself into the form once its own photos have been read — form pre-filled, ready to
+      submit, while the rest of the batch is still being read.
     </p>
 
     <dl class="meta">
       <div><dt>Status</dt><dd>built</dd></div>
       <div><dt>Written</dt><dd>2026-09-23</dd></div>
-      <div><dt>Revised</dt><dd>2026-09-28</dd></div>
+      <div><dt>Revised</dt><dd>2026-10-14</dd></div>
       <div><dt>Base</dt><dd>ba141241</dd></div>
     </dl>
 
@@ -779,24 +781,33 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         </p>
       </div>
 
-      <h3>When a violation is final</h3>
+      <h3>When the rows appear, and what changes them</h3>
       <p>
-        The queue fills in while the batch is still being read, which needs a rule for when a
-        violation has stopped changing. It is the linking window itself rather than a photo count:
-        since <code>linkPhotos</code> requires two photos to be within <span class="mono">60 s</span>
-        of each other, once the frontier — the latest photo read so far — has moved more than that
-        past a violation's end, nothing still to come can reach back and join it.
-        <code>isViolationSettled</code> is that test, exported and unit-tested on its own because it
-        is the whole trigger.
+        The dates and places pass is local and it covers the whole batch, so once it is done the
+        rows are already decided: the plate only ever splits a time-cluster, never merges two, so
+        with nothing read yet the grouping is exactly the time-clusters. The queue is published
+        there and then — a second or so after the folder is picked, whatever the batch size and
+        whatever the rate limit is doing.
       </p>
       <p>
-        Two things follow from it. The batch's <strong>last</strong> violation can never settle on
-        its own — settling needs a later photo to pass it, and there is none — so a final pass
-        publishes whatever is left. And nothing needs freezing explicitly: a published violation
-        settled <em>before</em> it was published, so nothing read since can have changed it, and its
-        photos are left out of later grouping passes. That is what holds the queue's order, and the
-        index it is pointing at, still — the violation being worked on cannot shift underneath the
-        form.
+        The plate reads fill the rows in behind it. Each read replaces its photo's record, the row
+        that holds it takes the reading into account, and a row whose photos now read
+        <strong>two</strong> plates divides into the rows the grouping makes of it. That is the
+        same grouping the batch has always run, applied as soon as it can be: two cars at one kerb
+        are inside the linking window, so a time-cluster is often several cars, and waiting for a
+        person to press something would leave a whole batch of different cars as one row.
+      </p>
+      <p>
+        The form waits a little longer than the queue. The first row is loaded once its own photos
+        have been read, so the report cannot divide underneath it while it is being filled in; a row
+        the user opened earlier and that divides later is loaded again onto the group holding the
+        photos it had attached.
+      </p>
+      <p>
+        What this replaced was a rule for when a violation had stopped changing — the frontier and
+        <code>isViolationSettled</code>, published one violation at a time only once nothing still
+        to come could reach back and join it. For a batch shot inside the linking window that moment
+        was the end of the whole pass, so the queue appeared only after the last plate was read.
       </p>
 
       <h3>Dates first, then plates</h3>
@@ -809,9 +820,9 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         That order cannot come from the files' modification times. They stand in for capture time
         only where the two agree, and on the batch that prompted this they did not: two photos of
         one car were read either side of a photo from a different violation, so the car became two
-        reports. Sorting the batch by the date each photo actually carries is what makes the
-        boundary in the section above exact rather than probable — every photo not yet read sits at
-        or after it.
+        reports. Sorting the batch by the date each photo actually carries is also what lets the
+        rows be published before any plate is read: the time-clusters only need the dates, and a
+        photo's own date is what puts it in its cluster.
       </p>
     </section>
 
@@ -884,10 +895,9 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         <code>src/groupAttachmentsByViolation.test.js</code>, following the repo's habit of
         extracting logic into small pure modules with direct tests.
       </p>
-      <p>Two helpers live alongside it:</p>
+      <p>One helper lives alongside it:</p>
       <ul>
         <li><code>normalizedCenterDistance(box, uploadWidth, uploadHeight)</code> — how far a plate sits from the frame centre</li>
-        <li><code>isViolationSettled({ violation, frontierTimeMs })</code> — whether a violation has stopped changing, which is what publishing waits for</li>
       </ul>
       <p>
         Capture order, and the two rules that read it, live in
@@ -1018,15 +1028,17 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
       </p>
       <p>
         The bar names the two passes over the files themselves — dates and places, then plates.
-        Grouping and geocoding happen per violation as it is published, so those are not stages of
-        their own; the queue filling in underneath is the progress for them.
+        Grouping happens with the first of them, and the queue appearing is that progress; the
+        geocoding of the batch's places runs quietly beside it. The bar's second pass is the plate
+        labels filling in.
       </p>
 
       <h3>The queue</h3>
       <p>
-        Violations appear as they settle rather than when the batch ends (see
-        <em>When a violation is final</em>), so reporting can start while the rest of the photos are
-        still being read. Each row shows its time, plate, photo count and flags, and clicking a
+        The rows appear as soon as the batch's dates and places are in — before a single plate is
+        read (see <em>When the rows appear</em>) — so reporting can start while the rest of the
+        photos are still being read. Each row shows its time, its plate or whether it is still
+        being read, its photo count and flags, and clicking a
         row's own text opens that violation; <strong>Delete</strong> drops a row, and a row's
         checkbox ticks it for a merge. There is no button to walk the queue in order, because
         Submit already advances to the next violation and any row is one click away.
@@ -1081,14 +1093,15 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         </li>
         <li>
           <code>Home.test.js</code> — driving the rendered batch UI to assert that violations are
-          found, that the first loads itself as it settles, that loading one fills the fields from
-          cache, that <strong>no second <code>/platerecognizer</code> call fires</strong>, and that
-          Submit advances.
+          found, that the rows are on screen before a plate is read, that the first row loads itself
+          once its own photos have been read, that loading one fills the fields from cache, that
+          <strong>no second <code>/platerecognizer</code> call fires</strong>, and that Submit
+          advances.
         </li>
         <li>
-          Publishing — <code>isViolationSettled</code> is unit-tested at both edges of the window,
-          and it is worth watching what each publish pass left in state, since a pass that ran while
-          the progress bar was still up is the whole feature.
+          Publishing — what matters is what the publish pass left in state, and when: the rows,
+          the plates still unread and the reads still in flight are what a test watches, since a
+          queue that is complete before the first read is the whole feature.
         </li>
       </ul>
       <p>
@@ -1116,12 +1129,14 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         <li>
           <b>Rate limits and quota</b>
           Two different limits, pulling in opposite directions.
-          <span class="mono">POST /platerecognizer</span> carries <em>no</em> server-side rate
-          limit, so a batch of N photos is N ALPR calls fired in parallel, and the concurrency cap
-          is politeness rather than enforcement. Plate Recognizer rate limits back, and a refused
-          read is retried up to four times with a doubling wait (<code>plateReadRetry.js</code>), so
-          a batch that trips the limit spends several calls per photo rather than one. Check the
-          account's own quota before running a large batch.
+          Plate Recognizer throttles by the second, and a refused read comes back
+          <span class="mono">429</span> with <em>Request was throttled. Expected available in 1
+          second.</em> The batch used to start three reads at once, which tripped it on about a
+          third of a batch's reads — and a refusal costs two calls, because the server tries its
+          second token straight after the first is refused. Reads are spaced now: nothing waits
+          until one is refused, and after that each read waits out the second the API asked for
+          (<code>ALPR_THROTTLE_WAIT_MS</code>). A read the retry still loses is read again when its
+          violation is loaded. Check the account's own quota before running a large batch.
           <code>/api/uploadAttachment</code> is the opposite — capped at
           <strong>a quarter of a gigabyte of unsubmitted attachments per IP</strong>, which a
           submission releases as it consumes them (<code>attachmentBudget.js</code>). A client that
@@ -1168,7 +1183,7 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
           with its own test, so repeated lookups stop re-hitting NYC Planning Labs.
         </li>
         <li>
-          <strong>The wiring.</strong> Batch state, the three photo inputs, the progressive publishing pass, the
+          <strong>The wiring.</strong> Batch state, the three photo inputs, the early publish and the reads that refine it, the
           queue, load-next, the picker and auto-advance in <code>Home.js</code>, plus the
           <code>Home.test.js</code> coverage.
         </li>

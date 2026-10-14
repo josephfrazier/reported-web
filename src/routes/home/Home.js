@@ -1919,8 +1919,12 @@ class Home extends React.Component {
       isPreviousSubmissionsLoading: true,
     });
 
+    // No body: the route reads none. It authenticates with the session cookie
+    // and answers with this reader's submissions. Handing it the form's state
+    // meant sending everything in it, files included, for a request that uses
+    // none of it.
     axios
-      .post('/submissions', this.state)
+      .post('/submissions')
       .then(({ data }) => {
         const { submissions } = data;
         this.setState({

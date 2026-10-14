@@ -1,4 +1,9 @@
 import sharp from 'sharp';
+import {
+  alprCacheKey,
+  readCachedReading,
+  writeCachedReading,
+} from './alprCache.js';
 
 // Disable sharp's internal LRU cache so processed image data is released
 // immediately instead of being held in memory across requests.
@@ -149,11 +154,23 @@ export default function readLicenseViaALPR({
   return orientImageBuffer({ attachmentBuffer })
     .then(buffer => downscaleForPlateRecognizer({ buffer, targetWidth: 4096 }))
     .then(buffer => downscaleForPlateRecognizer({ buffer, targetWidth: 2048 }))
-    .then(attachmentBufferRotated => {
+    .then(async attachmentBufferRotated => {
+      // A reading is a function of the bytes that were sent, so the same photo
+      // is the same answer. Off unless ALPR_CACHE_DIR is set; see alprCache.js.
+      const cacheKey = alprCacheKey(attachmentBufferRotated);
+      const cached = await readCachedReading(cacheKey);
+
+      if (cached) {
+        // Logged in place of the STARTING line below: that line counts the
+        // calls that reach Plate Recognizer, and this one did not.
+        console.info('/platerecognizer plate-reader answered from the cache');
+        return cached;
+      }
+
       console.log('STARTING platerecognizer'); // eslint-disable-line no-console
       console.time(`/platerecognizer plate-reader`); // eslint-disable-line no-console
 
-      return platerecognizer({
+      const reading = await platerecognizer({
         attachmentBufferRotated,
         PLATERECOGNIZER_TOKEN,
       })
@@ -243,5 +260,8 @@ export default function readLicenseViaALPR({
           };
         })
         .finally(() => console.timeEnd(`/platerecognizer plate-reader`)); // eslint-disable-line no-console
+
+      await writeCachedReading(cacheKey, reading);
+      return reading;
     });
 }

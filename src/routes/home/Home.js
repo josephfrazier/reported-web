@@ -681,6 +681,21 @@ function plateDataByAttachmentNameFor(photos) {
   return byName;
 }
 
+// Whether the report holds more of one kind of photo than a report can carry.
+//
+// A report takes three pictures and three videos, which is what
+// `createSubmission.js` keeps, and the batch's picker deliberately lets the
+// user go past that: a fourth photo can be attached so that its thumbnail can
+// be looked at, and clicked on, before one of the three is dropped for it.
+// Submit waits until the report is back within the caps.
+function tooManyAttachments(attachmentData) {
+  const pictures = attachmentData.filter(file =>
+    isImage({ ext: fileExtension(file.name) }),
+  ).length;
+
+  return pictures > 3 || attachmentData.length - pictures > 3;
+}
+
 // Grouping and geocoding happen per violation as it is published, so the queue
 // appearing underneath is the progress for those. The bar names the two passes
 // over the files themselves.
@@ -2861,13 +2876,16 @@ class Home extends React.Component {
       );
 
       if (selectedOfKind.length >= 3) {
+        // A warning rather than a refusal: the photo is attached so that its
+        // thumbnail can be seen and opened, and Submit stays off until the
+        // report is back within its caps; see `tooManyAttachments`.
         Home.notifyWarning(
           `A report can include at most 3 ${
             wantPicture ? 'pictures' : 'videos'
           }. Uncheck one to swap it in.`,
         );
-        return;
       }
+
       selected.add(photo.file);
       // A photo swapped in is one the report may be submitted with, so it needs
       // the upload the ones loaded with the violation already had. The call is
@@ -4159,6 +4177,16 @@ class Home extends React.Component {
                     return;
                   }
 
+                  // The button is off while this is true, and this catches the
+                  // submit a keyboard makes without it; the server keeps only
+                  // the first three of each kind either way.
+                  if (tooManyAttachments(this.state.attachmentData)) {
+                    Home.notifyError(
+                      'A report can include at most 3 pictures and 3 videos. Uncheck one to submit it.',
+                    );
+                    return;
+                  }
+
                   this.setState({
                     isSubmitting: true,
                   });
@@ -4738,18 +4766,27 @@ class Home extends React.Component {
                           {this.state.submitProgressMax}
                         </progress>
                       ) : (
-                        <button
-                          type="submit"
-                          disabled={
-                            this.state.isSubmitting ||
-                            !this.state.coordsAreInNyc
-                          }
-                          style={{
-                            width: '100%',
-                          }}
-                        >
-                          Submit
-                        </button>
+                        <React.Fragment>
+                          {tooManyAttachments(this.state.attachmentData) && (
+                            <p>
+                              A report can include at most 3 pictures and 3
+                              videos. Uncheck one to submit it.
+                            </p>
+                          )}
+                          <button
+                            type="submit"
+                            disabled={
+                              this.state.isSubmitting ||
+                              !this.state.coordsAreInNyc ||
+                              tooManyAttachments(this.state.attachmentData)
+                            }
+                            style={{
+                              width: '100%',
+                            }}
+                          >
+                            Submit
+                          </button>
+                        </React.Fragment>
                       )}
                     </React.Fragment>
                   )}

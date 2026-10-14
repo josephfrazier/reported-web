@@ -2549,6 +2549,13 @@ describe('Home', () => {
             await form.props.onSubmit({ preventDefault() {} });
           });
         },
+        // The report's own Submit button, for its disabled state.
+        submitButton: () => {
+          const form = tree.root
+            .findAllByType('form')
+            .find(formEl => typeof formEl.props.onSubmit === 'function');
+          return form.findByProps({ type: 'submit' });
+        },
         cleanup: () => {
           tree.unmount();
           axiosGet.mockRestore();
@@ -2932,6 +2939,7 @@ describe('Home', () => {
         homeRef,
         axiosPost,
         toastWarn,
+        toastError,
         platerecognizerCalls: () =>
           axiosPost.mock.calls.filter(([url]) => url === '/platerecognizer'),
         // When each read was asked for, in milliseconds since an arbitrary
@@ -3034,6 +3042,13 @@ describe('Home', () => {
           return renderer.act(async () => {
             await form.props.onSubmit({ preventDefault() {} });
           });
+        },
+        // The report's own Submit button, for its disabled state.
+        submitButton: () => {
+          const form = tree.root
+            .findAllByType('form')
+            .find(formEl => typeof formEl.props.onSubmit === 'function');
+          return form.findByProps({ type: 'submit' });
         },
         cleanup: () => {
           tree.unmount();
@@ -4034,7 +4049,7 @@ describe('Home', () => {
       },
     );
 
-    test('attaches at most 3 pictures and 3 videos of a group, and swaps them in and out', async () => {
+    test('attaches a fourth picture, warns, and holds Submit until one is dropped', async () => {
       const pictures = ['p1', 'p2', 'p3', 'p4'].map(
         name => new File(['picture'], `${name}.jpg`, { type: 'image/jpeg' }),
       );
@@ -4054,8 +4069,16 @@ describe('Home', () => {
         createDateMs: 1704110400000,
       };
 
-      const { homeRef, toastWarn, clickQueueLoad, toggleAttachment, cleanup } =
-        await renderBatchWithFiles([]);
+      const {
+        homeRef,
+        toastWarn,
+        toastError,
+        submit,
+        submitButton,
+        clickQueueLoad,
+        toggleAttachment,
+        cleanup,
+      } = await renderBatchWithFiles([]);
 
       renderer.act(() => {
         // The batch resolves this location before the user gets to it, which is
@@ -4084,14 +4107,17 @@ describe('Home', () => {
         'v2.mp4',
         'v3.mp4',
       ]);
+      expect(submitButton().props.disabled).toBe(false);
 
-      // A fourth picture is refused rather than attached and then silently
-      // dropped: createSubmission.js keeps only images.slice(0, 3).
+      // A fourth picture is attached, so that its thumbnail is there to look
+      // at, and the warning says what it costs: Submit is off until the report
+      // is back within its caps.
       toggleAttachment('p4.jpg', true);
       expect(attachmentNames()).toEqual([
         'p1.jpg',
         'p2.jpg',
         'p3.jpg',
+        'p4.jpg',
         'v1.mp4',
         'v2.mp4',
         'v3.mp4',
@@ -4099,11 +4125,10 @@ describe('Home', () => {
       expect(toastWarn.mock.calls[0][0]).toBe(
         'A report can include at most 3 pictures. Uncheck one to swap it in.',
       );
+      expect(submitButton().props.disabled).toBe(true);
 
-      // Unticking a picture frees its slot, and the fourth takes it — keeping
-      // the group's own order rather than moving to the end.
+      // Unticking a picture frees its slot, and Submit comes back.
       toggleAttachment('p1.jpg', false);
-      toggleAttachment('p4.jpg', true);
       expect(attachmentNames()).toEqual([
         'p2.jpg',
         'p3.jpg',
@@ -4112,6 +4137,7 @@ describe('Home', () => {
         'v2.mp4',
         'v3.mp4',
       ]);
+      expect(submitButton().props.disabled).toBe(false);
 
       // Videos have the same cap as pictures.
       toggleAttachment('v4.mp4', true);
@@ -4122,9 +4148,23 @@ describe('Home', () => {
         'v1.mp4',
         'v2.mp4',
         'v3.mp4',
+        'v4.mp4',
       ]);
       expect(toastWarn.mock.calls[1][0]).toBe(
         'A report can include at most 3 videos. Uncheck one to swap it in.',
+      );
+      expect(submitButton().props.disabled).toBe(true);
+
+      // Submitting anyway is refused with the same reason: the server keeps
+      // only the first three of each kind, and silently dropping them is what
+      // this replaces. The location is set here rather than waited for, so
+      // that the refusal this test is about is the one that comes back.
+      renderer.act(() => {
+        homeRef.current.setState({ latitude: 40.7129, longitude: -74.0061 });
+      });
+      await submit();
+      expect(toastError.mock.calls[0][0]).toBe(
+        'A report can include at most 3 pictures and 3 videos. Uncheck one to submit it.',
       );
 
       cleanup();

@@ -1213,6 +1213,43 @@ describe('Home', () => {
     cleanup();
   });
 
+  test('posts no file but the attachments', async () => {
+    const taxi = labelledPhoto('taxi');
+    const behind = labelledPhoto('behind');
+
+    const { homeRef, tree, cleanup } = await renderWithPlateReads(
+      [taxi, behind],
+      {
+        platesBySize: {
+          [photoBytes('taxi').length]: 'T696817C',
+          [photoBytes('behind').length]: '8YJ1234',
+        },
+      },
+    );
+
+    // A plate picked off a picture: what the provenance is there to remember.
+    renderer.act(() => {
+      tree.root
+        .findByProps({ 'aria-label': 'Select license plate 8YJ1234' })
+        .props.onClick();
+    });
+
+    const posted = homeRef.current.getPerSubmissionState();
+    const files = Object.entries(posted)
+      .filter(([, value]) => value instanceof File)
+      .map(([key]) => key);
+
+    // The submit posts this state, and axios sends every `File` in a body as a
+    // multipart file part. The attachments go in their own field, added where
+    // the request is made, so nothing in here may be a File: the server's
+    // multer takes files only in that field, and a File anywhere else fails
+    // the submission outright -- MulterError: Unexpected file field -- so the
+    // report cannot be sent at all.
+    expect(files).toEqual([]);
+
+    cleanup();
+  });
+
   test('drops a plate picked off a photo that is then dropped', async () => {
     // Two cars in one report: one photo read the taxi's medallion, the other
     // read the car behind it, and the user picks the second plate off the

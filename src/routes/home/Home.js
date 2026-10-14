@@ -203,7 +203,7 @@ const EXTRACTED_FROM_PHOTOS = '(extracted from picture/video)';
 
 // The plate field's provenance when the user typed it. The other two are the
 // photos' own reading, which is recorded as nothing, and a photo the user
-// picked a plate off, which is recorded as that photo's file.
+// picked a plate off, which is recorded as that photo's name.
 const PLATE_TYPED = 'typed';
 
 // What one of a photo's reads left behind: when it was taken and where, in the
@@ -777,7 +777,7 @@ class Home extends React.Component {
       plate: '',
       licenseState: 'NY',
       // Where the plate in that field came from: undefined while the photos
-      // own it, the file of a photo whose overlay the user clicked, or
+      // own it, the *name* of a photo whose overlay the user clicked, or
       // PLATE_TYPED when the user typed it. Like the address's provenance, it
       // is what says whether the value follows the photos when they change --
       // see `applyPhotosToForm`.
@@ -1234,7 +1234,7 @@ class Home extends React.Component {
             this.setLicensePlate({
               plate,
               licenseState,
-              provenance: attachmentFile,
+              provenance: attachmentFile.name,
             });
             // Bring the License/Medallion label to the top of the screen so
             // the user can confirm the selected plate. The optional call
@@ -1533,7 +1533,7 @@ class Home extends React.Component {
 
     // The photo the plate was picked from is still attached: the evidence for
     // that choice is here, whatever the other photos read.
-    if (plateProvenance && photos.includes(plateProvenance)) {
+    if (plateProvenance && photos.some(file => file.name === plateProvenance)) {
       return;
     }
 

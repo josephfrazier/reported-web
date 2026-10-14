@@ -2975,6 +2975,39 @@ describe('Home', () => {
     });
   });
 
+  test('asks for the previous submissions without posting anything', async () => {
+    const axiosPost = jest
+      .spyOn(axios, 'post')
+      .mockResolvedValue({ data: { submissions: [] } });
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    const homeRef = React.createRef();
+    let tree;
+    renderer.act(() => {
+      tree = renderHome({ initialState: { loginSuccessful: true }, homeRef });
+    });
+
+    await renderer.act(async () => {
+      await homeRef.current.loadPreviousSubmissions();
+    });
+
+    const call = axiosPost.mock.calls.find(([url]) => url === '/submissions');
+
+    expect(call[0]).toBe('/submissions');
+    // The route reads no body: it authenticates with the session cookie and
+    // answers with this reader's submissions. It used to be handed the whole
+    // form state, and axios sends every `File` in a body as a multipart file
+    // part: with a plate picked off a photo in that state, the server's multer
+    // refused the request outright and the previous submissions never loaded.
+    expect(call[1]).toBeUndefined();
+
+    tree.unmount();
+    axiosPost.mockRestore();
+    consoleError.mockRestore();
+  });
+
   describe('semi-automatic mode', () => {
     // A JPEG `size` bytes long. The header is what mime-bytes'
     // detectFromBuffer() reads to call the file an image, and the length is

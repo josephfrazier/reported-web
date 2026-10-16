@@ -4726,40 +4726,45 @@ class Home extends React.Component {
                       />
                     </React.Fragment>
                   ) : (
-                    <FileReaderInput
-                      multiple
-                      accept="image/*,video/*,.zip,application/zip,application/x-zip-compressed"
-                      as="buffer"
-                      onChange={this.handleAttachmentInput}
-                      style={{
-                        float: 'left',
-                        margin: '1px',
-                      }}
-                    >
-                      <button type="button" style={{ whiteSpace: 'wrap' }}>
-                        Add pictures/videos (up to 3 each, 20MB max each)
-                      </button>
-                    </FileReaderInput>
-                  )}
+                    <React.Fragment>
+                      {/* The plain picker, with the folder and the zip main
+                          offers: what is picked here goes to a report of its
+                          own, rather than to the batch. */}
+                      <FileReaderInput
+                        multiple
+                        accept="image/*,video/*,.zip,application/zip,application/x-zip-compressed"
+                        as="buffer"
+                        onChange={this.handleAttachmentInput}
+                        style={{
+                          float: 'left',
+                          margin: '1px',
+                        }}
+                      >
+                        <button type="button" style={{ whiteSpace: 'wrap' }}>
+                          Add pictures/videos (up to 3 each, 20MB max each)
+                        </button>
+                      </FileReaderInput>
 
-                  <button
-                    type="button"
-                    style={{
-                      float: 'left',
-                      margin: '1px',
-                    }}
-                    onClick={() => this.folderInputRef.current?.click()}
-                  >
-                    Add folder
-                  </button>
-                  <input
-                    ref={this.folderInputRef}
-                    type="file"
-                    multiple
-                    webkitdirectory=""
-                    style={{ display: 'none' }}
-                    onChange={this.handleFolderInput}
-                  />
+                      <button
+                        type="button"
+                        style={{
+                          float: 'left',
+                          margin: '1px',
+                        }}
+                        onClick={() => this.folderInputRef.current?.click()}
+                      >
+                        Add folder
+                      </button>
+                      <input
+                        ref={this.folderInputRef}
+                        type="file"
+                        multiple
+                        webkitdirectory=""
+                        style={{ display: 'none' }}
+                        onChange={this.handleFolderInput}
+                      />
+                    </React.Fragment>
+                  )}
 
                   <div style={{ clear: 'both' }} />
 

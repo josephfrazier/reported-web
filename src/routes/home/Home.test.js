@@ -4499,6 +4499,51 @@ describe('Home', () => {
       return { ...rendered, violation };
     };
 
+    // The queue can come by its first row without a read landing to notice it:
+    // the photos a report left behind are published as a row of their own, and
+    // with the form sitting empty the row has to open itself, or the user is
+    // left looking at a queue they have to click into.
+    test('opens on the violation a submit leaves behind', async () => {
+      const photos = ['p1', 'p2', 'p3', 'p4'].map((name, index) => {
+        const file = new File(['picture'], `${name}.jpg`, {
+          type: 'image/jpeg',
+        });
+        return {
+          file,
+          name: file.name,
+          // Read, as the batch's own pass leaves them: a row that has been
+          // read is a violation the queue can open on.
+          plateRead: 'read',
+          createDateMs: 1704110400000 + index * 1000,
+          latitude: 40.7129,
+          longitude: -74.0061,
+        };
+      });
+
+      const { homeRef, submit, cleanup } = await oneRowOf(photos);
+
+      // Three fit, so the fourth is left behind and the queue empties when the
+      // report goes.
+      await submit();
+      await renderer.act(async () => {
+        for (let i = 0; i < 3; i += 1) {
+          // eslint-disable-next-line no-await-in-loop -- one round per pending promise chain.
+          await new Promise(resolve => setImmediate(resolve));
+        }
+      });
+
+      const { batchViolations, currentViolationIndex, attachmentData } =
+        homeRef.current.state;
+
+      expect(batchViolations.map(violation => violation.photos.length)).toEqual(
+        [1],
+      );
+      expect(currentViolationIndex).toBe(0);
+      expect(attachmentData.map(file => file.name)).toEqual(['p4.jpg']);
+
+      cleanup();
+    });
+
     test('removes the violation when the X takes its last photo', async () => {
       const photos = ['p1', 'p2'].map((name, index) => {
         const file = new File(['picture'], `${name}.jpg`, {

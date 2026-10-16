@@ -2362,7 +2362,7 @@ class Home extends React.Component {
     });
 
     this.setState({ batchProgress: null }, () => {
-      this.loadFirstViolationWhenRead();
+      this.loadFirstViolationIfNoneLoaded();
 
       // The pass is over, so every read it lost is marked as failed. The row on
       // screen -- the one that has been waiting -- takes its second chance now
@@ -2523,15 +2523,20 @@ class Home extends React.Component {
     }
   };
 
-  // Load the first row once its own photos have been read, and not before.
+  // Load the first row once it is the violation it is going to be, and not
+  // before.
   //
   // The queue is on screen from the moment the batch's dates and places are
   // in, but a row is not the report it will end up being until its reads are:
-  // a time-cluster divides into one row per car as its plates arrive. Waiting
-  // for the first row's reads is what keeps the form from being loaded with a
-  // report that changes underneath it -- and it is a second or two, against
-  // the whole batch's reads, which is what the old settled rule waited for.
-  loadFirstViolationWhenRead = () => {
+  // a time-cluster divides into one row per car as its plates arrive, and the
+  // photos it holds are the photos of all of them. Loading then would open the
+  // form on a report that changes underneath it, and upload the photos of rows
+  // the user never opens.
+  //
+  // Called wherever the queue can come by its first row: the pass reading one,
+  // and a publish -- the leftovers after a submit, or a new pick -- putting
+  // rows back into a queue that had none.
+  loadFirstViolationIfNoneLoaded = () => {
     const { batchViolations, currentViolationIndex } = this.state;
 
     // Only when nothing is loaded: a violation already being worked on must
@@ -2598,7 +2603,7 @@ class Home extends React.Component {
       this.applyReadingsToForm();
     }
 
-    this.loadFirstViolationWhenRead();
+    this.loadFirstViolationIfNoneLoaded();
   };
 
   // What a row's readings mean to the form, while that row is the one on
@@ -2703,7 +2708,7 @@ class Home extends React.Component {
           ? oldestFirst.indexOf(loaded)
           : state.currentViolationIndex,
       };
-    });
+    }, this.loadFirstViolationIfNoneLoaded);
   };
 
   // One photo's date and place, from its own metadata. Local work, with no

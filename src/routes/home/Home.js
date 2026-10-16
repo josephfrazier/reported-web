@@ -397,9 +397,19 @@ async function fetchPlateResults({ attachmentFile, attachmentBuffer, ext }) {
   // exceptional -- and it is transient, which is the difference between a plate
   // read and a photo the user has to type in by hand. What a repeat is worth is
   // in `plateReadRetry`; this asks for it for this request alone.
+  console.time(`/platerecognizer round trip (${attachmentFile.name})`); // eslint-disable-line no-console
   const { data } = await axios.post('/platerecognizer', formData, {
     'axios-retry': plateReadRetry,
   });
+  console.timeEnd(`/platerecognizer round trip (${attachmentFile.name})`); // eslint-disable-line no-console
+  // The server keeps its own clock and sends the breakdown with the reading,
+  // so the round trip above splits into what the dyno did and what the network
+  // did. A retry adds its wait to the round trip alone, so the two numbers
+  // only add up on a request that was answered once.
+  console.info(
+    `/platerecognizer server timings (${attachmentFile.name})`,
+    data.timings,
+  );
 
   attachmentPlateCache.set(attachmentFile, data);
   return data;

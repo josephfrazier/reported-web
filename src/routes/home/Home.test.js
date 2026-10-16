@@ -4746,9 +4746,11 @@ describe('Home', () => {
       });
       await settled();
 
+      // Oldest first, as the queue lists them: the new photo was taken before
+      // the frame, so its row comes first.
       expect(homeRef.current.state.batchViolations.map(v => v.plate)).toEqual([
-        'BBB222',
         'T696817C',
+        'BBB222',
       ]);
       expect(rowOnScreen('BBB222')).toBe(true);
 

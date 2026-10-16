@@ -3239,6 +3239,18 @@ class Home extends React.Component {
     );
     const submitted = new Set(submittedFiles);
 
+    // The report is filed, so the row is done with, and it is remembered as
+    // such. Taking it out of the queue is not enough on its own: regrouping
+    // works from the photos the rows hold, and a photo of this row's can still
+    // be in another row -- one frame, several cars -- so the row would be built
+    // again and a reported violation would be back in the queue. See
+    // `withoutDismissedRows`.
+    const reported = batchViolations[currentViolationIndex];
+
+    if (reported) {
+      this.dismissedRows.add(batchViolationIdentity(reported));
+    }
+
     this.setState(
       {
         batchViolations: remainingViolations,
@@ -3743,7 +3755,16 @@ class Home extends React.Component {
       currentViolationIndex,
     } = this.state;
 
-    if (batchPhotos.length === 0 && !batchProgress) {
+    // The queue is its rows, not the photos behind them. A photo leaves the
+    // batch when a report takes it, and a row can be left holding one that has
+    // gone -- one frame is evidence for every car in it, and the report of one
+    // of those cars carries the frame off with it -- so `batchPhotos` being
+    // empty says nothing about whether the batch has anything left to report.
+    if (
+      batchPhotos.length === 0 &&
+      batchViolations.length === 0 &&
+      !batchProgress
+    ) {
       return null;
     }
 

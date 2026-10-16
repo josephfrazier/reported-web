@@ -645,16 +645,13 @@ function batchRowPlateLabel({ violation, isReading }) {
   return isReading ? 'reading plates…' : 'nothing readable';
 }
 
-// What makes a row the row it is, for the merge tick and for the list's own
-// keys: the time it reports, its plate, and the photo it opens with.
+// What names a row, for the merge tick and for the list's own keys: the time it
+// reports, its plate, and the photo it opens with.
 //
-// All three parts are needed. One frame of a street is the first photo of every
-// car in it -- the five cars a wide shot holds are five rows, each of them
-// opening with that same picture -- so the photo and the time together name
-// five rows at once: tick one and the five of them tick, merge two and there is
-// nothing to merge, because both ticks resolve to the one row. The plate is
-// what tells those rows apart, and it is also what the person reading the queue
-// tells them apart by.
+// All three parts are needed because a row does not own its photos. One frame
+// of a street is the first photo of every car read from it, so several rows can
+// hold one photo and one time between them; their plates are what tell them
+// apart.
 function batchViolationIdentity(violation) {
   return `${violation.createDateMs}-${violation.plate}-${violation.photos[0]?.name}`;
 }
@@ -2302,9 +2299,6 @@ class Home extends React.Component {
         await new Promise(resolve => setTimeout(resolve, startAt - now));
       }
     };
-    // The merge tick the form put on the row it loaded, so that it can be
-    // moved to the next row without disturbing one the user made.
-    this.autoTickedIdentity = null;
     this.plateReadThrottled = false;
 
     // Every row, now, before a single plate is read.
@@ -2914,17 +2908,13 @@ class Home extends React.Component {
     // submit to send the file itself.
     startBackgroundUploads(attached.map(photo => photo.file));
 
-    // The row the user is working on starts ticked, so that merging it with
-    // the row beside it is one tick rather than two. That tick is this code's,
-    // not the user's: the next row loaded takes it along, and a selection the
-    // user has made stops it entirely.
+    // Opening a row with nothing ticked ticks that row, so that putting it
+    // together with the row beside it is one tick rather than two. A selection
+    // that is already there belongs to the user, and opening a row leaves it
+    // as it is.
     const identity = batchViolationIdentity(violation);
     const { batchMergeSelection } = this.state;
-    const tickIsOurs =
-      batchMergeSelection.length === 1 &&
-      batchMergeSelection[0] === this.autoTickedIdentity;
-    const tickThisRow = batchMergeSelection.length === 0 || tickIsOurs;
-    this.autoTickedIdentity = tickThisRow ? identity : null;
+    const tickThisRow = batchMergeSelection.length === 0;
 
     this.setState(
       {
@@ -3050,9 +3040,6 @@ class Home extends React.Component {
   // Tick or untick a violation for merging. Any number can be ticked; the
   // button appears once there are two, because one is not a merge.
   toggleBatchMergeSelection = identity => {
-    // From here the selection is the user's, whatever it holds.
-    this.autoTickedIdentity = null;
-
     this.setState(state => ({
       batchMergeSelection: state.batchMergeSelection.includes(identity)
         ? state.batchMergeSelection.filter(entry => entry !== identity)

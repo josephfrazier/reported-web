@@ -3262,6 +3262,17 @@ describe('Home', () => {
           .findAllByType('button')
           .find(({ children }) => children.includes(text));
 
+      // A queue row's merge checkbox, found by the plate its label names.
+      const mergeBox = text =>
+        tree.root.findAllByType('input').find(({ props }) => {
+          const label = props['aria-label'];
+          return (
+            typeof label === 'string' &&
+            label.startsWith('Merge ') &&
+            label.includes(text)
+          );
+        });
+
       return {
         homeRef,
         tree,
@@ -3311,21 +3322,23 @@ describe('Home', () => {
         // rejects a `datetime-local` value that has them.
         createDateInputValue: () =>
           tree.root.findByProps({ name: 'CreateDate' }).props.value,
-        // Put a queue row in the merge selection, found by the plate its
-        // label names. The row the form is on arrives ticked already, so
-        // this ticks what is not ticked rather than flipping it: it says
-        // the row is in, whatever the selection held before.
+        // Put a queue row in the merge selection. A row opened with nothing
+        // ticked is in already, so this ticks what is not ticked rather than
+        // flipping it: it says the row is in, whatever the selection held
+        // before.
         tickMerge: text =>
           renderer.act(() => {
-            const box = tree.root.findAllByType('input').find(({ props }) => {
-              const label = props['aria-label'];
-              return (
-                typeof label === 'string' &&
-                label.startsWith('Merge ') &&
-                label.includes(text)
-              );
-            });
+            const box = mergeBox(text);
             if (!box.props.checked) {
+              box.props.onChange();
+            }
+          }),
+        // Take a queue row out of the merge selection, which is how a test
+        // gets back to the empty selection the queue ticks a row on.
+        untickMerge: text =>
+          renderer.act(() => {
+            const box = mergeBox(text);
+            if (box.props.checked) {
               box.props.onChange();
             }
           }),
@@ -4178,12 +4191,11 @@ describe('Home', () => {
       cleanup();
     });
 
-    // A row's tick is for merging it with another row, and the row the form is
-    // on is the one a merge usually starts from: it is ticked for the user, so
-    // that putting it back together with the row beside it is one tick rather
-    // than two. That tick is the form's, not the user's -- the next row opened
-    // takes it along -- and a selection the user has made stops it.
-    test('ticks the row the form is on, and moves that tick when it moves', async () => {
+    // A row's tick is for merging it with another row, and a row opened with
+    // nothing ticked is the one a merge usually starts from: it ticks itself,
+    // so that putting it together with the row beside it is one tick rather
+    // than two. Opening a row never adds to a selection that is already there.
+    test('ticks the row opened when nothing is ticked', async () => {
       const photos = ['a', 'b'].map(name => {
         const file = new File(['picture'], `${name}.jpg`, {
           type: 'image/jpeg',
@@ -4203,7 +4215,7 @@ describe('Home', () => {
       const identity = (photo, plate, createDateMs) =>
         `${createDateMs}-${plate}-${photo.name}`;
 
-      const { homeRef, clickQueueLoad, tickMerge, cleanup } =
+      const { homeRef, clickQueueLoad, tickMerge, untickMerge, cleanup } =
         await renderBatchWithFiles([]);
 
       renderer.act(() => {
@@ -4224,29 +4236,32 @@ describe('Home', () => {
       // Nothing is opened yet, so nothing is ticked.
       expect(homeRef.current.state.batchMergeSelection).toEqual([]);
 
+      // The first row opened ticks itself: nothing was ticked when it was
+      // clicked.
       clickQueueLoad('AAA111');
       expect(homeRef.current.state.batchMergeSelection).toEqual([
         identity(photos[0], 'AAA111', 1704110400000),
       ]);
 
-      // The tick follows the form rather than staying behind: one row is
-      // ticked, and it is the row the user is looking at.
+      // A selection is already there, so opening another row does not touch it.
       clickQueueLoad('BBB222');
       expect(homeRef.current.state.batchMergeSelection).toEqual([
-        identity(photos[1], 'BBB222', 1704110500000),
-      ]);
-
-      // A tick the user makes is theirs. Opening another row leaves the
-      // selection where they put it.
-      tickMerge('AAA111');
-      expect(homeRef.current.state.batchMergeSelection).toEqual([
-        identity(photos[1], 'BBB222', 1704110500000),
         identity(photos[0], 'AAA111', 1704110400000),
       ]);
 
+      tickMerge('BBB222');
+      expect(homeRef.current.state.batchMergeSelection).toEqual([
+        identity(photos[0], 'AAA111', 1704110400000),
+        identity(photos[1], 'BBB222', 1704110500000),
+      ]);
+
+      // Empty again, so the next row opened ticks itself.
+      untickMerge('AAA111');
+      untickMerge('BBB222');
+      expect(homeRef.current.state.batchMergeSelection).toEqual([]);
+
       clickQueueLoad('AAA111');
       expect(homeRef.current.state.batchMergeSelection).toEqual([
-        identity(photos[1], 'BBB222', 1704110500000),
         identity(photos[0], 'AAA111', 1704110400000),
       ]);
 

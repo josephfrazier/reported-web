@@ -1069,16 +1069,16 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         photos, and takes its time and place from all of the photos it now holds.
       </p>
       <p>
-        A row's identity — what a tick names, and what the list's own keys are made of — is its
-        time, its plate and the photo it opens with. All three are needed: one frame of a street
-        is the first photo of every car in it, so the cars read from that frame are several rows
-        that agree on their photo and their time, and only their plates tell them apart.
+        Opening a row with nothing ticked ticks that row, so putting it together with the row
+        beside it is one tick rather than two. Opening a row while something is already ticked
+        leaves the selection as it is: what the user has ticked is theirs, and loading a row adds
+        nothing to it.
       </p>
       <p>
-        The row the form opens on arrives ticked, so putting it together with the row beside it is
-        one tick rather than two. That tick is the queue's, not the user's: opening the next row
-        takes it along, and a tick the user makes stops it moving — from then on the selection is
-        theirs, and opening rows leaves it where they put it.
+        A row's identity — what a tick names, and what the list's own keys are made of — is its
+        time, its plate and the photo it opens with. A row does not own its photos: one frame of a
+        street is the first photo of every car read from it, so several rows can hold one photo and
+        one time between them, and their plates are what tell them apart.
       </p>
       <p>
         The first violation loads itself, so the form is ready to submit without a click. Loading

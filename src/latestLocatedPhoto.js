@@ -13,21 +13,37 @@
  * sorts after those, ordered by its file's modification time, which is all
  * that is left to order it by -- so a photo with no capture time but with
  * coordinates still wins, and it is the newest one that said where it was.
+ *
+ * Capture order is defined here, for everything that sorts photos by it. The
+ * batch groups and clusters by the same order, and reads it from these two
+ * rather than keeping its own, so that the two cannot disagree about which
+ * photo is the newest.
  */
 
-const hasCoordinates = ({ latitude, longitude }) =>
+// A photo, a violation or a summary has coordinates only when both are real
+// numbers: `extractLocation` can hand back `NaN` for a photo whose EXIF has
+// no GPS. Defaulted, because callers ask about things that may not be there.
+export const hasCoordinates = ({ latitude, longitude } = {}) =>
   Number.isFinite(latitude) && Number.isFinite(longitude);
 
-const captureTimeMs = ({ createDateMs, file }) =>
+// A capture time is the signal that orders photos, but plenty have none --
+// EXIF stripped, or the file is a scan or a screenshot. File last-modified is
+// the fallback those photos sort, cluster and report on instead.
+export const effectiveTimeMs = ({ createDateMs, file }) =>
   Number.isFinite(createDateMs) ? createDateMs : file?.lastModified || 0;
 
-function compareByCaptureTime(a, b) {
+// Photos with a real capture time sort first and in order; photos without one
+// sort last, so a batch's unknowns never interleave with its knowns.
+//
+// Array.prototype.sort is stable, so photos that compare equal keep the order
+// the caller passed them in.
+export function compareByCaptureTime(a, b) {
   const aHasCaptureTime = Number.isFinite(a.createDateMs);
   const bHasCaptureTime = Number.isFinite(b.createDateMs);
   if (aHasCaptureTime !== bHasCaptureTime) {
     return aHasCaptureTime ? -1 : 1;
   }
-  return captureTimeMs(a) - captureTimeMs(b);
+  return effectiveTimeMs(a) - effectiveTimeMs(b);
 }
 
 export default function latestLocatedPhoto(photos) {

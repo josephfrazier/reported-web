@@ -1071,6 +1071,19 @@ exports[`Home renders Preferences UI 1`] = `
            
           Load previous submissions on page load
         </label>
+        <label
+          htmlFor="isSemiAutomaticMode"
+        >
+          <input
+            checked={false}
+            id="isSemiAutomaticMode"
+            name="isSemiAutomaticMode"
+            onChange={[Function]}
+            type="checkbox"
+          />
+           
+          Semiautomatic Mode: Add a batch of pictures/videos, then review each violation
+        </label>
       </div>
       <br />
       <div
@@ -1767,6 +1780,7 @@ exports[`Home renders submission form and Previous Submissions when logged in wi
                 </a>
               </div>
               <button
+                aria-label="Delete photo/video"
                 onClick={[Function]}
                 style={
                   {
@@ -1782,8 +1796,7 @@ exports[`Home renders submission form and Previous Submissions when logged in wi
                 type="button"
               >
                 <span
-                  aria-label="Delete photo/video"
-                  role="img"
+                  aria-hidden="true"
                 >
                   ❌
                 </span>
@@ -2633,6 +2646,7 @@ exports[`Home renders with allPlateResults entry missing plate and photos 1`] = 
                 </a>
               </div>
               <button
+                aria-label="Delete photo/video"
                 onClick={[Function]}
                 style={
                   {
@@ -2648,8 +2662,7 @@ exports[`Home renders with allPlateResults entry missing plate and photos 1`] = 
                 type="button"
               >
                 <span
-                  aria-label="Delete photo/video"
-                  role="img"
+                  aria-hidden="true"
                 >
                   ❌
                 </span>
@@ -3499,6 +3512,7 @@ exports[`Home renders with undefined allPlateResults and photos 1`] = `
                 </a>
               </div>
               <button
+                aria-label="Delete photo/video"
                 onClick={[Function]}
                 style={
                   {
@@ -3514,8 +3528,7 @@ exports[`Home renders with undefined allPlateResults and photos 1`] = `
                 type="button"
               >
                 <span
-                  aria-label="Delete photo/video"
-                  role="img"
+                  aria-hidden="true"
                 >
                   ❌
                 </span>

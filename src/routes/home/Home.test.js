@@ -3311,21 +3311,23 @@ describe('Home', () => {
         // rejects a `datetime-local` value that has them.
         createDateInputValue: () =>
           tree.root.findByProps({ name: 'CreateDate' }).props.value,
-        // Tick a queue row's merge checkbox, found by the plate its label
-        // names.
+        // Put a queue row in the merge selection, found by the plate its
+        // label names. The row the form is on arrives ticked already, so
+        // this ticks what is not ticked rather than flipping it: it says
+        // the row is in, whatever the selection held before.
         tickMerge: text =>
           renderer.act(() => {
-            tree.root
-              .findAllByType('input')
-              .find(({ props }) => {
-                const label = props['aria-label'];
-                return (
-                  typeof label === 'string' &&
-                  label.startsWith('Merge ') &&
-                  label.includes(text)
-                );
-              })
-              .props.onChange();
+            const box = tree.root.findAllByType('input').find(({ props }) => {
+              const label = props['aria-label'];
+              return (
+                typeof label === 'string' &&
+                label.startsWith('Merge ') &&
+                label.includes(text)
+              );
+            });
+            if (!box.props.checked) {
+              box.props.onChange();
+            }
           }),
         // Load a violation the way the queue does: click the row's own text.
         // The description is the control, and the Delete and merge buttons are
@@ -4173,6 +4175,126 @@ describe('Home', () => {
 
       exifr.gps.mockReset();
       exifr.parse.mockReset();
+      cleanup();
+    });
+
+    // A row's tick is for merging it with another row, and the row the form is
+    // on is the one a merge usually starts from: it is ticked for the user, so
+    // that putting it back together with the row beside it is one tick rather
+    // than two. That tick is the form's, not the user's -- the next row opened
+    // takes it along -- and a selection the user has made stops it.
+    test('ticks the row the form is on, and moves that tick when it moves', async () => {
+      const photos = ['a', 'b'].map(name => {
+        const file = new File(['picture'], `${name}.jpg`, {
+          type: 'image/jpeg',
+        });
+        return { file, name: file.name, createDateMs: 1704110400000 };
+      });
+      const row = (photo, plate, createDateMs) => ({
+        photos: [photo],
+        plate,
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs,
+      });
+      // What a tick names: the row's time, its plate, and the photo it opens
+      // with. See `batchViolationIdentity`.
+      const identity = (photo, plate, createDateMs) =>
+        `${createDateMs}-${plate}-${photo.name}`;
+
+      const { homeRef, clickQueueLoad, tickMerge, cleanup } =
+        await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        homeRef.current.geosearchAddressCache.set({
+          latitude: 40.7129,
+          longitude: -74.0061,
+          address: '123 Main St, Manhattan',
+        });
+        homeRef.current.setState({
+          batchPhotos: photos,
+          batchViolations: [
+            row(photos[0], 'AAA111', 1704110400000),
+            row(photos[1], 'BBB222', 1704110500000),
+          ],
+        });
+      });
+
+      // Nothing is opened yet, so nothing is ticked.
+      expect(homeRef.current.state.batchMergeSelection).toEqual([]);
+
+      clickQueueLoad('AAA111');
+      expect(homeRef.current.state.batchMergeSelection).toEqual([
+        identity(photos[0], 'AAA111', 1704110400000),
+      ]);
+
+      // The tick follows the form rather than staying behind: one row is
+      // ticked, and it is the row the user is looking at.
+      clickQueueLoad('BBB222');
+      expect(homeRef.current.state.batchMergeSelection).toEqual([
+        identity(photos[1], 'BBB222', 1704110500000),
+      ]);
+
+      // A tick the user makes is theirs. Opening another row leaves the
+      // selection where they put it.
+      tickMerge('AAA111');
+      expect(homeRef.current.state.batchMergeSelection).toEqual([
+        identity(photos[1], 'BBB222', 1704110500000),
+        identity(photos[0], 'AAA111', 1704110400000),
+      ]);
+
+      clickQueueLoad('AAA111');
+      expect(homeRef.current.state.batchMergeSelection).toEqual([
+        identity(photos[1], 'BBB222', 1704110500000),
+        identity(photos[0], 'AAA111', 1704110400000),
+      ]);
+
+      cleanup();
+    });
+
+    // One frame can hold several cars, and the row of each of them opens with
+    // that same picture: what tells those rows apart, to the queue and to the
+    // person reading it, is the plate.
+    test('ticks the row a plate names, not every row showing its picture', async () => {
+      const frame = new File(['picture'], 'wide.jpg', { type: 'image/jpeg' });
+      const photo = {
+        file: frame,
+        name: frame.name,
+        createDateMs: 1704110400000,
+      };
+      const row = plate => ({
+        photos: [photo],
+        plate,
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs: 1704110400000,
+      });
+
+      const { homeRef, tickMerge, clickButton, cleanup } =
+        await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchPhotos: [photo],
+          batchViolations: [row('AAA111'), row('BBB222'), row('CCC333')],
+        });
+      });
+
+      tickMerge('BBB222');
+      expect(homeRef.current.state.batchMergeSelection).toEqual([
+        '1704110400000-BBB222-wide.jpg',
+      ]);
+
+      // Two ticks are two rows, so the merge has something to combine.
+      tickMerge('AAA111');
+      clickButton('Merge');
+      expect(homeRef.current.state.batchViolations).toHaveLength(2);
+      expect(
+        homeRef.current.state.batchViolations.map(violation => violation.plate),
+      ).toContain('CCC333');
+
       cleanup();
     });
 

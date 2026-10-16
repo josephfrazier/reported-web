@@ -4679,6 +4679,84 @@ describe('Home', () => {
       cleanup();
     });
 
+    // Two rows read from one frame: submitting the first takes the frame out
+    // of the batch with it, and the row that shared it is still a violation
+    // with a report of its own to make. It has to stay on screen -- it used to
+    // go with the frame, and come back when the next batch put photos into the
+    // batch again, which reads as a violation resurrecting.
+    test('keeps a row on screen when a submitted row takes the last photo', async () => {
+      const frame = jpeg({ name: 'frame.jpg', size: 10 });
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, tree, submit, cleanup } = await renderBatchWithFiles([
+        frame,
+      ]);
+
+      const settled = async () => {
+        await renderer.act(async () => {
+          for (let i = 0; i < 3; i += 1) {
+            // eslint-disable-next-line no-await-in-loop -- one round per pending promise chain.
+            await new Promise(resolve => setImmediate(resolve));
+          }
+        });
+      };
+
+      // The queue row itself, by the label its delete control announces --
+      // not by the plate's name on screen, which the form's plate suggestions
+      // carry whether or not the row is there.
+      const rowOnScreen = plate =>
+        tree.root.findAllByType('button').some(({ props }) => {
+          const label = props['aria-label'];
+          return (
+            typeof label === 'string' &&
+            label.startsWith('Delete ') &&
+            label.includes(plate)
+          );
+        });
+
+      expect(homeRef.current.state.batchViolations.map(v => v.plate)).toEqual([
+        'AAA111',
+        'BBB222',
+      ]);
+
+      await submit();
+      await settled();
+
+      // The frame went with the submitted report. The row that is left holds
+      // it, so it is still in the queue, and still on screen.
+      expect(homeRef.current.state.batchPhotos).toEqual([]);
+      expect(homeRef.current.state.batchViolations.map(v => v.plate)).toEqual([
+        'BBB222',
+      ]);
+      expect(rowOnScreen('BBB222')).toBe(true);
+
+      // The next batch does not bring anything back with it: the row was here
+      // all along, and the new one joins it.
+      await renderer.act(async () => {
+        await homeRef.current.addFilesToBatch([
+          jpeg({ name: 'later.jpg', size: 4 }),
+        ]);
+        await new Promise(resolve => setImmediate(resolve));
+        await new Promise(resolve => setImmediate(resolve));
+      });
+      await settled();
+
+      expect(homeRef.current.state.batchViolations.map(v => v.plate)).toEqual([
+        'BBB222',
+        'T696817C',
+      ]);
+      expect(rowOnScreen('BBB222')).toBe(true);
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
     test('gives the photos left out of a report a violation of their own', async () => {
       // What the metadata pass hands back for each photo: the camera's own
       // time and place. A violation takes its time and place from these, so a

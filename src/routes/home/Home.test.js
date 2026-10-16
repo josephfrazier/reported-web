@@ -4469,6 +4469,171 @@ describe('Home', () => {
       cleanup();
     });
 
+    // The row is the report: with nothing attached there is nothing to file,
+    // so the violation goes rather than sitting there as an empty shell.
+    const oneRowOf = async photos => {
+      const violation = {
+        photos,
+        plate: 'T696817C',
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs: 1704110400000,
+      };
+
+      const rendered = await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        rendered.homeRef.current.geosearchAddressCache.set({
+          latitude: 40.7129,
+          longitude: -74.0061,
+          address: '123 Main St, Manhattan',
+        });
+        rendered.homeRef.current.setState({
+          batchPhotos: photos,
+          batchViolations: [violation],
+        });
+      });
+      rendered.clickQueueLoad('T696817C');
+
+      return { ...rendered, violation };
+    };
+
+    test('removes the violation when the X takes its last photo', async () => {
+      const photos = ['p1', 'p2'].map((name, index) => {
+        const file = new File(['picture'], `${name}.jpg`, {
+          type: 'image/jpeg',
+        });
+        return {
+          file,
+          name: file.name,
+          createDateMs: 1704110400000 + index * 1000,
+          latitude: 40.7129,
+          longitude: -74.0061,
+        };
+      });
+
+      const { homeRef, clickAttachmentDelete, cleanup } =
+        await oneRowOf(photos);
+
+      clickAttachmentDelete('p1.jpg');
+
+      // One photo is still a report, so the row stays.
+      expect(homeRef.current.state.batchViolations).toHaveLength(1);
+      expect(
+        homeRef.current.state.attachmentData.map(file => file.name),
+      ).toEqual(['p2.jpg']);
+
+      clickAttachmentDelete('p2.jpg');
+
+      expect(homeRef.current.state.batchViolations).toEqual([]);
+      // The photos went with the row: nothing is left to report from them.
+      expect(homeRef.current.state.batchPhotos).toEqual([]);
+
+      cleanup();
+    });
+
+    // The picker is the report's own selection, and a violation with more than
+    // three photos is one whose picker exists: unticking every photo leaves the
+    // violation where it is, with nothing attached, so that any of them can be
+    // ticked again. None of its photos have been removed.
+    test('keeps the violation when the picker unticks every photo', async () => {
+      const photos = ['p1', 'p2', 'p3', 'p4'].map((name, index) => {
+        const file = new File(['picture'], `${name}.jpg`, {
+          type: 'image/jpeg',
+        });
+        return {
+          file,
+          name: file.name,
+          createDateMs: 1704110400000 + index * 1000,
+          latitude: 40.7129,
+          longitude: -74.0061,
+        };
+      });
+
+      const { homeRef, tree, cleanup } = await oneRowOf(photos);
+
+      // The picker only appears for a violation with more than three photos.
+      const pickerBox = name =>
+        tree.root.findByProps({
+          id: `batch-photo-${photos.findIndex(p => p.name === name)}`,
+        });
+      const untick = name =>
+        renderer.act(() => {
+          pickerBox(name).props.onChange({ target: { checked: false } });
+        });
+
+      untick('p1.jpg');
+      untick('p2.jpg');
+      untick('p3.jpg');
+
+      expect(homeRef.current.state.attachmentData).toEqual([]);
+      expect(homeRef.current.state.batchViolations).toHaveLength(1);
+      expect(homeRef.current.state.batchPhotos).toEqual(photos);
+
+      // And back again: the violation never went anywhere.
+      renderer.act(() => {
+        pickerBox('p4.jpg').props.onChange({ target: { checked: true } });
+      });
+      expect(
+        homeRef.current.state.attachmentData.map(file => file.name),
+      ).toEqual(['p4.jpg']);
+
+      cleanup();
+    });
+
+    test('leaves a shared photo in the batch when the row holding it goes', async () => {
+      const photo = name => ({
+        file: new File(['picture'], name, { type: 'image/jpeg' }),
+        name,
+        createDateMs: 1704110400000,
+        latitude: 40.7129,
+        longitude: -74.0061,
+      });
+      const wide = photo('wide.jpg');
+      const closeup = photo('closeup.jpg');
+      const row = (plate, photos) => ({
+        photos,
+        plate,
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs: 1704110400000,
+      });
+
+      const rendered = await renderBatchWithFiles([]);
+      const { homeRef, clickQueueLoad, clickAttachmentDelete, cleanup } =
+        rendered;
+
+      renderer.act(() => {
+        homeRef.current.geosearchAddressCache.set({
+          latitude: 40.7129,
+          longitude: -74.0061,
+          address: '123 Main St, Manhattan',
+        });
+        homeRef.current.setState({
+          batchPhotos: [wide, closeup],
+          batchViolations: [
+            row('AAA111', [wide, closeup]),
+            row('BBB222', [wide]),
+          ],
+        });
+      });
+      clickQueueLoad('AAA111');
+
+      clickAttachmentDelete('wide.jpg');
+      clickAttachmentDelete('closeup.jpg');
+
+      // The row that emptied is gone; the frame it shared is not, because the
+      // row that is left reports from it.
+      expect(
+        homeRef.current.state.batchViolations.map(violation => violation.plate),
+      ).toEqual(['BBB222']);
+      expect(homeRef.current.state.batchPhotos).toEqual([wide]);
+
+      cleanup();
+    });
+
     test('gives the photos left out of a report a violation of their own', async () => {
       // What the metadata pass hands back for each photo: the camera's own
       // time and place. A violation takes its time and place from these, so a

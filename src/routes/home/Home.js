@@ -2048,6 +2048,8 @@ class Home extends React.Component {
         previousPhotos
           .filter(file => !this.state.attachmentData.includes(file))
           .forEach(file => this.photoReadings.delete(file));
+
+        this.dropBatchViolationIfReportIsEmpty();
       },
     );
   };
@@ -3139,6 +3141,31 @@ class Home extends React.Component {
     violations.filter(
       violation => !this.dismissedRows.has(batchViolationIdentity(violation)),
     );
+
+  // A violation with nothing left to report is not a violation, so the row
+  // goes: removing the last photo with the X takes the row with it, and its
+  // photos go the way a deleted row's do, which is `deleteBatchViolation`'s
+  // work rather than a second version of it.
+  //
+  // Removing is the X on a photo's thumbnail, not a tick in the picker: the
+  // picker is the report's selection, and one that holds a violation of more
+  // than three photos is a violation whose other photos are still there to
+  // tick again -- untick the last of them and the row stays, with nothing
+  // attached, rather than disappearing under the user.
+  dropBatchViolationIfReportIsEmpty = () => {
+    const { isSemiAutomaticMode, currentViolationIndex, attachmentData } =
+      this.state;
+
+    if (
+      !isSemiAutomaticMode ||
+      currentViolationIndex < 0 ||
+      attachmentData.length > 0
+    ) {
+      return;
+    }
+
+    this.deleteBatchViolation(currentViolationIndex);
+  };
 
   // Drop a group from the batch. The row is remembered as deleted, and its
   // photos go with it -- regrouping the batch (the next pick does) must not

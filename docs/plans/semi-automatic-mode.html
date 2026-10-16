@@ -1060,6 +1060,13 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         Submit already advances to the next violation and any row is one click away.
       </p>
       <p>
+        Deleting a row takes its photos out of the batch with it, except the ones another row
+        still holds: one frame can be the evidence of several cars, and each of their rows holds
+        it, so the frame stays for the rows that are left. The deleted row itself is remembered,
+        because a row with no photo of its own has none to leave the batch with — without that,
+        the regrouping a later reading does would make it again.
+      </p>
+      <p>
         Tick two or more rows and <strong>Merge</strong> appears on the queue's heading. It makes
         one report of them, which the grouping cannot do for itself: it splits on time, and the
         photo that establishes where a car is can sit minutes before the closeups that read its

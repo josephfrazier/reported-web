@@ -3106,6 +3106,13 @@ describe('Home', () => {
           }),
         ],
         9: [plateResult({ plate: 'lda8765' })],
+        // Two cars in the one frame, read where they are rather than from a
+        // closeup: the frame is the only photo of each of them, and the two
+        // readings sit in the same response.
+        10: [
+          plateResult({ plate: 'aaa111' }),
+          plateResult({ plate: 'bbb222' }),
+        ],
       };
 
       return {
@@ -3125,6 +3132,7 @@ describe('Home', () => {
       7: '2024-01-01T12:01:00.000Z',
       8: '2024-01-01T12:00:03.000Z',
       9: '2024-01-01T12:00:04.000Z',
+      10: '2024-01-01T12:02:00.000Z',
     };
 
     // Renders the form as a logged-in user with semi-automatic mode on, adds
@@ -4742,6 +4750,81 @@ describe('Home', () => {
 
       return { ...rendered, wide, later };
     };
+
+    // A frame that reads as two cars is the only photo of each of them, so
+    // each row holds it and neither has a photo of its own.
+    const twoCarsInOneFrame = async () => {
+      const frame = jpeg({ name: 'frame.jpg', size: 10 });
+      const rendered = await renderBatchWithFiles([frame]);
+
+      const plates = () =>
+        rendered.homeRef.current.state.batchViolations.map(
+          violation => violation.plate,
+        );
+
+      expect(plates()).toEqual(['AAA111', 'BBB222']);
+      expect(
+        rendered.homeRef.current.state.batchViolations[0].photos.map(
+          photo => photo.name,
+        ),
+      ).toEqual([frame.name]);
+
+      return { ...rendered, frame, plates };
+    };
+
+    test('keeps a deleted row deleted when the frame it was read from stays', async () => {
+      const { homeRef, frame, plates, clickRowDelete, cleanup } =
+        await twoCarsInOneFrame();
+
+      clickRowDelete('AAA111');
+      expect(plates()).toEqual(['BBB222']);
+
+      // The frame stays for the row that is left, and the row that went must
+      // not come back with it: the reading landing here regroups the batch,
+      // the way the pass's own readings do.
+      expect(
+        homeRef.current.state.batchPhotos.map(photo => photo.name),
+      ).toEqual([frame.name]);
+
+      renderer.act(() => {
+        const [photo] = homeRef.current.state.batchPhotos;
+        homeRef.current.setState(
+          homeRef.current.applyPlateRead({ photo, read: { ...photo } }),
+        );
+      });
+
+      expect(plates()).toEqual(['BBB222']);
+
+      // The second row takes the frame out of the batch with it, so the image
+      // leaves rather than staying as a row the user cannot get rid of.
+      clickRowDelete('BBB222');
+      expect(plates()).toEqual([]);
+      expect(homeRef.current.state.batchPhotos).toEqual([]);
+
+      cleanup();
+    });
+
+    test('ticks the row whose box was clicked, not the row beside it', async () => {
+      const { homeRef, clickButton, tickMerge, cleanup } =
+        await twoCarsInOneFrame();
+
+      // The form opened on the first row, so that one is ticked already.
+      tickMerge('AAA111');
+      tickMerge('BBB222');
+
+      const { batchMergeSelection } = homeRef.current.state;
+      expect(batchMergeSelection).toHaveLength(2);
+      expect(batchMergeSelection[0]).toMatch(/AAA111-frame\.jpg$/);
+      expect(batchMergeSelection[1]).toMatch(/BBB222-frame\.jpg$/);
+
+      // Two ticks have to be two rows for the merge to have anything to
+      // combine. Both rows hold the one frame, so a merge that took both ticks
+      // for the same row would leave the queue as it was.
+      clickButton('Merge');
+      expect(homeRef.current.state.batchViolations).toHaveLength(1);
+
+      cleanup();
+    });
 
     test('leaves the other rows their shared photo when one row is deleted', async () => {
       const { homeRef, clickRowDelete, wide, cleanup } =

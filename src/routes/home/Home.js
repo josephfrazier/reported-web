@@ -1161,6 +1161,11 @@ class Home extends React.Component {
     // Serialises batch passes: picks accumulate, and each pass must see the
     // results of the one before it (see addFilesToBatch).
     this.batchQueue = Promise.resolve();
+    // The rows the user has deleted, by identity. Deleting a row usually takes
+    // its photos out of the batch, and that is what keeps it from coming back;
+    // a row whose photo another row still holds has none to take, so it is
+    // remembered here instead. See `withoutDismissedRows`.
+    this.dismissedRows = new Set();
     this.batchFolderInputRef = React.createRef();
     this.batchPhotosInputRef = React.createRef();
     // What each attached photo's reads said, keyed by the file, for as long as
@@ -2439,7 +2444,7 @@ class Home extends React.Component {
       groupAttachmentsByViolation([...photosByFile.values()].map(replace)),
     );
 
-    return [...userMade, ...grouped].sort(
+    return this.withoutDismissedRows([...userMade, ...grouped]).sort(
       (a, b) => a.createDateMs - b.createDateMs,
     );
   };
@@ -2639,7 +2644,9 @@ class Home extends React.Component {
       return;
     }
 
-    const flagged = this.withNycFlags(groupAttachmentsByViolation(unpublished));
+    const flagged = this.withoutDismissedRows(
+      this.withNycFlags(groupAttachmentsByViolation(unpublished)),
+    );
 
     // One lookup at a time, and one per violation rather than per photo: a
     // batch shot at one curb is dozens of identical lookups, and the memo
@@ -2650,11 +2657,13 @@ class Home extends React.Component {
     }
 
     this.setState(state => {
+      // By identity rather than by first photo: one frame can read as two cars,
+      // and the row of each of them opens with that same frame.
       const published = new Set(
-        state.batchViolations.map(violation => violation.photos[0]?.name),
+        state.batchViolations.map(batchViolationIdentity),
       );
       const added = flagged.filter(
-        violation => !published.has(violation.photos[0]?.name),
+        violation => !published.has(batchViolationIdentity(violation)),
       );
 
       if (added.length === 0) {
@@ -3108,8 +3117,19 @@ class Home extends React.Component {
     );
   };
 
-  // Drop a group from the batch. Its photos go with it: regrouping the batch
-  // (the next pick does) must not bring back a violation the user deleted.
+  // The rows the user has not deleted. A row is kept out of the queue by
+  // remembering it rather than by its photos: one frame can read as two cars,
+  // and each of those rows holds that frame, so deleting one of them has no
+  // photo to take with it -- and the regrouping a later reading does would
+  // otherwise put the row straight back.
+  withoutDismissedRows = violations =>
+    violations.filter(
+      violation => !this.dismissedRows.has(batchViolationIdentity(violation)),
+    );
+
+  // Drop a group from the batch. The row is remembered as deleted, and its
+  // photos go with it -- regrouping the batch (the next pick does) must not
+  // bring back a violation the user deleted.
   deleteBatchViolation = index => {
     const { batchPhotos, batchViolations, currentViolationIndex } = this.state;
     const violation = batchViolations[index];
@@ -3117,6 +3137,8 @@ class Home extends React.Component {
     if (!violation) {
       return;
     }
+
+    this.dismissedRows.add(batchViolationIdentity(violation));
 
     const remainingViolations = batchViolations.filter((_, i) => i !== index);
 

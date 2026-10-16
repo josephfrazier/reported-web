@@ -723,6 +723,19 @@ function rowHoldingFile(violations, file) {
     : undefined;
 }
 
+// Whether a failed submit failed because an attachment id it carried names a
+// file the server no longer has. The message is the server's own (see
+// `src/getAttachmentData.js`): the store drops an attachment an hour after it
+// was written, and a restart of the server takes the temp directory, and so
+// every attachment in it, with it.
+//
+// The page still holds the bytes, so this is the one failure worth sending
+// again -- with the files rather than the ids.
+const isMissingAttachmentError = error =>
+  (error?.response?.data?.error?.message ?? '').startsWith(
+    'Attachment not found',
+  );
+
 // What the form says when it holds more attachments of one kind than a
 // submission carries. One copy, so the note above the button and the refusal
 // at submit say the same words.
@@ -4590,39 +4603,28 @@ class Home extends React.Component {
                     attachmentIds.length > 0 &&
                     attachmentIds.every(id => id !== null);
 
-                  // Falling back to the files themselves means sending them
-                  // again, so read them here rather than handing the network
-                  // the Files that came from the file input (see
+                  // Sending the files themselves means sending them again, so
+                  // they are read here rather than handed to the network as the
+                  // Files that came from the file input (see
                   // inMemoryAttachment).
-                  const attachmentsToSubmit = !hasAllIds
-                    ? await Promise.all(
-                        this.state.attachmentData.map(attachmentFile =>
-                          inMemoryAttachment({ attachmentFile }),
-                        ),
-                      )
-                    : null;
-
-                  axios
-                    .post(
-                      '/submit',
-                      serialize(
-                        hasAllIds
-                          ? {
-                              ...this.getPerSubmissionState(),
-                              attachmentIds: JSON.stringify(attachmentIds),
-                              CreateDate: new Date(
-                                this.state.CreateDate,
-                              ).toISOString(),
-                            }
-                          : {
-                              ...this.getPerSubmissionState(),
-                              attachmentData: attachmentsToSubmit,
-                              CreateDate: new Date(
-                                this.state.CreateDate,
-                              ).toISOString(),
-                            },
-                        { allowEmptyArrays: true },
+                  const filesForSubmit = () =>
+                    Promise.all(
+                      this.state.attachmentData.map(attachmentFile =>
+                        inMemoryAttachment({ attachmentFile }),
                       ),
+                    );
+
+                  // Read before the report is built, not when the request goes
+                  // out: submitting the files means sending them, and the form
+                  // waits here for them the way it waits for the uploads above.
+                  const attachmentsToSubmit = hasAllIds
+                    ? null
+                    : await filesForSubmit();
+
+                  const postSubmit = body =>
+                    axios.post(
+                      '/submit',
+                      serialize(body, { allowEmptyArrays: true }),
                       {
                         onUploadProgress: progressEvent => {
                           const {
@@ -4648,7 +4650,40 @@ class Home extends React.Component {
                           });
                         },
                       },
-                    )
+                    );
+
+                  // The report's own fields, without the attachments: the two
+                  // ways of sending those are what differ between attempts.
+                  const reportFields = {
+                    ...this.getPerSubmissionState(),
+                    CreateDate: new Date(this.state.CreateDate).toISOString(),
+                  };
+
+                  const submitReport = () =>
+                    hasAllIds
+                      ? postSubmit({
+                          ...reportFields,
+                          attachmentIds: JSON.stringify(attachmentIds),
+                        })
+                      : postSubmit({
+                          ...reportFields,
+                          attachmentData: attachmentsToSubmit,
+                        });
+
+                  submitReport()
+                    .catch(async error => {
+                      // An id the server has lost is not the user's mistake, and
+                      // not something they can put right: the files are still
+                      // here, so the report goes again with them.
+                      if (!hasAllIds || !isMissingAttachmentError(error)) {
+                        throw error;
+                      }
+
+                      return postSubmit({
+                        ...reportFields,
+                        attachmentData: await filesForSubmit(),
+                      });
+                    })
                     .then(({ data }) => {
                       const { submission } = data;
                       document.querySelector(`.${homeStyles.root}`).scrollTo({
@@ -4671,6 +4706,19 @@ class Home extends React.Component {
                       // Captured before the state is cleared below, because
                       // the queue needs to know which photos this report used.
                       const submittedFiles = this.state.attachmentData;
+
+                      // The server dropped these attachments as it took them
+                      // for the report, so the ids this page holds for them
+                      // name nothing now. A photo the report used can be in
+                      // another row as well -- one frame, several cars -- and
+                      // that row's own submit would otherwise send an id for a
+                      // file that is gone. Forget it, so the photo is uploaded
+                      // again when it is next needed.
+                      if (hasAllIds) {
+                        submittedFiles.forEach(file =>
+                          fileUploadPromises.delete(file),
+                        );
+                      }
 
                       this.setState(state => ({
                         attachmentData: [],

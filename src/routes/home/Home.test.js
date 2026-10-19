@@ -740,6 +740,81 @@ describe('Home', () => {
     global.URL.createObjectURL = originalCreateObjectURL;
   });
 
+  test('highlights the overlay for the selected plate, typed or clicked', () => {
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+    };
+
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ initialState, homeRef });
+    });
+    renderer.act(() => {
+      homeRef.current.setState({
+        attachmentData: [
+          new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }),
+        ],
+        plateDataByAttachmentName: {
+          'photo.jpg': {
+            results: [
+              {
+                plate: 'abc123',
+                region: { code: 'us-ny' },
+                box: { xmin: 100, ymin: 200, xmax: 300, ymax: 250 },
+              },
+              {
+                plate: 'xyz789',
+                region: { code: 'us-nj' },
+                box: { xmin: 400, ymin: 200, xmax: 600, ymax: 250 },
+              },
+            ],
+            uploadWidth: 1000,
+            uploadHeight: 500,
+          },
+        },
+      });
+    });
+
+    const overlayFor = plate =>
+      tree.root.findByProps({
+        'aria-label': `Select license plate ${plate}`,
+      });
+
+    expect(overlayFor('ABC123').props.className).toBe('plate-overlay');
+    expect(overlayFor('XYZ789').props.className).toBe('plate-overlay');
+
+    // Typing the plate selects its overlay without choosing a state.
+    renderer.act(() => {
+      tree.root.findByProps({ name: 'plate' }).props.onChange({
+        target: createFakeInput({ value: 'ABC123', caret: 6 }),
+      });
+    });
+
+    expect(homeRef.current.state.plate).toBe('ABC123');
+    expect(overlayFor('ABC123').props.className).toBe(
+      'plate-overlay plate-overlay-selected',
+    );
+    expect(overlayFor('XYZ789').props.className).toBe('plate-overlay');
+
+    // Clicking another overlay moves the highlight to that plate.
+    renderer.act(() => {
+      overlayFor('XYZ789').props.onClick();
+    });
+
+    expect(overlayFor('ABC123').props.className).toBe('plate-overlay');
+    expect(overlayFor('XYZ789').props.className).toBe(
+      'plate-overlay plate-overlay-selected',
+    );
+
+    tree.unmount();
+    global.URL.createObjectURL = originalCreateObjectURL;
+  });
+
   test('renders plate overlays on uploaded videos and selects plate on click', () => {
     const initialState = {
       email: 'test@example.com',

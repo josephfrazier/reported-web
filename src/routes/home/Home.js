@@ -1555,11 +1555,20 @@ class Home extends React.Component {
       }
       const licenseState = getLicenseStateFromPlateResult(result);
 
+      // The overlay for the plate in the License/Medallion field is drawn in
+      // a different color, whether it was typed or clicked. The state is left
+      // out of the comparison: it can be hard to tell apart in a photo, and
+      // the user chose the plate.
+      const isSelected = plate === this.state.plate?.toUpperCase();
+      const className = isSelected
+        ? `${homeStyles['plate-overlay']} ${homeStyles['plate-overlay-selected']}`
+        : homeStyles['plate-overlay'];
+
       return (
         <button
           type="button"
           key={`${plate}-${box.xmin}-${box.ymin}`}
-          className={homeStyles['plate-overlay']}
+          className={className}
           style={{
             left: `${(box.xmin / boxWidth) * 100}%`,
             top: `${(box.ymin / boxHeight) * 100}%`,

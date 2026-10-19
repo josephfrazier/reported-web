@@ -64,6 +64,20 @@ input[type='search']::-webkit-search-cancel-button {
   background: rgb(0 200 255 / 40%);
 }
 
+/* The overlay for the plate currently in the License/Medallion field, whether
+   the user typed it or picked it off a photo. Green separates it from the
+   cyan of every other reading, and from the yellow of the NY plate beneath
+   it. */
+.plate-overlay-selected {
+  border-color: rgb(0 220 130 / 95%);
+  background: rgb(0 220 130 / 30%);
+}
+
+.plate-overlay-selected:hover,
+.plate-overlay-selected:focus-visible {
+  background: rgb(0 220 130 / 50%);
+}
+
 .plate-overlay-tooltip {
   display: none;
   position: absolute;

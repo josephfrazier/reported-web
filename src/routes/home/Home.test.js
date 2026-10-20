@@ -2129,7 +2129,7 @@ describe('Home', () => {
     global.URL.createObjectURL = originalCreateObjectURL;
   });
 
-  test('shows the highest-resolution crop beside the plate input when multiple crops match the plate', () => {
+  test('shows the highest-confidence crop beside the plate input when multiple crops match the plate', () => {
     const initialState = {
       email: 'test@example.com',
       loginSuccessful: true,
@@ -2153,9 +2153,12 @@ describe('Home', () => {
           'small.jpg': {
             results: [
               {
+                // Its box is smaller, but this is the most confident read, so
+                // its crop is the one to show.
                 plate: 'abc123',
+                score: 0.98,
                 box: { xmin: 100, ymin: 100, xmax: 200, ymax: 110 },
-                plateCropDataUrl: 'data:image/jpeg;base64,small',
+                plateCropDataUrl: 'data:image/jpeg;base64,confident',
               },
             ],
           },
@@ -2163,12 +2166,15 @@ describe('Home', () => {
             results: [
               {
                 plate: 'ABC123',
+                score: 0.4,
                 box: { xmin: 100, ymin: 100, xmax: 400, ymax: 250 },
                 plateCropDataUrl: 'data:image/jpeg;base64,big',
               },
               {
-                // Not the selected plate, so its larger box must be ignored.
+                // Not the selected plate, so its larger box and confidence
+                // must be ignored.
                 plate: 'XYZ789',
+                score: 1,
                 box: { xmin: 0, ymin: 0, xmax: 1000, ymax: 1000 },
                 plateCropDataUrl: 'data:image/jpeg;base64,other',
               },
@@ -2181,7 +2187,7 @@ describe('Home', () => {
     const thumbnail = tree.root.findByProps({
       alt: 'Detected license plate',
     });
-    expect(thumbnail.props.src).toBe('data:image/jpeg;base64,big');
+    expect(thumbnail.props.src).toBe('data:image/jpeg;base64,confident');
 
     tree.unmount();
     global.URL.createObjectURL = originalCreateObjectURL;

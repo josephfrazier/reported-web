@@ -2304,7 +2304,7 @@ class Home extends React.Component {
 
   findMatchingPlateThumbnail() {
     let bestPlateCropDataUrl = null;
-    let bestResolution = -1;
+    let bestConfidence = -1;
     for (const data of Object.values(this.state.plateDataByAttachmentName)) {
       for (const result of data.results || []) {
         if (
@@ -2312,15 +2312,14 @@ class Home extends React.Component {
           result.plateCropDataUrl
         ) {
           // The same plate can be detected in multiple photos (or multiple
-          // times in one photo). Show the highest-resolution crop beside the
-          // plate input, since more pixels make the plate easier to read.
-          // `box` is in the same downscaled image space the crop was cut from
-          // in src/alpr.js, so its area in pixels is the crop's resolution.
-          const { xmin, ymin, xmax, ymax } = result.box || {};
-          const resolution = (xmax - xmin) * (ymax - ymin) || 0;
+          // times in one photo). Show the crop beside the plate input that
+          // Plate Recognizer read with the most confidence, since that is the
+          // read most likely to show the plate clearly. `score` is the
+          // per-result confidence from the plate-reader response.
+          const confidence = result.score || 0;
 
-          if (resolution > bestResolution) {
-            bestResolution = resolution;
+          if (confidence > bestConfidence) {
+            bestConfidence = confidence;
             bestPlateCropDataUrl = result.plateCropDataUrl;
           }
         }

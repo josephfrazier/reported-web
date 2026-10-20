@@ -728,7 +728,7 @@ describe('Home', () => {
     expect(overlay.props.children.props.className).toBe(
       'plate-overlay-tooltip',
     );
-    expect(overlay.props.children.props.children).toEqual(['ABC123', ' (NY)']);
+    expect(overlay.props.children.props.children).toBe('ABC123 (NY)');
 
     renderer.act(() => {
       overlay.props.onClick();
@@ -799,7 +799,13 @@ describe('Home', () => {
     expect(overlayFor('ABC123').props.className).toBe(
       'plate-overlay plate-overlay-selected',
     );
+    expect(overlayFor('ABC123').props.children.props.children).toBe(
+      '✓ ABC123 (NY)',
+    );
     expect(overlayFor('XYZ789').props.className).toBe('plate-overlay');
+    expect(overlayFor('XYZ789').props.children.props.children).toBe(
+      'XYZ789 (NJ)',
+    );
 
     // Clicking another overlay moves the highlight to that plate.
     renderer.act(() => {

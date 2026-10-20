@@ -1555,14 +1555,17 @@ class Home extends React.Component {
       }
       const licenseState = getLicenseStateFromPlateResult(result);
 
-      // The overlay for the plate in the License/Medallion field is drawn in
-      // a different color, whether it was typed or clicked. The state is left
-      // out of the comparison: it can be hard to tell apart in a photo, and
-      // the user chose the plate.
+      // The overlay for the plate in the License/Medallion field is marked as
+      // selected, whether it was typed or clicked. The state is left out of
+      // the comparison: it can be hard to tell apart in a photo, and the user
+      // chose the plate.
       const isSelected = plate === this.state.plate?.toUpperCase();
       const className = isSelected
         ? `${homeStyles['plate-overlay']} ${homeStyles['plate-overlay-selected']}`
         : homeStyles['plate-overlay'];
+      const tooltip = `${isSelected ? '✓ ' : ''}${plate}${
+        licenseState ? ` (${licenseState})` : ''
+      }`;
 
       return (
         <button
@@ -1594,10 +1597,7 @@ class Home extends React.Component {
             });
           }}
         >
-          <span className={homeStyles['plate-overlay-tooltip']}>
-            {plate}
-            {licenseState && ` (${licenseState})`}
-          </span>
+          <span className={homeStyles['plate-overlay-tooltip']}>{tooltip}</span>
         </button>
       );
     });

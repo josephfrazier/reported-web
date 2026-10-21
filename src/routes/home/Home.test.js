@@ -3506,12 +3506,15 @@ describe('Home', () => {
         // disabled until two rows are ticked.
         mergeButton: () => findButton('Merge'),
         // Press the X on an attachment's thumbnail: the control that discards
-        // a photo from the report rather than unticking it in the picker.
+        // a photo from the report rather than unticking it in the picker. The
+        // picker shows the same photos, so the thumbnail that is the report's
+        // is the one that opens in a new tab.
         clickAttachmentDelete: name =>
           renderer.act(() => {
             tree.root
               .findAllByType('img')
-              .find(({ props }) => props.alt === name)
+              .filter(({ props }) => props.alt === name)
+              .find(({ parent }) => parent.type === 'a')
               .parent.parent.parent.findAllByType('button')
               .find(({ props }) => props['aria-label'] === 'Delete photo/video')
               .props.onClick();
@@ -3569,13 +3572,14 @@ describe('Home', () => {
               .props.onClick();
           }),
         // Tick or untick one photo in a loaded group's attachment picker, by
-        // the photo's name, the way its checkbox does.
+        // the name its checkbox announces: the label is the photo itself, so
+        // the name is not in its text.
         toggleAttachment: (name, checked) => {
-          const label = tree.root
-            .findAllByType('label')
-            .find(({ children }) => children.includes(name));
+          const input = tree.root
+            .findAllByType('input')
+            .find(({ props }) => props['aria-label'] === `Attach ${name}`);
           renderer.act(() => {
-            label.findByType('input').props.onChange({ target: { checked } });
+            input.props.onChange({ target: { checked } });
           });
         },
         submit: () => {
@@ -4710,6 +4714,48 @@ describe('Home', () => {
       expect(
         homeRef.current.state.attachmentData.map(file => file.name),
       ).toEqual(['p4.jpg']);
+
+      cleanup();
+    });
+
+    // The picker shows the violation's photos rather than their names: a name
+    // is hard to tell one photo from another by, and the picture is what the
+    // report is about. Each carries its own box at the top-left, so ticking
+    // one is a click on the picture.
+    test('shows the violation photos as pictures, one box each', async () => {
+      const photos = ['p1', 'p2', 'p3', 'p4'].map((name, index) => {
+        const file = new File(['picture'], `${name}.jpg`, {
+          type: 'image/jpeg',
+        });
+        return {
+          file,
+          name: file.name,
+          createDateMs: 1704110400000 + index * 1000,
+          latitude: 40.7129,
+          longitude: -74.0061,
+        };
+      });
+
+      const { tree, cleanup } = await oneRowOf(photos);
+
+      // One choice per photo the violation holds, each its own picture.
+      const choices = tree.root
+        .findAllByType('label')
+        .filter(label =>
+          label
+            .findAllByType('input')
+            .some(({ props }) => String(props.id).startsWith('batch-photo-')),
+        );
+      expect(choices).toHaveLength(photos.length);
+
+      choices.forEach((choice, index) => {
+        const [picture] = choice.findAllByType('img');
+        expect(picture.props.alt).toBe(photos[index].name);
+        expect(picture.props.src).toBe('blob:mock');
+        // The box, ticked for the three the violation loaded with: a picture
+        // with three is what fits in a report.
+        expect(choice.findByType('input').props.checked).toBe(index < 3);
+      });
 
       cleanup();
     });

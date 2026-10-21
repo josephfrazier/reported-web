@@ -544,3 +544,47 @@ input[type='search']::-webkit-search-cancel-button {
   margin: 16px 0;
   padding: 0 16px 8px;
 }
+
+/* The photos a violation holds, as its picker shows them: a grid of square
+   thumbnails, each with its own box at the top-left. */
+.batch-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 4px;
+  margin: 8px 0;
+}
+
+.batch-photo-choice {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border-radius: 4px;
+  cursor: pointer;
+  line-height: 0;
+}
+
+.batch-photo-choice img,
+.batch-photo-choice video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+}
+
+.batch-photo-choice input[type='checkbox'] {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  accent-color: #1a73e8;
+  cursor: pointer;
+}
+
+/* The box alone can be hard to see against a light photo, so a ticked photo
+   gets a ring as well -- what Google Photos' filled circle does. */
+.batch-photo-choice-selected {
+  outline: 3px solid #1a73e8;
+  outline-offset: -3px;
+}

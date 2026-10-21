@@ -3956,23 +3956,49 @@ class Home extends React.Component {
               Pick up to 3 pictures and 3 videos to attach to this report (the
               rest stay in the batch):
             </p>
-            {loadedViolation.photos.map((photo, index) => (
-              <label key={photo.name} htmlFor={`batch-photo-${index}`}>
-                <input
-                  id={`batch-photo-${index}`}
-                  type="checkbox"
-                  checked={this.state.attachmentData.includes(photo.file)}
-                  onChange={event =>
-                    this.toggleBatchPhoto({
-                      violation: loadedViolation,
-                      photo,
-                      checked: event.target.checked,
-                    })
-                  }
-                />{' '}
-                {photo.name}
-              </label>
-            ))}
+            {/* The photos rather than their names: a name is hard to tell one
+                from another by, and the photo is what the report is about.
+                Each carries its own box at the top-left, the way a photo grid
+                on a phone does, so ticking one is a click on the picture. */}
+            <div className={homeStyles['batch-photo-grid']}>
+              {loadedViolation.photos.map((photo, index) => {
+                const attached = this.state.attachmentData.includes(photo.file);
+                const src = getBlobUrl(photo.file);
+
+                return (
+                  <label
+                    key={photo.name}
+                    htmlFor={`batch-photo-${index}`}
+                    className={`${homeStyles['batch-photo-choice']}${
+                      attached
+                        ? ` ${homeStyles['batch-photo-choice-selected']}`
+                        : ''
+                    }`}
+                    title={photo.name}
+                  >
+                    <input
+                      id={`batch-photo-${index}`}
+                      type="checkbox"
+                      checked={attached}
+                      onChange={event =>
+                        this.toggleBatchPhoto({
+                          violation: loadedViolation,
+                          photo,
+                          checked: event.target.checked,
+                        })
+                      }
+                      aria-label={`Attach ${photo.name}`}
+                    />
+                    {isImage({ ext: fileExtension(photo.name) }) ? (
+                      <img src={src} alt={photo.name} />
+                    ) : (
+                      /* eslint-disable-next-line jsx-a11y/media-has-caption */
+                      <video src={src} aria-label={photo.name} />
+                    )}
+                  </label>
+                );
+              })}
+            </div>
           </div>
         )}
       </React.Fragment>

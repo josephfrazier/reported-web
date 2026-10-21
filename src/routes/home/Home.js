@@ -3309,6 +3309,12 @@ class Home extends React.Component {
       // the upload the ones loaded with the violation already had. The call is
       // per file and skips the ones already under way.
       startBackgroundUploads([photo.file]);
+      // Its reading is what the report's time and place are worked out from,
+      // and a photo the load never attached has none on record: only the ones
+      // attached with the violation are registered there. Without this, a
+      // report built out of picker-ticked photos has nothing to take either
+      // from, and the form falls back to the default place.
+      this.photoReadings.set(photo.file, photo);
     } else {
       selected.delete(photo.file);
     }
@@ -3333,6 +3339,14 @@ class Home extends React.Component {
         previousPhotos: wasAttached.map(({ file }) => file),
       },
     );
+
+    // A photo the report no longer holds keeps no reading, the way one taken
+    // out with the X loses its: the map is the report's photos, not the
+    // violation's. Unticked here rather than above, because the photos the
+    // report held before this change are what its time is compared against.
+    if (!checked) {
+      this.photoReadings.delete(photo.file);
+    }
   };
 
   handleInputChange = event => {

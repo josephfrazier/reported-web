@@ -1165,8 +1165,14 @@ describe('Home', () => {
   };
 
   const dropPhoto = async (homeRef, settle, name) => {
+    const photo = {
+      file: homeRef.current.state.attachmentData.find(
+        file => file.name === name,
+      ),
+      name,
+    };
     await renderer.act(async () => {
-      homeRef.current.removeAttachment(name);
+      homeRef.current.deletePhoto(photo);
     });
     await settle();
   };
@@ -3505,18 +3511,13 @@ describe('Home', () => {
         // The merge button on the heading's line. It is always rendered, and
         // disabled until two rows are ticked.
         mergeButton: () => findButton('Merge'),
-        // Press the X on an attachment's thumbnail: the control that discards
-        // a photo from the report rather than unticking it in the picker. The
-        // picker shows the same photos, so the thumbnail that is the report's
-        // is the one that opens in a new tab.
+        // Press the trash on a photo's tile: the control that deletes the
+        // photo, rather than the tick, which only leaves it out of the report.
         clickAttachmentDelete: name =>
           renderer.act(() => {
             tree.root
-              .findAllByType('img')
-              .filter(({ props }) => props.alt === name)
-              .find(({ parent }) => parent.type === 'a')
-              .parent.parent.parent.findAllByType('button')
-              .find(({ props }) => props['aria-label'] === 'Delete photo/video')
+              .findAllByType('button')
+              .find(({ props }) => props['aria-label'] === `Delete ${name}`)
               .props.onClick();
           }),
         // What the CreateDate field is given. It has to stay minute-precision
@@ -4738,23 +4739,29 @@ describe('Home', () => {
 
       const { tree, cleanup } = await oneRowOf(photos);
 
-      // One choice per photo the violation holds, each its own picture.
+      // One choice per photo the violation holds, each its own picture, and
+      // each with the trash that deletes it rather than leaving it out.
       const choices = tree.root
-        .findAllByType('label')
-        .filter(label =>
-          label
-            .findAllByType('input')
-            .some(({ props }) => String(props.id).startsWith('batch-photo-')),
-        );
+        .findAllByType('input')
+        .filter(({ props }) => String(props.id).startsWith('batch-photo-'));
       expect(choices).toHaveLength(photos.length);
 
       choices.forEach((choice, index) => {
-        const [picture] = choice.findAllByType('img');
+        const tile = choice.parent;
+        const [picture] = tile.findAllByType('img');
         expect(picture.props.alt).toBe(photos[index].name);
         expect(picture.props.src).toBe('blob:mock');
         // The box, ticked for the three the violation loaded with: a picture
         // with three is what fits in a report.
-        expect(choice.findByType('input').props.checked).toBe(index < 3);
+        expect(choice.props.checked).toBe(index < 3);
+        expect(
+          tile
+            .findAllByType('button')
+            .some(
+              ({ props }) =>
+                props['aria-label'] === `Delete ${photos[index].name}`,
+            ),
+        ).toBe(true);
       });
 
       cleanup();
@@ -4821,7 +4828,10 @@ describe('Home', () => {
       cleanup();
     });
 
-    test('leaves a shared photo in the batch when the row holding it goes', async () => {
+    // The trash deletes the photo, and a photo is the batch's, not a row's:
+    // one frame is evidence for every car in it, so deleting it takes it from
+    // every row that holds it, and a row that was only that photo goes.
+    test('deletes a shared photo from every row that holds it', async () => {
       const photo = name => ({
         file: new File(['picture'], name, { type: 'image/jpeg' }),
         name,
@@ -4861,14 +4871,36 @@ describe('Home', () => {
       clickQueueLoad('AAA111');
 
       clickAttachmentDelete('wide.jpg');
-      clickAttachmentDelete('closeup.jpg');
 
-      // The row that emptied is gone; the frame it shared is not, because the
-      // row that is left reports from it.
+      // The row that held only the frame goes with it. The row that is left
+      // keeps the photo of its own, and the frame is in neither the rows nor
+      // the batch, so nothing can put it back.
       expect(
         homeRef.current.state.batchViolations.map(violation => violation.plate),
-      ).toEqual(['BBB222']);
-      expect(homeRef.current.state.batchPhotos).toEqual([wide]);
+      ).toEqual(['AAA111']);
+      expect(homeRef.current.state.batchViolations[0].photos).toEqual([
+        closeup,
+      ]);
+      expect(homeRef.current.state.batchPhotos).toEqual([closeup]);
+
+      // Nor can a reading that lands afterwards build it back into the rows:
+      // the regrouping works from the photos the rows hold, and no row holds
+      // it any more.
+      renderer.act(() => {
+        const [remaining] = homeRef.current.state.batchPhotos;
+        homeRef.current.setState(
+          homeRef.current.applyPlateRead({
+            photo: remaining,
+            read: { ...remaining },
+          }),
+        );
+      });
+
+      expect(
+        homeRef.current.state.batchViolations.map(violation =>
+          violation.photos.map(each => each.name),
+        ),
+      ).toEqual([['closeup.jpg']]);
 
       cleanup();
     });
@@ -5210,15 +5242,15 @@ describe('Home', () => {
       cleanup();
     });
 
-    // A group of three or fewer has no picker to untick, so the X is the only
-    // way to leave one out of the report -- and it has to leave the same trail
-    // the picker does.
+    // The trash deletes a photo outright: it is not left behind to become a
+    // violation of its own, and a submit afterwards has nothing of it to
+    // publish.
     test.each([
       [['p1.jpg', 'p2.jpg'], 'p2.jpg'],
       [['p1.jpg', 'p2.jpg', 'p3.jpg'], 'p2.jpg'],
     ])(
-      'gives a photo discarded with the X a violation of its own (%s)',
-      async (names, discarded) => {
+      'does not bring a deleted photo back as a violation of its own (%s)',
+      async (names, deleted) => {
         const photos = names.map((name, index) => {
           const file = new File(['picture'], name, { type: 'image/jpeg' });
           return {
@@ -5237,7 +5269,7 @@ describe('Home', () => {
           longitude: -74.0061,
           createDateMs: 1704110400000,
         };
-        const kept = names.filter(name => name !== discarded);
+        const kept = names.filter(name => name !== deleted);
 
         const {
           homeRef,
@@ -5265,10 +5297,13 @@ describe('Home', () => {
           homeRef.current.state.attachmentData.map(file => file.name),
         ).toEqual(names);
 
-        // The X discards one from the report.
-        clickAttachmentDelete(discarded);
+        // The trash deletes one, from the report and from the violation.
+        clickAttachmentDelete(deleted);
         expect(
           homeRef.current.state.attachmentData.map(file => file.name),
+        ).toEqual(kept);
+        expect(
+          homeRef.current.state.batchPhotos.map(photo => photo.name),
         ).toEqual(kept);
 
         await submit();
@@ -5282,14 +5317,10 @@ describe('Home', () => {
 
         const { batchPhotos, batchViolations } = homeRef.current.state;
 
-        // The submitted photos have left the batch; the discarded one has not,
-        // because it was never in the report.
-        expect(batchPhotos.map(photo => photo.name)).toEqual([discarded]);
-
-        expect(batchViolations).toHaveLength(1);
-        expect(batchViolations[0].photos.map(photo => photo.name)).toEqual([
-          discarded,
-        ]);
+        // The submitted photos have left the batch, and the deleted one is
+        // nowhere: no photo, and no row made from it.
+        expect(batchPhotos).toEqual([]);
+        expect(batchViolations).toEqual([]);
 
         cleanup();
       },

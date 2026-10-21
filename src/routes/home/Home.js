@@ -777,7 +777,7 @@ const formatBatchViolationTime = createDateMs =>
 // The caller positions it and says what it deletes. The label is on the button
 // rather than on the glyph, so that the button is the thing with a name and a
 // screen reader does not announce the emoji as well.
-const RemoveXButton = ({ label, onClick, style }) => (
+const RemoveButton = ({ label, onClick, style, glyph = '❌' }) => (
   <button
     type="button"
     aria-label={label}
@@ -790,20 +790,22 @@ const RemoveXButton = ({ label, onClick, style }) => (
     }}
     onClick={onClick}
   >
-    <span aria-hidden="true">❌</span>
+    <span aria-hidden="true">{glyph}</span>
   </button>
 );
 
-RemoveXButton.propTypes = {
+RemoveButton.propTypes = {
   label: PropTypes.string.isRequired,
   onClick: PropTypes.func.isRequired,
   style: PropTypes.objectOf(
     PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   ),
+  glyph: PropTypes.string,
 };
 
-RemoveXButton.defaultProps = {
+RemoveButton.defaultProps = {
   style: undefined,
+  glyph: undefined,
 };
 
 class Home extends React.Component {
@@ -2007,17 +2009,69 @@ class Home extends React.Component {
     });
   };
 
-  // Take one photo out of the submission, from the X on its thumbnail. What
-  // the submission's time and place are asked again once it is gone: they
-  // came from the photos, and the photos have changed.
-  removeAttachment = name => {
+  // Delete a photo: out of the report, out of every row that holds it, and
+  // out of the batch, so that nothing which puts photos together again can
+  // find it -- a later reading's regrouping, or the leftovers a submit
+  // publishes. A row the deletion empties goes with it: a violation is its
+  // photos.
+  //
+  // The report's time and place are asked again once it is gone: they came
+  // from the photos, and the photos have changed.
+  deletePhoto = photo => {
+    const { file, name } = photo;
     const previousPhotos = this.state.attachmentData;
+    const loadedBefore =
+      this.state.batchViolations[this.state.currentViolationIndex];
 
     this.setState(
       state => {
+        const survives = violation =>
+          violation.photos.some(candidate => candidate.file !== file);
+        const { currentViolationIndex: loadedIndex } = state;
+        const loadedWas = state.batchViolations[loadedIndex];
+
+        const batchViolations = state.batchViolations
+          .map(violation =>
+            violation.photos.some(candidate => candidate.file === file)
+              ? {
+                  ...violation,
+                  photos: violation.photos.filter(
+                    candidate => candidate.file !== file,
+                  ),
+                }
+              : violation,
+          )
+          .filter(violation => violation.photos.length > 0);
+
+        // Where the loaded row ended up. Rows the deletion emptied before it
+        // are gone from under the index, and the row itself goes when the
+        // photo was its last.
+        let currentViolationIndex = loadedIndex;
+        if (loadedWas) {
+          const survivedBefore = state.batchViolations
+            .slice(0, loadedIndex)
+            .filter(survives).length;
+          currentViolationIndex = survives(loadedWas)
+            ? survivedBefore
+            : Math.min(survivedBefore, batchViolations.length - 1);
+        }
+
         const attachmentData = state.attachmentData.filter(
-          file => file.name !== name,
+          candidate => candidate !== file,
         );
+
+        const change = {
+          attachmentData,
+          batchPhotos: state.batchPhotos.filter(
+            candidate => candidate.file !== file,
+          ),
+          batchViolations,
+          currentViolationIndex,
+          plateDataByAttachmentName: omit(
+            state.plateDataByAttachmentName,
+            name,
+          ),
+        };
 
         if (attachmentData.length === 0) {
           // Nothing is left to take a time or a place from.
@@ -2027,25 +2081,28 @@ class Home extends React.Component {
           });
           this.setCreateDate({ millisecondsSinceEpoch: Date.now() });
           return {
-            attachmentData,
+            ...change,
             plate: '',
             licenseState: 'NY',
             allPlateData: null,
-            plateDataByAttachmentName: {},
             vehicleInfoComponent: null,
             violationSummaryComponent: null,
           };
         }
 
-        return {
-          attachmentData,
-          plateDataByAttachmentName: omit(
-            state.plateDataByAttachmentName,
-            name,
-          ),
-        };
+        return change;
       },
       () => {
+        // The row on screen went with its last photo: show what is next, the
+        // way deleting a row from the queue does.
+        const rowWent =
+          loadedBefore &&
+          loadedBefore.photos.every(candidate => candidate.file === file);
+
+        if (this.state.isSemiAutomaticMode && rowWent) {
+          this.loadBatchViolation(this.state.currentViolationIndex);
+        }
+
         // The photos that were attached when the user made the change are
         // still the ones on record, so the time and place they gave can be
         // told from the ones the user set. The reading goes once that is
@@ -2054,11 +2111,7 @@ class Home extends React.Component {
           previousPhotos,
         });
 
-        previousPhotos
-          .filter(file => !this.state.attachmentData.includes(file))
-          .forEach(file => this.photoReadings.delete(file));
-
-        this.dropBatchViolationIfReportIsEmpty();
+        this.photoReadings.delete(file);
       },
     );
   };
@@ -3156,31 +3209,6 @@ class Home extends React.Component {
       violation => !this.dismissedRows.has(batchViolationIdentity(violation)),
     );
 
-  // A violation with nothing left to report is not a violation, so the row
-  // goes: removing the last photo with the X takes the row with it, and its
-  // photos go the way a deleted row's do, which is `deleteBatchViolation`'s
-  // work rather than a second version of it.
-  //
-  // Removing is the X on a photo's thumbnail, not a tick in the picker: the
-  // picker is the report's selection, and one that holds a violation of more
-  // than three photos is a violation whose other photos are still there to
-  // tick again -- untick the last of them and the row stays, with nothing
-  // attached, rather than disappearing under the user.
-  dropBatchViolationIfReportIsEmpty = () => {
-    const { isSemiAutomaticMode, currentViolationIndex, attachmentData } =
-      this.state;
-
-    if (
-      !isSemiAutomaticMode ||
-      currentViolationIndex < 0 ||
-      attachmentData.length > 0
-    ) {
-      return;
-    }
-
-    this.deleteBatchViolation(currentViolationIndex);
-  };
-
   // Drop a group from the batch. The row is remembered as deleted, and its
   // photos go with it -- regrouping the batch (the next pick does) must not
   // bring back a violation the user deleted.
@@ -3765,9 +3793,114 @@ class Home extends React.Component {
     }
   }
 
-  // The batch's own UI: which stage it is working through, the violations it
-  // found, and — for a group with more photos than one report can carry — the
-  // picker for choosing which of them to attach.
+  // The report's photos as one grid, and in the batch the violation's photos
+  // it is not using with them: every photo the violation holds is on screen
+  // once, ticked when the report holds it, with a trash that deletes the photo
+  // rather than leaving it out of one report.
+  //
+  // The batch's grid is the violation's photos because a tick has to be able
+  // to take a photo the load did not attach; the single-report form has only
+  // the report's own photos, so there the grid is those.
+  renderAttachmentGrid() {
+    const {
+      attachmentData,
+      batchViolations,
+      currentViolationIndex,
+      isSemiAutomaticMode,
+      plateDataByAttachmentName,
+    } = this.state;
+
+    const loadedViolation = isSemiAutomaticMode
+      ? batchViolations[currentViolationIndex]
+      : undefined;
+
+    const photos = loadedViolation
+      ? loadedViolation.photos
+      : attachmentData.map(file => ({ file, name: file.name }));
+
+    if (photos.length === 0) {
+      return null;
+    }
+
+    return (
+      <React.Fragment>
+        {loadedViolation && photos.length > 3 && (
+          <p>
+            Pick up to 3 pictures and 3 videos to attach to this report (the
+            rest stay in the batch):
+          </p>
+        )}
+        <div className={homeStyles['attachment-grid']}>
+          {photos.map((photo, index) => {
+            const { file, name } = photo;
+            const attached = attachmentData.includes(file);
+            const src = getBlobUrl(file);
+
+            return (
+              <div
+                key={name}
+                className={`${homeStyles['attachment-tile']}${
+                  loadedViolation && attached
+                    ? ` ${homeStyles['attachment-tile-selected']}`
+                    : ''
+                }`}
+              >
+                {loadedViolation && (
+                  <input
+                    id={`batch-photo-${index}`}
+                    className={homeStyles['attachment-choice']}
+                    type="checkbox"
+                    checked={attached}
+                    onChange={event =>
+                      this.toggleBatchPhoto({
+                        violation: loadedViolation,
+                        photo,
+                        checked: event.target.checked,
+                      })
+                    }
+                    aria-label={`Attach ${name}`}
+                  />
+                )}
+                <a
+                  href={src}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={name}
+                  style={{ display: 'block' }}
+                >
+                  {isImage({ ext: fileExtension(name) }) ? (
+                    <img src={src} alt={name} />
+                  ) : (
+                    /* eslint-disable-next-line jsx-a11y/media-has-caption */
+                    <video src={src} aria-label={name} />
+                  )}
+                </a>
+                {attached &&
+                  this.renderPlateOverlays({
+                    attachmentPlateData: plateDataByAttachmentName[name],
+                    attachmentFile: file,
+                  })}
+                <RemoveButton
+                  glyph="🗑️"
+                  label={`Delete ${name}`}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    right: 0,
+                    margin: '1px',
+                  }}
+                  onClick={() => this.deletePhoto(photo)}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </React.Fragment>
+    );
+  }
+
+  // The batch's own UI: which stage it is working through, and the violations
+  // it found.
   renderBatchStatus() {
     const {
       batchMergeSelection,
@@ -3789,8 +3922,6 @@ class Home extends React.Component {
     ) {
       return null;
     }
-
-    const loadedViolation = batchViolations[currentViolationIndex];
 
     return (
       <React.Fragment>
@@ -3928,7 +4059,7 @@ class Home extends React.Component {
                         </span>
                       )}
                     </button>
-                    <RemoveXButton
+                    <RemoveButton
                       label={`Delete ${formatBatchViolationTime(
                         violation.createDateMs,
                       )} — ${plateLabel}`}
@@ -3948,58 +4079,6 @@ class Home extends React.Component {
 
         {!batchProgress && batchViolations.length === 0 && (
           <p>No violations left in the batch.</p>
-        )}
-
-        {loadedViolation && loadedViolation.photos.length > 3 && (
-          <div>
-            <p>
-              Pick up to 3 pictures and 3 videos to attach to this report (the
-              rest stay in the batch):
-            </p>
-            {/* The photos rather than their names: a name is hard to tell one
-                from another by, and the photo is what the report is about.
-                Each carries its own box at the top-left, the way a photo grid
-                on a phone does, so ticking one is a click on the picture. */}
-            <div className={homeStyles['batch-photo-grid']}>
-              {loadedViolation.photos.map((photo, index) => {
-                const attached = this.state.attachmentData.includes(photo.file);
-                const src = getBlobUrl(photo.file);
-
-                return (
-                  <label
-                    key={photo.name}
-                    htmlFor={`batch-photo-${index}`}
-                    className={`${homeStyles['batch-photo-choice']}${
-                      attached
-                        ? ` ${homeStyles['batch-photo-choice-selected']}`
-                        : ''
-                    }`}
-                    title={photo.name}
-                  >
-                    <input
-                      id={`batch-photo-${index}`}
-                      type="checkbox"
-                      checked={attached}
-                      onChange={event =>
-                        this.toggleBatchPhoto({
-                          violation: loadedViolation,
-                          photo,
-                          checked: event.target.checked,
-                        })
-                      }
-                      aria-label={`Attach ${photo.name}`}
-                    />
-                    {isImage({ ext: fileExtension(photo.name) }) ? (
-                      <img src={src} alt={photo.name} />
-                    ) : (
-                      /* eslint-disable-next-line jsx-a11y/media-has-caption */
-                      <video src={src} aria-label={photo.name} />
-                    )}
-                  </label>
-                );
-              })}
-            </div>
-          </div>
         )}
       </React.Fragment>
     );
@@ -4961,95 +5040,10 @@ class Home extends React.Component {
 
                   {this.state.isSemiAutomaticMode && this.renderBatchStatus()}
 
+                  {this.renderAttachmentGrid()}
+
                   {this.state.attachmentData.length > 0 && (
                     <React.Fragment>
-                      <div
-                        style={{
-                          display: 'flex',
-                          flexWrap: 'wrap',
-                        }}
-                      >
-                        {this.state.attachmentData.map(attachmentFile => {
-                          const { name } = attachmentFile;
-                          const ext = fileExtension(name);
-                          const isImg = isImage({ ext });
-                          const src = getBlobUrl(attachmentFile);
-                          const attachmentPlateData =
-                            this.state.plateDataByAttachmentName[name];
-
-                          return (
-                            <div
-                              key={name}
-                              style={{
-                                width: '33%',
-                                margin: '0.1%',
-                                flexGrow: 1,
-                                position: 'relative',
-                              }}
-                            >
-                              <div
-                                style={{
-                                  position: 'relative',
-                                  display: 'inline-block',
-                                  maxWidth: '100%',
-                                }}
-                              >
-                                <a
-                                  href={src}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  style={{ display: 'block' }}
-                                >
-                                  {isImg ? (
-                                    <img
-                                      src={src}
-                                      alt={name}
-                                      style={{ display: 'block' }}
-                                    />
-                                  ) : (
-                                    /* eslint-disable-next-line jsx-a11y/media-has-caption */
-                                    <video
-                                      src={src}
-                                      alt={name}
-                                      // The position:relative wrapper shrink-
-                                      // wraps its content, and plate overlays
-                                      // are percentage-positioned against that
-                                      // wrapper, so the video must fill it
-                                      // exactly like the img above does:
-                                      // display:block closes the inline
-                                      // baseline gap, and max-width:100%
-                                      // (which marx-css gives img but not
-                                      // video) keeps the video from
-                                      // overflowing the wrapper when it is
-                                      // wider than the container.
-                                      style={{
-                                        display: 'block',
-                                        maxWidth: '100%',
-                                      }}
-                                    />
-                                  )}
-                                </a>
-                                {this.renderPlateOverlays({
-                                  attachmentPlateData,
-                                  attachmentFile,
-                                })}
-                              </div>
-
-                              <RemoveXButton
-                                label="Delete photo/video"
-                                style={{
-                                  position: 'absolute',
-                                  top: 0,
-                                  right: 0,
-                                  margin: '1px',
-                                }}
-                                onClick={() => this.removeAttachment(name)}
-                              />
-                            </div>
-                          );
-                        })}
-                      </div>
-
                       <label htmlFor="plate" ref={this.plateLabelRef}>
                         License/Medallion:
                         {this.state.isAlprLoading && (

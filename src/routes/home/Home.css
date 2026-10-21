@@ -416,9 +416,14 @@ input[type='search']::-webkit-search-cancel-button {
 .attachment-grid {
   display: grid;
 
-  /* Three to a row, so a report of three fills the row rather than leaving a
-     column's worth of it empty. A phone gets as many as fit instead. */
-  grid-template-columns: repeat(3, 1fr);
+  /* Three to a row at most, and fewer photos take the width the others would
+     have had: one fills the row, two split it, and a fourth starts a new row.
+     The min track leaves room for the two gaps a row of three has. A phone
+     gets as many as fit instead. */
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(calc((100% - 8px) / 3), 1fr)
+  );
   gap: 4px;
   margin: 8px 0;
 }

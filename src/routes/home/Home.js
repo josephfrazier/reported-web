@@ -770,14 +770,14 @@ const formatBatchViolationTime = createDateMs =>
     ? new Date(createDateMs).toLocaleString()
     : 'unknown time';
 
-// The X that discards a picture or a violation. It sits in the corner of an
-// attachment's thumbnail and at the far end of a queue row, and it is one
-// component so that it looks the same in both places.
+// The trash that deletes a photo. It sits in the corner of the photo's tile,
+// and every flow that shows the report's photos has it: the button is the
+// same here and on main, which carries the tile grid on its own.
 //
 // The caller positions it and says what it deletes. The label is on the button
 // rather than on the glyph, so that the button is the thing with a name and a
 // screen reader does not announce the emoji as well.
-const RemoveButton = ({ label, onClick, style, glyph = '❌' }) => (
+const TrashButton = ({ label, onClick, style }) => (
   <button
     type="button"
     aria-label={label}
@@ -790,22 +790,51 @@ const RemoveButton = ({ label, onClick, style, glyph = '❌' }) => (
     }}
     onClick={onClick}
   >
-    <span aria-hidden="true">{glyph}</span>
+    <span aria-hidden="true">🗑️</span>
   </button>
 );
 
-RemoveButton.propTypes = {
+TrashButton.propTypes = {
   label: PropTypes.string.isRequired,
   onClick: PropTypes.func.isRequired,
   style: PropTypes.objectOf(
     PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   ),
-  glyph: PropTypes.string,
 };
 
-RemoveButton.defaultProps = {
+TrashButton.defaultProps = {
   style: undefined,
-  glyph: undefined,
+};
+
+// The X that discards a violation from the queue. A row's own control, so it
+// lives only in the batch's queue.
+const RemoveXButton = ({ label, onClick, style }) => (
+  <button
+    type="button"
+    aria-label={label}
+    style={{
+      padding: 0,
+      // Ubuntu Chrome shows the glyph black without this.
+      color: 'red',
+      background: 'white',
+      ...style,
+    }}
+    onClick={onClick}
+  >
+    <span aria-hidden="true">❌</span>
+  </button>
+);
+
+RemoveXButton.propTypes = {
+  label: PropTypes.string.isRequired,
+  onClick: PropTypes.func.isRequired,
+  style: PropTypes.objectOf(
+    PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  ),
+};
+
+RemoveXButton.defaultProps = {
+  style: undefined,
 };
 
 class Home extends React.Component {
@@ -3880,8 +3909,7 @@ class Home extends React.Component {
                     attachmentPlateData: plateDataByAttachmentName[name],
                     attachmentFile: file,
                   })}
-                <RemoveButton
-                  glyph="🗑️"
+                <TrashButton
                   label={`Delete ${name}`}
                   style={{
                     position: 'absolute',
@@ -4059,7 +4087,7 @@ class Home extends React.Component {
                         </span>
                       )}
                     </button>
-                    <RemoveButton
+                    <RemoveXButton
                       label={`Delete ${formatBatchViolationTime(
                         violation.createDateMs,
                       )} — ${plateLabel}`}

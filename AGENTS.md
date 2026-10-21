@@ -21,11 +21,11 @@
 
 ## Toolchain and setup
 
-- Expected toolchain is Node `24.20.0` and Yarn `1.22.22` (`package.json` pins both).
+- Expected toolchain is Node `24.22.1` and Yarn `1.22.22` (`package.json` pins both).
 - Use `nvm` with the checked-in `.nvmrc` to get the exact Node version:
   - `nvm install`
   - `nvm use`
-- Install dependencies with `yarn install` after switching to Node `24.20.0`.
+- Install dependencies with `yarn install` after switching to Node `24.22.1`.
 - Copy `.env.example` to `.env` before running app flows that need external services.
 
 ## Common commands
@@ -104,7 +104,7 @@ Never squash the trio together: each step is independently reviewable, and the h
 
 ## Validation and CI gotchas
 
-- CI runs Node `24.20.0`; local sandboxes may not. Yarn refuses to run unless the local Node exactly matches the `engines.node` pin. Workaround: use `nvm install` and `nvm use` (the checked-in `.nvmrc` points to `24.20.0`) before running Yarn commands.
+- CI runs Node `24.22.1`; local sandboxes may not. Yarn refuses to run unless the local Node exactly matches the `engines.node` pin. Workaround: use `nvm install` and `nvm use` (the checked-in `.nvmrc` points to `24.22.1`) before running Yarn commands.
 - `yarn lint` currently passes with an existing warning in `src/routes/home/Home.js` for `react/no-danger`.
 - `yarn build` succeeds locally, but emits existing webpack deprecation warnings and one existing `exifr` “Critical dependency” warning.
 - `yarn test` is not a hermetic unit suite. Several tests call live external services:

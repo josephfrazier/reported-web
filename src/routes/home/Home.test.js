@@ -4714,6 +4714,67 @@ describe('Home', () => {
       cleanup();
     });
 
+    // The picker decides what the report holds, and the report's time and place
+    // come from the photos it holds. A photo the picker ticks is the same
+    // evidence as one attached on load, so it has to feed them the same way: a
+    // report made only of photos the load never attached has none otherwise,
+    // and the form falls back to the default place, which empties the address.
+    test('takes the place from the photos ticked in the picker', async () => {
+      const photos = ['p1', 'p2', 'p3', 'p4', 'p5'].map((name, index) => {
+        const file = new File(['picture'], `${name}.jpg`, {
+          type: 'image/jpeg',
+        });
+        return {
+          file,
+          name: file.name,
+          createDateMs: 1704110400000 + index * 1000,
+          // The place `oneRowOf` has already had looked up.
+          latitude: 40.7129,
+          longitude: -74.0061,
+        };
+      });
+
+      const { homeRef, tree, cleanup } = await oneRowOf(photos);
+
+      const pickerBox = name =>
+        tree.root.findByProps({
+          id: `batch-photo-${photos.findIndex(p => p.name === name)}`,
+        });
+      const tick = (name, checked) =>
+        renderer.act(() => {
+          pickerBox(name).props.onChange({ target: { checked } });
+        });
+
+      // Three pictures fit, so the first three are attached and the rest are
+      // the picker's to choose. The place, and the address, came from them.
+      expect(
+        homeRef.current.state.attachmentData.map(file => file.name),
+      ).toEqual(['p1.jpg', 'p2.jpg', 'p3.jpg']);
+      expect(homeRef.current.state.formatted_address).toBe(
+        '123 Main St, Manhattan',
+      );
+
+      // A report made of two the load never attached.
+      tick('p1.jpg', false);
+      tick('p2.jpg', false);
+      tick('p3.jpg', false);
+      tick('p4.jpg', true);
+      tick('p5.jpg', true);
+
+      // The two the report now holds know where they were, and that is where
+      // the report is -- with its address.
+      expect(
+        homeRef.current.state.attachmentData.map(file => file.name),
+      ).toEqual(['p4.jpg', 'p5.jpg']);
+      expect(homeRef.current.state.latitude).toBe(40.7129);
+      expect(homeRef.current.state.longitude).toBe(-74.0061);
+      expect(homeRef.current.state.formatted_address).toBe(
+        '123 Main St, Manhattan',
+      );
+
+      cleanup();
+    });
+
     test('leaves a shared photo in the batch when the row holding it goes', async () => {
       const photo = name => ({
         file: new File(['picture'], name, { type: 'image/jpeg' }),

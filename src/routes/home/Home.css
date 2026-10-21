@@ -13,7 +13,29 @@
   box-sizing: border-box;
 }
 
+/* The app fills the viewport and stacks the non-production banner above the
+   scroll area, so the banner keeps its place at the top while content scrolls
+   in the area below it rather than underneath it. */
 .root {
+  display: flex;
+  flex-direction: column;
+}
+
+/* The region below the banner. It holds the scroller and the modals, whose
+   overlays anchor to it, so neither can cover the banner. */
+.scroll-area {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* The element that scrolls. Its padding replaces the padding .root used to
+   carry, which keeps the scrollbar at the viewport edge rather than inside
+   the side gutter. */
+.scroll-container {
+  position: absolute;
+  inset: 0;
+  overflow-y: scroll;
   padding-left: 20px;
   padding-right: 20px;
 }
@@ -109,14 +131,11 @@ input[type='search']::-webkit-search-cancel-button {
 
 /* Full-width banner flagging non-production instances (review apps, local
    dev), so submissions against a different Parse server aren't confused
-   with production. Sticky keeps it visible while the page is scrolled.
-   The negative margins cancel .root's side padding so the banner spans the
-   full width of the scroller. */
+   with production. It's the top row of the page's flex column: the scroll
+   area below starts where the banner ends, so the banner stays at the top
+   of the viewport and nothing scrolls under it. */
 .non-production-banner {
-  position: sticky;
-  top: 0;
-  z-index: 1000;
-  margin: 0 -20px;
+  flex: none;
   padding: 0.5rem 20px;
   background: #ffcf3f;
   color: #000;

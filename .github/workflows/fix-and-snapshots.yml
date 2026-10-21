@@ -21,8 +21,8 @@ jobs:
         with:
           node-version: 24.22.1
 
-      - run: curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.22.19
-      - run: echo "$HOME/.yarn/bin" >> "$GITHUB_PATH"
+      - run: corepack enable
+      - run: corepack prepare yarn@1.22.22 --activate
       - run: yarn
 
       # The mongod 4.4 binary that mongodb-memory-server downloads for the

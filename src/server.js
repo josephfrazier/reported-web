@@ -114,7 +114,7 @@ const {
   PARSE_SERVER_URL,
   SHOW_PARSE_SERVER_BANNER,
   HEROKU_RELEASE_VERSION,
-  PLATERECOGNIZER_TOKENS,
+  PLATERECOGNIZER_TOKEN_LIST,
 } = process.env;
 
 // http://docs.parseplatform.org/js/guide/#getting-started
@@ -555,7 +555,7 @@ app.use(
 
     readLicenseViaALPR({
       attachmentBuffer,
-      PLATERECOGNIZER_TOKENS,
+      PLATERECOGNIZER_TOKEN_LIST,
       timings,
     })
       .then(data => {

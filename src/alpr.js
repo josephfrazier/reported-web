@@ -122,12 +122,12 @@ const downscaleForPlateRecognizer = async ({ buffer, targetWidth }) => {
 // from holding image buffers indefinitely
 const PLATERECOGNIZER_TIMEOUT_MS = 30_000;
 
-// The tokens a read tries, in order. `PLATERECOGNIZER_TOKENS` holds them as a
+// The tokens a read tries, in order. `PLATERECOGNIZER_TOKEN_LIST` holds them as a
 // comma-separated list, so a token that has expired or run out of quota is
 // skipped for the next one. Whitespace around an entry and empty entries are
 // ignored, which lets a deployment write "one, two" and a CI job compose the
 // list from two secrets without leaving a blank token to try.
-function parsePlateRecognizerTokens(value) {
+function parsePlateRecognizerTokenList(value) {
   return String(value || '')
     .split(',')
     .map(token => token.trim())
@@ -311,10 +311,10 @@ function readFromPlateRecognizer({ attachmentBuffer, tokens, cacheKey, lap }) {
 
 export default function readLicenseViaALPR({
   attachmentBuffer,
-  PLATERECOGNIZER_TOKENS,
+  PLATERECOGNIZER_TOKEN_LIST,
   timings = {},
 }) {
-  const tokens = parsePlateRecognizerTokens(PLATERECOGNIZER_TOKENS);
+  const tokens = parsePlateRecognizerTokenList(PLATERECOGNIZER_TOKEN_LIST);
   // The phases below are what the route sends back with the reading, so the
   // browser can print where a read's time went. A photo added twice answers
   // from the cache with an identical reading, and these numbers are the
@@ -341,7 +341,7 @@ export default function readLicenseViaALPR({
 
     if (tokens.length === 0) {
       throw new Error(
-        'No Plate Recognizer tokens configured: set PLATERECOGNIZER_TOKENS to a comma-separated list of tokens',
+        'No Plate Recognizer tokens configured: set PLATERECOGNIZER_TOKEN_LIST to a comma-separated list of tokens',
       );
     }
 

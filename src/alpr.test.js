@@ -21,11 +21,11 @@ describe('readLicenseViaALPR', () => {
     const attachmentBuffer = readFileSync(
       './src/447139692-0ee99c9b-73a4-49fb-a610-389db5cbddd3_exif_stripped.jpg',
     );
-    const { PLATERECOGNIZER_TOKENS } = process.env;
+    const { PLATERECOGNIZER_TOKEN_LIST } = process.env;
 
     const result = await readLicenseViaALPR({
       attachmentBuffer,
-      PLATERECOGNIZER_TOKENS,
+      PLATERECOGNIZER_TOKEN_LIST,
     });
 
     result.filename = 'filename REMOVED BECAUSE IT CHANGES';
@@ -44,11 +44,11 @@ describe('readLicenseViaALPR', () => {
     const attachmentBuffer = readFileSync(
       './src/447139692-0ee99c9b-73a4-49fb-a610-389db5cbddd3_exif_stripped.jpg',
     );
-    const { PLATERECOGNIZER_TOKENS } = process.env;
+    const { PLATERECOGNIZER_TOKEN_LIST } = process.env;
 
     const result = await readLicenseViaALPR({
       attachmentBuffer,
-      PLATERECOGNIZER_TOKENS: `INVALID TOKEN,${PLATERECOGNIZER_TOKENS}`,
+      PLATERECOGNIZER_TOKEN_LIST: `INVALID TOKEN,${PLATERECOGNIZER_TOKEN_LIST}`,
     });
 
     result.filename = 'filename REMOVED BECAUSE IT CHANGES';

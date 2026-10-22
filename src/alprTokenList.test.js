@@ -44,12 +44,12 @@ function authorizationHeaders(fetchSpy) {
   );
 }
 
-describe('PLATERECOGNIZER_TOKENS', () => {
+describe('PLATERECOGNIZER_TOKEN_LIST', () => {
   test('tries the tokens in the order they are listed', async () => {
     await withAnswers([answer()], async fetchSpy => {
       await readLicenseViaALPR({
         attachmentBuffer: photo,
-        PLATERECOGNIZER_TOKENS: 'first,second',
+        PLATERECOGNIZER_TOKEN_LIST: 'first,second',
       });
 
       expect(fetchSpy).toHaveBeenCalledTimes(1);
@@ -63,7 +63,7 @@ describe('PLATERECOGNIZER_TOKENS', () => {
       async fetchSpy => {
         await readLicenseViaALPR({
           attachmentBuffer: photo,
-          PLATERECOGNIZER_TOKENS: ' first , , second ',
+          PLATERECOGNIZER_TOKEN_LIST: ' first , , second ',
         });
 
         expect(authorizationHeaders(fetchSpy)).toEqual([
@@ -81,7 +81,7 @@ describe('PLATERECOGNIZER_TOKENS', () => {
     await withAnswers([refused, accepted], async fetchSpy => {
       const reading = await readLicenseViaALPR({
         attachmentBuffer: photo,
-        PLATERECOGNIZER_TOKENS: 'one,two',
+        PLATERECOGNIZER_TOKEN_LIST: 'one,two',
       });
 
       expect(reading.results).toEqual([]);
@@ -107,7 +107,7 @@ describe('PLATERECOGNIZER_TOKENS', () => {
       await expect(
         readLicenseViaALPR({
           attachmentBuffer: photo,
-          PLATERECOGNIZER_TOKENS: 'one,two',
+          PLATERECOGNIZER_TOKEN_LIST: 'one,two',
         }),
       ).rejects.toThrow('429');
 
@@ -123,9 +123,9 @@ describe('PLATERECOGNIZER_TOKENS', () => {
       await expect(
         readLicenseViaALPR({
           attachmentBuffer: photo,
-          PLATERECOGNIZER_TOKENS: ' , ',
+          PLATERECOGNIZER_TOKEN_LIST: ' , ',
         }),
-      ).rejects.toThrow('PLATERECOGNIZER_TOKENS');
+      ).rejects.toThrow('PLATERECOGNIZER_TOKEN_LIST');
 
       expect(fetchSpy).not.toHaveBeenCalled();
     });

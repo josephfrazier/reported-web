@@ -25,6 +25,5 @@ jobs:
     - run: yarn
     - shell: bash
       env:
-        PLATERECOGNIZER_TOKEN: ${{ secrets.PLATERECOGNIZER_TOKEN }}
-        PLATERECOGNIZER_TOKEN_TWO: ${{ secrets.PLATERECOGNIZER_TOKEN_TWO }}
+        PLATERECOGNIZER_TOKEN_LIST: ${{ secrets.PLATERECOGNIZER_TOKEN_LIST }}
       run: yarn test:flaky

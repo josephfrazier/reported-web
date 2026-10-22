@@ -570,23 +570,15 @@ input[type='search']::-webkit-search-cancel-button {
    than cropping it to a square -- the plate overlays are positioned as
    fractions of the picture, so a crop would move them off the plates. */
 .attachment-grid {
-  display: grid;
-
-  /* Three to a row at most, and fewer photos take the width the others would
-     have had: one fills the row, two split it, and a fourth starts a new row.
-     The min track leaves room for the two gaps a row of three has. A phone
-     gets as many as fit instead. */
-  grid-template-columns: repeat(
-    auto-fit,
-    minmax(calc((100% - 8px) / 3), 1fr)
-  );
+  display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   margin: 8px 0;
 }
 
 @media (width <= 480px) {
-  .attachment-grid {
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  .attachment-tile {
+    flex-basis: 140px;
   }
 }
 
@@ -596,6 +588,11 @@ input[type='search']::-webkit-search-cancel-button {
   overflow: hidden;
   border-radius: 4px;
   line-height: 0;
+
+  /* Three to a row: 30 percent of the width plus its share of the space left
+     over. Four photos cannot fit, so the fourth starts a new row. Each row
+     grows to fill the width, whatever number of photos it holds. */
+  flex: 1 1 30%;
 }
 
 .attachment-tile img,

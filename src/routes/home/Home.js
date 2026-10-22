@@ -1547,8 +1547,11 @@ class Home extends React.Component {
     return this.handleAttachmentData({ attachmentData: attachments });
   };
 
-  handleAttachmentInput = async (_, results) => {
-    const picked = results.map(([, attachmentFile]) => attachmentFile);
+  // The files a picker hands over, with any zip opened out into the
+  // attachments it holds. A zip is a way of picking a batch, so it takes no
+  // place of its own in the attachment list; what it held is reported either
+  // way.
+  handleAttachmentFiles = async picked => {
     const { files, zips } = await expandZipFiles(picked);
     zips.forEach(archive => Home.reportZip(archive));
 
@@ -1557,6 +1560,11 @@ class Home extends React.Component {
     }
 
     return this.handleAttachmentData({ attachmentData: files });
+  };
+
+  handleAttachmentInput = async (_, results) => {
+    const picked = results.map(([, attachmentFile]) => attachmentFile);
+    return this.handleAttachmentFiles(picked);
   };
 
   // What each of a set of photos read.
@@ -2355,9 +2363,7 @@ class Home extends React.Component {
     return (
       <Dropzone
         className={homeStyles.root}
-        onDrop={attachmentData => {
-          this.handleAttachmentData({ attachmentData });
-        }}
+        onDrop={attachmentData => this.handleAttachmentFiles(attachmentData)}
         style={{
           position: 'fixed',
           top: 0,

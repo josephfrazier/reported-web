@@ -122,7 +122,19 @@ const downscaleForPlateRecognizer = async ({ buffer, targetWidth }) => {
 // from holding image buffers indefinitely
 const PLATERECOGNIZER_TIMEOUT_MS = 30_000;
 
-function platerecognizer({ attachmentBufferRotated, PLATERECOGNIZER_TOKEN }) {
+// The tokens a read tries, in order. `PLATERECOGNIZER_TOKEN_LIST` holds them as a
+// comma-separated list, so a token that has expired or run out of quota is
+// skipped for the next one. Whitespace around an entry and empty entries are
+// ignored, which lets a deployment write "one, two" and a CI job compose the
+// list from two secrets without leaving a blank token to try.
+function parsePlateRecognizerTokenList(value) {
+  return String(value || '')
+    .split(',')
+    .map(token => token.trim())
+    .filter(Boolean);
+}
+
+function platerecognizer({ attachmentBufferRotated, token }) {
   const blob = new Blob([attachmentBufferRotated], { type: 'image/jpeg' });
   const body = new FormData();
   body.append('upload', blob, 'image.jpg');
@@ -139,11 +151,41 @@ function platerecognizer({ attachmentBufferRotated, PLATERECOGNIZER_TOKEN }) {
   return fetch('https://api.platerecognizer.com/v1/plate-reader/', {
     method: 'POST',
     headers: {
-      Authorization: `Token ${PLATERECOGNIZER_TOKEN}`,
+      Authorization: `Token ${token}`,
     },
     body,
     signal: controller.signal,
   }).finally(() => clearTimeout(timer));
+}
+
+// Ask with each token in turn until one is accepted. Every refusal behind the
+// last has its body consumed so the socket goes back to the pool; the last
+// response is returned with its body intact for the caller to read the error
+// out of.
+async function platerecognizerWithTokens({ attachmentBufferRotated, tokens }) {
+  let response;
+
+  for (const [index, token] of tokens.entries()) {
+    // A token is tried only if the one before it was refused, so these waits
+    // are the sequence itself.
+    // eslint-disable-next-line no-await-in-loop
+    response = await platerecognizer({ attachmentBufferRotated, token });
+
+    if (response.ok) {
+      return response;
+    }
+
+    if (index < tokens.length - 1) {
+      // eslint-disable-next-line no-await-in-loop
+      await response.body?.cancel().catch(() => {});
+      console.info(
+        `/platerecognizer plate-reader got an error with token ${index + 1} of ${tokens.length}, trying the next`,
+        { status: response.status },
+      );
+    }
+  }
+
+  return response;
 }
 
 // How long each phase of a read took, in milliseconds, written into the object
@@ -165,13 +207,7 @@ function makeLapRecorder(timings) {
 // The reading the cache could not answer: orient and resize the photo the way
 // Plate Recognizer wants it, read it, cut the crops out, and store the reading
 // under the key the caller looked up with.
-function readFromPlateRecognizer({
-  attachmentBuffer,
-  PLATERECOGNIZER_TOKEN,
-  PLATERECOGNIZER_TOKEN_TWO,
-  cacheKey,
-  lap,
-}) {
+function readFromPlateRecognizer({ attachmentBuffer, tokens, cacheKey, lap }) {
   return orientImageBuffer({ attachmentBuffer })
     .then(buffer => {
       lap('orient');
@@ -187,28 +223,10 @@ function readFromPlateRecognizer({
       console.log('STARTING platerecognizer'); // eslint-disable-line no-console
       console.time(`/platerecognizer plate-reader`); // eslint-disable-line no-console
 
-      const reading = await platerecognizer({
+      const reading = await platerecognizerWithTokens({
         attachmentBufferRotated,
-        PLATERECOGNIZER_TOKEN,
+        tokens,
       })
-        .then(async platerecognizerRes => {
-          if (platerecognizerRes.ok) {
-            return platerecognizerRes;
-          }
-
-          // Consume the failed response body so the underlying socket is
-          // released back to the pool rather than held until GC.
-          await platerecognizerRes.body?.cancel().catch(() => {});
-
-          console.info(
-            '/platerecognizer plate-reader got an error with first token, trying second',
-          );
-
-          return platerecognizer({
-            attachmentBufferRotated,
-            PLATERECOGNIZER_TOKEN: PLATERECOGNIZER_TOKEN_TWO,
-          });
-        })
         .then(platerecognizerRes => {
           console.info('/platerecognizer plate-reader', {
             platerecognizerRes,
@@ -293,10 +311,10 @@ function readFromPlateRecognizer({
 
 export default function readLicenseViaALPR({
   attachmentBuffer,
-  PLATERECOGNIZER_TOKEN,
-  PLATERECOGNIZER_TOKEN_TWO,
+  PLATERECOGNIZER_TOKEN_LIST,
   timings = {},
 }) {
+  const tokens = parsePlateRecognizerTokenList(PLATERECOGNIZER_TOKEN_LIST);
   // The phases below are what the route sends back with the reading, so the
   // browser can print where a read's time went. A photo added twice answers
   // from the cache with an identical reading, and these numbers are the
@@ -321,10 +339,15 @@ export default function readLicenseViaALPR({
       return cached;
     }
 
+    if (tokens.length === 0) {
+      throw new Error(
+        'No Plate Recognizer tokens configured: set PLATERECOGNIZER_TOKEN_LIST to a comma-separated list of tokens',
+      );
+    }
+
     return readFromPlateRecognizer({
       attachmentBuffer,
-      PLATERECOGNIZER_TOKEN,
-      PLATERECOGNIZER_TOKEN_TWO,
+      tokens,
       cacheKey,
       lap,
     });

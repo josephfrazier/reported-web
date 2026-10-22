@@ -17,15 +17,15 @@ function makeHash(dataUrl) {
 // service's own answer; see src/alprCache.js.
 
 describe('readLicenseViaALPR', () => {
-  test('using only the first token', async () => {
+  test('using the first token in the list', async () => {
     const attachmentBuffer = readFileSync(
       './src/447139692-0ee99c9b-73a4-49fb-a610-389db5cbddd3_exif_stripped.jpg',
     );
-    const { PLATERECOGNIZER_TOKEN } = process.env;
+    const { PLATERECOGNIZER_TOKEN_LIST } = process.env;
 
     const result = await readLicenseViaALPR({
       attachmentBuffer,
-      PLATERECOGNIZER_TOKEN,
+      PLATERECOGNIZER_TOKEN_LIST,
     });
 
     result.filename = 'filename REMOVED BECAUSE IT CHANGES';
@@ -40,16 +40,15 @@ describe('readLicenseViaALPR', () => {
     expect(result).toMatchSnapshot();
   });
 
-  test('falling back to the second token', async () => {
+  test('falling back to the next token', async () => {
     const attachmentBuffer = readFileSync(
       './src/447139692-0ee99c9b-73a4-49fb-a610-389db5cbddd3_exif_stripped.jpg',
     );
-    const { PLATERECOGNIZER_TOKEN_TWO } = process.env;
+    const { PLATERECOGNIZER_TOKEN_LIST } = process.env;
 
     const result = await readLicenseViaALPR({
       attachmentBuffer,
-      PLATERECOGNIZER_TOKEN: 'INVALID TOKEN',
-      PLATERECOGNIZER_TOKEN_TWO,
+      PLATERECOGNIZER_TOKEN_LIST: `INVALID TOKEN,${PLATERECOGNIZER_TOKEN_LIST}`,
     });
 
     result.filename = 'filename REMOVED BECAUSE IT CHANGES';

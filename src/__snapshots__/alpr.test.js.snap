@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
 
-exports[`readLicenseViaALPR falling back to the second token 1`] = `
+exports[`readLicenseViaALPR falling back to the next token 1`] = `
 {
   "camera_id": null,
   "filename": "filename REMOVED BECAUSE IT CHANGES",
@@ -127,7 +127,7 @@ exports[`readLicenseViaALPR falling back to the second token 1`] = `
 }
 `;
 
-exports[`readLicenseViaALPR using only the first token 1`] = `
+exports[`readLicenseViaALPR using the first token in the list 1`] = `
 {
   "camera_id": null,
   "filename": "filename REMOVED BECAUSE IT CHANGES",

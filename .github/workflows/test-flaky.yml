@@ -25,6 +25,7 @@ jobs:
     - run: yarn
     - shell: bash
       env:
-        PLATERECOGNIZER_TOKEN: ${{ secrets.PLATERECOGNIZER_TOKEN }}
-        PLATERECOGNIZER_TOKEN_TWO: ${{ secrets.PLATERECOGNIZER_TOKEN_TWO }}
+        # A comma-separated list. Until a PLATERECOGNIZER_TOKENS secret exists,
+        # build it from the two secrets this workflow used before.
+        PLATERECOGNIZER_TOKENS: ${{ secrets.PLATERECOGNIZER_TOKENS || format('{0},{1}', secrets.PLATERECOGNIZER_TOKEN, secrets.PLATERECOGNIZER_TOKEN_TWO) }}
       run: yarn test:flaky

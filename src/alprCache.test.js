@@ -116,8 +116,7 @@ function photoBuffer() {
 async function readPhoto(photo, { timings } = {}) {
   return readLicenseViaALPR({
     attachmentBuffer: photo,
-    PLATERECOGNIZER_TOKEN: 'one',
-    PLATERECOGNIZER_TOKEN_TWO: 'two',
+    PLATERECOGNIZER_TOKENS: 'one,two',
     timings,
   });
 }
@@ -248,8 +247,7 @@ describe('what the cache refuses to store', () => {
       const read = () =>
         readLicenseViaALPR({
           attachmentBuffer: photo,
-          PLATERECOGNIZER_TOKEN: 'one',
-          PLATERECOGNIZER_TOKEN_TWO: 'two',
+          PLATERECOGNIZER_TOKENS: 'one,two',
         });
 
       await expect(read()).rejects.toThrow('429');

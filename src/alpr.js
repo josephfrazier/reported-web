@@ -4,6 +4,13 @@ import {
   readCachedReading,
   writeCachedReading,
 } from './alprCache.js';
+import {
+  markTokenAccepted,
+  markTokenThrottled,
+  markTokenUsed,
+  orderTokens,
+  throttleMsFromResponse,
+} from './alprTokenPool.js';
 
 // Disable sharp's internal LRU cache so processed image data is released
 // immediately instead of being held in memory across requests.
@@ -122,11 +129,12 @@ const downscaleForPlateRecognizer = async ({ buffer, targetWidth }) => {
 // from holding image buffers indefinitely
 const PLATERECOGNIZER_TIMEOUT_MS = 30_000;
 
-// The tokens a read tries, in order. `PLATERECOGNIZER_TOKEN_LIST` holds them as a
-// comma-separated list, so a token that has expired or run out of quota is
-// skipped for the next one. Whitespace around an entry and empty entries are
-// ignored, which lets a deployment write "one, two" and a CI job compose the
-// list from two secrets without leaving a blank token to try.
+// The tokens a read can try. `PLATERECOGNIZER_TOKEN_LIST` holds them as a
+// comma-separated list. The order to try them in comes from alprTokenPool.js,
+// so calls spread across the tokens and a token that has expired or run out of
+// quota is skipped for the next one. Whitespace around an entry and empty
+// entries are ignored, which lets a deployment write "one, two" and a CI job
+// compose the list from two secrets without leaving a blank token to try.
 function parsePlateRecognizerTokenList(value) {
   return String(value || '')
     .split(',')
@@ -158,28 +166,44 @@ function platerecognizer({ attachmentBufferRotated, token }) {
   }).finally(() => clearTimeout(timer));
 }
 
-// Ask with each token in turn until one is accepted. Every refusal behind the
-// last has its body consumed so the socket goes back to the pool; the last
-// response is returned with its body intact for the caller to read the error
-// out of.
+// Ask with each token in turn until one is accepted, in the order alprTokenPool
+// gives: the token used longest ago first, and throttled tokens behind the
+// rest. Every refusal behind the last has its body consumed so the socket goes
+// back to the pool; the last response is returned with its body intact for the
+// caller to read the error out of.
 async function platerecognizerWithTokens({ attachmentBufferRotated, tokens }) {
+  const orderedTokens = orderTokens(tokens);
   let response;
 
-  for (const [index, token] of tokens.entries()) {
+  for (const [index, token] of orderedTokens.entries()) {
+    markTokenUsed(token);
+
     // A token is tried only if the one before it was refused, so these waits
     // are the sequence itself.
     // eslint-disable-next-line no-await-in-loop
     response = await platerecognizer({ attachmentBufferRotated, token });
 
     if (response.ok) {
+      markTokenAccepted(token);
       return response;
     }
 
-    if (index < tokens.length - 1) {
+    if (response.status === 429) {
+      // The body names the wait, so it is read through a clone: the last
+      // response still needs its body for the caller's error.
+      // eslint-disable-next-line no-await-in-loop
+      const waitMs = await throttleMsFromResponse(response);
+      markTokenThrottled(token, waitMs);
+      console.info(
+        `/platerecognizer plate-reader rate limited token ${index + 1} of ${orderedTokens.length}, leaving it alone for ${waitMs}ms`,
+      );
+    }
+
+    if (index < orderedTokens.length - 1) {
       // eslint-disable-next-line no-await-in-loop
       await response.body?.cancel().catch(() => {});
       console.info(
-        `/platerecognizer plate-reader got an error with token ${index + 1} of ${tokens.length}, trying the next`,
+        `/platerecognizer plate-reader got an error with token ${index + 1} of ${orderedTokens.length}, trying the next`,
         { status: response.status },
       );
     }

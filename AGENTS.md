@@ -44,7 +44,7 @@
 
 - Parse/local app flows need `PARSE_APP_ID`, `PARSE_JAVASCRIPT_KEY`, `PARSE_MASTER_KEY`, and `PARSE_SERVER_URL`.
 - Reverse geocoding/location validation uses `GEO_APP_KEY` and `GOOGLE_API_KEY`.
-- ALPR flows/tests use `PLATERECOGNIZER_TOKEN_LIST`, a comma-separated list of tokens tried in order.
+- ALPR flows/tests use `PLATERECOGNIZER_TOKEN_LIST`, a comma-separated list of tokens. A read tries the token used longest ago first, and puts tokens the service rate limited behind the free ones until their wait passes.
 - `HEROKU_APP_NAME`, `API_SERVER_URL`, `API_CLIENT_URL`, and `TRUST_PROXY` affect deployed/server behavior.
 
 ## Change guidance

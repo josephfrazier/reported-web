@@ -20,6 +20,13 @@ jobs:
       uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
       with:
         node-version: ${{ matrix.node-version }}
+    # The runner image can predate the Ubuntu CA update. Install the patched
+    # package before any download, so the system store no longer trusts the
+    # compromised roots.
+    - name: Install the patched CA certificates
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --only-upgrade ca-certificates
     # The eMudhra intermediate CAs from the October 2026 compromise must not
     # be in any trust store. curl checks the runner store (used by the
     # download steps below); Node checks the runtime store. Both test hosts

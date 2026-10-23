@@ -21,6 +21,14 @@ jobs:
         with:
           node-version: 24.22.1
 
+      # The runner image can predate the Ubuntu CA update. Install the patched
+      # package before any download, so the system store no longer trusts the
+      # compromised roots.
+      - name: Install the patched CA certificates
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --only-upgrade ca-certificates
+
       - run: curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.22.19
       - run: echo "$HOME/.yarn/bin" >> "$GITHUB_PATH"
       - run: yarn

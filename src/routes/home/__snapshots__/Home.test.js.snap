@@ -57,7 +57,7 @@ exports[`Home hides form fields when logged in with no photos uploaded 1`] = `
               >
                 👤
               </span>
-               
+
               test@example.com
             </div>
             <div
@@ -275,15 +275,15 @@ exports[`Home links the banner to the PR the review app was deployed from 1`] = 
     >
       ⚠️
     </span>
-     
+
     NOT PRODUCTION — using Parse server:
-     
+
     <code>
       https://reported-parse.webabot.com/parse
     </code>
-     
+
     — deployed from
-     
+
     <a
       href="https://github.com/josephfrazier/reported-web/pull/1046"
     >
@@ -347,23 +347,23 @@ exports[`Home links the banner to the PR the review app was deployed from 1`] = 
           >
             <p>
               Please
-               
+
               <button
                 onClick={[Function]}
                 type="button"
               >
                 log in
               </button>
-               
+
               or
-               
+
               <button
                 onClick={[Function]}
                 type="button"
               >
                 sign up
               </button>
-               
+
               to submit a report.
             </p>
           </div>
@@ -476,7 +476,7 @@ exports[`Home renders Edit Profile UI 1`] = `
               >
                 👤
               </span>
-               
+
               test@example.com
             </div>
             <div
@@ -545,7 +545,7 @@ exports[`Home renders Edit Profile UI 1`] = `
                 htmlFor="FirstName"
               >
                 First Name:
-                 
+
                 <input
                   autoComplete="given-name"
                   id="FirstName"
@@ -560,7 +560,7 @@ exports[`Home renders Edit Profile UI 1`] = `
                 htmlFor="LastName"
               >
                 Last Name:
-                 
+
                 <input
                   autoComplete="family-name"
                   id="LastName"
@@ -575,7 +575,7 @@ exports[`Home renders Edit Profile UI 1`] = `
                 htmlFor="Phone"
               >
                 Phone Number:
-                 
+
                 <input
                   autoComplete="tel"
                   id="Phone"
@@ -596,7 +596,7 @@ exports[`Home renders Edit Profile UI 1`] = `
                   onChange={[Function]}
                   type="checkbox"
                 />
-                 
+
                 I'm willing to testify at a hearing, which can be done by phone.
               </label>
               <label
@@ -609,7 +609,7 @@ exports[`Home renders Edit Profile UI 1`] = `
                   onChange={[Function]}
                   type="checkbox"
                 />
-                 
+
                 Allow the photos/videos, description, category, and location to be publicly displayed
               </label>
               <label
@@ -622,7 +622,7 @@ exports[`Home renders Edit Profile UI 1`] = `
                   onChange={[Function]}
                   type="checkbox"
                 />
-                 
+
                 Withhold my contact info from NYPD service requests
                 <br />
                 <small>
@@ -849,7 +849,7 @@ exports[`Home renders Log In modal UI 1`] = `
               className="auth-switch-link"
             >
               (If you cannot log in even after resetting your password, email
-               
+
               <a
                 href="mailto:reportedapp@gmail.com"
               >
@@ -861,7 +861,7 @@ exports[`Home renders Log In modal UI 1`] = `
               className="auth-switch-link"
             >
               Don't have an account?
-               
+
               <button
                 onClick={[Function]}
                 type="button"
@@ -875,23 +875,23 @@ exports[`Home renders Log In modal UI 1`] = `
           >
             <p>
               Please
-               
+
               <button
                 onClick={[Function]}
                 type="button"
               >
                 log in
               </button>
-               
+
               or
-               
+
               <button
                 onClick={[Function]}
                 type="button"
               >
                 sign up
               </button>
-               
+
               to submit a report.
             </p>
           </div>
@@ -1004,7 +1004,7 @@ exports[`Home renders Preferences UI 1`] = `
               >
                 👤
               </span>
-               
+
               test@example.com
             </div>
             <div
@@ -1075,7 +1075,7 @@ exports[`Home renders Preferences UI 1`] = `
                 onChange={[Function]}
                 type="checkbox"
               />
-               
+
               Automatically read license plates from pictures/videos
             </label>
             <label
@@ -1088,7 +1088,7 @@ exports[`Home renders Preferences UI 1`] = `
                 onChange={[Function]}
                 type="checkbox"
               />
-               
+
               Automatically read addresses from pictures/videos
             </label>
             <label
@@ -1101,7 +1101,7 @@ exports[`Home renders Preferences UI 1`] = `
                 onChange={[Function]}
                 type="checkbox"
               />
-               
+
               Load previous submissions on page load
             </label>
           </div>
@@ -1341,7 +1341,7 @@ exports[`Home renders Sign Up modal UI 1`] = `
                 onChange={[Function]}
                 type="checkbox"
               />
-               
+
               I'm willing to testify at a hearing, which can be done by phone.
             </label>
             <button
@@ -1355,7 +1355,7 @@ exports[`Home renders Sign Up modal UI 1`] = `
               className="auth-switch-link"
             >
               Already have an account?
-               
+
               <button
                 onClick={[Function]}
                 type="button"
@@ -1369,23 +1369,23 @@ exports[`Home renders Sign Up modal UI 1`] = `
           >
             <p>
               Please
-               
+
               <button
                 onClick={[Function]}
                 type="button"
               >
                 log in
               </button>
-               
+
               or
-               
+
               <button
                 onClick={[Function]}
                 type="button"
               >
                 sign up
               </button>
-               
+
               to submit a report.
             </p>
           </div>
@@ -1518,23 +1518,23 @@ exports[`Home renders auth prompt and hides form when logged out 1`] = `
           >
             <p>
               Please
-               
+
               <button
                 onClick={[Function]}
                 type="button"
               >
                 log in
               </button>
-               
+
               or
-               
+
               <button
                 onClick={[Function]}
                 type="button"
               >
                 sign up
               </button>
-               
+
               to submit a report.
             </p>
           </div>
@@ -1647,7 +1647,7 @@ exports[`Home renders submission form and Previous Submissions when logged in wi
               >
                 👤
               </span>
-               
+
               test@example.com
             </div>
             <div
@@ -2313,7 +2313,7 @@ exports[`Home renders submission form and Previous Submissions when logged in wi
                 htmlFor="typeofcomplaint"
               >
                 Type:
-                 
+
                 <select
                   name="typeofcomplaint"
                   onChange={[Function]}
@@ -2349,7 +2349,7 @@ exports[`Home renders submission form and Previous Submissions when logged in wi
               <label
                 htmlFor="where"
               >
-                Where: 
+                Where:
                 <br />
                 <button
                   disabled={false}
@@ -2375,14 +2375,14 @@ exports[`Home renders submission form and Previous Submissions when logged in wi
                   onChange={[Function]}
                   type="checkbox"
                 />
-                 
-                Lock this address
+
+                Reuse this address
               </label>
               <label
                 htmlFor="CreateDate"
               >
                 When:
-                 
+
                 <input
                   name="CreateDate"
                   onChange={[Function]}
@@ -2395,7 +2395,7 @@ exports[`Home renders submission form and Previous Submissions when logged in wi
                 htmlFor="reportDescription"
               >
                 Description:
-                 
+
                 <textarea
                   autoComplete="off"
                   name="reportDescription"
@@ -2534,7 +2534,7 @@ exports[`Home renders with allPlateResults entry missing plate and photos 1`] = 
               >
                 👤
               </span>
-               
+
               test@example.com
             </div>
             <div
@@ -3200,7 +3200,7 @@ exports[`Home renders with allPlateResults entry missing plate and photos 1`] = 
                 htmlFor="typeofcomplaint"
               >
                 Type:
-                 
+
                 <select
                   name="typeofcomplaint"
                   onChange={[Function]}
@@ -3236,7 +3236,7 @@ exports[`Home renders with allPlateResults entry missing plate and photos 1`] = 
               <label
                 htmlFor="where"
               >
-                Where: 
+                Where:
                 <br />
                 <button
                   disabled={false}
@@ -3262,14 +3262,14 @@ exports[`Home renders with allPlateResults entry missing plate and photos 1`] = 
                   onChange={[Function]}
                   type="checkbox"
                 />
-                 
+
                 Lock this address
               </label>
               <label
                 htmlFor="CreateDate"
               >
                 When:
-                 
+
                 <input
                   name="CreateDate"
                   onChange={[Function]}
@@ -3282,7 +3282,7 @@ exports[`Home renders with allPlateResults entry missing plate and photos 1`] = 
                 htmlFor="reportDescription"
               >
                 Description:
-                 
+
                 <textarea
                   autoComplete="off"
                   name="reportDescription"
@@ -3421,7 +3421,7 @@ exports[`Home renders with undefined allPlateResults and photos 1`] = `
               >
                 👤
               </span>
-               
+
               test@example.com
             </div>
             <div
@@ -4087,7 +4087,7 @@ exports[`Home renders with undefined allPlateResults and photos 1`] = `
                 htmlFor="typeofcomplaint"
               >
                 Type:
-                 
+
                 <select
                   name="typeofcomplaint"
                   onChange={[Function]}
@@ -4123,7 +4123,7 @@ exports[`Home renders with undefined allPlateResults and photos 1`] = `
               <label
                 htmlFor="where"
               >
-                Where: 
+                Where:
                 <br />
                 <button
                   disabled={false}
@@ -4149,14 +4149,14 @@ exports[`Home renders with undefined allPlateResults and photos 1`] = `
                   onChange={[Function]}
                   type="checkbox"
                 />
-                 
+
                 Lock this address
               </label>
               <label
                 htmlFor="CreateDate"
               >
                 When:
-                 
+
                 <input
                   name="CreateDate"
                   onChange={[Function]}
@@ -4169,7 +4169,7 @@ exports[`Home renders with undefined allPlateResults and photos 1`] = `
                 htmlFor="reportDescription"
               >
                 Description:
-                 
+
                 <textarea
                   autoComplete="off"
                   name="reportDescription"
@@ -4281,9 +4281,9 @@ exports[`Home shows the Parse server banner when the server enables it 1`] = `
     >
       ⚠️
     </span>
-     
+
     NOT PRODUCTION — using Parse server:
-     
+
     <code>
       https://reported-parse.webabot.com/parse
     </code>
@@ -4345,23 +4345,23 @@ exports[`Home shows the Parse server banner when the server enables it 1`] = `
           >
             <p>
               Please
-               
+
               <button
                 onClick={[Function]}
                 type="button"
               >
                 log in
               </button>
-               
+
               or
-               
+
               <button
                 onClick={[Function]}
                 type="button"
               >
                 sign up
               </button>
-               
+
               to submit a report.
             </p>
           </div>
@@ -4474,7 +4474,7 @@ exports[`Home shows the email-updates checkbox only while withholding, and sets 
               >
                 👤
               </span>
-               
+
               test@example.com
             </div>
             <div
@@ -4517,7 +4517,7 @@ exports[`Home shows the email-updates checkbox only while withholding, and sets 
                 htmlFor="FirstName"
               >
                 First Name:
-                 
+
                 <input
                   autoComplete="given-name"
                   id="FirstName"
@@ -4532,7 +4532,7 @@ exports[`Home shows the email-updates checkbox only while withholding, and sets 
                 htmlFor="LastName"
               >
                 Last Name:
-                 
+
                 <input
                   autoComplete="family-name"
                   id="LastName"
@@ -4547,7 +4547,7 @@ exports[`Home shows the email-updates checkbox only while withholding, and sets 
                 htmlFor="Phone"
               >
                 Phone Number:
-                 
+
                 <input
                   autoComplete="tel"
                   id="Phone"
@@ -4568,7 +4568,7 @@ exports[`Home shows the email-updates checkbox only while withholding, and sets 
                   onChange={[Function]}
                   type="checkbox"
                 />
-                 
+
                 I'm willing to testify at a hearing, which can be done by phone.
               </label>
               <label
@@ -4581,7 +4581,7 @@ exports[`Home shows the email-updates checkbox only while withholding, and sets 
                   onChange={[Function]}
                   type="checkbox"
                 />
-                 
+
                 Allow the photos/videos, description, category, and location to be publicly displayed
               </label>
               <label
@@ -4594,7 +4594,7 @@ exports[`Home shows the email-updates checkbox only while withholding, and sets 
                   onChange={[Function]}
                   type="checkbox"
                 />
-                 
+
                 Withhold my contact info from NYPD service requests
                 <br />
                 <small>
@@ -4618,7 +4618,7 @@ exports[`Home shows the email-updates checkbox only while withholding, and sets 
                     onChange={[Function]}
                     type="checkbox"
                   />
-                   
+
                   But still email me status updates about my NYPD service requests
                   <br />
                   <small>

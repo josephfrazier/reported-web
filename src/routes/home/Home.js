@@ -3476,7 +3476,7 @@ class Home extends React.Component {
                               name="isLocationLocked"
                               onChange={this.handleInputChange}
                             />{' '}
-                            Lock this address
+                            Reuse this address
                           </label>
 
                           <Modal

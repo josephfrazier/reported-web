@@ -39,4 +39,52 @@ describe('PreviousSubmissionsList', () => {
     const tree = renderer.create(wrap(<PreviousSubmissionsList {...props} />));
     expect(tree.root.findAllByType(CSVLink)).toHaveLength(1);
   });
+
+  test('opens the submission a toast click names, and opens it again on a new click', () => {
+    const submissions = [
+      {
+        objectId: 'first-submission',
+        status: 0,
+        timeofreport: new Date(Date.now()).toISOString(),
+        tasks: [{ action: 'submit 311 complaint', case_id: '311-12345678' }],
+      },
+      {
+        objectId: 'prior-submission',
+        status: 0,
+        timeofreport: new Date(Date.now()).toISOString(),
+        tasks: [{ action: 'submit 311 complaint', case_id: '311-87654321' }],
+      },
+    ];
+    const listWithFocus = focus =>
+      wrap(
+        <PreviousSubmissionsList
+          {...props}
+          submissions={submissions}
+          focus={focus}
+        />,
+      );
+
+    const tree = renderer.create(listWithFocus(undefined));
+
+    renderer.act(() => {
+      tree.update(listWithFocus({ objectId: 'prior-submission', request: 1 }));
+    });
+
+    let details = tree.root.findAllByType('details');
+    expect(details[0].props.open).toBe(false);
+    expect(details[1].props.open).toBe(true);
+
+    // The reader closes it; a second click on the same prior opens it again.
+    renderer.act(() => {
+      details[1].props.onToggle({ target: { open: false } });
+    });
+    details = tree.root.findAllByType('details');
+    expect(details[1].props.open).toBe(false);
+
+    renderer.act(() => {
+      tree.update(listWithFocus({ objectId: 'prior-submission', request: 2 }));
+    });
+    details = tree.root.findAllByType('details');
+    expect(details[1].props.open).toBe(true);
+  });
 });

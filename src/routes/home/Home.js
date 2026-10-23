@@ -790,13 +790,37 @@ class Home extends React.Component {
   // id means a second pause refreshes the toast that is already up instead of
   // adding another, the way the geosearch warning does.
   debouncedWarnAboutPriorSubmission = debounce(
-    ({ priorCount, plate, selectedDateDay }) => {
+    ({ priorCount, plate, selectedDateDay, priorSubmissionId }) => {
       const pluralReport = priorCount === 1 ? 'report' : 'reports';
+      const reportCount = `${priorCount} ${pluralReport}`;
 
       Home.notifyWarning(
         <p>
-          You have already submitted {priorCount} {pluralReport} for {plate} on{' '}
-          {selectedDateDay}, are you sure you want to submit another?
+          You have already submitted{' '}
+          {priorSubmissionId ? (
+            <button
+              type="button"
+              title="Show the previous submission"
+              style={{
+                // Read as a link rather than a button: this is a shortcut to
+                // the prior report, not a form control.
+                background: 'none',
+                border: 'none',
+                color: 'inherit',
+                cursor: 'pointer',
+                font: 'inherit',
+                padding: 0,
+                textDecoration: 'underline',
+              }}
+              onClick={() => this.showPriorSubmission(priorSubmissionId)}
+            >
+              {reportCount}
+            </button>
+          ) : (
+            reportCount
+          )}{' '}
+          for {plate} on {selectedDateDay}, are you sure you want to submit
+          another?
         </p>,
         { toastId: 'prior-submission-warning' },
       );
@@ -865,6 +889,10 @@ class Home extends React.Component {
       vehicleInfoComponent: null,
       violationSummaryComponent: null,
       submissions: [],
+      // The previous submission that a toast click asked to show, if any.
+      // `request` counts the clicks: a second click on the same submission is
+      // a new request to scroll to it.
+      priorSubmissionFocus: null,
       addressProvenance: '',
 
       plateDataByAttachmentName: {},
@@ -1405,6 +1433,8 @@ class Home extends React.Component {
         priorCount,
         plate,
         selectedDateDay,
+        // The list is newest first, so this is the latest prior report.
+        priorSubmissionId: priorSubmissions[0].objectId,
       });
     }
 
@@ -2031,6 +2061,27 @@ class Home extends React.Component {
         });
         Home.handleAxiosError(error);
       });
+  };
+
+  // The duplicate-submission toast points here. The prior report is already
+  // in the list that the warning came from, so this opens the section and
+  // marks that report as the one to open and scroll to.
+  showPriorSubmission = objectId => {
+    toast.dismiss('prior-submission-warning');
+    this.setState(
+      state => ({
+        isPreviousSubmissionsOpen: true,
+        priorSubmissionFocus: {
+          objectId,
+          request: (state.priorSubmissionFocus?.request || 0) + 1,
+        },
+      }),
+      () => {
+        if (!this.state.hasLoadedPreviousSubmissions) {
+          this.loadPreviousSubmissions();
+        }
+      },
+    );
   };
 
   openAuthModal = (tab = 'login') => {
@@ -3631,6 +3682,7 @@ class Home extends React.Component {
 
                 {this.isLoggedIn() && !isSettingsPanelOpen && (
                   <details
+                    open={this.state.isPreviousSubmissionsOpen}
                     onToggle={evt => {
                       const isPreviousSubmissionsOpen = evt.currentTarget.open;
                       const shouldLoadPreviousSubmissions =
@@ -3663,6 +3715,7 @@ class Home extends React.Component {
                         hasLoadedPreviousSubmissions={
                           this.state.hasLoadedPreviousSubmissions
                         }
+                        focus={this.state.priorSubmissionFocus}
                       />
                     )}
                   </details>

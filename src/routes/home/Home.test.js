@@ -24,6 +24,7 @@ import Modal from 'react-modal';
 import Dropzone from '@josephfrazier/react-dropzone';
 import { MAP } from 'react-google-maps/lib/constants';
 import App from '../../components/App.js';
+import SubmissionDetails from '../../components/SubmissionDetails.js';
 import Home, { NycAddressAutocomplete } from './Home.js';
 import boroughBoundariesFeatureCollection from '../../boroughBoundaries.js';
 import {
@@ -3989,6 +3990,53 @@ describe('license state', () => {
 
     cleanup();
     warn.mockRestore();
+  });
+
+  test('shows the prior submission when its count in the warning is clicked', async () => {
+    const warn = jest.spyOn(toast, 'warn').mockImplementation(() => {});
+    const dismiss = jest.spyOn(toast, 'dismiss').mockImplementation(() => {});
+    const day = '2016-11-17T20:00:00';
+    const { homeRef, tree, plateInput, cleanup } = renderForm({
+      plate: '',
+      CreateDate: day,
+      submissions: [
+        { objectId: 'latest-prior', license: 'ABC123', timeofreport: day },
+      ],
+    });
+
+    renderer.act(() => {
+      plateInput.props.onChange({
+        target: createFakeInput({ value: 'ABC123', caret: 6 }),
+      });
+    });
+
+    await renderer.act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    });
+
+    const content = warn.mock.calls[0][0];
+    const countButton = content.props.children.find(
+      child => child && child.type === 'button',
+    );
+    expect(countButton).toBeDefined();
+
+    renderer.act(() => {
+      countButton.props.onClick();
+    });
+
+    expect(dismiss).toHaveBeenCalledWith('prior-submission-warning');
+    expect(homeRef.current.state.isPreviousSubmissionsOpen).toBe(true);
+    expect(homeRef.current.state.priorSubmissionFocus).toEqual({
+      objectId: 'latest-prior',
+      request: 1,
+    });
+
+    const [details] = tree.root.findAllByType(SubmissionDetails);
+    expect(details.findByType('details').props.open).toBe(true);
+
+    cleanup();
+    warn.mockRestore();
+    dismiss.mockRestore();
   });
 
   // The state is held and sent as the abbreviation, so it takes whatever case

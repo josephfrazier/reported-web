@@ -187,6 +187,7 @@ exports[`Home hides form fields when logged in with no photos uploaded 1`] = `
           <br />
           <details
             onToggle={[Function]}
+            open={false}
           >
             <summary>
               Previous Submissions (
@@ -2405,6 +2406,7 @@ exports[`Home renders submission form and Previous Submissions when logged in wi
           <br />
           <details
             onToggle={[Function]}
+            open={false}
           >
             <summary>
               Previous Submissions (
@@ -3278,6 +3280,7 @@ exports[`Home renders with allPlateResults entry missing plate and photos 1`] = 
           <br />
           <details
             onToggle={[Function]}
+            open={false}
           >
             <summary>
               Previous Submissions (
@@ -4151,6 +4154,7 @@ exports[`Home renders with undefined allPlateResults and photos 1`] = `
           <br />
           <details
             onToggle={[Function]}
+            open={false}
           >
             <summary>
               Previous Submissions (

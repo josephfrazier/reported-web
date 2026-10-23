@@ -20,6 +20,13 @@ jobs:
       uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
       with:
         node-version: ${{ matrix.node-version }}
+    # This job calls LookupAPlate through `wreq-js`, which uses the system
+    # store. The runner image can predate the Ubuntu CA update, so install the
+    # patched package before the test.
+    - name: Install the patched CA certificates
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --only-upgrade ca-certificates
     - run: corepack enable
     - run: corepack prepare yarn@1.22.22 --activate
     - run: yarn

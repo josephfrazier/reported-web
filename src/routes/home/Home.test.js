@@ -6626,3 +6626,280 @@ describe('license state', () => {
     cleanup();
   });
 });
+
+// A phone's GPS can be late: the first photos can carry the fix from
+// wherever the phone was last used. The user sets the place once by hand,
+// and the box by the "Where" field keeps it on every report until they
+// uncheck it.
+describe('a locked address', () => {
+  const chosenPlace = {
+    latitude: 40.9,
+    longitude: -73.9,
+    formatted_address: '1 Main St, Manhattan',
+    addressProvenance: '(manually set)',
+  };
+
+  const expectChosenPlace = homeRef => {
+    expect(homeRef.current.state.latitude).toBe(chosenPlace.latitude);
+    expect(homeRef.current.state.longitude).toBe(chosenPlace.longitude);
+    expect(homeRef.current.state.formatted_address).toBe(
+      chosenPlace.formatted_address,
+    );
+  };
+
+  test('keeps the place the user picked when a photo reports another one', () => {
+    const homeRef = React.createRef();
+    const tree = renderHome({ homeRef });
+
+    renderer.act(() => {
+      homeRef.current.setState({ ...chosenPlace, isLocationLocked: true });
+    });
+
+    renderer.act(() => {
+      homeRef.current.applyPhotoPlace([
+        { latitude: 40.73, longitude: -74.01, createDateMs: 3000 },
+      ]);
+    });
+
+    expectChosenPlace(homeRef);
+
+    tree.unmount();
+  });
+
+  test('keeps the place the user picked when a late GPS fix arrives', async () => {
+    const homeRef = React.createRef();
+    const tree = renderHome({ homeRef });
+
+    renderer.act(() => {
+      homeRef.current.setState({ ...chosenPlace, isLocationLocked: true });
+    });
+
+    // The geolocation stub answers with the default coordinates, which an
+    // unlocked form would take.
+    await renderer.act(async () => {
+      await homeRef.current.geolocateAndSetCoords();
+    });
+
+    expectChosenPlace(homeRef);
+
+    tree.unmount();
+  });
+
+  test('stays where the user put it across a submission', async () => {
+    jest.useFakeTimers();
+
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+    };
+
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+    const originalQuerySelector = document.querySelector;
+    document.querySelector = jest.fn(() => ({ scrollTo: jest.fn() }));
+
+    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+    const axiosPost = jest.spyOn(axios, 'post').mockImplementation(url => {
+      if (url === '/api/geosearch') {
+        return Promise.resolve({ data: { features: [] } });
+      }
+      return Promise.resolve({
+        data: {
+          submission: {
+            objectId: 'objectId123',
+            timeofreport: '2020-01-01T00:00:00.000Z',
+            timeofreported: '2020-01-01T00:00:00.000Z',
+          },
+        },
+      });
+    });
+    const toastSuccess = jest
+      .spyOn(toast, 'success')
+      .mockImplementation(() => null);
+    const toastWarn = jest.spyOn(toast, 'warn').mockImplementation(() => null);
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ initialState, homeRef });
+    });
+
+    // Let the mount-time geolocation resolve before the user picks a place.
+    await renderer.act(async () => {});
+
+    renderer.act(() => {
+      homeRef.current.setState({
+        ...chosenPlace,
+        isLocationLocked: true,
+        plate: 'ABC123',
+        reportDescription: 'Cars are double parked',
+        attachmentData: [
+          new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }),
+        ],
+        isAlprEnabled: false,
+        isReverseGeocodingEnabled: false,
+      });
+    });
+
+    const form = tree.root
+      .findAllByType('form')
+      .find(formEl => typeof formEl.props.onSubmit === 'function');
+    await renderer.act(async () => {
+      await form.props.onSubmit({ preventDefault() {} });
+    });
+
+    expect(axiosPost.mock.calls.some(([url]) => url === '/submit')).toBe(true);
+    // The reset that follows a submission puts the form back on the default
+    // coordinates. The lock keeps the address, ready for the next report.
+    expectChosenPlace(homeRef);
+
+    jest.useRealTimers();
+    global.URL.createObjectURL = originalCreateObjectURL;
+    document.querySelector = originalQuerySelector;
+    axiosGet.mockRestore();
+    axiosPost.mockRestore();
+    toastSuccess.mockRestore();
+    toastWarn.mockRestore();
+    consoleError.mockRestore();
+    tree.unmount();
+  });
+
+  test('moves again once its box is unchecked', async () => {
+    jest.useFakeTimers();
+
+    const axiosPost = jest.spyOn(axios, 'post').mockImplementation(url => {
+      if (url === '/api/geosearch') {
+        return Promise.resolve({
+          data: { features: [{ properties: { borough: 'Manhattan' } }] },
+        });
+      }
+      return Promise.resolve({ data: {} });
+    });
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ homeRef });
+    });
+    renderer.act(() => {
+      homeRef.current.setState({ ...chosenPlace, isLocationLocked: true });
+    });
+
+    // Locked, the map's center is ignored.
+    renderer.act(() => {
+      homeRef.current.setCoords({
+        latitude: 40.8,
+        longitude: -73.8,
+        addressProvenance: '(manually set)',
+      });
+    });
+    expectChosenPlace(homeRef);
+
+    // The user unchecks the box to move the address again.
+    renderer.act(() => {
+      homeRef.current.setState({ isLocationLocked: false });
+    });
+    renderer.act(() => {
+      homeRef.current.setCoords({
+        latitude: 40.8,
+        longitude: -73.8,
+        addressProvenance: '(manually set)',
+      });
+    });
+    await renderer.act(async () => {
+      jest.advanceTimersByTime(500);
+    });
+
+    expect(homeRef.current.state.latitude).toBe(40.8);
+    expect(homeRef.current.state.longitude).toBe(-73.8);
+    expect(homeRef.current.state.formatted_address).toBe('Manhattan');
+
+    jest.useRealTimers();
+    axiosPost.mockRestore();
+    consoleError.mockRestore();
+    tree.unmount();
+  });
+
+  test('is restored with the address it was saved with', async () => {
+    const homeRef = React.createRef();
+    const tree = renderHome({
+      initialState: {
+        email: 'test@example.com',
+        loginSuccessful: true,
+        isLocationLocked: true,
+        ...chosenPlace,
+      },
+      homeRef,
+    });
+
+    // The mount work would otherwise put the form back on the default
+    // coordinates and ask for a fix.
+    await renderer.act(async () => {});
+
+    expectChosenPlace(homeRef);
+
+    tree.unmount();
+  });
+
+  test('has a box by the Where field that shuts the map while it is on', () => {
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+    };
+
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ initialState, homeRef });
+    });
+    renderer.act(() => {
+      homeRef.current.setState({
+        attachmentData: [
+          new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }),
+        ],
+        isAlprEnabled: false,
+        isReverseGeocodingEnabled: false,
+      });
+    });
+
+    const whereButton = () => tree.root.findByProps({ name: 'where' });
+    const lockBox = () => tree.root.findByProps({ name: 'isLocationLocked' });
+
+    expect(lockBox().props.checked).toBe(false);
+    expect(whereButton().props.disabled).toBe(false);
+
+    renderer.act(() => {
+      lockBox().props.onChange({
+        target: { name: 'isLocationLocked', type: 'checkbox', checked: true },
+      });
+    });
+
+    expect(homeRef.current.state.isLocationLocked).toBe(true);
+    expect(lockBox().props.checked).toBe(true);
+    // The map is where an address changes, so it stays shut while the address
+    // is locked. The box is the way back.
+    expect(whereButton().props.disabled).toBe(true);
+
+    renderer.act(() => {
+      lockBox().props.onChange({
+        target: { name: 'isLocationLocked', type: 'checkbox', checked: false },
+      });
+    });
+
+    expect(homeRef.current.state.isLocationLocked).toBe(false);
+    expect(whereButton().props.disabled).toBe(false);
+
+    global.URL.createObjectURL = originalCreateObjectURL;
+    tree.unmount();
+  });
+});

@@ -11,18 +11,26 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           repository: ${{ github.event.pull_request.head.repo.full_name }}
 
       - name: Use Node.js 24.22.1
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: 24.22.1
 
-      - run: curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.22.19
-      - run: echo "$HOME/.yarn/bin" >> "$GITHUB_PATH"
+      # The runner image can predate the Ubuntu CA update. Install the patched
+      # package before any download, so the system store no longer trusts the
+      # compromised roots.
+      - name: Install the patched CA certificates
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --only-upgrade ca-certificates
+
+      - run: corepack enable
+      - run: corepack prepare yarn@1.22.22 --activate
       - run: yarn
 
       # The mongod 4.4 binary that mongodb-memory-server downloads for the
@@ -34,6 +42,8 @@ jobs:
       - name: Install libssl1.1
         run: |
           wget -q -O "$RUNNER_TEMP/libssl1.1.deb" https://archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2_amd64.deb
+          # SHA-256 from the Ubuntu focal Packages index.
+          echo "09ee28588a1fb5613ddc6c26a992d5a76931b3cf22c022930da413a5e580599e  $RUNNER_TEMP/libssl1.1.deb" | sha256sum -c -
           sudo dpkg -i "$RUNNER_TEMP/libssl1.1.deb"
 
       - name: Run yarn fix

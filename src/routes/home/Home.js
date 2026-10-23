@@ -1131,6 +1131,8 @@ class Home extends React.Component {
       isReverseGeocodingEnabled: true,
       isLoadPreviousSubmissionsEnabled: false,
       isMapOpen: false,
+      // While this is true, nothing moves the place: see `setCoords`.
+      isLocationLocked: false,
       isPreviousSubmissionsOpen: false,
       hasSeenWithholdNotice: false,
       loginSuccessful: false,
@@ -1404,8 +1406,13 @@ class Home extends React.Component {
   // Request the browser's geolocation permission and update coordinates.
   // Deferred until after login so the permission prompt appears in a trusted
   // context rather than on the first page visit.
-  geolocateAndSetCoords = ({ warnOnGeosearchFailure = true } = {}) =>
-    geolocate()
+  geolocateAndSetCoords = ({ warnOnGeosearchFailure = true } = {}) => {
+    // A locked place does not take a fix, so there is nothing to ask for.
+    if (this.state.isLocationLocked) {
+      return Promise.resolve();
+    }
+
+    return geolocate()
       .then(({ coords: { latitude, longitude }, ipProvenance = 'device' }) => {
         // if there's no attachments or a location couldn't be extracted, just use here
         if (
@@ -1429,11 +1436,20 @@ class Home extends React.Component {
         // unhandled rejection; the form defaults to NYC coordinates anyway.
         console.error(err);
       });
+  };
 
   setCoords = (
     { latitude, longitude, addressProvenance } = { addressProvenance: '' },
     { warnOnGeosearchFailure = true } = {},
   ) => {
+    // A locked place stays where the user put it. The photos, the GPS and the
+    // reset after a submission all ask `setCoords` to move it, so they all
+    // stop here. Unchecking the box beside the address is what lets it move
+    // again.
+    if (this.state.isLocationLocked) {
+      return;
+    }
+
     if (!latitude || !longitude) {
       console.error('latitude and/or longitude is missing');
       return;
@@ -5244,6 +5260,7 @@ class Home extends React.Component {
                             <button
                               type="button"
                               name="where"
+                              disabled={this.state.isLocationLocked}
                               onClick={() => this.setState({ isMapOpen: true })}
                               style={{
                                 width: '100%',
@@ -5256,6 +5273,17 @@ class Home extends React.Component {
                                     .join(', ')
                                 : 'Click to choose address on map'}
                             </button>
+                          </label>
+
+                          <label htmlFor="isLocationLocked">
+                            <input
+                              id="isLocationLocked"
+                              type="checkbox"
+                              checked={this.state.isLocationLocked}
+                              name="isLocationLocked"
+                              onChange={this.handleInputChange}
+                            />{' '}
+                            Reuse this address
                           </label>
 
                           <Modal

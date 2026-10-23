@@ -2339,6 +2339,7 @@ exports[`Home renders submission form and Previous Submissions when logged in wi
                 Where: 
                 <br />
                 <button
+                  disabled={false}
                   name="where"
                   onClick={[Function]}
                   style={
@@ -2350,6 +2351,19 @@ exports[`Home renders submission form and Previous Submissions when logged in wi
                 >
                   Click to choose address on map
                 </button>
+              </label>
+              <label
+                htmlFor="isLocationLocked"
+              >
+                <input
+                  checked={false}
+                  id="isLocationLocked"
+                  name="isLocationLocked"
+                  onChange={[Function]}
+                  type="checkbox"
+                />
+                 
+                Reuse this address
               </label>
               <label
                 htmlFor="CreateDate"
@@ -3186,6 +3200,7 @@ exports[`Home renders with allPlateResults entry missing plate and photos 1`] = 
                 Where: 
                 <br />
                 <button
+                  disabled={false}
                   name="where"
                   onClick={[Function]}
                   style={
@@ -3197,6 +3212,19 @@ exports[`Home renders with allPlateResults entry missing plate and photos 1`] = 
                 >
                   Click to choose address on map
                 </button>
+              </label>
+              <label
+                htmlFor="isLocationLocked"
+              >
+                <input
+                  checked={false}
+                  id="isLocationLocked"
+                  name="isLocationLocked"
+                  onChange={[Function]}
+                  type="checkbox"
+                />
+                 
+                Reuse this address
               </label>
               <label
                 htmlFor="CreateDate"
@@ -4033,6 +4061,7 @@ exports[`Home renders with undefined allPlateResults and photos 1`] = `
                 Where: 
                 <br />
                 <button
+                  disabled={false}
                   name="where"
                   onClick={[Function]}
                   style={
@@ -4044,6 +4073,19 @@ exports[`Home renders with undefined allPlateResults and photos 1`] = `
                 >
                   Click to choose address on map
                 </button>
+              </label>
+              <label
+                htmlFor="isLocationLocked"
+              >
+                <input
+                  checked={false}
+                  id="isLocationLocked"
+                  name="isLocationLocked"
+                  onChange={[Function]}
+                  type="checkbox"
+                />
+                 
+                Reuse this address
               </label>
               <label
                 htmlFor="CreateDate"

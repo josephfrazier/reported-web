@@ -14,20 +14,30 @@
  * every token is throttled, the one free soonest goes first, because the read
  * still has to try one of them.
  *
+ * A 403 response means the token has no credits left or is wrong. Neither
+ * gets better while the process runs, so such a token is marked used up and
+ * left out of the order entirely. When every token is used up, a read fails
+ * without calling the service. A restart forgets the history, and every token
+ * gets one more try then.
+ *
  * The history is a few Maps in this process's memory. A second process keeps
  * its own, so two dynos can still choose the same token at the same moment.
  */
 
 const lastUsedAt = new Map();
 const throttledUntil = new Map();
+const usedUp = new Set();
 
 // How long to leave a throttled token alone when the response gives no usable
 // wait. Plate Recognizer limits calls by the second, so one second covers the
 // wait the service documents.
 const DEFAULT_THROTTLE_MS = 1000;
 
+// The tokens a read may try, in the order it should try them. A used-up
+// token is not in the result, so no read asks the service about it again.
 export function orderTokens(tokens, now = Date.now()) {
   return tokens
+    .filter(token => !usedUp.has(token))
     .map((token, index) => ({
       token,
       index,
@@ -69,6 +79,16 @@ export function markTokenThrottled(token, waitMs, now = Date.now()) {
   throttledUntil.set(token, now + waitMs);
 }
 
+// A token that answered 403 has no credits left, or is wrong. Neither gets
+// better while this process runs, so the token leaves the rotation for good.
+export function markTokenUsedUp(token) {
+  usedUp.add(token);
+}
+
+export function isTokenUsedUp(token) {
+  return usedUp.has(token);
+}
+
 // The wait a 429 asks for, in milliseconds. A Retry-After header wins, since
 // it is the standard place to say it; the body's "Expected available in N
 // seconds." is what Plate Recognizer documents. A response with neither
@@ -107,4 +127,5 @@ export async function throttleMsFromResponse(response, now = Date.now()) {
 export function resetTokenPool() {
   lastUsedAt.clear();
   throttledUntil.clear();
+  usedUp.clear();
 }

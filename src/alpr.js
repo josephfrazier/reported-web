@@ -5,9 +5,11 @@ import {
   writeCachedReading,
 } from './alprCache.js';
 import {
+  isTokenUsedUp,
   markTokenAccepted,
   markTokenThrottled,
   markTokenUsed,
+  markTokenUsedUp,
   orderTokens,
   throttleMsFromResponse,
 } from './alprTokenPool.js';
@@ -166,16 +168,31 @@ function platerecognizer({ attachmentBufferRotated, token }) {
   }).finally(() => clearTimeout(timer));
 }
 
+// The failure a read gets when every configured token is used up, so there is
+// nothing left to call. The status matches what Plate Recognizer sends for a
+// token with no credits, so the browser sees the same kind of failure.
+function allTokensUsedUpError() {
+  const error = new Error(
+    'All Plate Recognizer tokens are used up; restart the server to try them again',
+  );
+  error.status = 403;
+  return error;
+}
+
 // Ask with each token in turn until one is accepted, in the order alprTokenPool
-// gives: the token used longest ago first, and throttled tokens behind the
-// rest. Every refusal behind the last has its body consumed so the socket goes
-// back to the pool; the last response is returned with its body intact for the
-// caller to read the error out of.
+// gives: the token used longest ago first, throttled tokens behind the rest,
+// and used-up tokens left out. Every refusal behind the last has its body
+// consumed so the socket goes back to the pool; the last response is returned
+// with its body intact for the caller to read the error out of.
 async function platerecognizerWithTokens({ attachmentBufferRotated, tokens }) {
   const orderedTokens = orderTokens(tokens);
   let response;
 
   for (const [index, token] of orderedTokens.entries()) {
+    // A concurrent read may have used this token up since the order was made.
+    // eslint-disable-next-line no-continue
+    if (isTokenUsedUp(token)) continue;
+
     markTokenUsed(token);
 
     // A token is tried only if the one before it was refused, so these waits
@@ -199,6 +216,13 @@ async function platerecognizerWithTokens({ attachmentBufferRotated, tokens }) {
       );
     }
 
+    if (response.status === 403) {
+      markTokenUsedUp(token);
+      console.info(
+        `/platerecognizer plate-reader token ${index + 1} of ${orderedTokens.length} is used up, not trying it again`,
+      );
+    }
+
     if (index < orderedTokens.length - 1) {
       // eslint-disable-next-line no-await-in-loop
       await response.body?.cancel().catch(() => {});
@@ -207,6 +231,10 @@ async function platerecognizerWithTokens({ attachmentBufferRotated, tokens }) {
         { status: response.status },
       );
     }
+  }
+
+  if (!response) {
+    throw allTokensUsedUpError();
   }
 
   return response;
@@ -232,6 +260,13 @@ function makeLapRecorder(timings) {
 // Plate Recognizer wants it, read it, cut the crops out, and store the reading
 // under the key the caller looked up with.
 function readFromPlateRecognizer({ attachmentBuffer, tokens, cacheKey, lap }) {
+  // Fail before sharp touches the photo when there is nothing left to call.
+  // The order is taken again at the call itself, so a token used up while the
+  // photo is being resized is caught there.
+  if (orderTokens(tokens).length === 0) {
+    return Promise.reject(allTokensUsedUpError());
+  }
+
   return orientImageBuffer({ attachmentBuffer })
     .then(buffer => {
       lap('orient');

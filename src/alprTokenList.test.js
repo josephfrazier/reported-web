@@ -139,6 +139,58 @@ describe('PLATERECOGNIZER_TOKEN_LIST', () => {
     });
   });
 
+  test('does not try a used-up token on the next read', async () => {
+    const usedUp = answer({
+      ok: false,
+      status: 403,
+      body: { detail: 'You have reached the maximum number of requests.' },
+    });
+
+    await withAnswers([usedUp, answer(), answer()], async fetchSpy => {
+      const read = () =>
+        readLicenseViaALPR({
+          attachmentBuffer: photo,
+          PLATERECOGNIZER_TOKEN_LIST: 'one,two',
+        });
+
+      await read();
+      await read();
+
+      // "one" is the least recently used token, but a 403 takes it out of the
+      // rotation, so the second read goes straight to "two".
+      expect(authorizationHeaders(fetchSpy)).toEqual([
+        'Token one',
+        'Token two',
+        'Token two',
+      ]);
+    });
+  });
+
+  test('fails without calling the service when every token is used up', async () => {
+    const usedUp = answer({
+      ok: false,
+      status: 403,
+      body: { detail: 'You have reached the maximum number of requests.' },
+    });
+
+    await withAnswers([usedUp], async fetchSpy => {
+      const read = () =>
+        readLicenseViaALPR({
+          attachmentBuffer: photo,
+          PLATERECOGNIZER_TOKEN_LIST: 'one',
+        });
+
+      await expect(read()).rejects.toThrow('403');
+
+      await expect(read()).rejects.toMatchObject({
+        status: 403,
+        message: expect.stringContaining('used up'),
+      });
+
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+    });
+  });
+
   test('ignores whitespace around an entry and empty entries', async () => {
     await withAnswers(
       [answer({ ok: false, status: 401 }), answer()],

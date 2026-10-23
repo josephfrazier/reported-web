@@ -1152,8 +1152,14 @@ describe('Home', () => {
   };
 
   const dropPhoto = async (homeRef, settle, name) => {
+    const photo = {
+      file: homeRef.current.state.attachmentData.find(
+        file => file.name === name,
+      ),
+      name,
+    };
     await renderer.act(async () => {
-      homeRef.current.removeAttachment(name);
+      homeRef.current.deletePhoto(photo);
     });
     await settle();
   };

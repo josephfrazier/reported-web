@@ -34,6 +34,8 @@ jobs:
       - name: Install libssl1.1
         run: |
           wget -q -O "$RUNNER_TEMP/libssl1.1.deb" https://archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2_amd64.deb
+          # SHA-256 from the Ubuntu focal Packages index.
+          echo "09ee28588a1fb5613ddc6c26a992d5a76931b3cf22c022930da413a5e580599e  $RUNNER_TEMP/libssl1.1.deb" | sha256sum -c -
           sudo dpkg -i "$RUNNER_TEMP/libssl1.1.deb"
 
       - name: Run yarn fix

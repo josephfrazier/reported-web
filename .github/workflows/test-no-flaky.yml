@@ -25,6 +25,8 @@ jobs:
     - name: Install libssl1.1
       run: |
         wget -q https://archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2_amd64.deb
+        # SHA-256 from the Ubuntu focal Packages index.
+        echo "09ee28588a1fb5613ddc6c26a992d5a76931b3cf22c022930da413a5e580599e  libssl1.1_1.1.1f-1ubuntu2_amd64.deb" | sha256sum -c -
         sudo dpkg -i libssl1.1_1.1.1f-1ubuntu2_amd64.deb
     - run: curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.22.19
     - run: export PATH=$HOME/.yarn/bin:$PATH

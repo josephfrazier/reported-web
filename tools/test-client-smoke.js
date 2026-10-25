@@ -88,9 +88,12 @@ const run = async () => {
     ]);
 
     // ── Submissions map: logged in ──
+    // Form state (no credentials) lives in the state cookie; the credential
+    // itself is the HttpOnly session cookie the server sets. SSR only checks
+    // that the session cookie is present, and /submissions is intercepted
+    // below, so any token value works here.
     const homeState = {
       email: 'test@example.com',
-      password: 'password123',
       FirstName: 'Test',
       LastName: 'User',
       Phone: '555-555-5555',
@@ -106,6 +109,13 @@ const run = async () => {
         value: encodeURIComponent(JSON.stringify(homeState)),
         url: BASE_URL,
         sameSite: 'Lax',
+      },
+      {
+        name: 'reportedWebSession',
+        value: 'r:smoke-test-token',
+        url: BASE_URL,
+        sameSite: 'Lax',
+        httpOnly: true,
       },
     ]);
 
@@ -190,14 +200,12 @@ const run = async () => {
         detail: mapErrors.join('\n'),
       },
       {
-        name: 'submissions map: POSTs cookie credentials to /submissions',
+        name: 'submissions map: POSTs without credentials (session cookie authenticates)',
         ok:
           submissionsPostCount === 1 &&
-          submissionsPostBody?.email === homeState.email &&
-          submissionsPostBody?.password === homeState.password &&
-          submissionsPostBody?.FirstName === homeState.FirstName &&
-          submissionsPostBody?.LastName === homeState.LastName &&
-          submissionsPostBody?.Phone === homeState.Phone,
+          submissionsPostBody !== null &&
+          !('email' in submissionsPostBody) &&
+          !('password' in submissionsPostBody),
         detail: JSON.stringify({ submissionsPostCount, submissionsPostBody }),
       },
       {

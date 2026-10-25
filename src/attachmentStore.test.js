@@ -1,14 +1,22 @@
+import crypto from 'crypto';
 import fs from 'fs';
 import {
   ATTACHMENT_TTL_MS,
   attachmentFilePath,
+  attachmentId,
   readAttachment,
   writeAttachment,
 } from './attachmentStore.js';
 
 describe('attachmentStore', () => {
-  const id = 'a'.repeat(64);
-  const otherId = 'b'.repeat(64);
+  // The store keeps one file per id in the shared temp directory, and jest
+  // runs test files in parallel, so an id that two files both use is one
+  // file: the other file's cleanup deletes this file's attachment mid-test.
+  // Deriving the ids from this file's name keeps them to this file.
+  const idFor = name =>
+    crypto.createHash('sha256').update(`attachmentStore:${name}`).digest('hex');
+  const id = idFor('written');
+  const otherId = idFor('never written');
 
   afterEach(async () => {
     await fs.promises
@@ -38,6 +46,16 @@ describe('attachmentStore', () => {
     expect(() => attachmentFilePath(id.slice(0, -1))).toThrow(
       'Invalid attachment id',
     );
+  });
+
+  test('names attachments by the SHA-256 hash of their bytes', () => {
+    const buffer = Buffer.from('photo bytes');
+
+    expect(attachmentId(buffer)).toBe(
+      crypto.createHash('sha256').update(buffer).digest('hex'),
+    );
+    // ...and the id is in the form the file-path validation accepts.
+    expect(() => attachmentFilePath(attachmentId(buffer))).not.toThrow();
   });
 
   test('deletes attachments once the TTL has elapsed', async () => {

@@ -9,16 +9,16 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [24.12.0]
+        node-version: [24.22.1]
 
     steps:
-    - uses: actions/checkout@v7
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
     - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v7
+      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
       with:
         node-version: ${{ matrix.node-version }}
-    - run: curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.22.19
-    - run: export PATH=$HOME/.yarn/bin:$PATH
+    - run: corepack enable
+    - run: corepack prepare yarn@1.22.22 --activate
     - run: yarn
     - run: yarn build --release
       env:
@@ -26,7 +26,23 @@ jobs:
     - run: yarn test:ssr-css
       env:
         CI: true
-    - run: npx playwright install --with-deps chromium
+    # The browser download varies from ~10s to minutes depending on the
+    # Playwright CDN, so cache it; on a hit Playwright skips it entirely. Key
+    # on the Playwright version, which pins the browser build revision — a
+    # yarn.lock hash would miss on every unrelated dependabot bump — plus
+    # runner.arch, so an x64 cache never lands on an arm64 runner.
+    - name: Get the Playwright version
+      id: playwright-version
+      run: echo "version=$(node -p 'require("playwright/package.json").version')" >> "$GITHUB_OUTPUT"
+    - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      with:
+        path: ~/.cache/ms-playwright
+        key: ${{ runner.os }}-${{ runner.arch }}-playwright-${{ steps.playwright-version.outputs.version }}-headless-shell
+    # --only-shell: the smoke test only launches headless Chromium, which runs
+    # the headless shell build. No --with-deps: ubuntu-latest already ships
+    # Chrome and Chromium, so the browser's libraries are on the image, and
+    # --with-deps runs apt-get on every job — the slow, uncacheable half.
+    - run: npx playwright install --only-shell chromium
     - run: yarn test:client-smoke
       env:
         CI: true

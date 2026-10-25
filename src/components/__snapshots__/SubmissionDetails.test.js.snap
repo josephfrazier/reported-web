@@ -7,9 +7,8 @@ exports[`SubmissionDetails renders TLC and NYPD SR numbers when submission has m
 >
   <summary>
     medallionNo
-     (
-    licenseState
-    ) 
+     (licenseState)
+     
     typeofcomplaint
      near
      
@@ -132,9 +131,8 @@ exports[`SubmissionDetails renders children correctly 1`] = `
 >
   <summary>
     medallionNo
-     (
-    licenseState
-    ) 
+     (licenseState)
+     
     typeofcomplaint
      near
      
@@ -244,9 +242,8 @@ exports[`SubmissionDetails renders children correctly when medallionNo is missin
 >
   <summary>
     license
-     (
-    licenseState
-    ) 
+     (licenseState)
+     
     typeofcomplaint
      near
      
@@ -356,9 +353,8 @@ exports[`SubmissionDetails renders delete button correctly 1`] = `
 >
   <summary>
     medallionNo
-     (
-    licenseState
-    ) 
+     (licenseState)
+     
     typeofcomplaint
      near
      

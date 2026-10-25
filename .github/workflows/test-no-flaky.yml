@@ -12,16 +12,55 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [24.12.0]
+        node-version: [24.22.1]
 
     steps:
-    - uses: actions/checkout@v7
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
     - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v7
+      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
       with:
         node-version: ${{ matrix.node-version }}
-    - run: curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.22.19
-    - run: export PATH=$HOME/.yarn/bin:$PATH
+    # The runner image can predate the Ubuntu CA update. Install the patched
+    # package before any download, so the system store no longer trusts the
+    # compromised roots.
+    - name: Install the patched CA certificates
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --only-upgrade ca-certificates
+    # The eMudhra intermediate CAs from the October 2026 compromise must not
+    # be in any trust store. curl checks the runner store (used by the
+    # download steps below); Node checks the runtime store. Both test hosts
+    # serve chains from the advisory. Remove this step when the advisory
+    # closes: https://emudhra.we-have-a-problem.com/
+    - name: Check CA trust store
+      run: |
+        for host in dv-g3b-emudhra.we-have-a-problem.com dv-g3b-aaa-emudhra.we-have-a-problem.com; do
+          if curl -fsS -o /dev/null --max-time 15 "https://$host/"; then
+            echo "::error::The runner CA store trusts the compromised eMudhra chain for $host"
+            exit 1
+          fi
+        done
+        node -e '
+          fetch("https://dv-g3b-emudhra.we-have-a-problem.com/", {
+            signal: AbortSignal.timeout(15000),
+          }).then(
+            () => {
+              console.error("Node trusts the compromised eMudhra chain");
+              process.exit(1);
+            },
+            () => process.exit(0),
+          );
+        '
+    # The mongod 4.4 binary that mongodb-memory-server downloads for the
+    # getSubmissions test needs libssl1.1, which the runner's Ubuntu doesn't ship.
+    - name: Install libssl1.1
+      run: |
+        wget -q https://archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2_amd64.deb
+        # SHA-256 from the Ubuntu focal Packages index.
+        echo "09ee28588a1fb5613ddc6c26a992d5a76931b3cf22c022930da413a5e580599e  libssl1.1_1.1.1f-1ubuntu2_amd64.deb" | sha256sum -c -
+        sudo dpkg -i libssl1.1_1.1.1f-1ubuntu2_amd64.deb
+    - run: corepack enable
+    - run: corepack prepare yarn@1.22.22 --activate
     - run: yarn
     - shell: bash
       env:

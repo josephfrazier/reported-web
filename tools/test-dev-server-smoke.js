@@ -3,10 +3,10 @@
  * pages.
  *
  * The previous `start.yml` check only grepped the startup log for
- * `Finished 'start' after` — browser-sync prints that line even when
- * its middleware stack is broken and every request 404s (see the
- * revert of #936/#942, where a forced `immutable@4` resolution made
- * browser-sync drop the user middleware). This script makes real
+ * `Finished 'start' after` — that line gets printed even when the
+ * middleware stack is broken and every request 404s (see the revert of
+ * #936/#942, where a forced `immutable@4` resolution made Browsersync
+ * drop the user middleware it was wrapping). This script makes real
  * HTTP requests instead.
  *
  * The probes are network-independent: they only assert status codes
@@ -52,7 +52,7 @@ function runChecks(checks) {
 
 const run = async () => {
   // Same command as the `start` npm script, minus `--inspect` and plus
-  // `--silent` so browser-sync doesn't try to open a browser.
+  // `--silent` so the server doesn't try to open a browser.
   const child = spawn(
     'node',
     [
@@ -110,6 +110,8 @@ const run = async () => {
     const home = await request(`${BASE_URL}/`);
     const favicon = await request(`${BASE_URL}/favicon.ico`);
     const submissionsMap = await request(`${BASE_URL}/submissions-map`);
+    const installHookMap = await request(`${BASE_URL}/installHook.js.map`);
+    const unknownPath = await request(`${BASE_URL}/this-page-does-not-exist`);
 
     // The SSR HTML references the client bundle compiled by
     // webpack-dev-middleware; request it to prove that middleware is
@@ -131,10 +133,10 @@ const run = async () => {
         detail: `status ${home.status}, body starts: ${home.body.slice(0, 80)}`,
       },
       {
-        // Served only by the user `express.static` middleware from
-        // `tools/start.js` — browser-sync's own static server serves
-        // from the vestigial `src/server.js` baseDir, so this 404s
-        // whenever the user middleware stack is dropped.
+        // Served only by the `express.static` middleware from
+        // `tools/start.js` (the SSR catch-all below it answers every
+        // other path), so this 404s whenever that middleware stack is
+        // dropped or not reached.
         name: 'GET /favicon.ico is served by the user middleware',
         ok: favicon.status === 200,
         detail: `status ${favicon.status}`,
@@ -145,6 +147,30 @@ const run = async () => {
           submissionsMap.status === 200 &&
           submissionsMap.body.includes('id="tab-paste"'),
         detail: `status ${submissionsMap.status}, body starts: ${submissionsMap.body.slice(0, 80)}`,
+      },
+      {
+        // Firefox fetches this after the React DevTools extension injects
+        // `installHook.js` into the page; a 404 here spams the console with
+        // "Source map error: request failed with status 404".
+        // https://github.com/facebook/react/issues/32339
+        name: 'GET /installHook.js.map serves a stub source map',
+        ok:
+          installHookMap.status === 200 &&
+          (() => {
+            try {
+              return JSON.parse(installHookMap.body).version === 3;
+            } catch {
+              return false;
+            }
+          })(),
+        detail: `status ${installHookMap.status}, body starts: ${installHookMap.body.slice(0, 80)}`,
+      },
+      {
+        // Unknown paths must still 404 via the SSR catch-all, rather than
+        // being served the stub above.
+        name: 'unknown paths still 404 via the SSR catch-all',
+        ok: unknownPath.status === 404,
+        detail: `status ${unknownPath.status}`,
       },
       {
         name: 'GET of the client bundle in /assets/ is served by webpack-dev-middleware',

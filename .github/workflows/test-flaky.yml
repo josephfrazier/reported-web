@@ -12,19 +12,25 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [24.12.0]
+        node-version: [24.22.1]
 
     steps:
-    - uses: actions/checkout@v7
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
     - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v7
+      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
       with:
         node-version: ${{ matrix.node-version }}
-    - run: curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.22.19
-    - run: export PATH=$HOME/.yarn/bin:$PATH
+    # This job calls LookupAPlate through `wreq-js`, which uses the system
+    # store. The runner image can predate the Ubuntu CA update, so install the
+    # patched package before the test.
+    - name: Install the patched CA certificates
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --only-upgrade ca-certificates
+    - run: corepack enable
+    - run: corepack prepare yarn@1.22.22 --activate
     - run: yarn
     - shell: bash
       env:
-        PLATERECOGNIZER_TOKEN: ${{ secrets.PLATERECOGNIZER_TOKEN }}
-        PLATERECOGNIZER_TOKEN_TWO: ${{ secrets.PLATERECOGNIZER_TOKEN_TWO }}
+        PLATERECOGNIZER_TOKEN_LIST: ${{ secrets.PLATERECOGNIZER_TOKEN_LIST }}
       run: yarn test:flaky

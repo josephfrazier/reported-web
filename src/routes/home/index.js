@@ -14,7 +14,16 @@ import Layout from '../../components/Layout/Layout.js';
 import boroughBoundariesFeatureCollection from '../../boroughBoundaries.js';
 import categoriesData from './categories.json';
 
-async function action({ commitHash, cookies }) {
+async function action({
+  commitHash,
+  cookies,
+  parseServerUrl,
+  showParseServerBanner,
+  reviewAppUrl,
+  reviewAppLabel,
+  sessionPresent,
+  sessionUserFields,
+}) {
   // The complaint categories haven't changed in Parse for years, so a
   // snapshot of them is bundled instead of fetched at render time.
   const typeofcomplaintValues = sortBy(
@@ -33,6 +42,23 @@ async function action({ commitHash, cookies }) {
     }
   }
 
+  // Being logged in is the session cookie's call, not the state cookie's.
+  // Only true is forced: on a client-side navigation after an in-page login,
+  // this action re-runs in the browser with a stale `sessionPresent`, and
+  // the state cookie it just wrote is the newer truth.
+  if (sessionPresent) {
+    initialState = { ...(initialState || {}), loginSuccessful: true };
+  }
+
+  // What the user last saved on their account wins over what the browser
+  // last toggled without saving: page loads with a session cookie never
+  // hit /api/logIn, so the saved booleans are merged here instead. Only
+  // booleans actually stored on the user are included (the sparse
+  // contract), so absent fields keep the cookie's value.
+  if (sessionUserFields) {
+    initialState = { ...(initialState || {}), ...sessionUserFields };
+  }
+
   // Submissions are loaded client-side when the user expands the
   // "Previous Submissions" section or has opted into auto-loading.
   // We don't pre-fetch them during SSR because it can be slow for
@@ -49,6 +75,10 @@ async function action({ commitHash, cookies }) {
             boroughBoundariesFeatureCollection
           }
           commitHash={commitHash}
+          parseServerUrl={parseServerUrl}
+          showParseServerBanner={showParseServerBanner}
+          reviewAppUrl={reviewAppUrl}
+          reviewAppLabel={reviewAppLabel}
           initialState={initialState}
         />
       </Layout>

@@ -61,6 +61,11 @@ const typeofcomplaintValues = [
 
 const insertCss = () => {};
 
+// `withStyles` returns a wrapper that carries the CSS helpers; statics such
+// as `handleSearchInputMounted` stay on the class it wraps, which the wrapper
+// exposes as `ComposedComponent`.
+const HomeWithoutStyle = Home.ComposedComponent;
+
 // jsdom has no navigator.geolocation, so promisedLocation() rejects and the
 // component falls back to ipapi.co over the network, making these tests
 // depend on a third-party service (and crash on its rate limits). Stub
@@ -563,7 +568,7 @@ describe('Home', () => {
     const input = document.createElement('input');
     document.body.appendChild(input);
     try {
-      Home.handleSearchInputMounted(input);
+      HomeWithoutStyle.handleSearchInputMounted(input);
 
       jest.advanceTimersByTime(20);
 
@@ -579,7 +584,7 @@ describe('Home', () => {
     jest.useFakeTimers();
     const input = document.createElement('input');
     try {
-      Home.handleSearchInputMounted(input);
+      HomeWithoutStyle.handleSearchInputMounted(input);
 
       jest.advanceTimersByTime(20); // first attempt, input not attached yet
       expect(document.activeElement).not.toBe(input);
@@ -598,7 +603,7 @@ describe('Home', () => {
   test('ignores the null ref the search input passes when unmounting', () => {
     jest.useFakeTimers();
     try {
-      Home.handleSearchInputMounted(null);
+      HomeWithoutStyle.handleSearchInputMounted(null);
 
       expect(jest.getTimerCount()).toBe(0);
     } finally {

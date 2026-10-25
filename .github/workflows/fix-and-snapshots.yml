@@ -1,0 +1,77 @@
+name: Auto-fix lint and update snapshots
+
+on:
+  pull_request:
+
+jobs:
+  fix-and-update-snapshots:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+
+      - name: Use Node.js 24.22.1
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 24.22.1
+
+      # The runner image can predate the Ubuntu CA update. Install the patched
+      # package before any download, so the system store no longer trusts the
+      # compromised roots.
+      - name: Install the patched CA certificates
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --only-upgrade ca-certificates
+
+      - run: corepack enable
+      - run: corepack prepare yarn@1.22.22 --activate
+      - run: yarn
+
+      # The mongod 4.4 binary that mongodb-memory-server downloads for the
+      # getSubmissions test needs libssl1.1, which the runner's Ubuntu doesn't
+      # ship. The package installs from $RUNNER_TEMP rather than from the
+      # checkout: the commit steps below take everything untracked with
+      # `git add -A`, and a package left in the repo root rode into one of
+      # their commits.
+      - name: Install libssl1.1
+        run: |
+          wget -q -O "$RUNNER_TEMP/libssl1.1.deb" https://archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2_amd64.deb
+          # SHA-256 from the Ubuntu focal Packages index.
+          echo "09ee28588a1fb5613ddc6c26a992d5a76931b3cf22c022930da413a5e580599e  $RUNNER_TEMP/libssl1.1.deb" | sha256sum -c -
+          sudo dpkg -i "$RUNNER_TEMP/libssl1.1.deb"
+
+      - name: Run yarn fix
+        run: yarn fix
+
+      - name: Commit and push lint fixes
+        run: |
+          if git diff --exit-code --quiet; then
+            echo "No lint fixes to commit"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add -A
+            git commit -m 'Apply `yarn fix` lint auto-fixes'
+            git push
+          fi
+
+      - name: Update test snapshots
+        run: yarn test:no-flaky -u
+
+      - name: Commit and push snapshot updates
+        run: |
+          if git diff --exit-code --quiet; then
+            echo "No snapshot updates to commit"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add -A
+            git commit -m 'Update test snapshots with `yarn test:no-flaky -u`'
+            git push
+          fi

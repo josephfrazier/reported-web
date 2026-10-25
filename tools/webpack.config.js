@@ -9,10 +9,12 @@
 
 import fs from 'fs';
 import path from 'path';
+import { execSync } from 'child_process';
 import webpack from 'webpack';
 import WebpackAssetsManifest from 'webpack-assets-manifest';
 import nodeExternals from 'webpack-node-externals';
 import { BundleAnalyzerPlugin } from 'webpack-bundle-analyzer';
+import { sentryWebpackPlugin } from '@sentry/webpack-plugin';
 import overrideRules from './lib/overrideRules.js';
 import pkg from '../package.json';
 
@@ -26,17 +28,48 @@ const isVerbose = process.argv.includes('--verbose');
 const isAnalyze =
   process.argv.includes('--analyze') || process.argv.includes('--analyse');
 
+// The commit this build compiles. `SOURCE_VERSION` names the code in a
+// git-based Heroku build, review apps included. The git command covers a
+// local build. `HEROKU_BUILD_COMMIT` is deliberately not a fallback: inside
+// a Heroku build it still names the release that is running, which filed
+// artifacts one commit behind on #1058.
+const commitHash =
+  process.env.SOURCE_VERSION ||
+  (() => {
+    try {
+      return execSync('git rev-parse --short HEAD', {
+        encoding: 'utf8',
+      }).trim();
+    } catch {
+      return null;
+    }
+  })();
+
+// One release string for the SDKs and the source map upload, so the
+// artifacts can never be filed under a different release than the events.
+// Without `SOURCE_VERSION` the release becomes `unknown`, and the line below
+// shows why.
+const release = process.env.SENTRY_RELEASE || commitHash || 'unknown';
+
+if (!isDebug) {
+  console.info(
+    `Sentry release: ${release} (SOURCE_VERSION=${
+      process.env.SOURCE_VERSION || 'unset'
+    })`,
+  );
+  if (!process.env.SENTRY_AUTH_TOKEN) {
+    console.warn(
+      'SENTRY_AUTH_TOKEN is not set: this build will not upload source maps.',
+    );
+  }
+}
+
 const reScript = /\.(js|jsx|mjs)$/;
 const reStyle = /\.(css|less|styl|scss|sass|sss)$/;
 const reImage = /\.(bmp|gif|jpg|jpeg|png|svg)$/;
 const staticAssetName = isDebug
   ? '[path][name].[ext]?[hash:8]'
   : '[hash:8].[ext]';
-
-// CSS Nano options http://cssnano.co/
-const minimizeCssOptions = {
-  discardComments: { removeAll: true },
-};
 
 //
 // Common configuration chunk to be used for both
@@ -139,7 +172,10 @@ const config = {
             loader: 'css-loader',
             options: {
               sourceMap: isDebug,
-              minimize: isDebug ? false : minimizeCssOptions,
+              // css-loader 4+ emits ES modules by default, but
+              // isomorphic-style-loader's wrapper stringifies the CJS
+              // export; otherwise the SSR style tag gets "[object Module]"
+              esModule: false,
             },
           },
 
@@ -152,12 +188,17 @@ const config = {
               importLoaders: 1,
               sourceMap: isDebug,
               // CSS Modules https://github.com/css-modules/css-modules
-              modules: true,
-              localIdentName: isDebug
-                ? '[name]-[local]-[hash:base64:5]'
-                : '[hash:base64:5]',
-              // CSS Nano http://cssnano.co/
-              minimize: isDebug ? false : minimizeCssOptions,
+              modules: {
+                localIdentName: isDebug
+                  ? '[name]-[local]-[hash:base64:5]'
+                  : '[hash:base64:5]',
+                // css-loader 4+ camelCases exported locals by default,
+                // which breaks lookups like homeStyles['plate-overlay']
+                exportLocalsConvention: 'asIs',
+              },
+              // css-loader 4+ emits ES modules by default, but
+              // isomorphic-style-loader consumes the CJS export shape
+              esModule: false,
             },
           },
 
@@ -234,16 +275,10 @@ const config = {
         loader: 'raw-loader',
       },
 
-      // Convert Markdown into HTML
-      {
-        test: /\.md$/,
-        loader: path.resolve(__dirname, './lib/markdown-loader.js'),
-      },
-
       // Return public URL for all assets unless explicitly excluded
       // DO NOT FORGET to update `exclude` list when you adding a new loader
       {
-        exclude: [reScript, reStyle, reImage, /\.json$/, /\.txt$/, /\.md$/],
+        exclude: [reScript, reStyle, reImage, /\.json$/, /\.txt$/],
         loader: 'file-loader',
         options: {
           name: staticAssetName,
@@ -266,6 +301,22 @@ const config = {
 
   // Don't attempt to continue if there are any errors.
   bail: !isDebug,
+
+  // exifr's UMD bundle contains a Node-only fallback that dynamically
+  // requires 'http'/'https' (guarded at runtime by `process.versions.node`,
+  // which is always false in the browser). Webpack's parser still flags the
+  // non-literal require() as a critical dependency, so `yarn start` logs
+  // "Critical dependency: the request of a dependency is an expression" on
+  // every (HMR) recompile. Silencing it here, scoped to that file, instead
+  // of switching to exifr's `lite` build, which can't parse the array form
+  // of `exifr.parse()` options that Home.js uses.
+  ignoreWarnings: [
+    {
+      module: /exifr[/\\]dist[/\\]full\.umd\.js/,
+      message:
+        /Critical dependency: the request of a dependency is an expression/,
+    },
+  ],
 
   cache: isDebug,
 
@@ -299,6 +350,10 @@ const clientConfig = {
   name: 'client',
   target: 'web',
 
+  // Release maps go to Sentry instead of being referenced from the bundle,
+  // so browsers do not fetch them and expose the sources.
+  devtool: isDebug ? 'inline-cheap-module-source-map' : 'hidden-source-map',
+
   entry: {
     client: ['@babel/polyfill', './src/client.js'],
   },
@@ -308,8 +363,26 @@ const clientConfig = {
     // https://webpack.js.org/plugins/define-plugin/
     new webpack.DefinePlugin({
       'process.env.BROWSER': true,
+      'process.env.SENTRY_RELEASE': JSON.stringify(release),
       __DEV__: isDebug,
     }),
+
+    // Uploads the client bundle's source maps and files them under the same
+    // release the SDKs report. The warning above covers the missing-token
+    // case; a failed upload stops the build instead of shipping blind.
+    !isDebug &&
+      sentryWebpackPlugin({
+        org: process.env.SENTRY_ORG || 'reported',
+        project: process.env.SENTRY_PROJECT || 'reported-web',
+        authToken: process.env.SENTRY_AUTH_TOKEN,
+        release: { name: release, inject: false },
+        disable: !process.env.SENTRY_AUTH_TOKEN,
+        // The plugin only logs upload errors by default; a build that
+        // ships without maps should fail instead.
+        errorHandler: error => {
+          throw error;
+        },
+      }),
 
     // Emit a file with assets paths
     // https://github.com/webdeveric/webpack-assets-manifest#options
@@ -388,6 +461,7 @@ const clientConfig = {
       fs: false,
       net: false,
       tls: false,
+      stream: require.resolve('stream-browserify'),
       buffer: require.resolve('buffer/'),
     },
     alias: {
@@ -491,6 +565,11 @@ const serverConfig = {
     // https://webpack.js.org/plugins/define-plugin/
     new webpack.DefinePlugin({
       'process.env.BROWSER': false,
+      // The running server prints this commit in the home page footer.
+      // Baking it in keeps that working on apps without Dyno Metadata,
+      // such as review apps.
+      'process.env.BUILD_COMMIT': JSON.stringify(commitHash),
+      'process.env.SENTRY_RELEASE': JSON.stringify(release),
       __DEV__: isDebug,
     }),
 

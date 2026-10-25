@@ -1,6 +1,6 @@
 import https from 'https';
 import axios from 'axios';
-import { JSDOM } from 'jsdom';
+import { load } from 'cheerio';
 
 export default async function srlookup({ reqnumber }) {
   const url = `https://portal.311.nyc.gov/sr-details/?srnum=${reqnumber}`;
@@ -8,17 +8,23 @@ export default async function srlookup({ reqnumber }) {
   const { data } = await axios.get(url, {
     httpsAgent: new https.Agent({ keepAlive: false }),
   });
-  const { document } = new JSDOM(data).window;
+  // cheerio parses synchronously and holds no timers or handles of its own,
+  // so unlike jsdom's JSDOM there is no window to close when we're done.
+  const $ = load(data);
 
   const result = {};
-  result.description = document.querySelector('#page-wrapper p')?.textContent;
-  const fields = [...document.querySelectorAll('.info, .control')];
+  // Keep the previous optional-chaining behaviour: with no matching element
+  // `description` is undefined, so the key is left out of the JSON response
+  // rather than being sent as an empty string.
+  const description = $('#page-wrapper p').first();
+  result.description = description.length ? description.text() : undefined;
+  const fields = $('.info, .control').toArray();
   for (let i = 0; i < fields.length; i += 2) {
-    const keyField = fields[i];
-    const valueField = fields[i + 1];
+    const keyField = $(fields[i]);
+    const valueField = $(fields[i + 1]);
 
-    const key = keyField.textContent;
-    const value = valueField.textContent;
+    const key = keyField.text();
+    const value = valueField.text();
 
     result[key] = value;
   }

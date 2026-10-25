@@ -7,15 +7,14 @@ exports[`SubmissionDetails renders TLC and NYPD SR numbers when submission has m
 >
   <summary>
     medallionNo
-     (
-    licenseState
-    ) 
+     (licenseState)
+     
     typeofcomplaint
      near
      
     82 Reade St
      on 
-    2016-11-18T00:00:00.000Z UTC (MockDate: GMT-0500)
+    11/17/2016, 7:00:00 PM
     <br />
     TLC Service Request Number:
      
@@ -132,15 +131,14 @@ exports[`SubmissionDetails renders children correctly 1`] = `
 >
   <summary>
     medallionNo
-     (
-    licenseState
-    ) 
+     (licenseState)
+     
     typeofcomplaint
      near
      
     82 Reade St
      on 
-    2016-11-18T00:00:00.000Z UTC (MockDate: GMT-0500)
+    11/17/2016, 7:00:00 PM
   </summary>
   <p>
     reportDescription
@@ -244,15 +242,14 @@ exports[`SubmissionDetails renders children correctly when medallionNo is missin
 >
   <summary>
     license
-     (
-    licenseState
-    ) 
+     (licenseState)
+     
     typeofcomplaint
      near
      
     82 Reade St
      on 
-    2016-11-18T00:00:00.000Z UTC (MockDate: GMT-0500)
+    11/17/2016, 7:00:00 PM
   </summary>
   <p>
     reportDescription
@@ -356,15 +353,14 @@ exports[`SubmissionDetails renders delete button correctly 1`] = `
 >
   <summary>
     medallionNo
-     (
-    licenseState
-    ) 
+     (licenseState)
+     
     typeofcomplaint
      near
      
     82 Reade St
      on 
-    2016-11-18T00:00:00.000Z UTC (MockDate: GMT-0500)
+    11/17/2016, 7:00:00 PM
   </summary>
   <p>
     reportDescription

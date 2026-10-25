@@ -7,7 +7,7 @@ import getVehicleType from './getVehicleType.js';
 describe('getVehicleType', () => {
   test('returns the right object', async () => {
     const result = await getVehicleType({
-      licensePlate: 'TEST',
+      licensePlate: 'T144594C',
       licenseState: 'NY',
     });
 

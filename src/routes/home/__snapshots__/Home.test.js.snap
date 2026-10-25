@@ -1,5 +1,424 @@
 // Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
 
+exports[`Home hides form fields when logged in with no photos uploaded 1`] = `
+<div
+  aria-disabled={false}
+  className="root"
+  onClick={[Function]}
+  onDragEnter={[Function]}
+  onDragLeave={[Function]}
+  onDragOver={[Function]}
+  onDragStart={[Function]}
+  onDrop={[Function]}
+  style={
+    {
+      "bottom": 0,
+      "left": 0,
+      "position": "fixed",
+      "right": 0,
+      "top": 0,
+    }
+  }
+>
+  <div
+    className="scroll-area"
+  >
+    <div
+      className="scroll-container"
+    >
+      <div
+        className="container"
+      >
+        <main>
+          <h1>
+            <a
+              href="https://reportedly.weebly.com/"
+              style={
+                {
+                  "textDecoration": "underline",
+                }
+              }
+            >
+              Reported
+            </a>
+          </h1>
+          <div
+            className="Toastify"
+          />
+          <div
+            className="user-status-bar"
+          >
+            <div
+              className="user-greeting"
+            >
+              <span
+                aria-label="user"
+                role="img"
+              >
+                👤
+              </span>
+               
+              test@example.com
+            </div>
+            <div
+              className="user-actions"
+            >
+              <button
+                className="status-bar-btn-primary"
+                onClick={[Function]}
+                type="button"
+              >
+                Edit Profile
+              </button>
+              <button
+                className="status-bar-btn"
+                onClick={[Function]}
+                type="button"
+              >
+                Preferences
+              </button>
+              <button
+                className="status-bar-btn"
+                onClick={[Function]}
+                type="button"
+              >
+                Log Out
+              </button>
+            </div>
+          </div>
+          <div
+            className="withhold-notice-banner"
+            role="alert"
+          >
+            <span>
+              Getting unwanted phone calls after making submissions? Now you can stop sending your number and email to the cops!
+            </span>
+            <span
+              className="user-actions"
+            >
+              <button
+                className="status-bar-btn-primary"
+                onClick={[Function]}
+                type="button"
+              >
+                Show me how
+              </button>
+              <button
+                className="status-bar-btn"
+                onClick={[Function]}
+                type="button"
+              >
+                Dismiss
+              </button>
+            </span>
+          </div>
+          <form
+            onSubmit={[Function]}
+          >
+            <fieldset
+              disabled={false}
+            >
+              <div
+                className="_react-file-reader-input"
+                onClick={[Function]}
+                style={
+                  {
+                    "float": "left",
+                    "margin": "1px",
+                  }
+                }
+              >
+                <input
+                  accept="image/*,video/*,.zip,application/zip,application/x-zip-compressed"
+                  multiple={true}
+                  onChange={[Function]}
+                  onClick={[Function]}
+                  style={
+                    {
+                      "position": "absolute",
+                      "top": "-9999px",
+                    }
+                  }
+                  type="file"
+                />
+                <button
+                  style={
+                    {
+                      "whiteSpace": "wrap",
+                    }
+                  }
+                  type="button"
+                >
+                  Add pictures/videos (up to 3 each, 20MB max each)
+                </button>
+              </div>
+              <button
+                onClick={[Function]}
+                style={
+                  {
+                    "float": "left",
+                    "margin": "1px",
+                  }
+                }
+                type="button"
+              >
+                Add folder
+              </button>
+              <input
+                multiple={true}
+                onChange={[Function]}
+                style={
+                  {
+                    "display": "none",
+                  }
+                }
+                type="file"
+                webkitdirectory=""
+              />
+              <div
+                style={
+                  {
+                    "clear": "both",
+                  }
+                }
+              />
+            </fieldset>
+          </form>
+          <br />
+          <details
+            onToggle={[Function]}
+          >
+            <summary>
+              Previous Submissions (
+              expand to load
+              )
+            </summary>
+          </details>
+          <div
+            style={
+              {
+                "float": "right",
+              }
+            }
+          >
+            <a
+              href="/submissions-map"
+              style={
+                {
+                  "background": "black",
+                  "border": "1em solid black",
+                  "borderRadius": "2em",
+                  "textDecoration": "none",
+                }
+              }
+            >
+              <span
+                aria-label="world map"
+                role="img"
+              >
+                🗺️
+              </span>
+            </a>
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+  <input
+    autoComplete="off"
+    disabled={false}
+    multiple={true}
+    onChange={[Function]}
+    style={
+      {
+        "bottom": 0,
+        "left": 0,
+        "opacity": 0.00001,
+        "pointerEvents": "none",
+        "position": "absolute",
+        "right": 0,
+        "top": 0,
+      }
+    }
+    type="file"
+  />
+</div>
+`;
+
+exports[`Home links the banner to the PR the review app was deployed from 1`] = `
+<div
+  aria-disabled={false}
+  className="root"
+  onClick={[Function]}
+  onDragEnter={[Function]}
+  onDragLeave={[Function]}
+  onDragOver={[Function]}
+  onDragStart={[Function]}
+  onDrop={[Function]}
+  style={
+    {
+      "bottom": 0,
+      "left": 0,
+      "position": "fixed",
+      "right": 0,
+      "top": 0,
+    }
+  }
+>
+  <div
+    className="non-production-banner"
+    role="alert"
+  >
+    <span
+      aria-label="warning"
+      role="img"
+    >
+      ⚠️
+    </span>
+     
+    NOT PRODUCTION — using Parse server:
+     
+    <code>
+      https://reported-parse.webabot.com/parse
+    </code>
+     
+    — deployed from
+     
+    <a
+      href="https://github.com/josephfrazier/reported-web/pull/1046"
+    >
+      PR #1046 (review-app-source-link)
+    </a>
+  </div>
+  <div
+    className="scroll-area"
+  >
+    <div
+      className="scroll-container"
+    >
+      <div
+        className="container"
+      >
+        <main>
+          <h1>
+            <a
+              href="https://reportedly.weebly.com/"
+              style={
+                {
+                  "textDecoration": "underline",
+                }
+              }
+            >
+              Reported
+            </a>
+          </h1>
+          <div
+            className="Toastify"
+          />
+          <div
+            className="user-status-bar"
+          >
+            <div
+              className="user-greeting"
+            >
+              Not logged in
+            </div>
+            <div
+              className="user-actions"
+            >
+              <button
+                className="status-bar-btn"
+                onClick={[Function]}
+                type="button"
+              >
+                Log In
+              </button>
+              <button
+                className="status-bar-btn-primary"
+                onClick={[Function]}
+                type="button"
+              >
+                Sign Up
+              </button>
+            </div>
+          </div>
+          <div
+            className="auth-prompt"
+          >
+            <p>
+              Please
+               
+              <button
+                onClick={[Function]}
+                type="button"
+              >
+                log in
+              </button>
+               
+              or
+               
+              <button
+                onClick={[Function]}
+                type="button"
+              >
+                sign up
+              </button>
+               
+              to submit a report.
+            </p>
+          </div>
+          <br />
+          <div
+            style={
+              {
+                "float": "right",
+              }
+            }
+          >
+            <a
+              href="/submissions-map"
+              style={
+                {
+                  "background": "black",
+                  "border": "1em solid black",
+                  "borderRadius": "2em",
+                  "textDecoration": "none",
+                }
+              }
+            >
+              <span
+                aria-label="world map"
+                role="img"
+              >
+                🗺️
+              </span>
+            </a>
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+  <input
+    autoComplete="off"
+    disabled={false}
+    multiple={true}
+    onChange={[Function]}
+    style={
+      {
+        "bottom": 0,
+        "left": 0,
+        "opacity": 0.00001,
+        "pointerEvents": "none",
+        "position": "absolute",
+        "right": 0,
+        "top": 0,
+      }
+    }
+    type="file"
+  />
+</div>
+`;
+
 exports[`Home renders Edit Profile UI 1`] = `
 <div
   aria-disabled={false}
@@ -14,7 +433,6 @@ exports[`Home renders Edit Profile UI 1`] = `
     {
       "bottom": 0,
       "left": 0,
-      "overflowY": "scroll",
       "position": "fixed",
       "right": 0,
       "top": 0,
@@ -22,168 +440,239 @@ exports[`Home renders Edit Profile UI 1`] = `
   }
 >
   <div
-    className="container"
+    className="scroll-area"
   >
-    <main>
-      <h1>
-        <a
-          href="https://reportedly.weebly.com/"
-          style={
-            {
-              "textDecoration": "underline",
-            }
-          }
-        >
-          Reported
-        </a>
-      </h1>
+    <div
+      className="scroll-container"
+    >
       <div
-        className="Toastify"
-      />
-      <div
-        className="user-status-bar"
+        className="container"
       >
-        <div
-          className="user-greeting"
-        >
-          <span
-            aria-label="user"
-            role="img"
+        <main>
+          <h1>
+            <a
+              href="https://reportedly.weebly.com/"
+              style={
+                {
+                  "textDecoration": "underline",
+                }
+              }
+            >
+              Reported
+            </a>
+          </h1>
+          <div
+            className="Toastify"
+          />
+          <div
+            className="user-status-bar"
           >
-            👤
-          </span>
-           
-          test@example.com
-        </div>
-        <div
-          className="user-actions"
-        >
-          <button
-            className="status-bar-btn-primary"
-            onClick={[Function]}
-            type="button"
+            <div
+              className="user-greeting"
+            >
+              <span
+                aria-label="user"
+                role="img"
+              >
+                👤
+              </span>
+               
+              test@example.com
+            </div>
+            <div
+              className="user-actions"
+            >
+              <button
+                className="status-bar-btn-primary"
+                onClick={[Function]}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                className="status-bar-btn"
+                onClick={[Function]}
+                type="button"
+              >
+                Preferences
+              </button>
+              <button
+                className="status-bar-btn"
+                onClick={[Function]}
+                type="button"
+              >
+                Log Out
+              </button>
+            </div>
+          </div>
+          <div
+            className="withhold-notice-banner"
+            role="alert"
           >
-            Cancel
-          </button>
-          <button
-            className="status-bar-btn"
-            onClick={[Function]}
-            type="button"
+            <span>
+              Getting unwanted phone calls after making submissions? Now you can stop sending your number and email to the cops!
+            </span>
+            <span
+              className="user-actions"
+            >
+              <button
+                className="status-bar-btn-primary"
+                onClick={[Function]}
+                type="button"
+              >
+                Show me how
+              </button>
+              <button
+                className="status-bar-btn"
+                onClick={[Function]}
+                type="button"
+              >
+                Dismiss
+              </button>
+            </span>
+          </div>
+          <form
+            className="edit-profile-section"
+            onSubmit={[Function]}
           >
-            Log Out
-          </button>
-        </div>
-      </div>
-      <form
-        className="edit-profile-section"
-        onSubmit={[Function]}
-      >
-        <h3>
-          Edit Profile
-        </h3>
-        <fieldset
-          disabled={false}
-        >
-          <label
-            htmlFor="FirstName"
-          >
-            First Name:
-             
-            <input
-              autoComplete="given-name"
-              id="FirstName"
-              name="FirstName"
-              onChange={[Function]}
-              required={true}
-              type="text"
-              value=""
-            />
-          </label>
-          <label
-            htmlFor="LastName"
-          >
-            Last Name:
-             
-            <input
-              autoComplete="family-name"
-              id="LastName"
-              name="LastName"
-              onChange={[Function]}
-              required={true}
-              type="text"
-              value=""
-            />
-          </label>
-          <label
-            htmlFor="Phone"
-          >
-            Phone Number:
-             
-            <input
-              autoComplete="tel"
-              id="Phone"
-              name="Phone"
-              onChange={[Function]}
-              required={true}
-              type="tel"
-              value=""
-            />
-          </label>
-          <label
-            htmlFor="testify"
-          >
-            <input
-              checked={false}
-              id="testify"
-              name="testify"
-              onChange={[Function]}
-              type="checkbox"
-            />
-             
-            I'm willing to testify at a hearing, which can be done by phone.
-          </label>
-          <button
-            className="auth-submit-btn"
-            disabled={false}
+            <h3>
+              Edit Profile
+            </h3>
+            <fieldset
+              disabled={false}
+            >
+              <label
+                htmlFor="FirstName"
+              >
+                First Name:
+                 
+                <input
+                  autoComplete="given-name"
+                  id="FirstName"
+                  name="FirstName"
+                  onChange={[Function]}
+                  required={true}
+                  type="text"
+                  value=""
+                />
+              </label>
+              <label
+                htmlFor="LastName"
+              >
+                Last Name:
+                 
+                <input
+                  autoComplete="family-name"
+                  id="LastName"
+                  name="LastName"
+                  onChange={[Function]}
+                  required={true}
+                  type="text"
+                  value=""
+                />
+              </label>
+              <label
+                htmlFor="Phone"
+              >
+                Phone Number:
+                 
+                <input
+                  autoComplete="tel"
+                  id="Phone"
+                  name="Phone"
+                  onChange={[Function]}
+                  required={true}
+                  type="tel"
+                  value=""
+                />
+              </label>
+              <label
+                htmlFor="testify"
+              >
+                <input
+                  checked={false}
+                  id="testify"
+                  name="testify"
+                  onChange={[Function]}
+                  type="checkbox"
+                />
+                 
+                I'm willing to testify at a hearing, which can be done by phone.
+              </label>
+              <label
+                htmlFor="can_be_shared_publicly"
+              >
+                <input
+                  checked={true}
+                  id="can_be_shared_publicly"
+                  name="can_be_shared_publicly"
+                  onChange={[Function]}
+                  type="checkbox"
+                />
+                 
+                Allow the photos/videos, description, category, and location to be publicly displayed
+              </label>
+              <label
+                htmlFor="withhold_contact_info_from_nypd"
+              >
+                <input
+                  checked={false}
+                  id="withhold_contact_info_from_nypd"
+                  name="withhold_contact_info_from_nypd"
+                  onChange={[Function]}
+                  type="checkbox"
+                />
+                 
+                Withhold my contact info from NYPD service requests
+                <br />
+                <small>
+                  If you leave this unchecked, NYPD may call or email you about your service requests.
+                </small>
+              </label>
+              <button
+                className="auth-submit-btn"
+                disabled={false}
+                style={
+                  {
+                    "width": "auto",
+                  }
+                }
+                type="submit"
+              >
+                Save
+              </button>
+            </fieldset>
+          </form>
+          <br />
+          <div
             style={
               {
-                "width": "auto",
+                "float": "right",
               }
             }
-            type="submit"
           >
-            Save
-          </button>
-        </fieldset>
-      </form>
-      <br />
-      <div
-        style={
-          {
-            "float": "right",
-          }
-        }
-      >
-        <a
-          href="/electricitibikes"
-          style={
-            {
-              "background": "black",
-              "border": "1em solid black",
-              "borderRadius": "2em",
-              "textDecoration": "none",
-            }
-          }
-        >
-          <span
-            aria-label="high voltage"
-            role="img"
-          >
-            ⚡
-          </span>
-        </a>
+            <a
+              href="/submissions-map"
+              style={
+                {
+                  "background": "black",
+                  "border": "1em solid black",
+                  "borderRadius": "2em",
+                  "textDecoration": "none",
+                }
+              }
+            >
+              <span
+                aria-label="world map"
+                role="img"
+              >
+                🗺️
+              </span>
+            </a>
+          </div>
+        </main>
       </div>
-    </main>
+    </div>
   </div>
   <input
     autoComplete="off"
@@ -220,7 +709,6 @@ exports[`Home renders Log In modal UI 1`] = `
     {
       "bottom": 0,
       "left": 0,
-      "overflowY": "scroll",
       "position": "fixed",
       "right": 0,
       "top": 0,
@@ -228,207 +716,425 @@ exports[`Home renders Log In modal UI 1`] = `
   }
 >
   <div
-    className="container"
+    className="scroll-area"
   >
-    <main>
-      <h1>
-        <a
-          href="https://reportedly.weebly.com/"
-          style={
-            {
-              "textDecoration": "underline",
-            }
-          }
-        >
-          Reported
-        </a>
-      </h1>
+    <div
+      className="scroll-container"
+    >
       <div
-        className="Toastify"
-      />
-      <div
-        className="user-status-bar"
+        className="container"
       >
-        <div
-          className="user-greeting"
-        >
-          Not logged in
-        </div>
-        <div
-          className="user-actions"
-        >
-          <button
-            className="status-bar-btn"
-            onClick={[Function]}
-            type="button"
-          >
-            Log In
-          </button>
-          <button
-            className="status-bar-btn-primary"
-            onClick={[Function]}
-            type="button"
-          >
-            Sign Up
-          </button>
-        </div>
-      </div>
-      <div
-        className="auth-modal-tabs"
-      >
-        <button
-          className="auth-modal-tab-active"
-          onClick={[Function]}
-          type="button"
-        >
-          Log In
-        </button>
-        <button
-          className="auth-modal-tab"
-          onClick={[Function]}
-          type="button"
-        >
-          Sign Up
-        </button>
-      </div>
-      <div
-        className="auth-modal-body"
-      >
-        <label
-          htmlFor="auth-email"
-        >
-          Email:
-          <input
-            autoComplete="email"
-            id="auth-email"
-            name="email"
-            onChange={[Function]}
-            required={true}
-            type="email"
-            value=""
-          />
-        </label>
-        <label
-          htmlFor="auth-password"
-        >
-          Password:
+        <main>
+          <h1>
+            <a
+              href="https://reportedly.weebly.com/"
+              style={
+                {
+                  "textDecoration": "underline",
+                }
+              }
+            >
+              Reported
+            </a>
+          </h1>
           <div
-            className="auth-field-row"
+            className="Toastify"
+          />
+          <div
+            className="user-status-bar"
           >
-            <input
-              autoComplete="current-password"
-              id="auth-password"
-              name="password"
-              onChange={[Function]}
-              required={true}
-              type="password"
-              value=""
-            />
+            <div
+              className="user-greeting"
+            >
+              Not logged in
+            </div>
+            <div
+              className="user-actions"
+            >
+              <button
+                className="status-bar-btn"
+                onClick={[Function]}
+                type="button"
+              >
+                Log In
+              </button>
+              <button
+                className="status-bar-btn-primary"
+                onClick={[Function]}
+                type="button"
+              >
+                Sign Up
+              </button>
+            </div>
+          </div>
+          <div
+            className="auth-modal-tabs"
+          >
             <button
+              className="auth-modal-tab-active"
               onClick={[Function]}
               type="button"
             >
-              Show
+              Log In
+            </button>
+            <button
+              className="auth-modal-tab"
+              onClick={[Function]}
+              type="button"
+            >
+              Sign Up
             </button>
           </div>
-        </label>
-        <button
-          className="auth-submit-btn"
-          disabled={false}
-          onClick={[Function]}
-          type="button"
-        >
-          Log In
-        </button>
-        <div
-          className="auth-switch-link"
-        >
-          <button
-            disabled={false}
-            onClick={[Function]}
-            type="button"
+          <form
+            className="auth-modal-body"
+            onSubmit={[Function]}
           >
-            Forgot your password?
-          </button>
-        </div>
-        <div
-          className="auth-switch-link"
-        >
-          (If you cannot log in even after resetting your password, email
-           
-          <a
-            href="mailto:reportedapp@gmail.com"
+            <label
+              htmlFor="auth-email"
+            >
+              Email:
+              <input
+                autoComplete="email"
+                id="auth-email"
+                name="email"
+                onChange={[Function]}
+                required={true}
+                type="email"
+                value=""
+              />
+            </label>
+            <label
+              htmlFor="auth-password"
+            >
+              Password:
+              <div
+                className="auth-field-row"
+              >
+                <input
+                  autoComplete="current-password"
+                  id="auth-password"
+                  name="password"
+                  onChange={[Function]}
+                  required={true}
+                  type="password"
+                  value=""
+                />
+                <button
+                  onClick={[Function]}
+                  type="button"
+                >
+                  Show
+                </button>
+              </div>
+            </label>
+            <button
+              className="auth-submit-btn"
+              disabled={false}
+              type="submit"
+            >
+              Log In
+            </button>
+            <div
+              className="auth-switch-link"
+            >
+              <button
+                disabled={false}
+                onClick={[Function]}
+                type="button"
+              >
+                Forgot your password?
+              </button>
+            </div>
+            <div
+              className="auth-switch-link"
+            >
+              (If you cannot log in even after resetting your password, email
+               
+              <a
+                href="mailto:reportedapp@gmail.com"
+              >
+                reportedapp@gmail.com
+              </a>
+              )
+            </div>
+            <div
+              className="auth-switch-link"
+            >
+              Don't have an account?
+               
+              <button
+                onClick={[Function]}
+                type="button"
+              >
+                Sign Up
+              </button>
+            </div>
+          </form>
+          <div
+            className="auth-prompt"
           >
-            reportedapp@gmail.com
-          </a>
-          )
-        </div>
-        <div
-          className="auth-switch-link"
-        >
-          Don't have an account?
-           
-          <button
-            onClick={[Function]}
-            type="button"
-          >
-            Sign Up
-          </button>
-        </div>
-      </div>
-      <div
-        className="auth-prompt"
-      >
-        <p>
-          Please
-           
-          <button
-            onClick={[Function]}
-            type="button"
-          >
-            log in
-          </button>
-           
-          or
-           
-          <button
-            onClick={[Function]}
-            type="button"
-          >
-            sign up
-          </button>
-           
-          to submit a report.
-        </p>
-      </div>
-      <br />
-      <div
-        style={
-          {
-            "float": "right",
-          }
-        }
-      >
-        <a
-          href="/electricitibikes"
-          style={
-            {
-              "background": "black",
-              "border": "1em solid black",
-              "borderRadius": "2em",
-              "textDecoration": "none",
+            <p>
+              Please
+               
+              <button
+                onClick={[Function]}
+                type="button"
+              >
+                log in
+              </button>
+               
+              or
+               
+              <button
+                onClick={[Function]}
+                type="button"
+              >
+                sign up
+              </button>
+               
+              to submit a report.
+            </p>
+          </div>
+          <br />
+          <div
+            style={
+              {
+                "float": "right",
+              }
             }
-          }
-        >
-          <span
-            aria-label="high voltage"
-            role="img"
           >
-            ⚡
-          </span>
-        </a>
+            <a
+              href="/submissions-map"
+              style={
+                {
+                  "background": "black",
+                  "border": "1em solid black",
+                  "borderRadius": "2em",
+                  "textDecoration": "none",
+                }
+              }
+            >
+              <span
+                aria-label="world map"
+                role="img"
+              >
+                🗺️
+              </span>
+            </a>
+          </div>
+        </main>
       </div>
-    </main>
+    </div>
+  </div>
+  <input
+    autoComplete="off"
+    disabled={false}
+    multiple={true}
+    onChange={[Function]}
+    style={
+      {
+        "bottom": 0,
+        "left": 0,
+        "opacity": 0.00001,
+        "pointerEvents": "none",
+        "position": "absolute",
+        "right": 0,
+        "top": 0,
+      }
+    }
+    type="file"
+  />
+</div>
+`;
+
+exports[`Home renders Preferences UI 1`] = `
+<div
+  aria-disabled={false}
+  className="root"
+  onClick={[Function]}
+  onDragEnter={[Function]}
+  onDragLeave={[Function]}
+  onDragOver={[Function]}
+  onDragStart={[Function]}
+  onDrop={[Function]}
+  style={
+    {
+      "bottom": 0,
+      "left": 0,
+      "position": "fixed",
+      "right": 0,
+      "top": 0,
+    }
+  }
+>
+  <div
+    className="scroll-area"
+  >
+    <div
+      className="scroll-container"
+    >
+      <div
+        className="container"
+      >
+        <main>
+          <h1>
+            <a
+              href="https://reportedly.weebly.com/"
+              style={
+                {
+                  "textDecoration": "underline",
+                }
+              }
+            >
+              Reported
+            </a>
+          </h1>
+          <div
+            className="Toastify"
+          />
+          <div
+            className="user-status-bar"
+          >
+            <div
+              className="user-greeting"
+            >
+              <span
+                aria-label="user"
+                role="img"
+              >
+                👤
+              </span>
+               
+              test@example.com
+            </div>
+            <div
+              className="user-actions"
+            >
+              <button
+                className="status-bar-btn-primary"
+                onClick={[Function]}
+                type="button"
+              >
+                Edit Profile
+              </button>
+              <button
+                className="status-bar-btn"
+                onClick={[Function]}
+                type="button"
+              >
+                Done
+              </button>
+              <button
+                className="status-bar-btn"
+                onClick={[Function]}
+                type="button"
+              >
+                Log Out
+              </button>
+            </div>
+          </div>
+          <div
+            className="withhold-notice-banner"
+            role="alert"
+          >
+            <span>
+              Getting unwanted phone calls after making submissions? Now you can stop sending your number and email to the cops!
+            </span>
+            <span
+              className="user-actions"
+            >
+              <button
+                className="status-bar-btn-primary"
+                onClick={[Function]}
+                type="button"
+              >
+                Show me how
+              </button>
+              <button
+                className="status-bar-btn"
+                onClick={[Function]}
+                type="button"
+              >
+                Dismiss
+              </button>
+            </span>
+          </div>
+          <div
+            className="edit-profile-section"
+          >
+            <h3>
+              Preferences
+            </h3>
+            <label
+              htmlFor="isAlprEnabled"
+            >
+              <input
+                checked={true}
+                id="isAlprEnabled"
+                name="isAlprEnabled"
+                onChange={[Function]}
+                type="checkbox"
+              />
+               
+              Automatically read license plates from pictures/videos
+            </label>
+            <label
+              htmlFor="isReverseGeocodingEnabled"
+            >
+              <input
+                checked={true}
+                id="isReverseGeocodingEnabled"
+                name="isReverseGeocodingEnabled"
+                onChange={[Function]}
+                type="checkbox"
+              />
+               
+              Automatically read addresses from pictures/videos
+            </label>
+            <label
+              htmlFor="isLoadPreviousSubmissionsEnabled"
+            >
+              <input
+                checked={false}
+                id="isLoadPreviousSubmissionsEnabled"
+                name="isLoadPreviousSubmissionsEnabled"
+                onChange={[Function]}
+                type="checkbox"
+              />
+               
+              Load previous submissions on page load
+            </label>
+          </div>
+          <br />
+          <div
+            style={
+              {
+                "float": "right",
+              }
+            }
+          >
+            <a
+              href="/submissions-map"
+              style={
+                {
+                  "background": "black",
+                  "border": "1em solid black",
+                  "borderRadius": "2em",
+                  "textDecoration": "none",
+                }
+              }
+            >
+              <span
+                aria-label="world map"
+                role="img"
+              >
+                🗺️
+              </span>
+            </a>
+          </div>
+        </main>
+      </div>
+    </div>
   </div>
   <input
     autoComplete="off"
@@ -465,7 +1171,6 @@ exports[`Home renders Sign Up modal UI 1`] = `
     {
       "bottom": 0,
       "left": 0,
-      "overflowY": "scroll",
       "position": "fixed",
       "right": 0,
       "top": 0,
@@ -473,239 +1178,247 @@ exports[`Home renders Sign Up modal UI 1`] = `
   }
 >
   <div
-    className="container"
+    className="scroll-area"
   >
-    <main>
-      <h1>
-        <a
-          href="https://reportedly.weebly.com/"
-          style={
-            {
-              "textDecoration": "underline",
-            }
-          }
-        >
-          Reported
-        </a>
-      </h1>
+    <div
+      className="scroll-container"
+    >
       <div
-        className="Toastify"
-      />
-      <div
-        className="user-status-bar"
+        className="container"
       >
-        <div
-          className="user-greeting"
-        >
-          Not logged in
-        </div>
-        <div
-          className="user-actions"
-        >
-          <button
-            className="status-bar-btn"
-            onClick={[Function]}
-            type="button"
-          >
-            Log In
-          </button>
-          <button
-            className="status-bar-btn-primary"
-            onClick={[Function]}
-            type="button"
-          >
-            Sign Up
-          </button>
-        </div>
-      </div>
-      <div
-        className="auth-modal-tabs"
-      >
-        <button
-          className="auth-modal-tab"
-          onClick={[Function]}
-          type="button"
-        >
-          Log In
-        </button>
-        <button
-          className="auth-modal-tab-active"
-          onClick={[Function]}
-          type="button"
-        >
-          Sign Up
-        </button>
-      </div>
-      <div
-        className="auth-modal-body"
-      >
-        <label
-          htmlFor="auth-signup-email"
-        >
-          Email:
-          <input
-            autoComplete="email"
-            id="auth-signup-email"
-            name="email"
-            onChange={[Function]}
-            required={true}
-            type="email"
-            value=""
-          />
-        </label>
-        <label
-          htmlFor="auth-signup-password"
-        >
-          Password (this is saved on your device, so use a password you don't use anywhere else):
+        <main>
+          <h1>
+            <a
+              href="https://reportedly.weebly.com/"
+              style={
+                {
+                  "textDecoration": "underline",
+                }
+              }
+            >
+              Reported
+            </a>
+          </h1>
           <div
-            className="auth-field-row"
+            className="Toastify"
+          />
+          <div
+            className="user-status-bar"
           >
-            <input
-              autoComplete="new-password"
-              id="auth-signup-password"
-              name="password"
-              onChange={[Function]}
-              required={true}
-              type="text"
-              value=""
-            />
+            <div
+              className="user-greeting"
+            >
+              Not logged in
+            </div>
+            <div
+              className="user-actions"
+            >
+              <button
+                className="status-bar-btn"
+                onClick={[Function]}
+                type="button"
+              >
+                Log In
+              </button>
+              <button
+                className="status-bar-btn-primary"
+                onClick={[Function]}
+                type="button"
+              >
+                Sign Up
+              </button>
+            </div>
+          </div>
+          <div
+            className="auth-modal-tabs"
+          >
             <button
+              className="auth-modal-tab"
               onClick={[Function]}
               type="button"
             >
-              Hide
+              Log In
+            </button>
+            <button
+              className="auth-modal-tab-active"
+              onClick={[Function]}
+              type="button"
+            >
+              Sign Up
             </button>
           </div>
-        </label>
-        <label
-          htmlFor="auth-signup-firstname"
-        >
-          First Name:
-          <input
-            autoComplete="given-name"
-            id="auth-signup-firstname"
-            name="FirstName"
-            onChange={[Function]}
-            required={true}
-            type="text"
-            value=""
-          />
-        </label>
-        <label
-          htmlFor="auth-signup-lastname"
-        >
-          Last Name:
-          <input
-            autoComplete="family-name"
-            id="auth-signup-lastname"
-            name="LastName"
-            onChange={[Function]}
-            required={true}
-            type="text"
-            value=""
-          />
-        </label>
-        <label
-          htmlFor="auth-signup-phone"
-        >
-          Phone Number:
-          <input
-            autoComplete="tel"
-            id="auth-signup-phone"
-            name="Phone"
-            onChange={[Function]}
-            required={true}
-            type="tel"
-            value=""
-          />
-        </label>
-        <label
-          htmlFor="auth-signup-testify"
-        >
-          <input
-            checked={false}
-            id="auth-signup-testify"
-            name="testify"
-            onChange={[Function]}
-            type="checkbox"
-          />
-           
-          I'm willing to testify at a hearing, which can be done by phone.
-        </label>
-        <button
-          className="auth-submit-btn"
-          disabled={false}
-          onClick={[Function]}
-          type="button"
-        >
-          Sign Up
-        </button>
-        <div
-          className="auth-switch-link"
-        >
-          Already have an account?
-           
-          <button
-            onClick={[Function]}
-            type="button"
+          <form
+            className="auth-modal-body"
+            onSubmit={[Function]}
           >
-            Log In
-          </button>
-        </div>
-      </div>
-      <div
-        className="auth-prompt"
-      >
-        <p>
-          Please
-           
-          <button
-            onClick={[Function]}
-            type="button"
+            <label
+              htmlFor="auth-signup-email"
+            >
+              Email:
+              <input
+                autoComplete="email"
+                id="auth-signup-email"
+                name="email"
+                onChange={[Function]}
+                required={true}
+                type="email"
+                value=""
+              />
+            </label>
+            <label
+              htmlFor="auth-signup-password"
+            >
+              Password:
+              <div
+                className="auth-field-row"
+              >
+                <input
+                  autoComplete="new-password"
+                  id="auth-signup-password"
+                  name="password"
+                  onChange={[Function]}
+                  required={true}
+                  type="text"
+                  value=""
+                />
+                <button
+                  onClick={[Function]}
+                  type="button"
+                >
+                  Hide
+                </button>
+              </div>
+            </label>
+            <label
+              htmlFor="auth-signup-firstname"
+            >
+              First Name:
+              <input
+                autoComplete="given-name"
+                id="auth-signup-firstname"
+                name="FirstName"
+                onChange={[Function]}
+                required={true}
+                type="text"
+                value=""
+              />
+            </label>
+            <label
+              htmlFor="auth-signup-lastname"
+            >
+              Last Name:
+              <input
+                autoComplete="family-name"
+                id="auth-signup-lastname"
+                name="LastName"
+                onChange={[Function]}
+                required={true}
+                type="text"
+                value=""
+              />
+            </label>
+            <label
+              htmlFor="auth-signup-phone"
+            >
+              Phone Number:
+              <input
+                autoComplete="tel"
+                id="auth-signup-phone"
+                name="Phone"
+                onChange={[Function]}
+                required={true}
+                type="tel"
+                value=""
+              />
+            </label>
+            <label
+              htmlFor="auth-signup-testify"
+            >
+              <input
+                checked={false}
+                id="auth-signup-testify"
+                name="testify"
+                onChange={[Function]}
+                type="checkbox"
+              />
+               
+              I'm willing to testify at a hearing, which can be done by phone.
+            </label>
+            <button
+              className="auth-submit-btn"
+              disabled={false}
+              type="submit"
+            >
+              Sign Up
+            </button>
+            <div
+              className="auth-switch-link"
+            >
+              Already have an account?
+               
+              <button
+                onClick={[Function]}
+                type="button"
+              >
+                Log In
+              </button>
+            </div>
+          </form>
+          <div
+            className="auth-prompt"
           >
-            log in
-          </button>
-           
-          or
-           
-          <button
-            onClick={[Function]}
-            type="button"
-          >
-            sign up
-          </button>
-           
-          to submit a report.
-        </p>
-      </div>
-      <br />
-      <div
-        style={
-          {
-            "float": "right",
-          }
-        }
-      >
-        <a
-          href="/electricitibikes"
-          style={
-            {
-              "background": "black",
-              "border": "1em solid black",
-              "borderRadius": "2em",
-              "textDecoration": "none",
+            <p>
+              Please
+               
+              <button
+                onClick={[Function]}
+                type="button"
+              >
+                log in
+              </button>
+               
+              or
+               
+              <button
+                onClick={[Function]}
+                type="button"
+              >
+                sign up
+              </button>
+               
+              to submit a report.
+            </p>
+          </div>
+          <br />
+          <div
+            style={
+              {
+                "float": "right",
+              }
             }
-          }
-        >
-          <span
-            aria-label="high voltage"
-            role="img"
           >
-            ⚡
-          </span>
-        </a>
+            <a
+              href="/submissions-map"
+              style={
+                {
+                  "background": "black",
+                  "border": "1em solid black",
+                  "borderRadius": "2em",
+                  "textDecoration": "none",
+                }
+              }
+            >
+              <span
+                aria-label="world map"
+                role="img"
+              >
+                🗺️
+              </span>
+            </a>
+          </div>
+        </main>
       </div>
-    </main>
+    </div>
   </div>
   <input
     autoComplete="off"
@@ -742,7 +1455,6 @@ exports[`Home renders auth prompt and hides form when logged out 1`] = `
     {
       "bottom": 0,
       "left": 0,
-      "overflowY": "scroll",
       "position": "fixed",
       "right": 0,
       "top": 0,
@@ -750,104 +1462,112 @@ exports[`Home renders auth prompt and hides form when logged out 1`] = `
   }
 >
   <div
-    className="container"
+    className="scroll-area"
   >
-    <main>
-      <h1>
-        <a
-          href="https://reportedly.weebly.com/"
-          style={
-            {
-              "textDecoration": "underline",
+    <div
+      className="scroll-container"
+    >
+      <div
+        className="container"
+      >
+        <main>
+          <h1>
+            <a
+              href="https://reportedly.weebly.com/"
+              style={
+                {
+                  "textDecoration": "underline",
+                }
+              }
+            >
+              Reported
+            </a>
+          </h1>
+          <div
+            className="Toastify"
+          />
+          <div
+            className="user-status-bar"
+          >
+            <div
+              className="user-greeting"
+            >
+              Not logged in
+            </div>
+            <div
+              className="user-actions"
+            >
+              <button
+                className="status-bar-btn"
+                onClick={[Function]}
+                type="button"
+              >
+                Log In
+              </button>
+              <button
+                className="status-bar-btn-primary"
+                onClick={[Function]}
+                type="button"
+              >
+                Sign Up
+              </button>
+            </div>
+          </div>
+          <div
+            className="auth-prompt"
+          >
+            <p>
+              Please
+               
+              <button
+                onClick={[Function]}
+                type="button"
+              >
+                log in
+              </button>
+               
+              or
+               
+              <button
+                onClick={[Function]}
+                type="button"
+              >
+                sign up
+              </button>
+               
+              to submit a report.
+            </p>
+          </div>
+          <br />
+          <div
+            style={
+              {
+                "float": "right",
+              }
             }
-          }
-        >
-          Reported
-        </a>
-      </h1>
-      <div
-        className="Toastify"
-      />
-      <div
-        className="user-status-bar"
-      >
-        <div
-          className="user-greeting"
-        >
-          Not logged in
-        </div>
-        <div
-          className="user-actions"
-        >
-          <button
-            className="status-bar-btn"
-            onClick={[Function]}
-            type="button"
           >
-            Log In
-          </button>
-          <button
-            className="status-bar-btn-primary"
-            onClick={[Function]}
-            type="button"
-          >
-            Sign Up
-          </button>
-        </div>
+            <a
+              href="/submissions-map"
+              style={
+                {
+                  "background": "black",
+                  "border": "1em solid black",
+                  "borderRadius": "2em",
+                  "textDecoration": "none",
+                }
+              }
+            >
+              <span
+                aria-label="world map"
+                role="img"
+              >
+                🗺️
+              </span>
+            </a>
+          </div>
+        </main>
       </div>
-      <div
-        className="auth-prompt"
-      >
-        <p>
-          Please
-           
-          <button
-            onClick={[Function]}
-            type="button"
-          >
-            log in
-          </button>
-           
-          or
-           
-          <button
-            onClick={[Function]}
-            type="button"
-          >
-            sign up
-          </button>
-           
-          to submit a report.
-        </p>
-      </div>
-      <br />
-      <div
-        style={
-          {
-            "float": "right",
-          }
-        }
-      >
-        <a
-          href="/electricitibikes"
-          style={
-            {
-              "background": "black",
-              "border": "1em solid black",
-              "borderRadius": "2em",
-              "textDecoration": "none",
-            }
-          }
-        >
-          <span
-            aria-label="high voltage"
-            role="img"
-          >
-            ⚡
-          </span>
-        </a>
-      </div>
-    </main>
+    </div>
   </div>
   <input
     autoComplete="off"
@@ -870,7 +1590,7 @@ exports[`Home renders auth prompt and hides form when logged out 1`] = `
 </div>
 `;
 
-exports[`Home renders submission form and Previous Submissions when logged in 1`] = `
+exports[`Home renders submission form and Previous Submissions when logged in with photos 1`] = `
 <div
   aria-disabled={false}
   className="root"
@@ -884,7 +1604,6 @@ exports[`Home renders submission form and Previous Submissions when logged in 1`
     {
       "bottom": 0,
       "left": 0,
-      "overflowY": "scroll",
       "position": "fixed",
       "right": 0,
       "top": 0,
@@ -892,580 +1611,850 @@ exports[`Home renders submission form and Previous Submissions when logged in 1`
   }
 >
   <div
-    className="container"
+    className="scroll-area"
   >
-    <main>
-      <h1>
-        <a
-          href="https://reportedly.weebly.com/"
-          style={
-            {
-              "textDecoration": "underline",
-            }
-          }
-        >
-          Reported
-        </a>
-      </h1>
+    <div
+      className="scroll-container"
+    >
       <div
-        className="Toastify"
-      />
-      <div
-        className="user-status-bar"
+        className="container"
       >
-        <div
-          className="user-greeting"
-        >
-          <span
-            aria-label="user"
-            role="img"
-          >
-            👤
-          </span>
-           
-          test@example.com
-        </div>
-        <div
-          className="user-actions"
-        >
-          <button
-            className="status-bar-btn-primary"
-            onClick={[Function]}
-            type="button"
-          >
-            Edit Profile
-          </button>
-          <button
-            className="status-bar-btn"
-            onClick={[Function]}
-            type="button"
-          >
-            Log Out
-          </button>
-        </div>
-      </div>
-      <form
-        onSubmit={[Function]}
-      >
-        <fieldset
-          disabled={false}
-        >
-          <div
-            className="_react-file-reader-input"
-            onClick={[Function]}
-            style={
-              {
-                "float": "left",
-                "margin": "1px",
-              }
-            }
-          >
-            <input
-              multiple={true}
-              onChange={[Function]}
-              onClick={[Function]}
+        <main>
+          <h1>
+            <a
+              href="https://reportedly.weebly.com/"
               style={
                 {
-                  "position": "absolute",
-                  "top": "-9999px",
+                  "textDecoration": "underline",
                 }
               }
-              type="file"
-            />
-            <button
-              style={
-                {
-                  "whiteSpace": "wrap",
-                }
-              }
-              type="button"
             >
-              Add pictures/videos (up to 3 each, 20MB max each)
-            </button>
+              Reported
+            </a>
+          </h1>
+          <div
+            className="Toastify"
+          />
+          <div
+            className="user-status-bar"
+          >
+            <div
+              className="user-greeting"
+            >
+              <span
+                aria-label="user"
+                role="img"
+              >
+                👤
+              </span>
+               
+              test@example.com
+            </div>
+            <div
+              className="user-actions"
+            >
+              <button
+                className="status-bar-btn-primary"
+                onClick={[Function]}
+                type="button"
+              >
+                Edit Profile
+              </button>
+              <button
+                className="status-bar-btn"
+                onClick={[Function]}
+                type="button"
+              >
+                Preferences
+              </button>
+              <button
+                className="status-bar-btn"
+                onClick={[Function]}
+                type="button"
+              >
+                Log Out
+              </button>
+            </div>
           </div>
           <div
-            style={
-              {
-                "clear": "both",
-                "display": "flex",
-                "flexWrap": "wrap",
-              }
-            }
-          />
-          <label
-            htmlFor="isAlprEnabled"
+            className="withhold-notice-banner"
+            role="alert"
           >
-            <input
-              checked={true}
-              id="isAlprEnabled"
-              name="isAlprEnabled"
-              onChange={[Function]}
-              type="checkbox"
-            />
-             
-            Automatically read license plates from pictures/videos
-          </label>
-          <label
-            htmlFor="isReverseGeocodingEnabled"
+            <span>
+              Getting unwanted phone calls after making submissions? Now you can stop sending your number and email to the cops!
+            </span>
+            <span
+              className="user-actions"
+            >
+              <button
+                className="status-bar-btn-primary"
+                onClick={[Function]}
+                type="button"
+              >
+                Show me how
+              </button>
+              <button
+                className="status-bar-btn"
+                onClick={[Function]}
+                type="button"
+              >
+                Dismiss
+              </button>
+            </span>
+          </div>
+          <form
+            onSubmit={[Function]}
           >
-            <input
-              checked={true}
-              id="isReverseGeocodingEnabled"
-              name="isReverseGeocodingEnabled"
-              onChange={[Function]}
-              type="checkbox"
-            />
-             
-            Automatically read addresses from pictures/videos
-          </label>
-          <label
-            htmlFor="plate"
-          >
-            License/Medallion:
-            <div
-              style={
-                {
-                  "alignItems": "flex-start",
-                  "display": "flex",
-                  "flexWrap": "wrap",
-                  "gap": "0.5rem",
-                }
-              }
+            <fieldset
+              disabled={false}
             >
               <div
+                className="_react-file-reader-input"
+                onClick={[Function]}
                 style={
                   {
-                    "flex": 1,
-                    "minWidth": 0,
+                    "float": "left",
+                    "margin": "1px",
                   }
                 }
               >
                 <input
-                  autoComplete="off"
-                  list="plateSuggestions"
-                  name="plate"
+                  accept="image/*,video/*,.zip,application/zip,application/x-zip-compressed"
+                  multiple={true}
                   onChange={[Function]}
-                  required={true}
-                  type="search"
-                  value=""
-                />
-                <datalist
-                  id="plateSuggestions"
-                />
-                <select
-                  name="licenseState"
-                  onChange={[Function]}
+                  onClick={[Function]}
                   style={
                     {
-                      "marginTop": "0.5rem",
+                      "position": "absolute",
+                      "top": "-9999px",
                     }
                   }
-                  value="NY"
+                  type="file"
+                />
+                <button
+                  style={
+                    {
+                      "whiteSpace": "wrap",
+                    }
+                  }
+                  type="button"
+                >
+                  Add pictures/videos (up to 3 each, 20MB max each)
+                </button>
+              </div>
+              <button
+                onClick={[Function]}
+                style={
+                  {
+                    "float": "left",
+                    "margin": "1px",
+                  }
+                }
+                type="button"
+              >
+                Add folder
+              </button>
+              <input
+                multiple={true}
+                onChange={[Function]}
+                style={
+                  {
+                    "display": "none",
+                  }
+                }
+                type="file"
+                webkitdirectory=""
+              />
+              <div
+                style={
+                  {
+                    "clear": "both",
+                  }
+                }
+              />
+              <div
+                style={
+                  {
+                    "display": "flex",
+                    "flexWrap": "wrap",
+                  }
+                }
+              >
+                <div
+                  style={
+                    {
+                      "flexGrow": 1,
+                      "margin": "0.1%",
+                      "position": "relative",
+                      "width": "33%",
+                    }
+                  }
+                >
+                  <div
+                    style={
+                      {
+                        "display": "inline-block",
+                        "maxWidth": "100%",
+                        "position": "relative",
+                      }
+                    }
+                  >
+                    <a
+                      href="blob:mock"
+                      rel="noopener noreferrer"
+                      style={
+                        {
+                          "display": "block",
+                        }
+                      }
+                      target="_blank"
+                    >
+                      <img
+                        alt="photo.jpg"
+                        src="blob:mock"
+                        style={
+                          {
+                            "display": "block",
+                          }
+                        }
+                      />
+                    </a>
+                  </div>
+                  <button
+                    onClick={[Function]}
+                    style={
+                      {
+                        "background": "white",
+                        "color": "red",
+                        "margin": "1px",
+                        "padding": 0,
+                        "position": "absolute",
+                        "right": 0,
+                        "top": 0,
+                      }
+                    }
+                    type="button"
+                  >
+                    <span
+                      aria-label="Delete photo/video"
+                      role="img"
+                    >
+                      ❌
+                    </span>
+                  </button>
+                </div>
+              </div>
+              <label
+                htmlFor="plate"
+              >
+                License/Medallion:
+                <div
+                  style={
+                    {
+                      "alignItems": "flex-start",
+                      "display": "flex",
+                      "flexWrap": "wrap",
+                      "gap": "0.5rem",
+                    }
+                  }
+                >
+                  <div
+                    style={
+                      {
+                        "flex": 1,
+                        "minWidth": 0,
+                      }
+                    }
+                  >
+                    <input
+                      autoComplete="off"
+                      list="plateSuggestions"
+                      name="plate"
+                      onChange={[Function]}
+                      required={true}
+                      type="search"
+                      value=""
+                    />
+                    <datalist
+                      id="plateSuggestions"
+                    />
+                    <input
+                      autoComplete="off"
+                      list="stateSuggestion"
+                      name="licenseState"
+                      onChange={[Function]}
+                      placeholder="State"
+                      style={
+                        {
+                          "marginTop": "0.5rem",
+                        }
+                      }
+                      type="search"
+                      value="NY"
+                    />
+                    <datalist
+                      id="stateSuggestion"
+                    >
+                      <option
+                        value="AL"
+                      >
+                        Alabama
+                         (
+                        AL
+                        )
+                      </option>
+                      <option
+                        value="AK"
+                      >
+                        Alaska
+                         (
+                        AK
+                        )
+                      </option>
+                      <option
+                        value="AZ"
+                      >
+                        Arizona
+                         (
+                        AZ
+                        )
+                      </option>
+                      <option
+                        value="AR"
+                      >
+                        Arkansas
+                         (
+                        AR
+                        )
+                      </option>
+                      <option
+                        value="CA"
+                      >
+                        California
+                         (
+                        CA
+                        )
+                      </option>
+                      <option
+                        value="CO"
+                      >
+                        Colorado
+                         (
+                        CO
+                        )
+                      </option>
+                      <option
+                        value="CT"
+                      >
+                        Connecticut
+                         (
+                        CT
+                        )
+                      </option>
+                      <option
+                        value="DE"
+                      >
+                        Delaware
+                         (
+                        DE
+                        )
+                      </option>
+                      <option
+                        value="DC"
+                      >
+                        District of Columbia
+                         (
+                        DC
+                        )
+                      </option>
+                      <option
+                        value="FL"
+                      >
+                        Florida
+                         (
+                        FL
+                        )
+                      </option>
+                      <option
+                        value="GA"
+                      >
+                        Georgia
+                         (
+                        GA
+                        )
+                      </option>
+                      <option
+                        value="HI"
+                      >
+                        Hawaii
+                         (
+                        HI
+                        )
+                      </option>
+                      <option
+                        value="ID"
+                      >
+                        Idaho
+                         (
+                        ID
+                        )
+                      </option>
+                      <option
+                        value="IL"
+                      >
+                        Illinois
+                         (
+                        IL
+                        )
+                      </option>
+                      <option
+                        value="IN"
+                      >
+                        Indiana
+                         (
+                        IN
+                        )
+                      </option>
+                      <option
+                        value="IA"
+                      >
+                        Iowa
+                         (
+                        IA
+                        )
+                      </option>
+                      <option
+                        value="KS"
+                      >
+                        Kansas
+                         (
+                        KS
+                        )
+                      </option>
+                      <option
+                        value="KY"
+                      >
+                        Kentucky
+                         (
+                        KY
+                        )
+                      </option>
+                      <option
+                        value="LA"
+                      >
+                        Louisiana
+                         (
+                        LA
+                        )
+                      </option>
+                      <option
+                        value="ME"
+                      >
+                        Maine
+                         (
+                        ME
+                        )
+                      </option>
+                      <option
+                        value="MD"
+                      >
+                        Maryland
+                         (
+                        MD
+                        )
+                      </option>
+                      <option
+                        value="MA"
+                      >
+                        Massachusetts
+                         (
+                        MA
+                        )
+                      </option>
+                      <option
+                        value="MI"
+                      >
+                        Michigan
+                         (
+                        MI
+                        )
+                      </option>
+                      <option
+                        value="MN"
+                      >
+                        Minnesota
+                         (
+                        MN
+                        )
+                      </option>
+                      <option
+                        value="MS"
+                      >
+                        Mississippi
+                         (
+                        MS
+                        )
+                      </option>
+                      <option
+                        value="MO"
+                      >
+                        Missouri
+                         (
+                        MO
+                        )
+                      </option>
+                      <option
+                        value="MT"
+                      >
+                        Montana
+                         (
+                        MT
+                        )
+                      </option>
+                      <option
+                        value="NE"
+                      >
+                        Nebraska
+                         (
+                        NE
+                        )
+                      </option>
+                      <option
+                        value="NV"
+                      >
+                        Nevada
+                         (
+                        NV
+                        )
+                      </option>
+                      <option
+                        value="NH"
+                      >
+                        New Hampshire
+                         (
+                        NH
+                        )
+                      </option>
+                      <option
+                        value="NJ"
+                      >
+                        New Jersey
+                         (
+                        NJ
+                        )
+                      </option>
+                      <option
+                        value="NM"
+                      >
+                        New Mexico
+                         (
+                        NM
+                        )
+                      </option>
+                      <option
+                        value="NY"
+                      >
+                        New York
+                         (
+                        NY
+                        )
+                      </option>
+                      <option
+                        value="NC"
+                      >
+                        North Carolina
+                         (
+                        NC
+                        )
+                      </option>
+                      <option
+                        value="ND"
+                      >
+                        North Dakota
+                         (
+                        ND
+                        )
+                      </option>
+                      <option
+                        value="OH"
+                      >
+                        Ohio
+                         (
+                        OH
+                        )
+                      </option>
+                      <option
+                        value="OK"
+                      >
+                        Oklahoma
+                         (
+                        OK
+                        )
+                      </option>
+                      <option
+                        value="OR"
+                      >
+                        Oregon
+                         (
+                        OR
+                        )
+                      </option>
+                      <option
+                        value="PA"
+                      >
+                        Pennsylvania
+                         (
+                        PA
+                        )
+                      </option>
+                      <option
+                        value="RI"
+                      >
+                        Rhode Island
+                         (
+                        RI
+                        )
+                      </option>
+                      <option
+                        value="SC"
+                      >
+                        South Carolina
+                         (
+                        SC
+                        )
+                      </option>
+                      <option
+                        value="SD"
+                      >
+                        South Dakota
+                         (
+                        SD
+                        )
+                      </option>
+                      <option
+                        value="TN"
+                      >
+                        Tennessee
+                         (
+                        TN
+                        )
+                      </option>
+                      <option
+                        value="TX"
+                      >
+                        Texas
+                         (
+                        TX
+                        )
+                      </option>
+                      <option
+                        value="UT"
+                      >
+                        Utah
+                         (
+                        UT
+                        )
+                      </option>
+                      <option
+                        value="VT"
+                      >
+                        Vermont
+                         (
+                        VT
+                        )
+                      </option>
+                      <option
+                        value="VA"
+                      >
+                        Virginia
+                         (
+                        VA
+                        )
+                      </option>
+                      <option
+                        value="WA"
+                      >
+                        Washington
+                         (
+                        WA
+                        )
+                      </option>
+                      <option
+                        value="WV"
+                      >
+                        West Virginia
+                         (
+                        WV
+                        )
+                      </option>
+                      <option
+                        value="WI"
+                      >
+                        Wisconsin
+                         (
+                        WI
+                        )
+                      </option>
+                      <option
+                        value="WY"
+                      >
+                        Wyoming
+                         (
+                        WY
+                        )
+                      </option>
+                    </datalist>
+                  </div>
+                </div>
+                <div />
+                <div />
+              </label>
+              <label
+                htmlFor="typeofcomplaint"
+              >
+                Type:
+                 
+                <select
+                  name="typeofcomplaint"
+                  onChange={[Function]}
+                  value="Blocked the bike lane"
                 >
                   <option
-                    value="AL"
+                    value="Blocked the bike lane"
                   >
-                    Alabama
+                    Blocked the bike lane
                   </option>
                   <option
-                    value="AK"
+                    value="Blocked the crosswalk"
                   >
-                    Alaska
+                    Blocked the crosswalk
                   </option>
                   <option
-                    value="AZ"
+                    value="Drove recklessly"
                   >
-                    Arizona
+                    Drove recklessly
                   </option>
                   <option
-                    value="AR"
+                    value="Parked illegally"
                   >
-                    Arkansas
+                    Parked illegally
                   </option>
                   <option
-                    value="CA"
+                    value="Ran a red light or stop sign"
                   >
-                    California
-                  </option>
-                  <option
-                    value="CO"
-                  >
-                    Colorado
-                  </option>
-                  <option
-                    value="CT"
-                  >
-                    Connecticut
-                  </option>
-                  <option
-                    value="DE"
-                  >
-                    Delaware
-                  </option>
-                  <option
-                    value="DC"
-                  >
-                    District of Columbia
-                  </option>
-                  <option
-                    value="FL"
-                  >
-                    Florida
-                  </option>
-                  <option
-                    value="GA"
-                  >
-                    Georgia
-                  </option>
-                  <option
-                    value="HI"
-                  >
-                    Hawaii
-                  </option>
-                  <option
-                    value="ID"
-                  >
-                    Idaho
-                  </option>
-                  <option
-                    value="IL"
-                  >
-                    Illinois
-                  </option>
-                  <option
-                    value="IN"
-                  >
-                    Indiana
-                  </option>
-                  <option
-                    value="IA"
-                  >
-                    Iowa
-                  </option>
-                  <option
-                    value="KS"
-                  >
-                    Kansas
-                  </option>
-                  <option
-                    value="KY"
-                  >
-                    Kentucky
-                  </option>
-                  <option
-                    value="LA"
-                  >
-                    Louisiana
-                  </option>
-                  <option
-                    value="ME"
-                  >
-                    Maine
-                  </option>
-                  <option
-                    value="MD"
-                  >
-                    Maryland
-                  </option>
-                  <option
-                    value="MA"
-                  >
-                    Massachusetts
-                  </option>
-                  <option
-                    value="MI"
-                  >
-                    Michigan
-                  </option>
-                  <option
-                    value="MN"
-                  >
-                    Minnesota
-                  </option>
-                  <option
-                    value="MS"
-                  >
-                    Mississippi
-                  </option>
-                  <option
-                    value="MO"
-                  >
-                    Missouri
-                  </option>
-                  <option
-                    value="MT"
-                  >
-                    Montana
-                  </option>
-                  <option
-                    value="NE"
-                  >
-                    Nebraska
-                  </option>
-                  <option
-                    value="NV"
-                  >
-                    Nevada
-                  </option>
-                  <option
-                    value="NH"
-                  >
-                    New Hampshire
-                  </option>
-                  <option
-                    value="NJ"
-                  >
-                    New Jersey
-                  </option>
-                  <option
-                    value="NM"
-                  >
-                    New Mexico
-                  </option>
-                  <option
-                    value="NY"
-                  >
-                    New York
-                  </option>
-                  <option
-                    value="NC"
-                  >
-                    North Carolina
-                  </option>
-                  <option
-                    value="ND"
-                  >
-                    North Dakota
-                  </option>
-                  <option
-                    value="OH"
-                  >
-                    Ohio
-                  </option>
-                  <option
-                    value="OK"
-                  >
-                    Oklahoma
-                  </option>
-                  <option
-                    value="OR"
-                  >
-                    Oregon
-                  </option>
-                  <option
-                    value="PA"
-                  >
-                    Pennsylvania
-                  </option>
-                  <option
-                    value="RI"
-                  >
-                    Rhode Island
-                  </option>
-                  <option
-                    value="SC"
-                  >
-                    South Carolina
-                  </option>
-                  <option
-                    value="SD"
-                  >
-                    South Dakota
-                  </option>
-                  <option
-                    value="TN"
-                  >
-                    Tennessee
-                  </option>
-                  <option
-                    value="TX"
-                  >
-                    Texas
-                  </option>
-                  <option
-                    value="UT"
-                  >
-                    Utah
-                  </option>
-                  <option
-                    value="VT"
-                  >
-                    Vermont
-                  </option>
-                  <option
-                    value="VA"
-                  >
-                    Virginia
-                  </option>
-                  <option
-                    value="WA"
-                  >
-                    Washington
-                  </option>
-                  <option
-                    value="WV"
-                  >
-                    West Virginia
-                  </option>
-                  <option
-                    value="WI"
-                  >
-                    Wisconsin
-                  </option>
-                  <option
-                    value="WY"
-                  >
-                    Wyoming
+                    Ran a red light or stop sign
                   </option>
                 </select>
-              </div>
-            </div>
-            <div />
-            <div />
-          </label>
-          <label
-            htmlFor="typeofcomplaint"
-          >
-            Type:
-             
-            <select
-              name="typeofcomplaint"
-              onChange={[Function]}
-              value="Blocked the bike lane"
-            >
-              <option
-                value="Blocked the bike lane"
+              </label>
+              <label
+                htmlFor="where"
               >
-                Blocked the bike lane
-              </option>
-              <option
-                value="Blocked the crosswalk"
+                Where: 
+                <br />
+                <button
+                  disabled={false}
+                  name="where"
+                  onClick={[Function]}
+                  style={
+                    {
+                      "width": "100%",
+                    }
+                  }
+                  type="button"
+                >
+                  Click to choose address on map
+                </button>
+              </label>
+              <label
+                htmlFor="isLocationLocked"
               >
-                Blocked the crosswalk
-              </option>
-              <option
-                value="Drove recklessly"
+                <input
+                  checked={false}
+                  id="isLocationLocked"
+                  name="isLocationLocked"
+                  onChange={[Function]}
+                  type="checkbox"
+                />
+                 
+                Reuse this address
+              </label>
+              <label
+                htmlFor="CreateDate"
               >
-                Drove recklessly
-              </option>
-              <option
-                value="Parked illegally"
+                When:
+                 
+                <input
+                  name="CreateDate"
+                  onChange={[Function]}
+                  required={true}
+                  type="datetime-local"
+                  value="2016-11-17T20:00"
+                />
+              </label>
+              <label
+                htmlFor="reportDescription"
               >
-                Parked illegally
-              </option>
-              <option
-                value="Ran a red light or stop sign"
-              >
-                Ran a red light or stop sign
-              </option>
-            </select>
-          </label>
-          <label
-            htmlFor="where"
-          >
-            Where: 
-            <br />
-            <button
-              name="where"
-              onClick={[Function]}
-              style={
-                {
-                  "width": "100%",
+                Description:
+                 
+                <textarea
+                  autoComplete="off"
+                  name="reportDescription"
+                  onChange={[Function]}
+                  value=""
+                />
+              </label>
+              <button
+                disabled={false}
+                style={
+                  {
+                    "width": "100%",
+                  }
                 }
-              }
-              type="button"
-            >
-              Finding Address...
-            </button>
-          </label>
-          <label
-            htmlFor="CreateDate"
+                type="submit"
+              >
+                Submit
+              </button>
+            </fieldset>
+          </form>
+          <br />
+          <details
+            onToggle={[Function]}
           >
-            When:
-             
-            <input
-              name="CreateDate"
-              onChange={[Function]}
-              required={true}
-              type="datetime-local"
-              value="2016-11-17T20:00"
-            />
-          </label>
-          <label
-            htmlFor="reportDescription"
-          >
-            Description:
-             
-            <textarea
-              autoComplete="off"
-              name="reportDescription"
-              onChange={[Function]}
-              value=""
-            />
-          </label>
-          <label
-            htmlFor="can_be_shared_publicly"
-          >
-            <input
-              checked={false}
-              id="can_be_shared_publicly"
-              name="can_be_shared_publicly"
-              onChange={[Function]}
-              type="checkbox"
-            />
-             
-            Allow the photos/videos, description, category, and location to be publicly displayed
-          </label>
-          <button
-            disabled={false}
+            <summary>
+              Previous Submissions (
+              expand to load
+              )
+            </summary>
+          </details>
+          <div
             style={
               {
-                "width": "100%",
+                "float": "right",
               }
             }
-            type="submit"
           >
-            Submit
-          </button>
-        </fieldset>
-      </form>
-      <br />
-      <details
-        onToggle={[Function]}
-      >
-        <summary>
-          Previous Submissions (
-          expand to load
-          )
-        </summary>
-      </details>
-      <div
-        style={
-          {
-            "float": "right",
-          }
-        }
-      >
-        <a
-          href="/electricitibikes"
-          style={
-            {
-              "background": "black",
-              "border": "1em solid black",
-              "borderRadius": "2em",
-              "textDecoration": "none",
-            }
-          }
-        >
-          <span
-            aria-label="high voltage"
-            role="img"
-          >
-            ⚡
-          </span>
-        </a>
+            <a
+              href="/submissions-map"
+              style={
+                {
+                  "background": "black",
+                  "border": "1em solid black",
+                  "borderRadius": "2em",
+                  "textDecoration": "none",
+                }
+              }
+            >
+              <span
+                aria-label="world map"
+                role="img"
+              >
+                🗺️
+              </span>
+            </a>
+          </div>
+        </main>
       </div>
-    </main>
+    </div>
   </div>
   <input
     autoComplete="off"
@@ -1488,7 +2477,7 @@ exports[`Home renders submission form and Previous Submissions when logged in 1`
 </div>
 `;
 
-exports[`Home renders with allPlateResults entry missing plate 1`] = `
+exports[`Home renders with allPlateResults entry missing plate and photos 1`] = `
 <div
   aria-disabled={false}
   className="root"
@@ -1502,7 +2491,6 @@ exports[`Home renders with allPlateResults entry missing plate 1`] = `
     {
       "bottom": 0,
       "left": 0,
-      "overflowY": "scroll",
       "position": "fixed",
       "right": 0,
       "top": 0,
@@ -1510,582 +2498,850 @@ exports[`Home renders with allPlateResults entry missing plate 1`] = `
   }
 >
   <div
-    className="container"
+    className="scroll-area"
   >
-    <main>
-      <h1>
-        <a
-          href="https://reportedly.weebly.com/"
-          style={
-            {
-              "textDecoration": "underline",
-            }
-          }
-        >
-          Reported
-        </a>
-      </h1>
+    <div
+      className="scroll-container"
+    >
       <div
-        className="Toastify"
-      />
-      <div
-        className="user-status-bar"
+        className="container"
       >
-        <div
-          className="user-greeting"
-        >
-          <span
-            aria-label="user"
-            role="img"
-          >
-            👤
-          </span>
-           
-          test@example.com
-        </div>
-        <div
-          className="user-actions"
-        >
-          <button
-            className="status-bar-btn-primary"
-            onClick={[Function]}
-            type="button"
-          >
-            Edit Profile
-          </button>
-          <button
-            className="status-bar-btn"
-            onClick={[Function]}
-            type="button"
-          >
-            Log Out
-          </button>
-        </div>
-      </div>
-      <form
-        onSubmit={[Function]}
-      >
-        <fieldset
-          disabled={false}
-        >
-          <div
-            className="_react-file-reader-input"
-            onClick={[Function]}
-            style={
-              {
-                "float": "left",
-                "margin": "1px",
-              }
-            }
-          >
-            <input
-              multiple={true}
-              onChange={[Function]}
-              onClick={[Function]}
+        <main>
+          <h1>
+            <a
+              href="https://reportedly.weebly.com/"
               style={
                 {
-                  "position": "absolute",
-                  "top": "-9999px",
+                  "textDecoration": "underline",
                 }
               }
-              type="file"
-            />
-            <button
-              style={
-                {
-                  "whiteSpace": "wrap",
-                }
-              }
-              type="button"
             >
-              Add pictures/videos (up to 3 each, 20MB max each)
-            </button>
+              Reported
+            </a>
+          </h1>
+          <div
+            className="Toastify"
+          />
+          <div
+            className="user-status-bar"
+          >
+            <div
+              className="user-greeting"
+            >
+              <span
+                aria-label="user"
+                role="img"
+              >
+                👤
+              </span>
+               
+              test@example.com
+            </div>
+            <div
+              className="user-actions"
+            >
+              <button
+                className="status-bar-btn-primary"
+                onClick={[Function]}
+                type="button"
+              >
+                Edit Profile
+              </button>
+              <button
+                className="status-bar-btn"
+                onClick={[Function]}
+                type="button"
+              >
+                Preferences
+              </button>
+              <button
+                className="status-bar-btn"
+                onClick={[Function]}
+                type="button"
+              >
+                Log Out
+              </button>
+            </div>
           </div>
           <div
-            style={
-              {
-                "clear": "both",
-                "display": "flex",
-                "flexWrap": "wrap",
-              }
-            }
-          />
-          <label
-            htmlFor="isAlprEnabled"
+            className="withhold-notice-banner"
+            role="alert"
           >
-            <input
-              checked={true}
-              id="isAlprEnabled"
-              name="isAlprEnabled"
-              onChange={[Function]}
-              type="checkbox"
-            />
-             
-            Automatically read license plates from pictures/videos
-          </label>
-          <label
-            htmlFor="isReverseGeocodingEnabled"
+            <span>
+              Getting unwanted phone calls after making submissions? Now you can stop sending your number and email to the cops!
+            </span>
+            <span
+              className="user-actions"
+            >
+              <button
+                className="status-bar-btn-primary"
+                onClick={[Function]}
+                type="button"
+              >
+                Show me how
+              </button>
+              <button
+                className="status-bar-btn"
+                onClick={[Function]}
+                type="button"
+              >
+                Dismiss
+              </button>
+            </span>
+          </div>
+          <form
+            onSubmit={[Function]}
           >
-            <input
-              checked={true}
-              id="isReverseGeocodingEnabled"
-              name="isReverseGeocodingEnabled"
-              onChange={[Function]}
-              type="checkbox"
-            />
-             
-            Automatically read addresses from pictures/videos
-          </label>
-          <label
-            htmlFor="plate"
-          >
-            License/Medallion:
-            <div
-              style={
-                {
-                  "alignItems": "flex-start",
-                  "display": "flex",
-                  "flexWrap": "wrap",
-                  "gap": "0.5rem",
-                }
-              }
+            <fieldset
+              disabled={false}
             >
               <div
+                className="_react-file-reader-input"
+                onClick={[Function]}
                 style={
                   {
-                    "flex": 1,
-                    "minWidth": 0,
+                    "float": "left",
+                    "margin": "1px",
                   }
                 }
               >
                 <input
-                  autoComplete="off"
-                  list="plateSuggestions"
-                  name="plate"
+                  accept="image/*,video/*,.zip,application/zip,application/x-zip-compressed"
+                  multiple={true}
                   onChange={[Function]}
-                  required={true}
-                  type="search"
-                  value=""
-                />
-                <datalist
-                  id="plateSuggestions"
-                >
-                  <option />
-                </datalist>
-                <select
-                  name="licenseState"
-                  onChange={[Function]}
+                  onClick={[Function]}
                   style={
                     {
-                      "marginTop": "0.5rem",
+                      "position": "absolute",
+                      "top": "-9999px",
                     }
                   }
-                  value="NY"
+                  type="file"
+                />
+                <button
+                  style={
+                    {
+                      "whiteSpace": "wrap",
+                    }
+                  }
+                  type="button"
+                >
+                  Add pictures/videos (up to 3 each, 20MB max each)
+                </button>
+              </div>
+              <button
+                onClick={[Function]}
+                style={
+                  {
+                    "float": "left",
+                    "margin": "1px",
+                  }
+                }
+                type="button"
+              >
+                Add folder
+              </button>
+              <input
+                multiple={true}
+                onChange={[Function]}
+                style={
+                  {
+                    "display": "none",
+                  }
+                }
+                type="file"
+                webkitdirectory=""
+              />
+              <div
+                style={
+                  {
+                    "clear": "both",
+                  }
+                }
+              />
+              <div
+                style={
+                  {
+                    "display": "flex",
+                    "flexWrap": "wrap",
+                  }
+                }
+              >
+                <div
+                  style={
+                    {
+                      "flexGrow": 1,
+                      "margin": "0.1%",
+                      "position": "relative",
+                      "width": "33%",
+                    }
+                  }
+                >
+                  <div
+                    style={
+                      {
+                        "display": "inline-block",
+                        "maxWidth": "100%",
+                        "position": "relative",
+                      }
+                    }
+                  >
+                    <a
+                      href="blob:mock"
+                      rel="noopener noreferrer"
+                      style={
+                        {
+                          "display": "block",
+                        }
+                      }
+                      target="_blank"
+                    >
+                      <img
+                        alt="photo.jpg"
+                        src="blob:mock"
+                        style={
+                          {
+                            "display": "block",
+                          }
+                        }
+                      />
+                    </a>
+                  </div>
+                  <button
+                    onClick={[Function]}
+                    style={
+                      {
+                        "background": "white",
+                        "color": "red",
+                        "margin": "1px",
+                        "padding": 0,
+                        "position": "absolute",
+                        "right": 0,
+                        "top": 0,
+                      }
+                    }
+                    type="button"
+                  >
+                    <span
+                      aria-label="Delete photo/video"
+                      role="img"
+                    >
+                      ❌
+                    </span>
+                  </button>
+                </div>
+              </div>
+              <label
+                htmlFor="plate"
+              >
+                License/Medallion:
+                <div
+                  style={
+                    {
+                      "alignItems": "flex-start",
+                      "display": "flex",
+                      "flexWrap": "wrap",
+                      "gap": "0.5rem",
+                    }
+                  }
+                >
+                  <div
+                    style={
+                      {
+                        "flex": 1,
+                        "minWidth": 0,
+                      }
+                    }
+                  >
+                    <input
+                      autoComplete="off"
+                      list="plateSuggestions"
+                      name="plate"
+                      onChange={[Function]}
+                      required={true}
+                      type="search"
+                      value=""
+                    />
+                    <datalist
+                      id="plateSuggestions"
+                    />
+                    <input
+                      autoComplete="off"
+                      list="stateSuggestion"
+                      name="licenseState"
+                      onChange={[Function]}
+                      placeholder="State"
+                      style={
+                        {
+                          "marginTop": "0.5rem",
+                        }
+                      }
+                      type="search"
+                      value="NY"
+                    />
+                    <datalist
+                      id="stateSuggestion"
+                    >
+                      <option
+                        value="AL"
+                      >
+                        Alabama
+                         (
+                        AL
+                        )
+                      </option>
+                      <option
+                        value="AK"
+                      >
+                        Alaska
+                         (
+                        AK
+                        )
+                      </option>
+                      <option
+                        value="AZ"
+                      >
+                        Arizona
+                         (
+                        AZ
+                        )
+                      </option>
+                      <option
+                        value="AR"
+                      >
+                        Arkansas
+                         (
+                        AR
+                        )
+                      </option>
+                      <option
+                        value="CA"
+                      >
+                        California
+                         (
+                        CA
+                        )
+                      </option>
+                      <option
+                        value="CO"
+                      >
+                        Colorado
+                         (
+                        CO
+                        )
+                      </option>
+                      <option
+                        value="CT"
+                      >
+                        Connecticut
+                         (
+                        CT
+                        )
+                      </option>
+                      <option
+                        value="DE"
+                      >
+                        Delaware
+                         (
+                        DE
+                        )
+                      </option>
+                      <option
+                        value="DC"
+                      >
+                        District of Columbia
+                         (
+                        DC
+                        )
+                      </option>
+                      <option
+                        value="FL"
+                      >
+                        Florida
+                         (
+                        FL
+                        )
+                      </option>
+                      <option
+                        value="GA"
+                      >
+                        Georgia
+                         (
+                        GA
+                        )
+                      </option>
+                      <option
+                        value="HI"
+                      >
+                        Hawaii
+                         (
+                        HI
+                        )
+                      </option>
+                      <option
+                        value="ID"
+                      >
+                        Idaho
+                         (
+                        ID
+                        )
+                      </option>
+                      <option
+                        value="IL"
+                      >
+                        Illinois
+                         (
+                        IL
+                        )
+                      </option>
+                      <option
+                        value="IN"
+                      >
+                        Indiana
+                         (
+                        IN
+                        )
+                      </option>
+                      <option
+                        value="IA"
+                      >
+                        Iowa
+                         (
+                        IA
+                        )
+                      </option>
+                      <option
+                        value="KS"
+                      >
+                        Kansas
+                         (
+                        KS
+                        )
+                      </option>
+                      <option
+                        value="KY"
+                      >
+                        Kentucky
+                         (
+                        KY
+                        )
+                      </option>
+                      <option
+                        value="LA"
+                      >
+                        Louisiana
+                         (
+                        LA
+                        )
+                      </option>
+                      <option
+                        value="ME"
+                      >
+                        Maine
+                         (
+                        ME
+                        )
+                      </option>
+                      <option
+                        value="MD"
+                      >
+                        Maryland
+                         (
+                        MD
+                        )
+                      </option>
+                      <option
+                        value="MA"
+                      >
+                        Massachusetts
+                         (
+                        MA
+                        )
+                      </option>
+                      <option
+                        value="MI"
+                      >
+                        Michigan
+                         (
+                        MI
+                        )
+                      </option>
+                      <option
+                        value="MN"
+                      >
+                        Minnesota
+                         (
+                        MN
+                        )
+                      </option>
+                      <option
+                        value="MS"
+                      >
+                        Mississippi
+                         (
+                        MS
+                        )
+                      </option>
+                      <option
+                        value="MO"
+                      >
+                        Missouri
+                         (
+                        MO
+                        )
+                      </option>
+                      <option
+                        value="MT"
+                      >
+                        Montana
+                         (
+                        MT
+                        )
+                      </option>
+                      <option
+                        value="NE"
+                      >
+                        Nebraska
+                         (
+                        NE
+                        )
+                      </option>
+                      <option
+                        value="NV"
+                      >
+                        Nevada
+                         (
+                        NV
+                        )
+                      </option>
+                      <option
+                        value="NH"
+                      >
+                        New Hampshire
+                         (
+                        NH
+                        )
+                      </option>
+                      <option
+                        value="NJ"
+                      >
+                        New Jersey
+                         (
+                        NJ
+                        )
+                      </option>
+                      <option
+                        value="NM"
+                      >
+                        New Mexico
+                         (
+                        NM
+                        )
+                      </option>
+                      <option
+                        value="NY"
+                      >
+                        New York
+                         (
+                        NY
+                        )
+                      </option>
+                      <option
+                        value="NC"
+                      >
+                        North Carolina
+                         (
+                        NC
+                        )
+                      </option>
+                      <option
+                        value="ND"
+                      >
+                        North Dakota
+                         (
+                        ND
+                        )
+                      </option>
+                      <option
+                        value="OH"
+                      >
+                        Ohio
+                         (
+                        OH
+                        )
+                      </option>
+                      <option
+                        value="OK"
+                      >
+                        Oklahoma
+                         (
+                        OK
+                        )
+                      </option>
+                      <option
+                        value="OR"
+                      >
+                        Oregon
+                         (
+                        OR
+                        )
+                      </option>
+                      <option
+                        value="PA"
+                      >
+                        Pennsylvania
+                         (
+                        PA
+                        )
+                      </option>
+                      <option
+                        value="RI"
+                      >
+                        Rhode Island
+                         (
+                        RI
+                        )
+                      </option>
+                      <option
+                        value="SC"
+                      >
+                        South Carolina
+                         (
+                        SC
+                        )
+                      </option>
+                      <option
+                        value="SD"
+                      >
+                        South Dakota
+                         (
+                        SD
+                        )
+                      </option>
+                      <option
+                        value="TN"
+                      >
+                        Tennessee
+                         (
+                        TN
+                        )
+                      </option>
+                      <option
+                        value="TX"
+                      >
+                        Texas
+                         (
+                        TX
+                        )
+                      </option>
+                      <option
+                        value="UT"
+                      >
+                        Utah
+                         (
+                        UT
+                        )
+                      </option>
+                      <option
+                        value="VT"
+                      >
+                        Vermont
+                         (
+                        VT
+                        )
+                      </option>
+                      <option
+                        value="VA"
+                      >
+                        Virginia
+                         (
+                        VA
+                        )
+                      </option>
+                      <option
+                        value="WA"
+                      >
+                        Washington
+                         (
+                        WA
+                        )
+                      </option>
+                      <option
+                        value="WV"
+                      >
+                        West Virginia
+                         (
+                        WV
+                        )
+                      </option>
+                      <option
+                        value="WI"
+                      >
+                        Wisconsin
+                         (
+                        WI
+                        )
+                      </option>
+                      <option
+                        value="WY"
+                      >
+                        Wyoming
+                         (
+                        WY
+                        )
+                      </option>
+                    </datalist>
+                  </div>
+                </div>
+                <div />
+                <div />
+              </label>
+              <label
+                htmlFor="typeofcomplaint"
+              >
+                Type:
+                 
+                <select
+                  name="typeofcomplaint"
+                  onChange={[Function]}
+                  value="Blocked the bike lane"
                 >
                   <option
-                    value="AL"
+                    value="Blocked the bike lane"
                   >
-                    Alabama
+                    Blocked the bike lane
                   </option>
                   <option
-                    value="AK"
+                    value="Blocked the crosswalk"
                   >
-                    Alaska
+                    Blocked the crosswalk
                   </option>
                   <option
-                    value="AZ"
+                    value="Drove recklessly"
                   >
-                    Arizona
+                    Drove recklessly
                   </option>
                   <option
-                    value="AR"
+                    value="Parked illegally"
                   >
-                    Arkansas
+                    Parked illegally
                   </option>
                   <option
-                    value="CA"
+                    value="Ran a red light or stop sign"
                   >
-                    California
-                  </option>
-                  <option
-                    value="CO"
-                  >
-                    Colorado
-                  </option>
-                  <option
-                    value="CT"
-                  >
-                    Connecticut
-                  </option>
-                  <option
-                    value="DE"
-                  >
-                    Delaware
-                  </option>
-                  <option
-                    value="DC"
-                  >
-                    District of Columbia
-                  </option>
-                  <option
-                    value="FL"
-                  >
-                    Florida
-                  </option>
-                  <option
-                    value="GA"
-                  >
-                    Georgia
-                  </option>
-                  <option
-                    value="HI"
-                  >
-                    Hawaii
-                  </option>
-                  <option
-                    value="ID"
-                  >
-                    Idaho
-                  </option>
-                  <option
-                    value="IL"
-                  >
-                    Illinois
-                  </option>
-                  <option
-                    value="IN"
-                  >
-                    Indiana
-                  </option>
-                  <option
-                    value="IA"
-                  >
-                    Iowa
-                  </option>
-                  <option
-                    value="KS"
-                  >
-                    Kansas
-                  </option>
-                  <option
-                    value="KY"
-                  >
-                    Kentucky
-                  </option>
-                  <option
-                    value="LA"
-                  >
-                    Louisiana
-                  </option>
-                  <option
-                    value="ME"
-                  >
-                    Maine
-                  </option>
-                  <option
-                    value="MD"
-                  >
-                    Maryland
-                  </option>
-                  <option
-                    value="MA"
-                  >
-                    Massachusetts
-                  </option>
-                  <option
-                    value="MI"
-                  >
-                    Michigan
-                  </option>
-                  <option
-                    value="MN"
-                  >
-                    Minnesota
-                  </option>
-                  <option
-                    value="MS"
-                  >
-                    Mississippi
-                  </option>
-                  <option
-                    value="MO"
-                  >
-                    Missouri
-                  </option>
-                  <option
-                    value="MT"
-                  >
-                    Montana
-                  </option>
-                  <option
-                    value="NE"
-                  >
-                    Nebraska
-                  </option>
-                  <option
-                    value="NV"
-                  >
-                    Nevada
-                  </option>
-                  <option
-                    value="NH"
-                  >
-                    New Hampshire
-                  </option>
-                  <option
-                    value="NJ"
-                  >
-                    New Jersey
-                  </option>
-                  <option
-                    value="NM"
-                  >
-                    New Mexico
-                  </option>
-                  <option
-                    value="NY"
-                  >
-                    New York
-                  </option>
-                  <option
-                    value="NC"
-                  >
-                    North Carolina
-                  </option>
-                  <option
-                    value="ND"
-                  >
-                    North Dakota
-                  </option>
-                  <option
-                    value="OH"
-                  >
-                    Ohio
-                  </option>
-                  <option
-                    value="OK"
-                  >
-                    Oklahoma
-                  </option>
-                  <option
-                    value="OR"
-                  >
-                    Oregon
-                  </option>
-                  <option
-                    value="PA"
-                  >
-                    Pennsylvania
-                  </option>
-                  <option
-                    value="RI"
-                  >
-                    Rhode Island
-                  </option>
-                  <option
-                    value="SC"
-                  >
-                    South Carolina
-                  </option>
-                  <option
-                    value="SD"
-                  >
-                    South Dakota
-                  </option>
-                  <option
-                    value="TN"
-                  >
-                    Tennessee
-                  </option>
-                  <option
-                    value="TX"
-                  >
-                    Texas
-                  </option>
-                  <option
-                    value="UT"
-                  >
-                    Utah
-                  </option>
-                  <option
-                    value="VT"
-                  >
-                    Vermont
-                  </option>
-                  <option
-                    value="VA"
-                  >
-                    Virginia
-                  </option>
-                  <option
-                    value="WA"
-                  >
-                    Washington
-                  </option>
-                  <option
-                    value="WV"
-                  >
-                    West Virginia
-                  </option>
-                  <option
-                    value="WI"
-                  >
-                    Wisconsin
-                  </option>
-                  <option
-                    value="WY"
-                  >
-                    Wyoming
+                    Ran a red light or stop sign
                   </option>
                 </select>
-              </div>
-            </div>
-            <div />
-            <div />
-          </label>
-          <label
-            htmlFor="typeofcomplaint"
-          >
-            Type:
-             
-            <select
-              name="typeofcomplaint"
-              onChange={[Function]}
-              value="Blocked the bike lane"
-            >
-              <option
-                value="Blocked the bike lane"
+              </label>
+              <label
+                htmlFor="where"
               >
-                Blocked the bike lane
-              </option>
-              <option
-                value="Blocked the crosswalk"
+                Where: 
+                <br />
+                <button
+                  disabled={false}
+                  name="where"
+                  onClick={[Function]}
+                  style={
+                    {
+                      "width": "100%",
+                    }
+                  }
+                  type="button"
+                >
+                  Click to choose address on map
+                </button>
+              </label>
+              <label
+                htmlFor="isLocationLocked"
               >
-                Blocked the crosswalk
-              </option>
-              <option
-                value="Drove recklessly"
+                <input
+                  checked={false}
+                  id="isLocationLocked"
+                  name="isLocationLocked"
+                  onChange={[Function]}
+                  type="checkbox"
+                />
+                 
+                Reuse this address
+              </label>
+              <label
+                htmlFor="CreateDate"
               >
-                Drove recklessly
-              </option>
-              <option
-                value="Parked illegally"
+                When:
+                 
+                <input
+                  name="CreateDate"
+                  onChange={[Function]}
+                  required={true}
+                  type="datetime-local"
+                  value="2016-11-17T20:00"
+                />
+              </label>
+              <label
+                htmlFor="reportDescription"
               >
-                Parked illegally
-              </option>
-              <option
-                value="Ran a red light or stop sign"
-              >
-                Ran a red light or stop sign
-              </option>
-            </select>
-          </label>
-          <label
-            htmlFor="where"
-          >
-            Where: 
-            <br />
-            <button
-              name="where"
-              onClick={[Function]}
-              style={
-                {
-                  "width": "100%",
+                Description:
+                 
+                <textarea
+                  autoComplete="off"
+                  name="reportDescription"
+                  onChange={[Function]}
+                  value=""
+                />
+              </label>
+              <button
+                disabled={false}
+                style={
+                  {
+                    "width": "100%",
+                  }
                 }
-              }
-              type="button"
-            >
-              Finding Address...
-            </button>
-          </label>
-          <label
-            htmlFor="CreateDate"
+                type="submit"
+              >
+                Submit
+              </button>
+            </fieldset>
+          </form>
+          <br />
+          <details
+            onToggle={[Function]}
           >
-            When:
-             
-            <input
-              name="CreateDate"
-              onChange={[Function]}
-              required={true}
-              type="datetime-local"
-              value="2016-11-17T20:00"
-            />
-          </label>
-          <label
-            htmlFor="reportDescription"
-          >
-            Description:
-             
-            <textarea
-              autoComplete="off"
-              name="reportDescription"
-              onChange={[Function]}
-              value=""
-            />
-          </label>
-          <label
-            htmlFor="can_be_shared_publicly"
-          >
-            <input
-              checked={false}
-              id="can_be_shared_publicly"
-              name="can_be_shared_publicly"
-              onChange={[Function]}
-              type="checkbox"
-            />
-             
-            Allow the photos/videos, description, category, and location to be publicly displayed
-          </label>
-          <button
-            disabled={false}
+            <summary>
+              Previous Submissions (
+              expand to load
+              )
+            </summary>
+          </details>
+          <div
             style={
               {
-                "width": "100%",
+                "float": "right",
               }
             }
-            type="submit"
           >
-            Submit
-          </button>
-        </fieldset>
-      </form>
-      <br />
-      <details
-        onToggle={[Function]}
-      >
-        <summary>
-          Previous Submissions (
-          expand to load
-          )
-        </summary>
-      </details>
-      <div
-        style={
-          {
-            "float": "right",
-          }
-        }
-      >
-        <a
-          href="/electricitibikes"
-          style={
-            {
-              "background": "black",
-              "border": "1em solid black",
-              "borderRadius": "2em",
-              "textDecoration": "none",
-            }
-          }
-        >
-          <span
-            aria-label="high voltage"
-            role="img"
-          >
-            ⚡
-          </span>
-        </a>
+            <a
+              href="/submissions-map"
+              style={
+                {
+                  "background": "black",
+                  "border": "1em solid black",
+                  "borderRadius": "2em",
+                  "textDecoration": "none",
+                }
+              }
+            >
+              <span
+                aria-label="world map"
+                role="img"
+              >
+                🗺️
+              </span>
+            </a>
+          </div>
+        </main>
       </div>
-    </main>
+    </div>
   </div>
   <input
     autoComplete="off"
@@ -2108,7 +3364,7 @@ exports[`Home renders with allPlateResults entry missing plate 1`] = `
 </div>
 `;
 
-exports[`Home renders with undefined allPlateResults 1`] = `
+exports[`Home renders with undefined allPlateResults and photos 1`] = `
 <div
   aria-disabled={false}
   className="root"
@@ -2122,7 +3378,6 @@ exports[`Home renders with undefined allPlateResults 1`] = `
     {
       "bottom": 0,
       "left": 0,
-      "overflowY": "scroll",
       "position": "fixed",
       "right": 0,
       "top": 0,
@@ -2130,580 +3385,1291 @@ exports[`Home renders with undefined allPlateResults 1`] = `
   }
 >
   <div
-    className="container"
+    className="scroll-area"
   >
-    <main>
-      <h1>
-        <a
-          href="https://reportedly.weebly.com/"
-          style={
-            {
-              "textDecoration": "underline",
-            }
-          }
-        >
-          Reported
-        </a>
-      </h1>
+    <div
+      className="scroll-container"
+    >
       <div
-        className="Toastify"
-      />
-      <div
-        className="user-status-bar"
+        className="container"
       >
-        <div
-          className="user-greeting"
-        >
-          <span
-            aria-label="user"
-            role="img"
-          >
-            👤
-          </span>
-           
-          test@example.com
-        </div>
-        <div
-          className="user-actions"
-        >
-          <button
-            className="status-bar-btn-primary"
-            onClick={[Function]}
-            type="button"
-          >
-            Edit Profile
-          </button>
-          <button
-            className="status-bar-btn"
-            onClick={[Function]}
-            type="button"
-          >
-            Log Out
-          </button>
-        </div>
-      </div>
-      <form
-        onSubmit={[Function]}
-      >
-        <fieldset
-          disabled={false}
-        >
-          <div
-            className="_react-file-reader-input"
-            onClick={[Function]}
-            style={
-              {
-                "float": "left",
-                "margin": "1px",
-              }
-            }
-          >
-            <input
-              multiple={true}
-              onChange={[Function]}
-              onClick={[Function]}
+        <main>
+          <h1>
+            <a
+              href="https://reportedly.weebly.com/"
               style={
                 {
-                  "position": "absolute",
-                  "top": "-9999px",
+                  "textDecoration": "underline",
                 }
               }
-              type="file"
-            />
-            <button
-              style={
-                {
-                  "whiteSpace": "wrap",
-                }
-              }
-              type="button"
             >
-              Add pictures/videos (up to 3 each, 20MB max each)
-            </button>
+              Reported
+            </a>
+          </h1>
+          <div
+            className="Toastify"
+          />
+          <div
+            className="user-status-bar"
+          >
+            <div
+              className="user-greeting"
+            >
+              <span
+                aria-label="user"
+                role="img"
+              >
+                👤
+              </span>
+               
+              test@example.com
+            </div>
+            <div
+              className="user-actions"
+            >
+              <button
+                className="status-bar-btn-primary"
+                onClick={[Function]}
+                type="button"
+              >
+                Edit Profile
+              </button>
+              <button
+                className="status-bar-btn"
+                onClick={[Function]}
+                type="button"
+              >
+                Preferences
+              </button>
+              <button
+                className="status-bar-btn"
+                onClick={[Function]}
+                type="button"
+              >
+                Log Out
+              </button>
+            </div>
           </div>
           <div
-            style={
-              {
-                "clear": "both",
-                "display": "flex",
-                "flexWrap": "wrap",
-              }
-            }
-          />
-          <label
-            htmlFor="isAlprEnabled"
+            className="withhold-notice-banner"
+            role="alert"
           >
-            <input
-              checked={true}
-              id="isAlprEnabled"
-              name="isAlprEnabled"
-              onChange={[Function]}
-              type="checkbox"
-            />
-             
-            Automatically read license plates from pictures/videos
-          </label>
-          <label
-            htmlFor="isReverseGeocodingEnabled"
+            <span>
+              Getting unwanted phone calls after making submissions? Now you can stop sending your number and email to the cops!
+            </span>
+            <span
+              className="user-actions"
+            >
+              <button
+                className="status-bar-btn-primary"
+                onClick={[Function]}
+                type="button"
+              >
+                Show me how
+              </button>
+              <button
+                className="status-bar-btn"
+                onClick={[Function]}
+                type="button"
+              >
+                Dismiss
+              </button>
+            </span>
+          </div>
+          <form
+            onSubmit={[Function]}
           >
-            <input
-              checked={true}
-              id="isReverseGeocodingEnabled"
-              name="isReverseGeocodingEnabled"
-              onChange={[Function]}
-              type="checkbox"
-            />
-             
-            Automatically read addresses from pictures/videos
-          </label>
-          <label
-            htmlFor="plate"
-          >
-            License/Medallion:
-            <div
-              style={
-                {
-                  "alignItems": "flex-start",
-                  "display": "flex",
-                  "flexWrap": "wrap",
-                  "gap": "0.5rem",
-                }
-              }
+            <fieldset
+              disabled={false}
             >
               <div
+                className="_react-file-reader-input"
+                onClick={[Function]}
                 style={
                   {
-                    "flex": 1,
-                    "minWidth": 0,
+                    "float": "left",
+                    "margin": "1px",
                   }
                 }
               >
                 <input
-                  autoComplete="off"
-                  list="plateSuggestions"
-                  name="plate"
+                  accept="image/*,video/*,.zip,application/zip,application/x-zip-compressed"
+                  multiple={true}
                   onChange={[Function]}
-                  required={true}
-                  type="search"
-                  value=""
-                />
-                <datalist
-                  id="plateSuggestions"
-                />
-                <select
-                  name="licenseState"
-                  onChange={[Function]}
+                  onClick={[Function]}
                   style={
                     {
-                      "marginTop": "0.5rem",
+                      "position": "absolute",
+                      "top": "-9999px",
                     }
                   }
-                  value="NY"
+                  type="file"
+                />
+                <button
+                  style={
+                    {
+                      "whiteSpace": "wrap",
+                    }
+                  }
+                  type="button"
+                >
+                  Add pictures/videos (up to 3 each, 20MB max each)
+                </button>
+              </div>
+              <button
+                onClick={[Function]}
+                style={
+                  {
+                    "float": "left",
+                    "margin": "1px",
+                  }
+                }
+                type="button"
+              >
+                Add folder
+              </button>
+              <input
+                multiple={true}
+                onChange={[Function]}
+                style={
+                  {
+                    "display": "none",
+                  }
+                }
+                type="file"
+                webkitdirectory=""
+              />
+              <div
+                style={
+                  {
+                    "clear": "both",
+                  }
+                }
+              />
+              <div
+                style={
+                  {
+                    "display": "flex",
+                    "flexWrap": "wrap",
+                  }
+                }
+              >
+                <div
+                  style={
+                    {
+                      "flexGrow": 1,
+                      "margin": "0.1%",
+                      "position": "relative",
+                      "width": "33%",
+                    }
+                  }
+                >
+                  <div
+                    style={
+                      {
+                        "display": "inline-block",
+                        "maxWidth": "100%",
+                        "position": "relative",
+                      }
+                    }
+                  >
+                    <a
+                      href="blob:mock"
+                      rel="noopener noreferrer"
+                      style={
+                        {
+                          "display": "block",
+                        }
+                      }
+                      target="_blank"
+                    >
+                      <img
+                        alt="photo.jpg"
+                        src="blob:mock"
+                        style={
+                          {
+                            "display": "block",
+                          }
+                        }
+                      />
+                    </a>
+                  </div>
+                  <button
+                    onClick={[Function]}
+                    style={
+                      {
+                        "background": "white",
+                        "color": "red",
+                        "margin": "1px",
+                        "padding": 0,
+                        "position": "absolute",
+                        "right": 0,
+                        "top": 0,
+                      }
+                    }
+                    type="button"
+                  >
+                    <span
+                      aria-label="Delete photo/video"
+                      role="img"
+                    >
+                      ❌
+                    </span>
+                  </button>
+                </div>
+              </div>
+              <label
+                htmlFor="plate"
+              >
+                License/Medallion:
+                <div
+                  style={
+                    {
+                      "alignItems": "flex-start",
+                      "display": "flex",
+                      "flexWrap": "wrap",
+                      "gap": "0.5rem",
+                    }
+                  }
+                >
+                  <div
+                    style={
+                      {
+                        "flex": 1,
+                        "minWidth": 0,
+                      }
+                    }
+                  >
+                    <input
+                      autoComplete="off"
+                      list="plateSuggestions"
+                      name="plate"
+                      onChange={[Function]}
+                      required={true}
+                      type="search"
+                      value=""
+                    />
+                    <datalist
+                      id="plateSuggestions"
+                    />
+                    <input
+                      autoComplete="off"
+                      list="stateSuggestion"
+                      name="licenseState"
+                      onChange={[Function]}
+                      placeholder="State"
+                      style={
+                        {
+                          "marginTop": "0.5rem",
+                        }
+                      }
+                      type="search"
+                      value="NY"
+                    />
+                    <datalist
+                      id="stateSuggestion"
+                    >
+                      <option
+                        value="AL"
+                      >
+                        Alabama
+                         (
+                        AL
+                        )
+                      </option>
+                      <option
+                        value="AK"
+                      >
+                        Alaska
+                         (
+                        AK
+                        )
+                      </option>
+                      <option
+                        value="AZ"
+                      >
+                        Arizona
+                         (
+                        AZ
+                        )
+                      </option>
+                      <option
+                        value="AR"
+                      >
+                        Arkansas
+                         (
+                        AR
+                        )
+                      </option>
+                      <option
+                        value="CA"
+                      >
+                        California
+                         (
+                        CA
+                        )
+                      </option>
+                      <option
+                        value="CO"
+                      >
+                        Colorado
+                         (
+                        CO
+                        )
+                      </option>
+                      <option
+                        value="CT"
+                      >
+                        Connecticut
+                         (
+                        CT
+                        )
+                      </option>
+                      <option
+                        value="DE"
+                      >
+                        Delaware
+                         (
+                        DE
+                        )
+                      </option>
+                      <option
+                        value="DC"
+                      >
+                        District of Columbia
+                         (
+                        DC
+                        )
+                      </option>
+                      <option
+                        value="FL"
+                      >
+                        Florida
+                         (
+                        FL
+                        )
+                      </option>
+                      <option
+                        value="GA"
+                      >
+                        Georgia
+                         (
+                        GA
+                        )
+                      </option>
+                      <option
+                        value="HI"
+                      >
+                        Hawaii
+                         (
+                        HI
+                        )
+                      </option>
+                      <option
+                        value="ID"
+                      >
+                        Idaho
+                         (
+                        ID
+                        )
+                      </option>
+                      <option
+                        value="IL"
+                      >
+                        Illinois
+                         (
+                        IL
+                        )
+                      </option>
+                      <option
+                        value="IN"
+                      >
+                        Indiana
+                         (
+                        IN
+                        )
+                      </option>
+                      <option
+                        value="IA"
+                      >
+                        Iowa
+                         (
+                        IA
+                        )
+                      </option>
+                      <option
+                        value="KS"
+                      >
+                        Kansas
+                         (
+                        KS
+                        )
+                      </option>
+                      <option
+                        value="KY"
+                      >
+                        Kentucky
+                         (
+                        KY
+                        )
+                      </option>
+                      <option
+                        value="LA"
+                      >
+                        Louisiana
+                         (
+                        LA
+                        )
+                      </option>
+                      <option
+                        value="ME"
+                      >
+                        Maine
+                         (
+                        ME
+                        )
+                      </option>
+                      <option
+                        value="MD"
+                      >
+                        Maryland
+                         (
+                        MD
+                        )
+                      </option>
+                      <option
+                        value="MA"
+                      >
+                        Massachusetts
+                         (
+                        MA
+                        )
+                      </option>
+                      <option
+                        value="MI"
+                      >
+                        Michigan
+                         (
+                        MI
+                        )
+                      </option>
+                      <option
+                        value="MN"
+                      >
+                        Minnesota
+                         (
+                        MN
+                        )
+                      </option>
+                      <option
+                        value="MS"
+                      >
+                        Mississippi
+                         (
+                        MS
+                        )
+                      </option>
+                      <option
+                        value="MO"
+                      >
+                        Missouri
+                         (
+                        MO
+                        )
+                      </option>
+                      <option
+                        value="MT"
+                      >
+                        Montana
+                         (
+                        MT
+                        )
+                      </option>
+                      <option
+                        value="NE"
+                      >
+                        Nebraska
+                         (
+                        NE
+                        )
+                      </option>
+                      <option
+                        value="NV"
+                      >
+                        Nevada
+                         (
+                        NV
+                        )
+                      </option>
+                      <option
+                        value="NH"
+                      >
+                        New Hampshire
+                         (
+                        NH
+                        )
+                      </option>
+                      <option
+                        value="NJ"
+                      >
+                        New Jersey
+                         (
+                        NJ
+                        )
+                      </option>
+                      <option
+                        value="NM"
+                      >
+                        New Mexico
+                         (
+                        NM
+                        )
+                      </option>
+                      <option
+                        value="NY"
+                      >
+                        New York
+                         (
+                        NY
+                        )
+                      </option>
+                      <option
+                        value="NC"
+                      >
+                        North Carolina
+                         (
+                        NC
+                        )
+                      </option>
+                      <option
+                        value="ND"
+                      >
+                        North Dakota
+                         (
+                        ND
+                        )
+                      </option>
+                      <option
+                        value="OH"
+                      >
+                        Ohio
+                         (
+                        OH
+                        )
+                      </option>
+                      <option
+                        value="OK"
+                      >
+                        Oklahoma
+                         (
+                        OK
+                        )
+                      </option>
+                      <option
+                        value="OR"
+                      >
+                        Oregon
+                         (
+                        OR
+                        )
+                      </option>
+                      <option
+                        value="PA"
+                      >
+                        Pennsylvania
+                         (
+                        PA
+                        )
+                      </option>
+                      <option
+                        value="RI"
+                      >
+                        Rhode Island
+                         (
+                        RI
+                        )
+                      </option>
+                      <option
+                        value="SC"
+                      >
+                        South Carolina
+                         (
+                        SC
+                        )
+                      </option>
+                      <option
+                        value="SD"
+                      >
+                        South Dakota
+                         (
+                        SD
+                        )
+                      </option>
+                      <option
+                        value="TN"
+                      >
+                        Tennessee
+                         (
+                        TN
+                        )
+                      </option>
+                      <option
+                        value="TX"
+                      >
+                        Texas
+                         (
+                        TX
+                        )
+                      </option>
+                      <option
+                        value="UT"
+                      >
+                        Utah
+                         (
+                        UT
+                        )
+                      </option>
+                      <option
+                        value="VT"
+                      >
+                        Vermont
+                         (
+                        VT
+                        )
+                      </option>
+                      <option
+                        value="VA"
+                      >
+                        Virginia
+                         (
+                        VA
+                        )
+                      </option>
+                      <option
+                        value="WA"
+                      >
+                        Washington
+                         (
+                        WA
+                        )
+                      </option>
+                      <option
+                        value="WV"
+                      >
+                        West Virginia
+                         (
+                        WV
+                        )
+                      </option>
+                      <option
+                        value="WI"
+                      >
+                        Wisconsin
+                         (
+                        WI
+                        )
+                      </option>
+                      <option
+                        value="WY"
+                      >
+                        Wyoming
+                         (
+                        WY
+                        )
+                      </option>
+                    </datalist>
+                  </div>
+                </div>
+                <div />
+                <div />
+              </label>
+              <label
+                htmlFor="typeofcomplaint"
+              >
+                Type:
+                 
+                <select
+                  name="typeofcomplaint"
+                  onChange={[Function]}
+                  value="Blocked the bike lane"
                 >
                   <option
-                    value="AL"
+                    value="Blocked the bike lane"
                   >
-                    Alabama
+                    Blocked the bike lane
                   </option>
                   <option
-                    value="AK"
+                    value="Blocked the crosswalk"
                   >
-                    Alaska
+                    Blocked the crosswalk
                   </option>
                   <option
-                    value="AZ"
+                    value="Drove recklessly"
                   >
-                    Arizona
+                    Drove recklessly
                   </option>
                   <option
-                    value="AR"
+                    value="Parked illegally"
                   >
-                    Arkansas
+                    Parked illegally
                   </option>
                   <option
-                    value="CA"
+                    value="Ran a red light or stop sign"
                   >
-                    California
-                  </option>
-                  <option
-                    value="CO"
-                  >
-                    Colorado
-                  </option>
-                  <option
-                    value="CT"
-                  >
-                    Connecticut
-                  </option>
-                  <option
-                    value="DE"
-                  >
-                    Delaware
-                  </option>
-                  <option
-                    value="DC"
-                  >
-                    District of Columbia
-                  </option>
-                  <option
-                    value="FL"
-                  >
-                    Florida
-                  </option>
-                  <option
-                    value="GA"
-                  >
-                    Georgia
-                  </option>
-                  <option
-                    value="HI"
-                  >
-                    Hawaii
-                  </option>
-                  <option
-                    value="ID"
-                  >
-                    Idaho
-                  </option>
-                  <option
-                    value="IL"
-                  >
-                    Illinois
-                  </option>
-                  <option
-                    value="IN"
-                  >
-                    Indiana
-                  </option>
-                  <option
-                    value="IA"
-                  >
-                    Iowa
-                  </option>
-                  <option
-                    value="KS"
-                  >
-                    Kansas
-                  </option>
-                  <option
-                    value="KY"
-                  >
-                    Kentucky
-                  </option>
-                  <option
-                    value="LA"
-                  >
-                    Louisiana
-                  </option>
-                  <option
-                    value="ME"
-                  >
-                    Maine
-                  </option>
-                  <option
-                    value="MD"
-                  >
-                    Maryland
-                  </option>
-                  <option
-                    value="MA"
-                  >
-                    Massachusetts
-                  </option>
-                  <option
-                    value="MI"
-                  >
-                    Michigan
-                  </option>
-                  <option
-                    value="MN"
-                  >
-                    Minnesota
-                  </option>
-                  <option
-                    value="MS"
-                  >
-                    Mississippi
-                  </option>
-                  <option
-                    value="MO"
-                  >
-                    Missouri
-                  </option>
-                  <option
-                    value="MT"
-                  >
-                    Montana
-                  </option>
-                  <option
-                    value="NE"
-                  >
-                    Nebraska
-                  </option>
-                  <option
-                    value="NV"
-                  >
-                    Nevada
-                  </option>
-                  <option
-                    value="NH"
-                  >
-                    New Hampshire
-                  </option>
-                  <option
-                    value="NJ"
-                  >
-                    New Jersey
-                  </option>
-                  <option
-                    value="NM"
-                  >
-                    New Mexico
-                  </option>
-                  <option
-                    value="NY"
-                  >
-                    New York
-                  </option>
-                  <option
-                    value="NC"
-                  >
-                    North Carolina
-                  </option>
-                  <option
-                    value="ND"
-                  >
-                    North Dakota
-                  </option>
-                  <option
-                    value="OH"
-                  >
-                    Ohio
-                  </option>
-                  <option
-                    value="OK"
-                  >
-                    Oklahoma
-                  </option>
-                  <option
-                    value="OR"
-                  >
-                    Oregon
-                  </option>
-                  <option
-                    value="PA"
-                  >
-                    Pennsylvania
-                  </option>
-                  <option
-                    value="RI"
-                  >
-                    Rhode Island
-                  </option>
-                  <option
-                    value="SC"
-                  >
-                    South Carolina
-                  </option>
-                  <option
-                    value="SD"
-                  >
-                    South Dakota
-                  </option>
-                  <option
-                    value="TN"
-                  >
-                    Tennessee
-                  </option>
-                  <option
-                    value="TX"
-                  >
-                    Texas
-                  </option>
-                  <option
-                    value="UT"
-                  >
-                    Utah
-                  </option>
-                  <option
-                    value="VT"
-                  >
-                    Vermont
-                  </option>
-                  <option
-                    value="VA"
-                  >
-                    Virginia
-                  </option>
-                  <option
-                    value="WA"
-                  >
-                    Washington
-                  </option>
-                  <option
-                    value="WV"
-                  >
-                    West Virginia
-                  </option>
-                  <option
-                    value="WI"
-                  >
-                    Wisconsin
-                  </option>
-                  <option
-                    value="WY"
-                  >
-                    Wyoming
+                    Ran a red light or stop sign
                   </option>
                 </select>
-              </div>
-            </div>
-            <div />
-            <div />
-          </label>
-          <label
-            htmlFor="typeofcomplaint"
-          >
-            Type:
-             
-            <select
-              name="typeofcomplaint"
-              onChange={[Function]}
-              value="Blocked the bike lane"
-            >
-              <option
-                value="Blocked the bike lane"
+              </label>
+              <label
+                htmlFor="where"
               >
-                Blocked the bike lane
-              </option>
-              <option
-                value="Blocked the crosswalk"
+                Where: 
+                <br />
+                <button
+                  disabled={false}
+                  name="where"
+                  onClick={[Function]}
+                  style={
+                    {
+                      "width": "100%",
+                    }
+                  }
+                  type="button"
+                >
+                  Click to choose address on map
+                </button>
+              </label>
+              <label
+                htmlFor="isLocationLocked"
               >
-                Blocked the crosswalk
-              </option>
-              <option
-                value="Drove recklessly"
+                <input
+                  checked={false}
+                  id="isLocationLocked"
+                  name="isLocationLocked"
+                  onChange={[Function]}
+                  type="checkbox"
+                />
+                 
+                Reuse this address
+              </label>
+              <label
+                htmlFor="CreateDate"
               >
-                Drove recklessly
-              </option>
-              <option
-                value="Parked illegally"
+                When:
+                 
+                <input
+                  name="CreateDate"
+                  onChange={[Function]}
+                  required={true}
+                  type="datetime-local"
+                  value="2016-11-17T20:00"
+                />
+              </label>
+              <label
+                htmlFor="reportDescription"
               >
-                Parked illegally
-              </option>
-              <option
-                value="Ran a red light or stop sign"
-              >
-                Ran a red light or stop sign
-              </option>
-            </select>
-          </label>
-          <label
-            htmlFor="where"
-          >
-            Where: 
-            <br />
-            <button
-              name="where"
-              onClick={[Function]}
-              style={
-                {
-                  "width": "100%",
+                Description:
+                 
+                <textarea
+                  autoComplete="off"
+                  name="reportDescription"
+                  onChange={[Function]}
+                  value=""
+                />
+              </label>
+              <button
+                disabled={false}
+                style={
+                  {
+                    "width": "100%",
+                  }
                 }
-              }
-              type="button"
-            >
-              Finding Address...
-            </button>
-          </label>
-          <label
-            htmlFor="CreateDate"
+                type="submit"
+              >
+                Submit
+              </button>
+            </fieldset>
+          </form>
+          <br />
+          <details
+            onToggle={[Function]}
           >
-            When:
-             
-            <input
-              name="CreateDate"
-              onChange={[Function]}
-              required={true}
-              type="datetime-local"
-              value="2016-11-17T20:00"
-            />
-          </label>
-          <label
-            htmlFor="reportDescription"
-          >
-            Description:
-             
-            <textarea
-              autoComplete="off"
-              name="reportDescription"
-              onChange={[Function]}
-              value=""
-            />
-          </label>
-          <label
-            htmlFor="can_be_shared_publicly"
-          >
-            <input
-              checked={false}
-              id="can_be_shared_publicly"
-              name="can_be_shared_publicly"
-              onChange={[Function]}
-              type="checkbox"
-            />
-             
-            Allow the photos/videos, description, category, and location to be publicly displayed
-          </label>
-          <button
-            disabled={false}
+            <summary>
+              Previous Submissions (
+              expand to load
+              )
+            </summary>
+          </details>
+          <div
             style={
               {
-                "width": "100%",
+                "float": "right",
               }
             }
-            type="submit"
           >
-            Submit
-          </button>
-        </fieldset>
-      </form>
-      <br />
-      <details
-        onToggle={[Function]}
-      >
-        <summary>
-          Previous Submissions (
-          expand to load
-          )
-        </summary>
-      </details>
-      <div
-        style={
-          {
-            "float": "right",
-          }
-        }
-      >
-        <a
-          href="/electricitibikes"
-          style={
-            {
-              "background": "black",
-              "border": "1em solid black",
-              "borderRadius": "2em",
-              "textDecoration": "none",
-            }
-          }
-        >
-          <span
-            aria-label="high voltage"
-            role="img"
-          >
-            ⚡
-          </span>
-        </a>
+            <a
+              href="/submissions-map"
+              style={
+                {
+                  "background": "black",
+                  "border": "1em solid black",
+                  "borderRadius": "2em",
+                  "textDecoration": "none",
+                }
+              }
+            >
+              <span
+                aria-label="world map"
+                role="img"
+              >
+                🗺️
+              </span>
+            </a>
+          </div>
+        </main>
       </div>
-    </main>
+    </div>
+  </div>
+  <input
+    autoComplete="off"
+    disabled={false}
+    multiple={true}
+    onChange={[Function]}
+    style={
+      {
+        "bottom": 0,
+        "left": 0,
+        "opacity": 0.00001,
+        "pointerEvents": "none",
+        "position": "absolute",
+        "right": 0,
+        "top": 0,
+      }
+    }
+    type="file"
+  />
+</div>
+`;
+
+exports[`Home shows the Parse server banner when the server enables it 1`] = `
+<div
+  aria-disabled={false}
+  className="root"
+  onClick={[Function]}
+  onDragEnter={[Function]}
+  onDragLeave={[Function]}
+  onDragOver={[Function]}
+  onDragStart={[Function]}
+  onDrop={[Function]}
+  style={
+    {
+      "bottom": 0,
+      "left": 0,
+      "position": "fixed",
+      "right": 0,
+      "top": 0,
+    }
+  }
+>
+  <div
+    className="non-production-banner"
+    role="alert"
+  >
+    <span
+      aria-label="warning"
+      role="img"
+    >
+      ⚠️
+    </span>
+     
+    NOT PRODUCTION — using Parse server:
+     
+    <code>
+      https://reported-parse.webabot.com/parse
+    </code>
+  </div>
+  <div
+    className="scroll-area"
+  >
+    <div
+      className="scroll-container"
+    >
+      <div
+        className="container"
+      >
+        <main>
+          <h1>
+            <a
+              href="https://reportedly.weebly.com/"
+              style={
+                {
+                  "textDecoration": "underline",
+                }
+              }
+            >
+              Reported
+            </a>
+          </h1>
+          <div
+            className="Toastify"
+          />
+          <div
+            className="user-status-bar"
+          >
+            <div
+              className="user-greeting"
+            >
+              Not logged in
+            </div>
+            <div
+              className="user-actions"
+            >
+              <button
+                className="status-bar-btn"
+                onClick={[Function]}
+                type="button"
+              >
+                Log In
+              </button>
+              <button
+                className="status-bar-btn-primary"
+                onClick={[Function]}
+                type="button"
+              >
+                Sign Up
+              </button>
+            </div>
+          </div>
+          <div
+            className="auth-prompt"
+          >
+            <p>
+              Please
+               
+              <button
+                onClick={[Function]}
+                type="button"
+              >
+                log in
+              </button>
+               
+              or
+               
+              <button
+                onClick={[Function]}
+                type="button"
+              >
+                sign up
+              </button>
+               
+              to submit a report.
+            </p>
+          </div>
+          <br />
+          <div
+            style={
+              {
+                "float": "right",
+              }
+            }
+          >
+            <a
+              href="/submissions-map"
+              style={
+                {
+                  "background": "black",
+                  "border": "1em solid black",
+                  "borderRadius": "2em",
+                  "textDecoration": "none",
+                }
+              }
+            >
+              <span
+                aria-label="world map"
+                role="img"
+              >
+                🗺️
+              </span>
+            </a>
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+  <input
+    autoComplete="off"
+    disabled={false}
+    multiple={true}
+    onChange={[Function]}
+    style={
+      {
+        "bottom": 0,
+        "left": 0,
+        "opacity": 0.00001,
+        "pointerEvents": "none",
+        "position": "absolute",
+        "right": 0,
+        "top": 0,
+      }
+    }
+    type="file"
+  />
+</div>
+`;
+
+exports[`Home shows the email-updates checkbox only while withholding, and sets its flag 1`] = `
+<div
+  aria-disabled={false}
+  className="root"
+  onClick={[Function]}
+  onDragEnter={[Function]}
+  onDragLeave={[Function]}
+  onDragOver={[Function]}
+  onDragStart={[Function]}
+  onDrop={[Function]}
+  style={
+    {
+      "bottom": 0,
+      "left": 0,
+      "position": "fixed",
+      "right": 0,
+      "top": 0,
+    }
+  }
+>
+  <div
+    className="scroll-area"
+  >
+    <div
+      className="scroll-container"
+    >
+      <div
+        className="container"
+      >
+        <main>
+          <h1>
+            <a
+              href="https://reportedly.weebly.com/"
+              style={
+                {
+                  "textDecoration": "underline",
+                }
+              }
+            >
+              Reported
+            </a>
+          </h1>
+          <div
+            className="Toastify"
+          />
+          <div
+            className="user-status-bar"
+          >
+            <div
+              className="user-greeting"
+            >
+              <span
+                aria-label="user"
+                role="img"
+              >
+                👤
+              </span>
+               
+              test@example.com
+            </div>
+            <div
+              className="user-actions"
+            >
+              <button
+                className="status-bar-btn-primary"
+                onClick={[Function]}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                className="status-bar-btn"
+                onClick={[Function]}
+                type="button"
+              >
+                Preferences
+              </button>
+              <button
+                className="status-bar-btn"
+                onClick={[Function]}
+                type="button"
+              >
+                Log Out
+              </button>
+            </div>
+          </div>
+          <form
+            className="edit-profile-section"
+            onSubmit={[Function]}
+          >
+            <h3>
+              Edit Profile
+            </h3>
+            <fieldset
+              disabled={false}
+            >
+              <label
+                htmlFor="FirstName"
+              >
+                First Name:
+                 
+                <input
+                  autoComplete="given-name"
+                  id="FirstName"
+                  name="FirstName"
+                  onChange={[Function]}
+                  required={true}
+                  type="text"
+                  value=""
+                />
+              </label>
+              <label
+                htmlFor="LastName"
+              >
+                Last Name:
+                 
+                <input
+                  autoComplete="family-name"
+                  id="LastName"
+                  name="LastName"
+                  onChange={[Function]}
+                  required={true}
+                  type="text"
+                  value=""
+                />
+              </label>
+              <label
+                htmlFor="Phone"
+              >
+                Phone Number:
+                 
+                <input
+                  autoComplete="tel"
+                  id="Phone"
+                  name="Phone"
+                  onChange={[Function]}
+                  required={true}
+                  type="tel"
+                  value=""
+                />
+              </label>
+              <label
+                htmlFor="testify"
+              >
+                <input
+                  checked={false}
+                  id="testify"
+                  name="testify"
+                  onChange={[Function]}
+                  type="checkbox"
+                />
+                 
+                I'm willing to testify at a hearing, which can be done by phone.
+              </label>
+              <label
+                htmlFor="can_be_shared_publicly"
+              >
+                <input
+                  checked={true}
+                  id="can_be_shared_publicly"
+                  name="can_be_shared_publicly"
+                  onChange={[Function]}
+                  type="checkbox"
+                />
+                 
+                Allow the photos/videos, description, category, and location to be publicly displayed
+              </label>
+              <label
+                htmlFor="withhold_contact_info_from_nypd"
+              >
+                <input
+                  checked={true}
+                  id="withhold_contact_info_from_nypd"
+                  name="withhold_contact_info_from_nypd"
+                  onChange={[Function]}
+                  type="checkbox"
+                />
+                 
+                Withhold my contact info from NYPD service requests
+                <br />
+                <small>
+                  If you leave this unchecked, NYPD may call or email you about your service requests.
+                </small>
+              </label>
+              <div
+                style={
+                  {
+                    "marginLeft": "1.5em",
+                  }
+                }
+              >
+                <label
+                  htmlFor="receive_nypd_sr_updates_by_email"
+                >
+                  <input
+                    checked={false}
+                    id="receive_nypd_sr_updates_by_email"
+                    name="receive_nypd_sr_updates_by_email"
+                    onChange={[Function]}
+                    type="checkbox"
+                  />
+                   
+                  But still email me status updates about my NYPD service requests
+                  <br />
+                  <small>
+                    Your email will be shared with 311 for your requests; your name and phone stay withheld.
+                  </small>
+                </label>
+              </div>
+              <button
+                className="auth-submit-btn"
+                disabled={false}
+                style={
+                  {
+                    "width": "auto",
+                  }
+                }
+                type="submit"
+              >
+                Save
+              </button>
+            </fieldset>
+          </form>
+          <br />
+          <div
+            style={
+              {
+                "float": "right",
+              }
+            }
+          >
+            <a
+              href="/submissions-map"
+              style={
+                {
+                  "background": "black",
+                  "border": "1em solid black",
+                  "borderRadius": "2em",
+                  "textDecoration": "none",
+                }
+              }
+            >
+              <span
+                aria-label="world map"
+                role="img"
+              >
+                🗺️
+              </span>
+            </a>
+          </div>
+        </main>
+      </div>
+    </div>
   </div>
   <input
     autoComplete="off"

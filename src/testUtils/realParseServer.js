@@ -1,7 +1,10 @@
 import Parse from 'parse/node';
 
+const fs = require('fs');
 const net = require('net');
-const { MongoMemoryServer } = require('mongodb-memory-server');
+const os = require('os');
+const path = require('path');
+const { MongoBinary, MongoMemoryServer } = require('mongodb-memory-server');
 const { ParseServer } = require('parse-server');
 
 // parse-server skips its cloud/URL verification (and test-unfriendly process
@@ -15,6 +18,76 @@ const MASTER_KEY = 'test-master';
 // Note: the binary must be downloaded once (mongodb-memory-server caches it),
 // and on Ubuntu 24+ mongod 4.4 needs libssl1.1 installed.
 const MONGOD_VERSION = '4.4.14';
+
+// The suites that start a server run in parallel Jest workers, and on a cold
+// cache they all download MongoDB at once. mongodb-memory-server's own
+// download lock does not create its lock file atomically, so two workers can
+// both pass its existence check, write the same ".tgz.downloading" file, and
+// the one that loses the rename fails with ENOENT and its beforeAll hook
+// times out. CI starts with an empty cache on every run, so that failure came
+// and went on main. A lock file created with O_EXCL is exclusive across
+// processes, so exactly one worker downloads and the others wait for the
+// cached binary.
+const MONGOD_LOCK = path.join(
+  os.tmpdir(),
+  `reported-web-mongod-${MONGOD_VERSION}-${process.getuid?.() ?? 'user'}.lock`,
+);
+const LOCK_RETRY_MS = 100;
+const LOCK_STALE_MS = 10 * 60 * 1000;
+
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+const pidIsAlive = pid => {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (err) {
+    // EPERM means the process exists but belongs to another user.
+    return err.code === 'EPERM';
+  }
+};
+
+const lockIsStale = lockPath => {
+  let pid;
+  let mtimeMs;
+  try {
+    pid = parseInt(fs.readFileSync(lockPath, 'utf8'), 10);
+    mtimeMs = fs.statSync(lockPath).mtimeMs;
+  } catch (err) {
+    // The holder released the lock between the failed create and this read.
+    return err.code === 'ENOENT';
+  }
+  // The age check covers a lock whose PID the system later gave to an
+  // unrelated process, which would otherwise look alive forever.
+  return !pid || !pidIsAlive(pid) || Date.now() - mtimeMs > LOCK_STALE_MS;
+};
+
+const acquireMongodLock = async lockPath => {
+  try {
+    fs.writeFileSync(lockPath, String(process.pid), { flag: 'wx' });
+  } catch (err) {
+    if (err.code !== 'EEXIST') {
+      throw err;
+    }
+    if (lockIsStale(lockPath)) {
+      fs.rmSync(lockPath, { force: true });
+    } else {
+      await sleep(LOCK_RETRY_MS);
+    }
+    await acquireMongodLock(lockPath);
+  }
+};
+
+// Download and extract the binary once, before the parallel suites can race
+// on it. With a warm cache this is a stat, so server startup stays parallel.
+const downloadMongod = async () => {
+  await acquireMongodLock(MONGOD_LOCK);
+  try {
+    await MongoBinary.getPath({ version: MONGOD_VERSION });
+  } finally {
+    fs.rmSync(MONGOD_LOCK, { force: true });
+  }
+};
 
 // create() can resolve a moment before mongod accepts connections, and
 // parse-server connects to it in its constructor, so wait until the port
@@ -61,6 +134,7 @@ const startRealParseServer = async ({
   masterKey = null,
   useMasterKey = false,
 } = {}) => {
+  await downloadMongod();
   const mongo = await MongoMemoryServer.create({
     binary: { version: MONGOD_VERSION },
   });

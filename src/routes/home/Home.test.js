@@ -89,21 +89,29 @@ const photoBytes = label =>
   Uint8Array.from([0xff, 0xd8, 0xff, 0xe0, ...Buffer.from(label, 'utf8')]);
 
 function renderHome({ initialState, homeRef, ...props } = {}) {
-  return renderer.create(
-    <StyleContext.Provider value={{ insertCss }}>
-      <App context={{ fetch: () => {}, pathname: '' }}>
-        <Home
-          ref={homeRef}
-          initialState={initialState}
-          typeofcomplaintValues={typeofcomplaintValues}
-          boroughBoundariesFeatureCollection={
-            boroughBoundariesFeatureCollection
-          }
-          {...props}
-        />
-      </App>
-    </StyleContext.Provider>,
-  );
+  let tree;
+  // ToastContainer's mount effect updates its own state. Without act, that
+  // update lands outside a test render and React warns about it. The act
+  // callback returns nothing so that act does not treat the renderer as a
+  // promise to await.
+  renderer.act(() => {
+    tree = renderer.create(
+      <StyleContext.Provider value={{ insertCss }}>
+        <App context={{ fetch: () => {}, pathname: '' }}>
+          <Home
+            ref={homeRef}
+            initialState={initialState}
+            typeofcomplaintValues={typeofcomplaintValues}
+            boroughBoundariesFeatureCollection={
+              boroughBoundariesFeatureCollection
+            }
+            {...props}
+          />
+        </App>
+      </StyleContext.Provider>,
+    );
+  });
+  return tree;
 }
 
 // Mounts Home, hands the photos to the extraction pass the way the file input
@@ -3433,7 +3441,9 @@ describe('Home', () => {
           receive_nypd_sr_updates_by_email: true,
         },
       });
-      homeRef.current.handleLogOut();
+      renderer.act(() => {
+        homeRef.current.handleLogOut();
+      });
       await new Promise(resolve => setTimeout(resolve, 0));
 
       expect(axiosPost).toHaveBeenCalledWith('/api/logOut');
@@ -3495,7 +3505,9 @@ describe('Home', () => {
         homeRef,
         initialState: { email: 'test@example.com', loginSuccessful: true },
       });
-      homeRef.current.handleSessionExpired();
+      renderer.act(() => {
+        homeRef.current.handleSessionExpired();
+      });
 
       expect(homeRef.current.state.loginSuccessful).toBe(false);
       expect(homeRef.current.state.isAuthModalOpen).toBe(true);
@@ -3511,7 +3523,9 @@ describe('Home', () => {
         homeRef,
         initialState: { loginSuccessful: false },
       });
-      homeRef.current.handleSessionExpired();
+      renderer.act(() => {
+        homeRef.current.handleSessionExpired();
+      });
 
       expect(homeRef.current.state.isAuthModalOpen).toBe(false);
       expect(homeRef.current.state.loginSuccessful).toBe(false);

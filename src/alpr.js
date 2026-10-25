@@ -5,11 +5,11 @@ import {
   writeCachedReading,
 } from './alprCache.js';
 import {
-  isTokenUsedUp,
+  isTokenDepleted,
   markTokenAccepted,
   markTokenThrottled,
   markTokenUsed,
-  markTokenUsedUp,
+  markTokenDepleted,
   orderTokens,
   throttleMsFromResponse,
 } from './alprTokenPool.js';
@@ -133,10 +133,10 @@ const PLATERECOGNIZER_TIMEOUT_MS = 30_000;
 
 // The tokens a read can try. `PLATERECOGNIZER_TOKEN_LIST` holds them as a
 // comma-separated list. The order to try them in comes from alprTokenPool.js,
-// so calls spread across the tokens and a token that has expired or run out of
-// quota is skipped for the next one. Whitespace around an entry and empty
-// entries are ignored, which lets a deployment write "one, two" and a CI job
-// compose the list from two secrets without leaving a blank token to try.
+// so calls spread across the tokens and a token that has expired or is
+// depleted is skipped for the next one. Whitespace around an entry and empty
+// entries are ignored, which lets a deployment write "one, two" without
+// leaving a blank token to try.
 function parsePlateRecognizerTokenList(value) {
   return String(value || '')
     .split(',')
@@ -168,12 +168,12 @@ function platerecognizer({ attachmentBufferRotated, token }) {
   }).finally(() => clearTimeout(timer));
 }
 
-// The failure a read gets when every configured token is used up, so there is
+// The failure a read gets when every configured token is depleted, so there is
 // nothing left to call. The status matches what Plate Recognizer sends for a
 // token with no credits, so the browser sees the same kind of failure.
-function allTokensUsedUpError() {
+function allTokensDepletedError() {
   const error = new Error(
-    'All Plate Recognizer tokens are used up; restart the server to try them again',
+    'All Plate Recognizer tokens are depleted; restart the server to try them again',
   );
   error.status = 403;
   return error;
@@ -181,7 +181,7 @@ function allTokensUsedUpError() {
 
 // Ask with each token in turn until one is accepted, in the order alprTokenPool
 // gives: the token used longest ago first, throttled tokens behind the rest,
-// and used-up tokens left out. Every refusal behind the last has its body
+// and depleted tokens left out. Every refusal behind the last has its body
 // consumed so the socket goes back to the pool; the last response is returned
 // with its body intact for the caller to read the error out of.
 async function platerecognizerWithTokens({ attachmentBufferRotated, tokens }) {
@@ -189,9 +189,9 @@ async function platerecognizerWithTokens({ attachmentBufferRotated, tokens }) {
   let response;
 
   for (const [index, token] of orderedTokens.entries()) {
-    // A concurrent read may have used this token up since the order was made.
+    // A concurrent read may have depleted this token since the order was made.
     // eslint-disable-next-line no-continue
-    if (isTokenUsedUp(token)) continue;
+    if (isTokenDepleted(token)) continue;
 
     markTokenUsed(token);
 
@@ -217,9 +217,9 @@ async function platerecognizerWithTokens({ attachmentBufferRotated, tokens }) {
     }
 
     if (response.status === 403) {
-      markTokenUsedUp(token);
+      markTokenDepleted(token);
       console.info(
-        `/platerecognizer plate-reader token ${index + 1} of ${orderedTokens.length} is used up, not trying it again`,
+        `/platerecognizer plate-reader token ${index + 1} of ${orderedTokens.length} is depleted, not trying it again`,
       );
     }
 
@@ -234,7 +234,7 @@ async function platerecognizerWithTokens({ attachmentBufferRotated, tokens }) {
   }
 
   if (!response) {
-    throw allTokensUsedUpError();
+    throw allTokensDepletedError();
   }
 
   return response;
@@ -261,10 +261,10 @@ function makeLapRecorder(timings) {
 // under the key the caller looked up with.
 function readFromPlateRecognizer({ attachmentBuffer, tokens, cacheKey, lap }) {
   // Fail before sharp touches the photo when there is nothing left to call.
-  // The order is taken again at the call itself, so a token used up while the
+  // The order is taken again at the call itself, so a token depleted while the
   // photo is being resized is caught there.
   if (orderTokens(tokens).length === 0) {
-    return Promise.reject(allTokensUsedUpError());
+    return Promise.reject(allTokensDepletedError());
   }
 
   return orientImageBuffer({ attachmentBuffer })

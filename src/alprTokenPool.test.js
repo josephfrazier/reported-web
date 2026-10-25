@@ -3,11 +3,11 @@
  */
 
 import {
-  isTokenUsedUp,
+  isTokenDepleted,
   markTokenAccepted,
   markTokenThrottled,
   markTokenUsed,
-  markTokenUsedUp,
+  markTokenDepleted,
   orderTokens,
   resetTokenPool,
   throttleMsFromResponse,
@@ -73,23 +73,23 @@ describe('orderTokens', () => {
     expect(orderTokens(['one', 'two'], 2000)).toEqual(['one', 'two']);
   });
 
-  test('leaves out a token that is used up', () => {
-    markTokenUsedUp('one');
+  test('leaves out a token that is depleted', () => {
+    markTokenDepleted('one');
 
     expect(orderTokens(['one', 'two', 'three'], 0)).toEqual(['two', 'three']);
   });
 });
 
-describe('used-up tokens', () => {
-  test('stay used up until the pool is reset', () => {
-    markTokenUsedUp('one');
+describe('depleted tokens', () => {
+  test('stays depleted until the pool is reset', () => {
+    markTokenDepleted('one');
 
-    expect(isTokenUsedUp('one')).toBe(true);
-    expect(isTokenUsedUp('two')).toBe(false);
+    expect(isTokenDepleted('one')).toBe(true);
+    expect(isTokenDepleted('two')).toBe(false);
 
     resetTokenPool();
 
-    expect(isTokenUsedUp('one')).toBe(false);
+    expect(isTokenDepleted('one')).toBe(false);
     expect(orderTokens(['one'], 0)).toEqual(['one']);
   });
 });

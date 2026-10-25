@@ -15,8 +15,8 @@
  * still has to try one of them.
  *
  * A 403 response means the token has no credits left or is wrong. Neither
- * gets better while the process runs, so such a token is marked used up and
- * left out of the order entirely. When every token is used up, a read fails
+ * gets better while the process runs, so such a token is marked depleted and
+ * left out of the order entirely. When every token is depleted, a read fails
  * without calling the service. A restart forgets the history, and every token
  * gets one more try then.
  *
@@ -26,18 +26,18 @@
 
 const lastUsedAt = new Map();
 const throttledUntil = new Map();
-const usedUp = new Set();
+const depleted = new Set();
 
 // How long to leave a throttled token alone when the response gives no usable
 // wait. Plate Recognizer limits calls by the second, so one second covers the
 // wait the service documents.
 const DEFAULT_THROTTLE_MS = 1000;
 
-// The tokens a read may try, in the order it should try them. A used-up
+// The tokens a read may try, in the order it should try them. A depleted
 // token is not in the result, so no read asks the service about it again.
 export function orderTokens(tokens, now = Date.now()) {
   return tokens
-    .filter(token => !usedUp.has(token))
+    .filter(token => !depleted.has(token))
     .map((token, index) => ({
       token,
       index,
@@ -81,12 +81,12 @@ export function markTokenThrottled(token, waitMs, now = Date.now()) {
 
 // A token that answered 403 has no credits left, or is wrong. Neither gets
 // better while this process runs, so the token leaves the rotation for good.
-export function markTokenUsedUp(token) {
-  usedUp.add(token);
+export function markTokenDepleted(token) {
+  depleted.add(token);
 }
 
-export function isTokenUsedUp(token) {
-  return usedUp.has(token);
+export function isTokenDepleted(token) {
+  return depleted.has(token);
 }
 
 // The wait a 429 asks for, in milliseconds. A Retry-After header wins, since
@@ -127,5 +127,5 @@ export async function throttleMsFromResponse(response, now = Date.now()) {
 export function resetTokenPool() {
   lastUsedAt.clear();
   throttledUntil.clear();
-  usedUp.clear();
+  depleted.clear();
 }

@@ -139,14 +139,14 @@ describe('PLATERECOGNIZER_TOKEN_LIST', () => {
     });
   });
 
-  test('does not try a used-up token on the next read', async () => {
-    const usedUp = answer({
+  test('does not try a depleted token on the next read', async () => {
+    const depleted = answer({
       ok: false,
       status: 403,
       body: { detail: 'You have reached the maximum number of requests.' },
     });
 
-    await withAnswers([usedUp, answer(), answer()], async fetchSpy => {
+    await withAnswers([depleted, answer(), answer()], async fetchSpy => {
       const read = () =>
         readLicenseViaALPR({
           attachmentBuffer: photo,
@@ -166,14 +166,14 @@ describe('PLATERECOGNIZER_TOKEN_LIST', () => {
     });
   });
 
-  test('fails without calling the service when every token is used up', async () => {
-    const usedUp = answer({
+  test('fails without calling the service when every token is depleted', async () => {
+    const depleted = answer({
       ok: false,
       status: 403,
       body: { detail: 'You have reached the maximum number of requests.' },
     });
 
-    await withAnswers([usedUp], async fetchSpy => {
+    await withAnswers([depleted], async fetchSpy => {
       const read = () =>
         readLicenseViaALPR({
           attachmentBuffer: photo,
@@ -184,7 +184,7 @@ describe('PLATERECOGNIZER_TOKEN_LIST', () => {
 
       await expect(read()).rejects.toMatchObject({
         status: 403,
-        message: expect.stringContaining('used up'),
+        message: expect.stringContaining('depleted'),
       });
 
       expect(fetchSpy).toHaveBeenCalledTimes(1);

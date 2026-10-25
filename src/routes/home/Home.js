@@ -34,7 +34,6 @@ import pEvent from 'p-event';
 import omit from 'object.omit';
 import bufferToArrayBuffer from 'buffer-to-arraybuffer';
 import { serialize } from 'object-to-formdata';
-import usStateNames from 'datasets-us-states-abbr-names';
 import fileExtension from 'file-extension';
 import diceware from 'diceware-generator';
 import wordlist from 'diceware-wordlist-en-eff';
@@ -47,6 +46,7 @@ import PolygonLookup from 'polygon-lookup';
 import CircularProgress from '@mui/material/CircularProgress';
 
 import marx from 'marx-css/css/marx.css';
+import usStateNames, { licenseStateName } from '../../usStateNames.js';
 import homeStyles from './Home.css';
 
 import PreviousSubmissionsList from '../../components/PreviousSubmissionsList.js';
@@ -59,18 +59,19 @@ import formatGeosearchAddress from '../../formatGeosearchAddress.js';
 import earliestTakenPhoto from '../../earliestTakenPhoto.js';
 import createGeosearchAddressCache from '../../geosearchAddressCache.js';
 import { isImage, isVideo } from '../../isImage.js';
+import { expandZipFiles } from '../../zipAttachments.js';
 import latestLocatedPhoto from '../../latestLocatedPhoto.js';
 import plateReadRetry from '../../plateReadRetry.js';
 import getNycTimezoneOffset from '../../timezone.js';
 import { isPointInNycMemoized } from '../../isPointInNyc.js';
 import vehicleTypeUrl from '../../vehicleTypeUrl.js';
 import {
+  addCachedSubmission,
   clearCachedSubmissions,
   readCachedSubmissions,
+  removeCachedSubmission,
   writeCachedSubmissions,
 } from './submissionsCache.js';
-
-usStateNames.DC = 'District of Columbia';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyDlwm2ykA0ohTXeVepQYvkcmdjz2M2CKEI';
 
@@ -199,7 +200,15 @@ const createDateValue = ({ millisecondsSinceEpoch, offset }) => {
 // map and the address field write their own words in its place, which is how a
 // place the user set is told from one the photos did -- and the place follows
 // the photos only while it is still theirs.
+// How many of a thing, in words: "1 picture", "2 pictures".
+const countOf = (count, thing) => `${count} ${thing}${count === 1 ? '' : 's'}`;
+
 const EXTRACTED_FROM_PHOTOS = '(extracted from picture/video)';
+
+// The plate field's provenance when the user typed it. The other two are the
+// photos' own reading, which is recorded as nothing, and a photo the user
+// picked a plate off, which is recorded as that photo's name.
+const PLATE_TYPED = 'typed';
 
 // What one of a photo's reads left behind: when it was taken and where, in the
 // field names the grouping uses. A value the read did not answer with stays
@@ -283,11 +292,13 @@ async function getVideoScreenshot({ attachmentFile }) {
 const attachmentPlateCache = new WeakMap();
 
 function getLicenseStateFromPlateResult(result) {
+  // ALPR results may not always include a parseable region code. Report that
+  // as null rather than an empty string: setLicensePlate leaves the current
+  // state alone for null, where '' would clear the field.
   try {
-    return result.region.code.split('-')[1].toUpperCase();
+    return result.region.code.split('-')[1].toUpperCase() || null;
   } catch {
-    // ALPR results may not always include a parseable region code.
-    return '';
+    return null;
   }
 }
 
@@ -386,9 +397,19 @@ async function fetchPlateResults({ attachmentFile, attachmentBuffer, ext }) {
   // exceptional -- and it is transient, which is the difference between a plate
   // read and a photo the user has to type in by hand. What a repeat is worth is
   // in `plateReadRetry`; this asks for it for this request alone.
+  console.time(`/platerecognizer round trip (${attachmentFile.name})`); // eslint-disable-line no-console
   const { data } = await axios.post('/platerecognizer', formData, {
     'axios-retry': plateReadRetry,
   });
+  console.timeEnd(`/platerecognizer round trip (${attachmentFile.name})`); // eslint-disable-line no-console
+  // The server keeps its own clock and sends the breakdown with the reading,
+  // so the round trip above splits into what the dyno did and what the network
+  // did. A retry adds its wait to the round trip alone, so the two numbers
+  // only add up on a request that was answered once.
+  console.info(
+    `/platerecognizer server timings (${attachmentFile.name})`,
+    data.timings,
+  );
 
   attachmentPlateCache.set(attachmentFile, data);
   return data;
@@ -405,7 +426,9 @@ async function extractPlate({
 
     if (isAlprEnabled === false) {
       console.info('ALPR is disabled, skipping');
-      return { plate: '', licenseState: '' };
+      // Nothing was read, so leave the state field as the person left it:
+      // null keeps it, where '' would clear it.
+      return { plate: '', licenseState: null };
     }
 
     const data = await fetchPlateResults({
@@ -510,6 +533,27 @@ async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
   }
 }
 
+// What the form says when it holds more attachments of one kind than a
+// submission carries. One copy, so the note above the button and the refusal
+// at submit say the same words.
+const TOO_MANY_ATTACHMENTS_MESSAGE =
+  'A report can include at most 3 pictures and 3 videos. Remove the extra ones to submit it.';
+
+// Whether the form holds more of one kind of photo than a submission can
+// carry.
+//
+// A submission carries three pictures and three videos, and
+// `createSubmission.js` keeps only the first three of each kind. The form
+// refuses to send a report that is over either cap, rather than leave the
+// extras to be dropped on the way to the report without a word.
+function tooManyAttachments(attachmentData) {
+  const pictures = attachmentData.filter(file =>
+    isImage({ ext: fileExtension(file.name) }),
+  ).length;
+
+  return pictures > 3 || attachmentData.length - pictures > 3;
+}
+
 class Home extends React.Component {
   static getVehicleMakeLogoUrl({ vehicleMake }) {
     if (vehicleMake.toLowerCase() === 'nissan') {
@@ -545,8 +589,8 @@ class Home extends React.Component {
           target="_blank"
           rel="noopener noreferrer"
         >
-          {plate} in {usStateNames[licenseState]}: {vehicleYear} {vehicleMake}{' '}
-          {vehicleModel} ({vehicleBody})
+          {plate} in {licenseStateName(licenseState)}: {vehicleYear}{' '}
+          {vehicleMake} {vehicleModel} ({vehicleBody})
         </a>
         <img
           src={Home.getVehicleMakeLogoUrl({ vehicleMake })}
@@ -564,7 +608,8 @@ class Home extends React.Component {
   static buildVehicleLookupErrorComponent({ plate, licenseState }) {
     return (
       <React.Fragment>
-        Could not look up make/model of {plate} in {usStateNames[licenseState]},{' '}
+        Could not look up make/model of {plate} in{' '}
+        {licenseStateName(licenseState)},{' '}
         <a
           href="https://github.com/josephfrazier/Reported-Web/issues/295"
           target="_blank"
@@ -675,6 +720,34 @@ class Home extends React.Component {
     return toast.error(notificationContent);
   }
 
+  // What to say about a zip that was picked: how much came out of it, or why
+  // nothing did. A zip is how a folder of photos arrives from a phone or a
+  // share sheet, and the person who picked it is owed the count either way.
+  static reportZip({ name, attachments, failed }) {
+    if (failed) {
+      Home.notifyError(
+        `Could not read ${name}. If it is a zip file, it may be damaged.`,
+      );
+      return;
+    }
+
+    if (attachments.length === 0) {
+      Home.notifyWarning(`${name} held no pictures or videos.`);
+      return;
+    }
+
+    const pictures = attachments.filter(file =>
+      isImage({ ext: fileExtension(file.name) }),
+    ).length;
+    const videos = attachments.length - pictures;
+    const parts = [
+      pictures > 0 && countOf(pictures, 'picture'),
+      videos > 0 && countOf(videos, 'video'),
+    ].filter(Boolean);
+
+    Home.notifySuccess(`${parts.join(' and ')} from ${name}`);
+  }
+
   static handleSearchInputMounted(input) {
     // Only a real mount passes the input element; unmounts pass null.
     if (!input) {
@@ -710,6 +783,27 @@ class Home extends React.Component {
     requestAnimationFrame(attemptFocus);
   }
 
+  // `setLicensePlate` runs on every keystroke -- the state field is a text
+  // input, so typing "NY" is two of them -- and a plate matching an earlier
+  // submission matches at each of them. Wait for the typing to stop before
+  // saying so, rather than stacking a toast per character. Reusing one toast
+  // id means a second pause refreshes the toast that is already up instead of
+  // adding another, the way the geosearch warning does.
+  debouncedWarnAboutPriorSubmission = debounce(
+    ({ priorCount, plate, selectedDateDay }) => {
+      const pluralReport = priorCount === 1 ? 'report' : 'reports';
+
+      Home.notifyWarning(
+        <p>
+          You have already submitted {priorCount} {pluralReport} for {plate} on{' '}
+          {selectedDateDay}, are you sure you want to submit another?
+        </p>,
+        { toastId: 'prior-submission-warning' },
+      );
+    },
+    500,
+  );
+
   constructor(props) {
     super(props);
 
@@ -724,10 +818,17 @@ class Home extends React.Component {
 
       plate: '',
       licenseState: 'NY',
+      // Where the plate in that field came from: undefined while the photos
+      // own it, the *name* of a photo whose overlay the user clicked, or
+      // PLATE_TYPED when the user typed it. Like the address's provenance, it
+      // is what says whether the value follows the photos when they change --
+      // see `applyPhotosToForm`.
+      plateProvenance: undefined,
       typeofcomplaint: typeofcomplaintValues[0],
       reportDescription: '',
-      can_be_shared_publicly: false,
+      can_be_shared_publicly: true,
       withhold_contact_info_from_nypd: false,
+      receive_nypd_sr_updates_by_email: false,
       latitude: defaultLatitude,
       longitude: defaultLongitude,
       coordsAreInNyc: true,
@@ -741,7 +842,10 @@ class Home extends React.Component {
       isReverseGeocodingEnabled: true,
       isLoadPreviousSubmissionsEnabled: false,
       isMapOpen: false,
+      // While this is true, nothing moves the place: see `setCoords`.
+      isLocationLocked: false,
       isPreviousSubmissionsOpen: false,
+      hasSeenWithholdNotice: false,
       loginSuccessful: false,
     };
 
@@ -771,6 +875,7 @@ class Home extends React.Component {
       authModalTab: 'login',
       isEditProfileOpen: false,
       isPreferencesOpen: false,
+      isWithholdFieldHighlighted: false,
       authError: null,
     };
 
@@ -792,12 +897,14 @@ class Home extends React.Component {
     this.geosearchAddressCache = createGeosearchAddressCache();
     // What each attached photo's reads said, keyed by the file, for as long as
     // it is attached. The form's time and place are worked out from these
-    // again whenever the photos change -- see applyPhotosTimeAndPlace.
+    // again whenever the photos change -- see applyPhotosToForm.
     this.photoReadings = new Map();
     this.plateRef = React.createRef();
+    this.folderInputRef = React.createRef();
     this.plateLabelRef = React.createRef();
     this.loginEmailRef = React.createRef();
     this.signupEmailRef = React.createRef();
+    this.scrollContainerRef = React.createRef();
   }
 
   componentDidMount() {
@@ -905,7 +1012,7 @@ class Home extends React.Component {
     // that element aria-hidden while a modal is open (the "App element is
     // not defined" warning). The element must not contain the modals'
     // portal, which parentSelector renders as a sibling of the container
-    // inside the root, so use the container div rather than #app.
+    // inside the scroll area, so use the container div rather than #app.
     Modal.setAppElement(document.querySelector(`.${homeStyles.container}`));
   }
 
@@ -948,6 +1055,10 @@ class Home extends React.Component {
         objectId,
       })
       .then(() => {
+        // Drop it from the cache too, so it doesn't come back on the next
+        // page load before the background fetch replaces the cached list.
+        removeCachedSubmission(objectId);
+
         this.setState(state => ({
           submissions: state.submissions.filter(
             sub => sub.objectId !== objectId,
@@ -968,8 +1079,13 @@ class Home extends React.Component {
   // Request the browser's geolocation permission and update coordinates.
   // Deferred until after login so the permission prompt appears in a trusted
   // context rather than on the first page visit.
-  geolocateAndSetCoords = ({ warnOnGeosearchFailure = true } = {}) =>
-    geolocate()
+  geolocateAndSetCoords = ({ warnOnGeosearchFailure = true } = {}) => {
+    // A locked place does not take a fix, so there is nothing to ask for.
+    if (this.state.isLocationLocked) {
+      return Promise.resolve();
+    }
+
+    return geolocate()
       .then(({ coords: { latitude, longitude }, ipProvenance = 'device' }) => {
         // if there's no attachments or a location couldn't be extracted, just use here
         if (
@@ -993,11 +1109,20 @@ class Home extends React.Component {
         // unhandled rejection; the form defaults to NYC coordinates anyway.
         console.error(err);
       });
+  };
 
   setCoords = (
     { latitude, longitude, addressProvenance } = { addressProvenance: '' },
     { warnOnGeosearchFailure = true } = {},
   ) => {
+    // A locked place stays where the user put it. The photos, the GPS and the
+    // reset after a submission all ask `setCoords` to move it, so they all
+    // stop here. Unchecking the box beside the address is what lets it move
+    // again.
+    if (this.state.isLocationLocked) {
+      return;
+    }
+
     if (!latitude || !longitude) {
       console.error('latitude and/or longitude is missing');
       return;
@@ -1122,7 +1247,7 @@ class Home extends React.Component {
     this.autocomplete = autocomplete;
   };
 
-  renderPlateOverlays = ({ attachmentPlateData }) =>
+  renderPlateOverlays = ({ attachmentPlateData, attachmentFile }) =>
     attachmentPlateData?.results?.map(result => {
       const { box } = result;
       const plate = result.plate?.toUpperCase();
@@ -1151,11 +1276,23 @@ class Home extends React.Component {
       }
       const licenseState = getLicenseStateFromPlateResult(result);
 
+      // The overlay for the plate in the License/Medallion field is marked as
+      // selected, whether it was typed or clicked. The state is left out of
+      // the comparison: it can be hard to tell apart in a photo, and the user
+      // chose the plate.
+      const isSelected = plate === this.state.plate?.toUpperCase();
+      const className = isSelected
+        ? `${homeStyles['plate-overlay']} ${homeStyles['plate-overlay-selected']}`
+        : homeStyles['plate-overlay'];
+      const tooltip = `${isSelected ? '✓ ' : ''}${plate}${
+        licenseState ? ` (${licenseState})` : ''
+      }`;
+
       return (
         <button
           type="button"
           key={`${plate}-${box.xmin}-${box.ymin}`}
-          className={homeStyles['plate-overlay']}
+          className={className}
           style={{
             left: `${(box.xmin / boxWidth) * 100}%`,
             top: `${(box.ymin / boxHeight) * 100}%`,
@@ -1164,7 +1301,13 @@ class Home extends React.Component {
           }}
           aria-label={`Select license plate ${plate}`}
           onClick={() => {
-            this.setLicensePlate({ plate, licenseState });
+            // Picked off this picture, so the plate is this picture's to give
+            // up: see `plateProvenance`.
+            this.setLicensePlate({
+              plate,
+              licenseState,
+              provenance: attachmentFile.name,
+            });
             // Bring the License/Medallion label to the top of the screen so
             // the user can confirm the selected plate. The optional call
             // keeps this a no-op in the test renderer, where refs point at
@@ -1175,25 +1318,34 @@ class Home extends React.Component {
             });
           }}
         >
-          <span className={homeStyles['plate-overlay-tooltip']}>
-            {plate}
-            {licenseState && ` (${licenseState})`}
-          </span>
+          <span className={homeStyles['plate-overlay-tooltip']}>{tooltip}</span>
         </button>
       );
     });
 
-  setLicensePlate = ({ plate, licenseState }) => {
-    licenseState = licenseState || this.state.licenseState; // eslint-disable-line no-param-reassign
+  setLicensePlate = ({ plate, licenseState, provenance = undefined }) => {
+    // Both a read that found no state (null) and a caller that left the key
+    // off (undefined) leave the current state alone; an empty string is a
+    // cleared field and is kept.
+    if (licenseState == null) {
+      licenseState = this.state.licenseState; // eslint-disable-line no-param-reassign
+    }
 
     // Selecting the plate/state that is already selected (e.g. clicking the
     // overlay for the current plate) is a no-op: skip the
-    // duplicate-submission warning and the vehicle/violation lookups.
+    // duplicate-submission warning and the vehicle/violation lookups. Where
+    // the value came from can still have changed -- the same plate read off a
+    // photo the user clicked is that photo's to lose -- so the provenance is
+    // recorded either way.
     if (
       plate === this.state.plate &&
       licenseState === this.state.licenseState
     ) {
       console.info('ignoring unchanged plate:', plate);
+
+      if (provenance !== this.state.plateProvenance) {
+        this.setState({ plateProvenance: provenance });
+      }
       return;
     }
 
@@ -1221,19 +1373,26 @@ class Home extends React.Component {
         violationsResponse: cachedViolationsResponse,
       });
 
+    // LookupAPlate matches a plate together with its state, so a plate with
+    // no state is not something it can answer. Ask for the state instead of
+    // sending a request that cannot come back with anything.
+    const needsLicenseState = Boolean(plate && !licenseState);
+    const vehicleInfoMessage = needsLicenseState
+      ? `Enter the state to look up make/model for ${plate}`
+      : `Looking up make/model for ${plate} in ${licenseStateName(licenseState)}`;
+    const violationSummaryMessage = needsLicenseState
+      ? `Enter the state to look up violations for ${plate}`
+      : `Looking up violations for ${plate} in ${licenseStateName(licenseState)}`;
+
     this.setState({
       plate,
       licenseState,
+      plateProvenance: provenance,
       vehicleInfoComponent:
-        cachedVehicleInfoComponent ||
-        (plate
-          ? `Looking up make/model for ${plate} in ${usStateNames[licenseState]}`
-          : null),
+        cachedVehicleInfoComponent || (plate ? vehicleInfoMessage : null),
       violationSummaryComponent:
         cachedViolationSummaryComponent ||
-        (plate
-          ? `Looking up violations for ${plate} in ${usStateNames[licenseState]}`
-          : null),
+        (plate ? violationSummaryMessage : null),
     });
 
     const selectedDate = new Date(this.state.CreateDate);
@@ -1249,23 +1408,28 @@ class Home extends React.Component {
       return submission.license === plate || submission.medallionNo === plate;
     });
 
+    // The warning is about the plate, and the state is deliberately not part of
+    // what counts as a duplicate: a state read off a plate is a guess, and an
+    // earlier report may simply have got it wrong. So a change to the state on
+    // its own says nothing about one -- only a plate that has just become this
+    // one is news.
     const priorCount = priorSubmissions.length;
+    const plateChanged = plate !== this.state.plate;
 
-    if (priorCount > 0) {
-      const pluralReport = priorCount === 1 ? 'report' : 'reports';
-
-      Home.notifyWarning(
-        <p>
-          You have already submitted {priorCount} {pluralReport} for {plate} on{' '}
-          {selectedDateDay}, are you sure you want to submit another?
-        </p>,
-      );
+    if (priorCount > 0 && plateChanged) {
+      this.debouncedWarnAboutPriorSubmission({
+        priorCount,
+        plate,
+        selectedDateDay,
+      });
     }
 
     // An empty plate (after a submission, or when the field is cleared) has
     // nothing to look up: the request would be /getVehicleType//NY, which the
-    // server answers with a 404.
-    if (plate && !cachedVehicleInfoComponent) {
+    // server answers with a 404. Neither has a plate with no state, for the
+    // same reason: the lookup matches on both, and the message above already
+    // asks for the missing half.
+    if (plate && licenseState && !cachedVehicleInfoComponent) {
       debouncedGetVehicleType({
         plate,
         licenseState,
@@ -1317,6 +1481,7 @@ class Home extends React.Component {
               this.setLicensePlate({
                 plate: plate.replace('1', 'T'),
                 licenseState,
+                provenance: this.state.plateProvenance,
               });
             } else if (plate.match(/^\d\d\d\d\d\dC$/)) {
               this.setLicensePlate({
@@ -1336,7 +1501,7 @@ class Home extends React.Component {
         });
     }
 
-    if (plate && !cachedViolationSummaryComponent) {
+    if (plate && licenseState && !cachedViolationSummaryComponent) {
       debouncedGetViolations({
         plate,
         licenseState,
@@ -1374,10 +1539,48 @@ class Home extends React.Component {
   };
 
   // adapted from https://github.com/ngokevin/react-file-reader-input/tree/f970257f271b8c3bba9d529ffdbfa4f4731e0799#usage
-  handleAttachmentInput = async (_, results) => {
-    const attachmentData = results.map(([, attachmentFile]) => attachmentFile);
+  // A picked folder: every picture and video inside it becomes an attachment.
+  //
+  // A folder is what a camera roll is, and it holds things that are not
+  // attachments -- a stray text file, the `.DS_Store` macOS leaves in every
+  // directory -- so the pick is filtered rather than handed on whole.
+  handleFolderInput = async event => {
+    const files = [...event.target.files];
+    // Clear the input, so that picking the same folder again still fires a
+    // change event.
+    event.target.value = ''; // eslint-disable-line no-param-reassign
 
-    return this.handleAttachmentData({ attachmentData });
+    const attachments = files.filter(file => {
+      const ext = fileExtension(file.name);
+      return isImage({ ext }) || isVideo({ ext });
+    });
+
+    if (attachments.length === 0) {
+      Home.notifyWarning('That folder held no pictures or videos.');
+      return undefined;
+    }
+
+    return this.handleAttachmentData({ attachmentData: attachments });
+  };
+
+  // The files a picker hands over, with any zip opened out into the
+  // attachments it holds. A zip is a way of picking a batch, so it takes no
+  // place of its own in the attachment list; what it held is reported either
+  // way.
+  handleAttachmentFiles = async picked => {
+    const { files, zips } = await expandZipFiles(picked);
+    zips.forEach(archive => Home.reportZip(archive));
+
+    if (files.length === 0) {
+      return undefined;
+    }
+
+    return this.handleAttachmentData({ attachmentData: files });
+  };
+
+  handleAttachmentInput = async (_, results) => {
+    const picked = results.map(([, attachmentFile]) => attachmentFile);
+    return this.handleAttachmentFiles(picked);
   };
 
   // What each of a set of photos read.
@@ -1393,9 +1596,72 @@ class Home extends React.Component {
     return earliest ? createDateValue(momentOf(earliest)) : undefined;
   };
 
-  // The time and place a submission takes from the photos it holds, worked out
-  // again whenever that set changes: a photo dropped leaves the others to say
-  // what they are.
+  // The plate a set of photos reads: the first of them, in the order they are
+  // attached, whose read named one. What each photo read is kept by name --
+  // `plateDataByAttachmentName` is what the overlays are drawn from, and it
+  // loses a photo's entry when that photo goes, so a plate cannot outlive the
+  // picture it was read from by being looked up here.
+  //
+  // The result the reading named is chosen the way `extractPlate` chose it: a
+  // medallion's T######C plate if the read offered one, and its first result
+  // otherwise, so the field a recompute lands on is the field the reading
+  // would have filled.
+  plateFromPhotos = photos => {
+    for (const file of photos) {
+      const results =
+        this.state.plateDataByAttachmentName[file.name]?.results || [];
+      const preferred = results.find(result =>
+        result.plate?.toUpperCase().match(/^T\d{6}C$/),
+      );
+      const result = preferred || results[0];
+
+      if (result?.plate) {
+        return {
+          plate: result.plate.toUpperCase(),
+          licenseState: getLicenseStateFromPlateResult(result),
+        };
+      }
+    }
+
+    return null;
+  };
+
+  // The plate follows the photos the way the time and the place do, with one
+  // more provenance to weigh: a plate picked off a photo's overlay is evidence
+  // from that picture, so it is kept while that picture is attached and
+  // recomputed when it is not. A plate the user typed is theirs and does not
+  // move.
+  applyPhotosPlate = photos => {
+    const { plateProvenance } = this.state;
+
+    if (plateProvenance === PLATE_TYPED) {
+      return;
+    }
+
+    // The photo the plate was picked from is still attached: the evidence for
+    // that choice is here, whatever the other photos read.
+    if (plateProvenance && photos.some(file => file.name === plateProvenance)) {
+      return;
+    }
+
+    const fromPhotos = this.plateFromPhotos(photos);
+
+    if (fromPhotos) {
+      this.setLicensePlate({ ...fromPhotos, provenance: undefined });
+    } else if (this.state.plate) {
+      // Nothing left reads a plate, so the field goes back to empty rather
+      // than keeping one from a photo the report no longer holds.
+      this.setLicensePlate({
+        plate: '',
+        licenseState: 'NY',
+        provenance: undefined,
+      });
+    }
+  };
+
+  // The plate, time and place a submission takes from the photos it holds,
+  // worked out again whenever that set changes: a photo dropped leaves the
+  // others to say what they are.
   //
   // Each follows the photos only while it is still what they gave it. A time
   // the user typed no longer matches what they say, and a place the user set
@@ -1405,7 +1671,9 @@ class Home extends React.Component {
   //
   // With nothing attached before, there is nothing of the user's to keep, and
   // the photos say what the time and place are.
-  applyPhotosTimeAndPlace = (photos, { previousPhotos = null } = {}) => {
+  applyPhotosToForm = (photos, { previousPhotos = null } = {}) => {
+    this.applyPhotosPlate(photos);
+
     if (photos.length === 0) {
       return;
     }
@@ -1511,7 +1779,7 @@ class Home extends React.Component {
         // still the ones on record, so the time and place they gave can be
         // told from the ones the user set. The reading goes once that is
         // settled, not before.
-        this.applyPhotosTimeAndPlace(this.state.attachmentData, {
+        this.applyPhotosToForm(this.state.attachmentData, {
           previousPhotos,
         });
 
@@ -1653,7 +1921,7 @@ class Home extends React.Component {
 
         // Every photo has now been read, so the form takes its time and its
         // place from the set as a whole, rather than from each photo in turn.
-        this.applyPhotosTimeAndPlace(this.state.attachmentData, {
+        this.applyPhotosToForm(this.state.attachmentData, {
           previousPhotos,
         });
 
@@ -1696,12 +1964,47 @@ class Home extends React.Component {
           : target.value;
     const { name } = target;
 
+    const stateChange = { [name]: value };
+    // Checking the withhold box counts as having seen the notice, so it
+    // stays gone if the box is later unchecked.
+    if (name === 'withhold_contact_info_from_nypd' && value === true) {
+      stateChange.hasSeenWithholdNotice = true;
+    }
+
+    this.setState(stateChange, () =>
+      debouncedSavePersistentStateToCookie(this),
+    );
+  };
+
+  dismissWithholdNotice = () => {
+    this.setState({ hasSeenWithholdNotice: true }, () =>
+      debouncedSavePersistentStateToCookie(this),
+    );
+  };
+
+  // Opens Edit Profile and flash-highlights the withhold field so the
+  // notice's "Show me how" button points at it.
+  showWithholdField = () => {
     this.setState(
       {
-        [name]: value,
+        isEditProfileOpen: true,
+        isPreferencesOpen: false,
+        isWithholdFieldHighlighted: true,
       },
-      () => debouncedSavePersistentStateToCookie(this),
+      () => {
+        // The flash should be seen: on narrow screens the checkbox can be
+        // below the fold, so bring it into view once the panel is open.
+        requestAnimationFrame(() => {
+          document
+            .getElementById('withhold_contact_info_from_nypd')
+            ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+      },
     );
+    clearTimeout(this.withholdHighlightTimeout);
+    this.withholdHighlightTimeout = setTimeout(() => {
+      this.setState({ isWithholdFieldHighlighted: false });
+    }, 3000);
   };
 
   loadPreviousSubmissions = () => {
@@ -1723,8 +2026,12 @@ class Home extends React.Component {
       isPreviousSubmissionsLoading: true,
     });
 
+    // No body: the route reads none. It authenticates with the session cookie
+    // and answers with this reader's submissions. Handing it the form's state
+    // meant sending everything in it, files included, for a request that uses
+    // none of it.
     axios
-      .post('/submissions', this.state)
+      .post('/submissions')
       .then(({ data }) => {
         const { submissions } = data;
         this.setState({
@@ -1785,13 +2092,37 @@ class Home extends React.Component {
         email: this.state.email,
         password: this.state.password,
       });
-      const { FirstName, LastName, Phone, testify } = data;
+      const {
+        FirstName,
+        LastName,
+        Phone,
+        testify,
+        can_be_shared_publicly: canBeSharedPublicly,
+        withhold_contact_info_from_nypd: withholdContactInfoFromNypd,
+        receive_nypd_sr_updates_by_email: receiveNypdSrUpdatesByEmail,
+      } = data;
       this.setState(
         state => ({
           FirstName: FirstName || state.FirstName,
           LastName: LastName || state.LastName,
           Phone: Phone || state.Phone,
           testify: typeof testify === 'boolean' ? testify : state.testify,
+          // The server sends the user's stored flag when it was saved,
+          // so a present boolean wins over the cookie; an absent one
+          // falls back to the cookie value.
+          can_be_shared_publicly:
+            typeof canBeSharedPublicly === 'boolean'
+              ? canBeSharedPublicly
+              : state.can_be_shared_publicly,
+          // Sparse on the user, so absent means the cookie value.
+          withhold_contact_info_from_nypd:
+            typeof withholdContactInfoFromNypd === 'boolean'
+              ? withholdContactInfoFromNypd
+              : state.withhold_contact_info_from_nypd,
+          receive_nypd_sr_updates_by_email:
+            typeof receiveNypdSrUpdatesByEmail === 'boolean'
+              ? receiveNypdSrUpdatesByEmail
+              : state.receive_nypd_sr_updates_by_email,
           isUserInfoSaving: false,
           isAuthModalOpen: false,
           loginSuccessful: true,
@@ -1854,8 +2185,26 @@ class Home extends React.Component {
   // The fields /saveUser accepts. The password is never among them: the
   // session cookie identifies the user.
   profileFields = () => {
-    const { email, FirstName, LastName, Phone, testify } = this.state;
-    return { email, FirstName, LastName, Phone, testify };
+    const {
+      email,
+      FirstName,
+      LastName,
+      Phone,
+      testify,
+      can_be_shared_publicly: canBeSharedPublicly,
+      withhold_contact_info_from_nypd: withholdContactInfoFromNypd,
+      receive_nypd_sr_updates_by_email: receiveNypdSrUpdatesByEmail,
+    } = this.state;
+    return {
+      email,
+      FirstName,
+      LastName,
+      Phone,
+      testify,
+      can_be_shared_publicly: canBeSharedPublicly,
+      withhold_contact_info_from_nypd: withholdContactInfoFromNypd,
+      receive_nypd_sr_updates_by_email: receiveNypdSrUpdatesByEmail,
+    };
   };
 
   clearAuthState = (extraState = {}) => {
@@ -1867,6 +2216,9 @@ class Home extends React.Component {
         LastName: '',
         Phone: '',
         testify: false,
+        withhold_contact_info_from_nypd: false,
+        receive_nypd_sr_updates_by_email: false,
+        hasSeenWithholdNotice: false,
         submissions: [],
         isEditProfileOpen: false,
         isPreferencesOpen: false,
@@ -1930,7 +2282,7 @@ class Home extends React.Component {
     try {
       await axios.post('/saveUser', this.profileFields());
       this.setState({ isUserInfoSaving: false, isEditProfileOpen: false });
-      document.querySelector(`.${homeStyles.root}`).scrollTo({
+      this.scrollContainerRef.current?.scrollTo({
         top: 100,
         left: 100,
         behavior: 'smooth',
@@ -1977,7 +2329,7 @@ class Home extends React.Component {
 
   findMatchingPlateThumbnail() {
     let bestPlateCropDataUrl = null;
-    let bestResolution = -1;
+    let bestConfidence = -1;
     for (const data of Object.values(this.state.plateDataByAttachmentName)) {
       for (const result of data.results || []) {
         if (
@@ -1985,15 +2337,14 @@ class Home extends React.Component {
           result.plateCropDataUrl
         ) {
           // The same plate can be detected in multiple photos (or multiple
-          // times in one photo). Show the highest-resolution crop beside the
-          // plate input, since more pixels make the plate easier to read.
-          // `box` is in the same downscaled image space the crop was cut from
-          // in src/alpr.js, so its area in pixels is the crop's resolution.
-          const { xmin, ymin, xmax, ymax } = result.box || {};
-          const resolution = (xmax - xmin) * (ymax - ymin) || 0;
+          // times in one photo). Show the crop beside the plate input that
+          // Plate Recognizer read with the most confidence, since that is the
+          // read most likely to show the plate clearly. `score` is the
+          // per-result confidence from the plate-reader response.
+          const confidence = result.score || 0;
 
-          if (resolution > bestResolution) {
-            bestResolution = resolution;
+          if (confidence > bestConfidence) {
+            bestConfidence = confidence;
             bestPlateCropDataUrl = result.plateCropDataUrl;
           }
         }
@@ -2028,16 +2379,13 @@ class Home extends React.Component {
     return (
       <Dropzone
         className={homeStyles.root}
-        onDrop={attachmentData => {
-          this.handleAttachmentData({ attachmentData });
-        }}
+        onDrop={attachmentData => this.handleAttachmentFiles(attachmentData)}
         style={{
           position: 'fixed',
           top: 0,
           right: 0,
           bottom: 0,
           left: 0,
-          overflowY: 'scroll',
         }}
         disableClick
       >
@@ -2059,1158 +2407,1337 @@ class Home extends React.Component {
             )}
           </div>
         )}
-        <div className={homeStyles.container}>
-          <main>
-            <h1>
-              <a
-                href="https://reportedly.weebly.com/"
-                style={{
-                  textDecoration: 'underline',
-                }}
-              >
-                Reported
-              </a>
-            </h1>
+        <div className={homeStyles['scroll-area']}>
+          <div
+            className={homeStyles['scroll-container']}
+            ref={this.scrollContainerRef}
+          >
+            <div className={homeStyles.container}>
+              <main>
+                <h1>
+                  <a
+                    href="https://reportedly.weebly.com/"
+                    style={{
+                      textDecoration: 'underline',
+                    }}
+                  >
+                    Reported
+                  </a>
+                </h1>
 
-            <ToastContainer
-              position="top-center"
-              autoClose={5000}
-              hideProgressBar={false}
-              newestOnTop={false}
-              closeOnClick
-              rtl={false}
-              pauseOnFocusLoss
-              draggable
-              pauseOnHover
-              theme="dark"
-            />
+                <ToastContainer
+                  position="top-center"
+                  autoClose={5000}
+                  hideProgressBar={false}
+                  newestOnTop={false}
+                  closeOnClick
+                  rtl={false}
+                  pauseOnFocusLoss
+                  draggable
+                  pauseOnHover
+                  theme="dark"
+                />
 
-            {/* User Status Bar */}
-            <div className={homeStyles['user-status-bar']}>
-              <div className={homeStyles['user-greeting']}>
-                {this.isLoggedIn() ? (
-                  <>
-                    <span role="img" aria-label="user">
-                      👤
-                    </span>{' '}
-                    {this.state.FirstName
-                      ? `${this.state.FirstName} ${this.state.LastName}`
-                      : this.state.email}
-                  </>
-                ) : (
-                  'Not logged in'
+                {/* User Status Bar */}
+                <div className={homeStyles['user-status-bar']}>
+                  <div className={homeStyles['user-greeting']}>
+                    {this.isLoggedIn() ? (
+                      <>
+                        <span role="img" aria-label="user">
+                          👤
+                        </span>{' '}
+                        {this.state.FirstName
+                          ? `${this.state.FirstName} ${this.state.LastName}`
+                          : this.state.email}
+                      </>
+                    ) : (
+                      'Not logged in'
+                    )}
+                  </div>
+                  <div className={homeStyles['user-actions']}>
+                    {this.isLoggedIn() ? (
+                      <>
+                        <button
+                          type="button"
+                          className={homeStyles['status-bar-btn-primary']}
+                          onClick={() =>
+                            this.setState(state => ({
+                              isEditProfileOpen: !state.isEditProfileOpen,
+                              isPreferencesOpen: false,
+                            }))
+                          }
+                        >
+                          {this.state.isEditProfileOpen
+                            ? 'Cancel'
+                            : 'Edit Profile'}
+                        </button>
+                        <button
+                          type="button"
+                          className={homeStyles['status-bar-btn']}
+                          onClick={() =>
+                            this.setState(state => ({
+                              isPreferencesOpen: !state.isPreferencesOpen,
+                              isEditProfileOpen: false,
+                            }))
+                          }
+                        >
+                          {this.state.isPreferencesOpen
+                            ? 'Done'
+                            : 'Preferences'}
+                        </button>
+                        <button
+                          type="button"
+                          className={homeStyles['status-bar-btn']}
+                          onClick={this.handleLogOut}
+                        >
+                          Log Out
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          className={homeStyles['status-bar-btn']}
+                          onClick={() => this.openAuthModal('login')}
+                        >
+                          Log In
+                        </button>
+                        <button
+                          type="button"
+                          className={homeStyles['status-bar-btn-primary']}
+                          onClick={() => this.openAuthModal('signup')}
+                        >
+                          Sign Up
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* One-time notice about the withhold checkbox, until dismissed
+                or the box is checked. Not sticky: the non-production banner
+                above owns the sticky spot. */}
+                {this.isLoggedIn() &&
+                  !this.state.withhold_contact_info_from_nypd &&
+                  !this.state.hasSeenWithholdNotice && (
+                    <div
+                      role="alert"
+                      className={homeStyles['withhold-notice-banner']}
+                    >
+                      <span>
+                        Getting unwanted phone calls after making submissions?
+                        Now you can stop sending your number and email to the
+                        cops!
+                      </span>
+                      <span className={homeStyles['user-actions']}>
+                        <button
+                          type="button"
+                          className={homeStyles['status-bar-btn-primary']}
+                          onClick={this.showWithholdField}
+                        >
+                          Show me how
+                        </button>
+                        <button
+                          type="button"
+                          className={homeStyles['status-bar-btn']}
+                          onClick={this.dismissWithholdNotice}
+                        >
+                          Dismiss
+                        </button>
+                      </span>
+                    </div>
+                  )}
+
+                {/* Edit Profile (shown inline when toggled) */}
+                {this.state.isEditProfileOpen && (
+                  <form
+                    className={homeStyles['edit-profile-section']}
+                    onSubmit={this.handleSaveProfile}
+                  >
+                    <h3>Edit Profile</h3>
+                    <fieldset disabled={this.state.isUserInfoSaving}>
+                      <label htmlFor="FirstName">
+                        First Name:{' '}
+                        <input
+                          required
+                          type="text"
+                          id="FirstName"
+                          autoComplete="given-name"
+                          value={this.state.FirstName}
+                          name="FirstName"
+                          onChange={this.handleInputChange}
+                        />
+                      </label>
+                      <label htmlFor="LastName">
+                        Last Name:{' '}
+                        <input
+                          required
+                          type="text"
+                          id="LastName"
+                          autoComplete="family-name"
+                          value={this.state.LastName}
+                          name="LastName"
+                          onChange={this.handleInputChange}
+                        />
+                      </label>
+                      <label htmlFor="Phone">
+                        Phone Number:{' '}
+                        <input
+                          required
+                          type="tel"
+                          id="Phone"
+                          autoComplete="tel"
+                          value={this.state.Phone}
+                          name="Phone"
+                          onChange={this.handleInputChange}
+                        />
+                      </label>
+                      <label htmlFor="testify">
+                        <input
+                          id="testify"
+                          type="checkbox"
+                          checked={this.state.testify}
+                          name="testify"
+                          onChange={this.handleInputChange}
+                        />{' '}
+                        I&apos;m willing to testify at a hearing, which can be
+                        done by phone.
+                      </label>
+
+                      <label htmlFor="can_be_shared_publicly">
+                        <input
+                          id="can_be_shared_publicly"
+                          type="checkbox"
+                          checked={this.state.can_be_shared_publicly}
+                          name="can_be_shared_publicly"
+                          onChange={this.handleInputChange}
+                        />{' '}
+                        Allow the photos/videos, description, category, and
+                        location to be publicly displayed
+                      </label>
+
+                      <label
+                        htmlFor="withhold_contact_info_from_nypd"
+                        className={
+                          this.state.isWithholdFieldHighlighted
+                            ? homeStyles['withhold-field-highlight']
+                            : undefined
+                        }
+                      >
+                        <input
+                          id="withhold_contact_info_from_nypd"
+                          type="checkbox"
+                          checked={this.state.withhold_contact_info_from_nypd}
+                          name="withhold_contact_info_from_nypd"
+                          onChange={this.handleInputChange}
+                        />{' '}
+                        Withhold my contact info from NYPD service requests
+                        <br />
+                        <small>
+                          If you leave this unchecked, NYPD may call or email
+                          you about your service requests.
+                        </small>
+                      </label>
+
+                      {/* Email updates only make sense while contact info is
+                      withheld, so the checkbox is only shown then. The flag
+                      stays in state (and the cookie) either way, matching the
+                      other per-submission checkboxes. */}
+                      {this.state.withhold_contact_info_from_nypd && (
+                        <div style={{ marginLeft: '1.5em' }}>
+                          <label htmlFor="receive_nypd_sr_updates_by_email">
+                            <input
+                              id="receive_nypd_sr_updates_by_email"
+                              type="checkbox"
+                              checked={
+                                this.state.receive_nypd_sr_updates_by_email
+                              }
+                              name="receive_nypd_sr_updates_by_email"
+                              onChange={this.handleInputChange}
+                            />{' '}
+                            But still email me status updates about my NYPD
+                            service requests
+                            <br />
+                            <small>
+                              Your email will be shared with 311 for your
+                              requests; your name and phone stay withheld.
+                            </small>
+                          </label>
+                        </div>
+                      )}
+
+                      <button
+                        type="submit"
+                        className={homeStyles['auth-submit-btn']}
+                        disabled={this.state.isUserInfoSaving}
+                        style={{ width: 'auto' }}
+                      >
+                        {this.state.isUserInfoSaving ? 'Saving...' : 'Save'}
+                      </button>
+                    </fieldset>
+                  </form>
                 )}
-              </div>
-              <div className={homeStyles['user-actions']}>
-                {this.isLoggedIn() ? (
-                  <>
+
+                {/* Preferences (shown inline when toggled). Unlike the Edit
+                Profile form above, nothing here needs saving: these toggles
+                affect only how the page behaves, not what is submitted, so
+                they persist to the cookie as they change. */}
+                {this.state.isPreferencesOpen && (
+                  <div className={homeStyles['edit-profile-section']}>
+                    <h3>Preferences</h3>
+
+                    <label htmlFor="isAlprEnabled">
+                      <input
+                        id="isAlprEnabled"
+                        type="checkbox"
+                        checked={this.state.isAlprEnabled}
+                        name="isAlprEnabled"
+                        onChange={this.handleInputChange}
+                      />{' '}
+                      Automatically read license plates from pictures/videos
+                    </label>
+
+                    <label htmlFor="isReverseGeocodingEnabled">
+                      <input
+                        id="isReverseGeocodingEnabled"
+                        type="checkbox"
+                        checked={this.state.isReverseGeocodingEnabled}
+                        name="isReverseGeocodingEnabled"
+                        onChange={this.handleInputChange}
+                      />{' '}
+                      Automatically read addresses from pictures/videos
+                    </label>
+
+                    <label htmlFor="isLoadPreviousSubmissionsEnabled">
+                      <input
+                        id="isLoadPreviousSubmissionsEnabled"
+                        type="checkbox"
+                        checked={this.state.isLoadPreviousSubmissionsEnabled}
+                        name="isLoadPreviousSubmissionsEnabled"
+                        onChange={this.handleInputChange}
+                      />{' '}
+                      Load previous submissions on page load
+                    </label>
+                  </div>
+                )}
+
+                {/* Auth Modal */}
+                <Modal
+                  parentSelector={() =>
+                    document.querySelector(`.${homeStyles['scroll-area']}`) ||
+                    document.body
+                  }
+                  isOpen={this.state.isAuthModalOpen}
+                  onRequestClose={this.closeAuthModal}
+                  style={{
+                    // The portal lives in the scroll area below the banner, so
+                    // anchor the overlay to that area instead of the viewport.
+                    overlay: {
+                      position: 'absolute',
+                    },
+                    content: {
+                      maxWidth: '440px',
+                      margin: '0 auto',
+                      padding: '1.5rem',
+                      borderRadius: '8px',
+                      bottom: 'auto',
+                    },
+                  }}
+                >
+                  {/* Tab bar */}
+                  <div className={homeStyles['auth-modal-tabs']}>
                     <button
                       type="button"
-                      className={homeStyles['status-bar-btn-primary']}
-                      onClick={() =>
-                        this.setState(state => ({
-                          isEditProfileOpen: !state.isEditProfileOpen,
-                          isPreferencesOpen: false,
-                        }))
+                      className={
+                        this.state.authModalTab === 'login'
+                          ? homeStyles['auth-modal-tab-active']
+                          : homeStyles['auth-modal-tab']
                       }
-                    >
-                      {this.state.isEditProfileOpen ? 'Cancel' : 'Edit Profile'}
-                    </button>
-                    <button
-                      type="button"
-                      className={homeStyles['status-bar-btn']}
-                      onClick={() =>
-                        this.setState(state => ({
-                          isPreferencesOpen: !state.isPreferencesOpen,
-                          isEditProfileOpen: false,
-                        }))
-                      }
-                    >
-                      {this.state.isPreferencesOpen ? 'Cancel' : 'Preferences'}
-                    </button>
-                    <button
-                      type="button"
-                      className={homeStyles['status-bar-btn']}
-                      onClick={this.handleLogOut}
-                    >
-                      Log Out
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      className={homeStyles['status-bar-btn']}
-                      onClick={() => this.openAuthModal('login')}
+                      onClick={() => this.switchAuthTab('login')}
                     >
                       Log In
                     </button>
                     <button
                       type="button"
-                      className={homeStyles['status-bar-btn-primary']}
-                      onClick={() => this.openAuthModal('signup')}
-                    >
-                      Sign Up
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Edit Profile (shown inline when toggled) */}
-            {this.state.isEditProfileOpen && (
-              <form
-                className={homeStyles['edit-profile-section']}
-                onSubmit={this.handleSaveProfile}
-              >
-                <h3>Edit Profile</h3>
-                <fieldset disabled={this.state.isUserInfoSaving}>
-                  <label htmlFor="FirstName">
-                    First Name:{' '}
-                    <input
-                      required
-                      type="text"
-                      id="FirstName"
-                      autoComplete="given-name"
-                      value={this.state.FirstName}
-                      name="FirstName"
-                      onChange={this.handleInputChange}
-                    />
-                  </label>
-                  <label htmlFor="LastName">
-                    Last Name:{' '}
-                    <input
-                      required
-                      type="text"
-                      id="LastName"
-                      autoComplete="family-name"
-                      value={this.state.LastName}
-                      name="LastName"
-                      onChange={this.handleInputChange}
-                    />
-                  </label>
-                  <label htmlFor="Phone">
-                    Phone Number:{' '}
-                    <input
-                      required
-                      type="tel"
-                      id="Phone"
-                      autoComplete="tel"
-                      value={this.state.Phone}
-                      name="Phone"
-                      onChange={this.handleInputChange}
-                    />
-                  </label>
-                  <label htmlFor="testify">
-                    <input
-                      id="testify"
-                      type="checkbox"
-                      checked={this.state.testify}
-                      name="testify"
-                      onChange={this.handleInputChange}
-                    />{' '}
-                    I&apos;m willing to testify at a hearing, which can be done
-                    by phone.
-                  </label>
-
-                  <label htmlFor="can_be_shared_publicly">
-                    <input
-                      id="can_be_shared_publicly"
-                      type="checkbox"
-                      checked={this.state.can_be_shared_publicly}
-                      name="can_be_shared_publicly"
-                      onChange={this.handleInputChange}
-                    />{' '}
-                    Allow the photos/videos, description, category, and location
-                    to be publicly displayed
-                  </label>
-
-                  <label htmlFor="withhold_contact_info_from_nypd">
-                    <input
-                      id="withhold_contact_info_from_nypd"
-                      type="checkbox"
-                      checked={this.state.withhold_contact_info_from_nypd}
-                      name="withhold_contact_info_from_nypd"
-                      onChange={this.handleInputChange}
-                    />{' '}
-                    Withhold my contact info from NYPD service requests
-                    <br />
-                    <small>
-                      If you leave this unchecked, NYPD may call or email you
-                      about your service requests.
-                    </small>
-                  </label>
-
-                  <button
-                    type="submit"
-                    className={homeStyles['auth-submit-btn']}
-                    disabled={this.state.isUserInfoSaving}
-                    style={{ width: 'auto' }}
-                  >
-                    {this.state.isUserInfoSaving ? 'Saving...' : 'Save'}
-                  </button>
-                </fieldset>
-              </form>
-            )}
-
-            {/* Preferences (shown inline when toggled). Unlike the Edit
-                Profile form above, nothing here needs saving: these toggles
-                affect only how the page behaves, not what is submitted, so
-                they persist to the cookie as they change. */}
-            {this.state.isPreferencesOpen && (
-              <div className={homeStyles['edit-profile-section']}>
-                <h3>Preferences</h3>
-
-                <label htmlFor="isAlprEnabled">
-                  <input
-                    id="isAlprEnabled"
-                    type="checkbox"
-                    checked={this.state.isAlprEnabled}
-                    name="isAlprEnabled"
-                    onChange={this.handleInputChange}
-                  />{' '}
-                  Automatically read license plates from pictures/videos
-                </label>
-
-                <label htmlFor="isReverseGeocodingEnabled">
-                  <input
-                    id="isReverseGeocodingEnabled"
-                    type="checkbox"
-                    checked={this.state.isReverseGeocodingEnabled}
-                    name="isReverseGeocodingEnabled"
-                    onChange={this.handleInputChange}
-                  />{' '}
-                  Automatically read addresses from pictures/videos
-                </label>
-
-                <label htmlFor="isLoadPreviousSubmissionsEnabled">
-                  <input
-                    id="isLoadPreviousSubmissionsEnabled"
-                    type="checkbox"
-                    checked={this.state.isLoadPreviousSubmissionsEnabled}
-                    name="isLoadPreviousSubmissionsEnabled"
-                    onChange={this.handleInputChange}
-                  />{' '}
-                  Load previous submissions on page load
-                </label>
-              </div>
-            )}
-
-            {/* Auth Modal */}
-            <Modal
-              parentSelector={() =>
-                document.querySelector(`.${homeStyles.root}`) || document.body
-              }
-              isOpen={this.state.isAuthModalOpen}
-              onRequestClose={this.closeAuthModal}
-              style={{
-                content: {
-                  maxWidth: '440px',
-                  margin: '0 auto',
-                  padding: '1.5rem',
-                  borderRadius: '8px',
-                  bottom: 'auto',
-                },
-              }}
-            >
-              {/* Tab bar */}
-              <div className={homeStyles['auth-modal-tabs']}>
-                <button
-                  type="button"
-                  className={
-                    this.state.authModalTab === 'login'
-                      ? homeStyles['auth-modal-tab-active']
-                      : homeStyles['auth-modal-tab']
-                  }
-                  onClick={() => this.switchAuthTab('login')}
-                >
-                  Log In
-                </button>
-                <button
-                  type="button"
-                  className={
-                    this.state.authModalTab === 'signup'
-                      ? homeStyles['auth-modal-tab-active']
-                      : homeStyles['auth-modal-tab']
-                  }
-                  onClick={() => this.switchAuthTab('signup')}
-                >
-                  Sign Up
-                </button>
-              </div>
-
-              {/* Error display */}
-              {this.state.authError && (
-                <div className={homeStyles['auth-error']}>
-                  {this.state.authError}
-                </div>
-              )}
-
-              {/* Log In form */}
-              {this.state.authModalTab === 'login' && (
-                <form
-                  className={homeStyles['auth-modal-body']}
-                  onSubmit={this.handleLogIn}
-                >
-                  <label htmlFor="auth-email">
-                    Email:
-                    <input
-                      ref={this.loginEmailRef}
-                      required
-                      id="auth-email"
-                      type="email"
-                      autoComplete="email"
-                      value={this.state.email}
-                      name="email"
-                      onChange={event => {
-                        this.handleInputChange({
-                          target: {
-                            name: event.target.name,
-                            value: event.target.value.replace(/@.*/, atDomain =>
-                              atDomain.toLowerCase(),
-                            ),
-                          },
-                        });
-                      }}
-                    />
-                  </label>
-                  <label htmlFor="auth-password">
-                    Password:
-                    <div className={homeStyles['auth-field-row']}>
-                      <input
-                        required
-                        id="auth-password"
-                        type={
-                          this.state.isPasswordRevealed ? 'text' : 'password'
-                        }
-                        autoComplete="current-password"
-                        value={this.state.password}
-                        name="password"
-                        onChange={this.handleInputChange}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          this.setState(state => ({
-                            isPasswordRevealed: !state.isPasswordRevealed,
-                          }));
-                        }}
-                      >
-                        {this.state.isPasswordRevealed ? 'Hide' : 'Show'}
-                      </button>
-                    </div>
-                  </label>
-                  <button
-                    type="submit"
-                    className={homeStyles['auth-submit-btn']}
-                    disabled={this.state.isUserInfoSaving}
-                  >
-                    {this.state.isUserInfoSaving ? 'Logging in...' : 'Log In'}
-                  </button>
-                  <div className={homeStyles['auth-switch-link']}>
-                    <button
-                      type="button"
-                      onClick={this.handlePasswordReset}
-                      disabled={this.state.isUserInfoSaving}
-                    >
-                      Forgot your password?
-                    </button>
-                  </div>
-                  <div className={homeStyles['auth-switch-link']}>
-                    (If you cannot log in even after resetting your password,
-                    email{' '}
-                    <a href="mailto:reportedapp@gmail.com">
-                      reportedapp@gmail.com
-                    </a>
-                    )
-                  </div>
-                  <div className={homeStyles['auth-switch-link']}>
-                    Don&apos;t have an account?{' '}
-                    <button
-                      type="button"
+                      className={
+                        this.state.authModalTab === 'signup'
+                          ? homeStyles['auth-modal-tab-active']
+                          : homeStyles['auth-modal-tab']
+                      }
                       onClick={() => this.switchAuthTab('signup')}
                     >
                       Sign Up
                     </button>
                   </div>
-                </form>
-              )}
 
-              {/* Sign Up form */}
-              {this.state.authModalTab === 'signup' && (
-                <form
-                  className={homeStyles['auth-modal-body']}
-                  onSubmit={this.handleSignUp}
-                >
-                  <label htmlFor="auth-signup-email">
-                    Email:
-                    <input
-                      ref={this.signupEmailRef}
-                      required
-                      id="auth-signup-email"
-                      type="email"
-                      autoComplete="email"
-                      value={this.state.email}
-                      name="email"
-                      onChange={event => {
-                        this.handleInputChange({
-                          target: {
-                            name: event.target.name,
-                            value: event.target.value.replace(/@.*/, atDomain =>
-                              atDomain.toLowerCase(),
-                            ),
-                          },
-                        });
-                      }}
-                    />
-                  </label>
-                  <label htmlFor="auth-signup-password">
-                    Password:
-                    <div className={homeStyles['auth-field-row']}>
-                      <input
-                        required
-                        id="auth-signup-password"
-                        type={
-                          this.state.isPasswordRevealed ? 'text' : 'password'
-                        }
-                        autoComplete="new-password"
-                        value={this.state.password}
-                        name="password"
-                        onChange={this.handleInputChange}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          this.setState(state => ({
-                            isPasswordRevealed: !state.isPasswordRevealed,
-                          }));
-                        }}
-                      >
-                        {this.state.isPasswordRevealed ? 'Hide' : 'Show'}
-                      </button>
+                  {/* Error display */}
+                  {this.state.authError && (
+                    <div className={homeStyles['auth-error']}>
+                      {this.state.authError}
                     </div>
-                  </label>
-                  <label htmlFor="auth-signup-firstname">
-                    First Name:
-                    <input
-                      required
-                      id="auth-signup-firstname"
-                      type="text"
-                      autoComplete="given-name"
-                      value={this.state.FirstName}
-                      name="FirstName"
-                      onChange={this.handleInputChange}
-                    />
-                  </label>
-                  <label htmlFor="auth-signup-lastname">
-                    Last Name:
-                    <input
-                      required
-                      id="auth-signup-lastname"
-                      type="text"
-                      autoComplete="family-name"
-                      value={this.state.LastName}
-                      name="LastName"
-                      onChange={this.handleInputChange}
-                    />
-                  </label>
-                  <label htmlFor="auth-signup-phone">
-                    Phone Number:
-                    <input
-                      required
-                      id="auth-signup-phone"
-                      type="tel"
-                      autoComplete="tel"
-                      value={this.state.Phone}
-                      name="Phone"
-                      onChange={this.handleInputChange}
-                    />
-                  </label>
-                  <label htmlFor="auth-signup-testify">
-                    <input
-                      id="auth-signup-testify"
-                      type="checkbox"
-                      checked={this.state.testify}
-                      name="testify"
-                      onChange={this.handleInputChange}
-                    />{' '}
-                    I&apos;m willing to testify at a hearing, which can be done
-                    by phone.
-                  </label>
-                  <button
-                    type="submit"
-                    className={homeStyles['auth-submit-btn']}
-                    disabled={this.state.isUserInfoSaving}
-                  >
-                    {this.state.isUserInfoSaving
-                      ? 'Creating account...'
-                      : 'Sign Up'}
-                  </button>
-                  <div className={homeStyles['auth-switch-link']}>
-                    Already have an account?{' '}
-                    <button
-                      type="button"
-                      onClick={() => this.switchAuthTab('login')}
+                  )}
+
+                  {/* Log In form */}
+                  {this.state.authModalTab === 'login' && (
+                    <form
+                      className={homeStyles['auth-modal-body']}
+                      onSubmit={this.handleLogIn}
                     >
-                      Log In
-                    </button>
-                  </div>
-                </form>
-              )}
-            </Modal>
-
-            {!this.isLoggedIn() && (
-              <div className={homeStyles['auth-prompt']}>
-                <p>
-                  Please{' '}
-                  <button
-                    type="button"
-                    onClick={() => this.openAuthModal('login')}
-                  >
-                    log in
-                  </button>{' '}
-                  or{' '}
-                  <button
-                    type="button"
-                    onClick={() => this.openAuthModal('signup')}
-                  >
-                    sign up
-                  </button>{' '}
-                  to submit a report.
-                </p>
-              </div>
-            )}
-            {this.isLoggedIn() && !isSettingsPanelOpen && (
-              <form
-                onSubmit={async e => {
-                  e.preventDefault();
-
-                  if (
-                    this.state.latitude === defaultLatitude &&
-                    this.state.longitude === defaultLongitude
-                  ) {
-                    Home.notifyError(
-                      'Please provide the location of the incident',
-                    );
-                    return;
-                  }
-
-                  this.setState({
-                    isSubmitting: true,
-                  });
-
-                  // Collect pre-uploaded IDs for all attachment files
-                  const attachmentIds = await Promise.all(
-                    this.state.attachmentData.map(async file => {
-                      const uploadPromise = fileUploadPromises.get(file);
-                      if (!uploadPromise) return null;
-                      try {
-                        return await uploadPromise;
-                      } catch (_err) {
-                        console.error(
-                          'Background attachment upload failed:',
-                          _err,
-                        );
-                        return null;
-                      }
-                    }),
-                  );
-                  const hasAllIds =
-                    attachmentIds.length > 0 &&
-                    attachmentIds.every(id => id !== null);
-
-                  // Falling back to the files themselves means sending them
-                  // again, so read them here rather than handing the network
-                  // the Files that came from the file input (see
-                  // inMemoryAttachment).
-                  const attachmentsToSubmit = !hasAllIds
-                    ? await Promise.all(
-                        this.state.attachmentData.map(attachmentFile =>
-                          inMemoryAttachment({ attachmentFile }),
-                        ),
-                      )
-                    : null;
-
-                  axios
-                    .post(
-                      '/submit',
-                      serialize(
-                        hasAllIds
-                          ? {
-                              ...this.getPerSubmissionState(),
-                              attachmentIds: JSON.stringify(attachmentIds),
-                              CreateDate: new Date(
-                                this.state.CreateDate,
-                              ).toISOString(),
-                            }
-                          : {
-                              ...this.getPerSubmissionState(),
-                              attachmentData: attachmentsToSubmit,
-                              CreateDate: new Date(
-                                this.state.CreateDate,
-                              ).toISOString(),
-                            },
-                        { allowEmptyArrays: true },
-                      ),
-                      {
-                        onUploadProgress: progressEvent => {
-                          const {
-                            loaded: submitProgressValue,
-                            total: submitProgressMax,
-                          } = progressEvent;
-
-                          this.setState({
-                            submitProgressValue,
-                            submitProgressMax,
-                          });
-                        },
-
-                        onDownloadProgress: progressEvent => {
-                          const {
-                            loaded: submitProgressValue,
-                            total: submitProgressMax,
-                          } = progressEvent;
-
-                          this.setState({
-                            submitProgressValue,
-                            submitProgressMax,
-                          });
-                        },
-                      },
-                    )
-                    .then(({ data }) => {
-                      const { submission } = data;
-                      document.querySelector(`.${homeStyles.root}`).scrollTo({
-                        top: 100,
-                        left: 100,
-                        behavior: 'smooth',
-                      });
-                      console.info(
-                        `submitted successfully. Returned data: ${JSON.stringify(
-                          data,
-                          null,
-                          2,
-                        )}`,
-                      );
-                      this.setState(state => ({
-                        attachmentData: [],
-                        submissions: [submission].concat(state.submissions),
-                        allPlateData: null,
-                        plateDataByAttachmentName: {},
-                        vehicleInfoComponent: null,
-                        violationSummaryComponent: null,
-                        reportDescription: '',
-                      }));
-                      this.setLicensePlate({ plate: '', licenseState: 'NY' });
-                      this.setCoords({
-                        latitude: defaultLatitude,
-                        longitude: defaultLongitude,
-                      });
-                      Home.notifySuccess(
-                        <React.Fragment>
-                          <p>Thanks for your submission!</p>
-                          <p>
-                            Your information has been submitted to Reported. It
-                            may take up to 24 hours for it to be processed.
-                          </p>
-
-                          {/*
-                        <p>objectId: {data.submission.objectId}</p>
-                        */}
-                        </React.Fragment>,
-                      );
-                    })
-                    .catch(Home.handleAxiosError)
-                    .then(() => {
-                      this.setState({
-                        isSubmitting: false,
-                        submitProgressValue: null,
-                        submitProgressMax: null,
-                      });
-                    })
-                    .then(() => {
-                      this.savePersistentStateToCookie();
-                    });
-                }}
-              >
-                <fieldset disabled={this.state.isSubmitting}>
-                  <FileReaderInput
-                    multiple
-                    as="buffer"
-                    onChange={this.handleAttachmentInput}
-                    style={{
-                      float: 'left',
-                      margin: '1px',
-                    }}
-                  >
-                    <button type="button" style={{ whiteSpace: 'wrap' }}>
-                      Add pictures/videos (up to 3 each, 20MB max each)
-                    </button>
-                  </FileReaderInput>
-
-                  <div style={{ clear: 'both' }} />
-
-                  {this.state.attachmentData.length > 0 && (
-                    <React.Fragment>
-                      <div
-                        style={{
-                          display: 'flex',
-                          flexWrap: 'wrap',
-                        }}
-                      >
-                        {this.state.attachmentData.map(attachmentFile => {
-                          const { name } = attachmentFile;
-                          const ext = fileExtension(name);
-                          const isImg = isImage({ ext });
-                          const src = getBlobUrl(attachmentFile);
-                          const attachmentPlateData =
-                            this.state.plateDataByAttachmentName[name];
-
-                          return (
-                            <div
-                              key={name}
-                              style={{
-                                width: '33%',
-                                margin: '0.1%',
-                                flexGrow: 1,
-                                position: 'relative',
-                              }}
-                            >
-                              <div
-                                style={{
-                                  position: 'relative',
-                                  display: 'inline-block',
-                                  maxWidth: '100%',
-                                }}
-                              >
-                                <a
-                                  href={src}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  style={{ display: 'block' }}
-                                >
-                                  {isImg ? (
-                                    <img
-                                      src={src}
-                                      alt={name}
-                                      style={{ display: 'block' }}
-                                    />
-                                  ) : (
-                                    /* eslint-disable-next-line jsx-a11y/media-has-caption */
-                                    <video
-                                      src={src}
-                                      alt={name}
-                                      // The position:relative wrapper shrink-
-                                      // wraps its content, and plate overlays
-                                      // are percentage-positioned against that
-                                      // wrapper, so the video must fill it
-                                      // exactly like the img above does:
-                                      // display:block closes the inline
-                                      // baseline gap, and max-width:100%
-                                      // (which marx-css gives img but not
-                                      // video) keeps the video from
-                                      // overflowing the wrapper when it is
-                                      // wider than the container.
-                                      style={{
-                                        display: 'block',
-                                        maxWidth: '100%',
-                                      }}
-                                    />
-                                  )}
-                                </a>
-                                {this.renderPlateOverlays({
-                                  attachmentPlateData,
-                                })}
-                              </div>
-
-                              <button
-                                type="button"
-                                style={{
-                                  position: 'absolute',
-                                  top: 0,
-                                  right: 0,
-                                  padding: 0,
-                                  margin: '1px',
-                                  color: 'red', // Ubuntu Chrome shows black otherwise
-                                  background: 'white',
-                                }}
-                                onClick={() => this.removeAttachment(name)}
-                              >
-                                <span
-                                  role="img"
-                                  aria-label="Delete photo/video"
-                                >
-                                  ❌
-                                </span>
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      <label htmlFor="plate" ref={this.plateLabelRef}>
-                        License/Medallion:
-                        {this.state.isAlprLoading && (
-                          <CircularProgress size="1em" />
-                        )}
-                        <div
-                          style={{
-                            display: 'flex',
-                            flexWrap: 'wrap',
-                            alignItems: 'flex-start',
-                            gap: '0.5rem',
-                          }}
-                        >
-                          <div style={{ minWidth: 0, flex: 1 }}>
-                            <input
-                              required
-                              type="search"
-                              value={this.state.plate}
-                              name="plate"
-                              list="plateSuggestions"
-                              autoComplete="off"
-                              ref={this.plateRef}
-                              placeholder={this.state.allPlateData?.results?.[0]?.plate?.toUpperCase()}
-                              onChange={event => {
-                                const plate = upperCaseInputValueInPlace(
-                                  event.target,
-                                );
-                                const matchedResult =
-                                  this.state.allPlateData?.results?.find(
-                                    r => r.plate?.toUpperCase() === plate,
-                                  );
-                                const licenseState = matchedResult
-                                  ? getLicenseStateFromPlateResult(
-                                      matchedResult,
-                                    )
-                                  : null;
-                                this.setLicensePlate({ plate, licenseState });
-                              }}
-                            />
-                            <datalist id="plateSuggestions">
-                              {this.state.allPlateData?.results?.map(result => (
-                                <option value={result.plate?.toUpperCase()} />
-                              ))}
-                            </datalist>
-                            <select
-                              style={{
-                                marginTop: '0.5rem',
-                              }}
-                              value={this.state.licenseState}
-                              name="licenseState"
-                              onChange={event => {
-                                this.setLicensePlate({
-                                  plate: this.state.plate,
-                                  licenseState: event.target.value,
-                                });
-                              }}
-                            >
-                              {Object.entries(usStateNames)
-                                .sort(([, name1], [, name2]) =>
-                                  name1
-                                    .toUpperCase()
-                                    .localeCompare(name2.toUpperCase()),
-                                )
-                                .map(([abbr, name]) => (
-                                  <option key={abbr} value={abbr}>
-                                    {name}
-                                  </option>
-                                ))}
-                            </select>
-                          </div>
-                          {matchingPlateThumbnail && (
-                            <img
-                              src={matchingPlateThumbnail}
-                              alt="Detected license plate"
-                              style={{
-                                maxHeight: '5rem',
-                                maxWidth: '12rem',
-                                objectFit: 'contain',
-                              }}
-                            />
-                          )}
-                        </div>
-                        <div>{this.state.violationSummaryComponent}</div>
-                        <div>{this.state.vehicleInfoComponent}</div>
-                      </label>
-
-                      <label htmlFor="typeofcomplaint">
-                        Type:{' '}
-                        <select
-                          value={this.state.typeofcomplaint}
-                          name="typeofcomplaint"
-                          onChange={this.handleInputChange}
-                        >
-                          {this.props.typeofcomplaintValues.map(
-                            typeofcomplaint => (
-                              <option
-                                key={typeofcomplaint}
-                                value={typeofcomplaint}
-                              >
-                                {typeofcomplaint}
-                              </option>
-                            ),
-                          )}
-                        </select>
-                      </label>
-
-                      <label htmlFor="where">
-                        Where: {this.state.addressProvenance}
-                        <br />
-                        <button
-                          type="button"
-                          name="where"
-                          onClick={() => this.setState({ isMapOpen: true })}
-                          style={{
-                            width: '100%',
-                          }}
-                        >
-                          {this.state.formatted_address
-                            ? this.state.formatted_address
-                                .split(', ')
-                                .slice(0, 2)
-                                .join(', ')
-                            : 'Click to choose address on map'}
-                        </button>
-                      </label>
-
-                      <Modal
-                        parentSelector={() =>
-                          document.querySelector(`.${homeStyles.root}`) ||
-                          document.body
-                        }
-                        isOpen={this.state.isMapOpen}
-                        onRequestClose={() =>
-                          this.setState({ isMapOpen: false })
-                        }
-                        style={{
-                          content: {
-                            padding: 0,
-                          },
-                        }}
-                      >
-                        <MyMapComponent
-                          key="map"
-                          position={{
-                            lat: this.state.latitude,
-                            lng: this.state.longitude,
-                          }}
-                          onRef={mapRef => {
-                            this.mapRef = mapRef;
-                          }}
-                          onCenterChanged={() => {
-                            const latitude = this.mapRef.getCenter().lat();
-                            const longitude = this.mapRef.getCenter().lng();
-                            this.setCoords({
-                              latitude,
-                              longitude,
-                              addressProvenance: '(manually set)',
-                            });
-                          }}
-                          onDragStart={() => {
-                            this.isDragging = true;
-                          }}
-                          onDragEnd={() => {
-                            this.isDragging = false;
-                          }}
-                          onAutocompleteMounted={this.handleAutocompleteMounted}
-                          onSearchInputMounted={Home.handleSearchInputMounted}
-                          onPlacesChanged={() => {
-                            // `getPlace()` also returns a geometry-less result
-                            // when the user types text without picking a
-                            // prediction, so leave the map where it is then.
-                            const location =
-                              this.autocomplete.getPlace()?.geometry?.location;
-                            if (!location) {
-                              return;
-                            }
-
-                            this.setCoords({
-                              latitude: location.lat(),
-                              longitude: location.lng(),
-                              addressProvenance: '(manually set)',
+                      <label htmlFor="auth-email">
+                        Email:
+                        <input
+                          ref={this.loginEmailRef}
+                          required
+                          id="auth-email"
+                          type="email"
+                          autoComplete="email"
+                          value={this.state.email}
+                          name="email"
+                          onChange={event => {
+                            this.handleInputChange({
+                              target: {
+                                name: event.target.name,
+                                value: event.target.value.replace(
+                                  /@.*/,
+                                  atDomain => atDomain.toLowerCase(),
+                                ),
+                              },
                             });
                           }}
                         />
-
+                      </label>
+                      <label htmlFor="auth-password">
+                        Password:
+                        <div className={homeStyles['auth-field-row']}>
+                          <input
+                            required
+                            id="auth-password"
+                            type={
+                              this.state.isPasswordRevealed
+                                ? 'text'
+                                : 'password'
+                            }
+                            autoComplete="current-password"
+                            value={this.state.password}
+                            name="password"
+                            onChange={this.handleInputChange}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              this.setState(state => ({
+                                isPasswordRevealed: !state.isPasswordRevealed,
+                              }));
+                            }}
+                          >
+                            {this.state.isPasswordRevealed ? 'Hide' : 'Show'}
+                          </button>
+                        </div>
+                      </label>
+                      <button
+                        type="submit"
+                        className={homeStyles['auth-submit-btn']}
+                        disabled={this.state.isUserInfoSaving}
+                      >
+                        {this.state.isUserInfoSaving
+                          ? 'Logging in...'
+                          : 'Log In'}
+                      </button>
+                      <div className={homeStyles['auth-switch-link']}>
                         <button
                           type="button"
-                          style={{
-                            float: 'left',
-                          }}
-                          onClick={() => {
-                            geolocate()
-                              .then(
-                                ({
-                                  coords: { latitude, longitude },
-                                  ipProvenance = 'device',
-                                }) => {
-                                  this.setCoords({
-                                    latitude,
-                                    longitude,
-                                    addressProvenance: `(from ${ipProvenance}: ${latitude}, ${longitude})`,
-                                  });
-                                },
-                              )
-                              .catch(err => {
-                                Home.notifyError(err.message);
-                                console.error(err);
-                              });
-                          }}
+                          onClick={this.handlePasswordReset}
+                          disabled={this.state.isUserInfoSaving}
                         >
-                          Use current location
+                          Forgot your password?
                         </button>
-
+                      </div>
+                      <div className={homeStyles['auth-switch-link']}>
+                        (If you cannot log in even after resetting your
+                        password, email{' '}
+                        <a href="mailto:reportedapp@gmail.com">
+                          reportedapp@gmail.com
+                        </a>
+                        )
+                      </div>
+                      <div className={homeStyles['auth-switch-link']}>
+                        Don&apos;t have an account?{' '}
                         <button
                           type="button"
-                          onClick={() => this.setState({ isMapOpen: false })}
-                          style={{
-                            float: 'right',
-                          }}
+                          onClick={() => this.switchAuthTab('signup')}
                         >
-                          Close
+                          Sign Up
                         </button>
-                      </Modal>
+                      </div>
+                    </form>
+                  )}
 
-                      <label htmlFor="CreateDate">
-                        When:{' '}
+                  {/* Sign Up form */}
+                  {this.state.authModalTab === 'signup' && (
+                    <form
+                      className={homeStyles['auth-modal-body']}
+                      onSubmit={this.handleSignUp}
+                    >
+                      <label htmlFor="auth-signup-email">
+                        Email:
+                        <input
+                          ref={this.signupEmailRef}
+                          required
+                          id="auth-signup-email"
+                          type="email"
+                          autoComplete="email"
+                          value={this.state.email}
+                          name="email"
+                          onChange={event => {
+                            this.handleInputChange({
+                              target: {
+                                name: event.target.name,
+                                value: event.target.value.replace(
+                                  /@.*/,
+                                  atDomain => atDomain.toLowerCase(),
+                                ),
+                              },
+                            });
+                          }}
+                        />
+                      </label>
+                      <label htmlFor="auth-signup-password">
+                        Password:
+                        <div className={homeStyles['auth-field-row']}>
+                          <input
+                            required
+                            id="auth-signup-password"
+                            type={
+                              this.state.isPasswordRevealed
+                                ? 'text'
+                                : 'password'
+                            }
+                            autoComplete="new-password"
+                            value={this.state.password}
+                            name="password"
+                            onChange={this.handleInputChange}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              this.setState(state => ({
+                                isPasswordRevealed: !state.isPasswordRevealed,
+                              }));
+                            }}
+                          >
+                            {this.state.isPasswordRevealed ? 'Hide' : 'Show'}
+                          </button>
+                        </div>
+                      </label>
+                      <label htmlFor="auth-signup-firstname">
+                        First Name:
                         <input
                           required
-                          type="datetime-local"
-                          // Minutes, not the seconds the state carries. The
-                          // slice started as a workaround for an iOS picker
-                          // that refused a value carrying seconds (issue #11).
-                          // It stays on its own account: this is a field for a
-                          // person to nudge, and a phone's picker offers no
-                          // finer than a minute anyway.
-                          value={this.state.CreateDate.slice(0, 16)}
-                          name="CreateDate"
+                          id="auth-signup-firstname"
+                          type="text"
+                          autoComplete="given-name"
+                          value={this.state.FirstName}
+                          name="FirstName"
                           onChange={this.handleInputChange}
                         />
                       </label>
-
-                      <label htmlFor="reportDescription">
-                        Description:{' '}
-                        <textarea
-                          value={this.state.reportDescription}
-                          name="reportDescription"
+                      <label htmlFor="auth-signup-lastname">
+                        Last Name:
+                        <input
+                          required
+                          id="auth-signup-lastname"
+                          type="text"
+                          autoComplete="family-name"
+                          value={this.state.LastName}
+                          name="LastName"
                           onChange={this.handleInputChange}
-                          autoComplete="off"
                         />
                       </label>
-
-                      {this.state.isSubmitting ? (
-                        <progress
-                          max={this.state.submitProgressMax}
-                          value={this.state.submitProgressValue}
-                          style={{
-                            width: '100%',
-                          }}
-                        >
-                          {this.state.submitProgressValue}/
-                          {this.state.submitProgressMax}
-                        </progress>
-                      ) : (
+                      <label htmlFor="auth-signup-phone">
+                        Phone Number:
+                        <input
+                          required
+                          id="auth-signup-phone"
+                          type="tel"
+                          autoComplete="tel"
+                          value={this.state.Phone}
+                          name="Phone"
+                          onChange={this.handleInputChange}
+                        />
+                      </label>
+                      <label htmlFor="auth-signup-testify">
+                        <input
+                          id="auth-signup-testify"
+                          type="checkbox"
+                          checked={this.state.testify}
+                          name="testify"
+                          onChange={this.handleInputChange}
+                        />{' '}
+                        I&apos;m willing to testify at a hearing, which can be
+                        done by phone.
+                      </label>
+                      <button
+                        type="submit"
+                        className={homeStyles['auth-submit-btn']}
+                        disabled={this.state.isUserInfoSaving}
+                      >
+                        {this.state.isUserInfoSaving
+                          ? 'Creating account...'
+                          : 'Sign Up'}
+                      </button>
+                      <div className={homeStyles['auth-switch-link']}>
+                        Already have an account?{' '}
                         <button
-                          type="submit"
-                          disabled={
-                            this.state.isSubmitting ||
-                            !this.state.coordsAreInNyc
-                          }
-                          style={{
-                            width: '100%',
-                          }}
+                          type="button"
+                          onClick={() => this.switchAuthTab('login')}
                         >
-                          Submit
+                          Log In
                         </button>
-                      )}
-                    </React.Fragment>
+                      </div>
+                    </form>
                   )}
-                </fieldset>
-              </form>
-            )}
+                </Modal>
 
-            <br />
-
-            {this.isLoggedIn() && !isSettingsPanelOpen && (
-              <details
-                onToggle={evt => {
-                  const isPreviousSubmissionsOpen = evt.currentTarget.open;
-                  const shouldLoadPreviousSubmissions =
-                    isPreviousSubmissionsOpen &&
-                    !this.state.isPreviousSubmissionsLoading &&
-                    !this.state.isLoadPreviousSubmissionsEnabled &&
-                    !this.state.hasLoadedPreviousSubmissions;
-
-                  this.setState(
-                    {
-                      isPreviousSubmissionsOpen,
-                    },
-                    () => {
-                      if (shouldLoadPreviousSubmissions) {
-                        this.loadPreviousSubmissions();
-                      }
-                    },
-                  );
-                }}
-              >
-                <summary>
-                  Previous Submissions ({previousSubmissionsSummary})
-                </summary>
-
-                {this.state.isPreviousSubmissionsOpen && (
-                  <PreviousSubmissionsList
-                    submissions={this.state.submissions}
-                    onDeleteSubmission={this.onDeleteSubmission}
-                    isLoading={this.state.isPreviousSubmissionsLoading}
-                    hasLoadedPreviousSubmissions={
-                      this.state.hasLoadedPreviousSubmissions
-                    }
-                  />
+                {!this.isLoggedIn() && (
+                  <div className={homeStyles['auth-prompt']}>
+                    <p>
+                      Please{' '}
+                      <button
+                        type="button"
+                        onClick={() => this.openAuthModal('login')}
+                      >
+                        log in
+                      </button>{' '}
+                      or{' '}
+                      <button
+                        type="button"
+                        onClick={() => this.openAuthModal('signup')}
+                      >
+                        sign up
+                      </button>{' '}
+                      to submit a report.
+                    </p>
+                  </div>
                 )}
-              </details>
-            )}
+                {this.isLoggedIn() && !isSettingsPanelOpen && (
+                  <form
+                    onSubmit={async e => {
+                      e.preventDefault();
 
-            <div style={{ float: 'right' }}>
-              <a
-                href="/submissions-map"
-                style={{
-                  background: 'black',
-                  border: '1em solid black',
-                  borderRadius: '2em',
-                  textDecoration: 'none',
-                }}
-              >
-                <span role="img" aria-label="world map">
-                  🗺️
-                </span>
-              </a>
+                      // The button is off while this is true, and this catches the
+                      // submit a keyboard makes without it; the server keeps only
+                      // the first three of each kind either way.
+                      if (tooManyAttachments(this.state.attachmentData)) {
+                        Home.notifyError(TOO_MANY_ATTACHMENTS_MESSAGE);
+                        return;
+                      }
+
+                      if (
+                        this.state.latitude === defaultLatitude &&
+                        this.state.longitude === defaultLongitude
+                      ) {
+                        Home.notifyError(
+                          'Please provide the location of the incident',
+                        );
+                        return;
+                      }
+
+                      this.setState({
+                        isSubmitting: true,
+                      });
+
+                      // Collect pre-uploaded IDs for all attachment files
+                      const attachmentIds = await Promise.all(
+                        this.state.attachmentData.map(async file => {
+                          const uploadPromise = fileUploadPromises.get(file);
+                          if (!uploadPromise) return null;
+                          try {
+                            return await uploadPromise;
+                          } catch (_err) {
+                            console.error(
+                              'Background attachment upload failed:',
+                              _err,
+                            );
+                            return null;
+                          }
+                        }),
+                      );
+                      const hasAllIds =
+                        attachmentIds.length > 0 &&
+                        attachmentIds.every(id => id !== null);
+
+                      // Falling back to the files themselves means sending them
+                      // again, so read them here rather than handing the network
+                      // the Files that came from the file input (see
+                      // inMemoryAttachment).
+                      const attachmentsToSubmit = !hasAllIds
+                        ? await Promise.all(
+                            this.state.attachmentData.map(attachmentFile =>
+                              inMemoryAttachment({ attachmentFile }),
+                            ),
+                          )
+                        : null;
+
+                      axios
+                        .post(
+                          '/submit',
+                          serialize(
+                            hasAllIds
+                              ? {
+                                  ...this.getPerSubmissionState(),
+                                  attachmentIds: JSON.stringify(attachmentIds),
+                                  CreateDate: new Date(
+                                    this.state.CreateDate,
+                                  ).toISOString(),
+                                }
+                              : {
+                                  ...this.getPerSubmissionState(),
+                                  attachmentData: attachmentsToSubmit,
+                                  CreateDate: new Date(
+                                    this.state.CreateDate,
+                                  ).toISOString(),
+                                },
+                            { allowEmptyArrays: true },
+                          ),
+                          {
+                            onUploadProgress: progressEvent => {
+                              const {
+                                loaded: submitProgressValue,
+                                total: submitProgressMax,
+                              } = progressEvent;
+
+                              this.setState({
+                                submitProgressValue,
+                                submitProgressMax,
+                              });
+                            },
+
+                            onDownloadProgress: progressEvent => {
+                              const {
+                                loaded: submitProgressValue,
+                                total: submitProgressMax,
+                              } = progressEvent;
+
+                              this.setState({
+                                submitProgressValue,
+                                submitProgressMax,
+                              });
+                            },
+                          },
+                        )
+                        .then(({ data }) => {
+                          const { submission } = data;
+                          this.scrollContainerRef.current?.scrollTo({
+                            top: 100,
+                            left: 100,
+                            behavior: 'smooth',
+                          });
+                          console.info(
+                            `submitted successfully. Returned data: ${JSON.stringify(
+                              data,
+                              null,
+                              2,
+                            )}`,
+                          );
+                          // Cache the new submission now, so the next page load
+                          // can show it immediately instead of waiting for the
+                          // full fetch of previous submissions to finish.
+                          addCachedSubmission(submission);
+
+                          this.setState(state => ({
+                            attachmentData: [],
+                            submissions: [submission].concat(state.submissions),
+                            allPlateData: null,
+                            plateDataByAttachmentName: {},
+                            vehicleInfoComponent: null,
+                            violationSummaryComponent: null,
+                            reportDescription: '',
+                          }));
+                          this.setLicensePlate({
+                            plate: '',
+                            licenseState: 'NY',
+                          });
+                          this.setCoords({
+                            latitude: defaultLatitude,
+                            longitude: defaultLongitude,
+                          });
+                          Home.notifySuccess(
+                            <React.Fragment>
+                              <p>Thanks for your submission!</p>
+                              <p>
+                                Your information has been submitted to Reported.
+                                It may take up to 24 hours for it to be
+                                processed.
+                              </p>
+
+                              {/*
+                        <p>objectId: {data.submission.objectId}</p>
+                        */}
+                            </React.Fragment>,
+                          );
+                        })
+                        .catch(Home.handleAxiosError)
+                        .then(() => {
+                          this.setState({
+                            isSubmitting: false,
+                            submitProgressValue: null,
+                            submitProgressMax: null,
+                          });
+                        })
+                        .then(() => {
+                          this.savePersistentStateToCookie();
+                        });
+                    }}
+                  >
+                    <fieldset disabled={this.state.isSubmitting}>
+                      <FileReaderInput
+                        multiple
+                        accept="image/*,video/*,.zip,application/zip,application/x-zip-compressed"
+                        as="buffer"
+                        onChange={this.handleAttachmentInput}
+                        style={{
+                          float: 'left',
+                          margin: '1px',
+                        }}
+                      >
+                        <button type="button" style={{ whiteSpace: 'wrap' }}>
+                          Add pictures/videos (up to 3 each, 20MB max each)
+                        </button>
+                      </FileReaderInput>
+
+                      <button
+                        type="button"
+                        style={{
+                          float: 'left',
+                          margin: '1px',
+                        }}
+                        onClick={() => this.folderInputRef.current?.click()}
+                      >
+                        Add folder
+                      </button>
+                      <input
+                        ref={this.folderInputRef}
+                        type="file"
+                        multiple
+                        webkitdirectory=""
+                        style={{ display: 'none' }}
+                        onChange={this.handleFolderInput}
+                      />
+
+                      <div style={{ clear: 'both' }} />
+
+                      {this.state.attachmentData.length > 0 && (
+                        <React.Fragment>
+                          <div
+                            style={{
+                              display: 'flex',
+                              flexWrap: 'wrap',
+                            }}
+                          >
+                            {this.state.attachmentData.map(attachmentFile => {
+                              const { name } = attachmentFile;
+                              const ext = fileExtension(name);
+                              const isImg = isImage({ ext });
+                              const src = getBlobUrl(attachmentFile);
+                              const attachmentPlateData =
+                                this.state.plateDataByAttachmentName[name];
+
+                              return (
+                                <div
+                                  key={name}
+                                  style={{
+                                    width: '33%',
+                                    margin: '0.1%',
+                                    flexGrow: 1,
+                                    position: 'relative',
+                                  }}
+                                >
+                                  <div
+                                    style={{
+                                      position: 'relative',
+                                      display: 'inline-block',
+                                      maxWidth: '100%',
+                                    }}
+                                  >
+                                    <a
+                                      href={src}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      style={{ display: 'block' }}
+                                    >
+                                      {isImg ? (
+                                        <img
+                                          src={src}
+                                          alt={name}
+                                          style={{ display: 'block' }}
+                                        />
+                                      ) : (
+                                        /* eslint-disable-next-line jsx-a11y/media-has-caption */
+                                        <video
+                                          src={src}
+                                          alt={name}
+                                          // The position:relative wrapper shrink-
+                                          // wraps its content, and plate overlays
+                                          // are percentage-positioned against that
+                                          // wrapper, so the video must fill it
+                                          // exactly like the img above does:
+                                          // display:block closes the inline
+                                          // baseline gap, and max-width:100%
+                                          // (which marx-css gives img but not
+                                          // video) keeps the video from
+                                          // overflowing the wrapper when it is
+                                          // wider than the container.
+                                          style={{
+                                            display: 'block',
+                                            maxWidth: '100%',
+                                          }}
+                                        />
+                                      )}
+                                    </a>
+                                    {this.renderPlateOverlays({
+                                      attachmentPlateData,
+                                      attachmentFile,
+                                    })}
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    style={{
+                                      position: 'absolute',
+                                      top: 0,
+                                      right: 0,
+                                      padding: 0,
+                                      margin: '1px',
+                                      color: 'red', // Ubuntu Chrome shows black otherwise
+                                      background: 'white',
+                                    }}
+                                    onClick={() => this.removeAttachment(name)}
+                                  >
+                                    <span
+                                      role="img"
+                                      aria-label="Delete photo/video"
+                                    >
+                                      ❌
+                                    </span>
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          <label htmlFor="plate" ref={this.plateLabelRef}>
+                            License/Medallion:
+                            {this.state.isAlprLoading && (
+                              <CircularProgress size="1em" />
+                            )}
+                            <div
+                              style={{
+                                display: 'flex',
+                                flexWrap: 'wrap',
+                                alignItems: 'flex-start',
+                                gap: '0.5rem',
+                              }}
+                            >
+                              <div style={{ minWidth: 0, flex: 1 }}>
+                                <input
+                                  required
+                                  type="search"
+                                  value={this.state.plate}
+                                  name="plate"
+                                  list="plateSuggestions"
+                                  autoComplete="off"
+                                  ref={this.plateRef}
+                                  placeholder={this.state.allPlateData?.results?.[0]?.plate?.toUpperCase()}
+                                  onChange={event => {
+                                    const plate = upperCaseInputValueInPlace(
+                                      event.target,
+                                    );
+                                    const matchedResult =
+                                      this.state.allPlateData?.results?.find(
+                                        r => r.plate?.toUpperCase() === plate,
+                                      );
+                                    const licenseState = matchedResult
+                                      ? getLicenseStateFromPlateResult(
+                                          matchedResult,
+                                        )
+                                      : null;
+                                    this.setLicensePlate({
+                                      plate,
+                                      licenseState,
+                                      provenance: PLATE_TYPED,
+                                    });
+                                  }}
+                                />
+                                <datalist id="plateSuggestions">
+                                  {this.state.allPlateData?.results?.map(
+                                    result => (
+                                      <option
+                                        value={result.plate?.toUpperCase()}
+                                      />
+                                    ),
+                                  )}
+                                </datalist>
+                                <input
+                                  type="search"
+                                  style={{
+                                    marginTop: '0.5rem',
+                                  }}
+                                  value={this.state.licenseState}
+                                  name="licenseState"
+                                  list="stateSuggestion"
+                                  autoComplete="off"
+                                  placeholder="State"
+                                  onChange={event => {
+                                    this.setLicensePlate({
+                                      plate: this.state.plate,
+                                      licenseState: upperCaseInputValueInPlace(
+                                        event.target,
+                                      ),
+                                      provenance: PLATE_TYPED,
+                                    });
+                                  }}
+                                />
+                                <datalist id="stateSuggestion">
+                                  {Object.entries(usStateNames)
+                                    .sort(([, name1], [, name2]) =>
+                                      name1
+                                        .toUpperCase()
+                                        .localeCompare(name2.toUpperCase()),
+                                    )
+                                    .map(([abbr, name]) => (
+                                      <option key={abbr} value={abbr}>
+                                        {name} ({abbr})
+                                      </option>
+                                    ))}
+                                </datalist>
+                              </div>
+                              {matchingPlateThumbnail && (
+                                <img
+                                  src={matchingPlateThumbnail}
+                                  alt="Detected license plate"
+                                  style={{
+                                    maxHeight: '5rem',
+                                    maxWidth: '12rem',
+                                    objectFit: 'contain',
+                                  }}
+                                />
+                              )}
+                            </div>
+                            <div>{this.state.violationSummaryComponent}</div>
+                            <div>{this.state.vehicleInfoComponent}</div>
+                          </label>
+
+                          <label htmlFor="typeofcomplaint">
+                            Type:{' '}
+                            <select
+                              value={this.state.typeofcomplaint}
+                              name="typeofcomplaint"
+                              onChange={this.handleInputChange}
+                            >
+                              {this.props.typeofcomplaintValues.map(
+                                typeofcomplaint => (
+                                  <option
+                                    key={typeofcomplaint}
+                                    value={typeofcomplaint}
+                                  >
+                                    {typeofcomplaint}
+                                  </option>
+                                ),
+                              )}
+                            </select>
+                          </label>
+
+                          <label htmlFor="where">
+                            Where: {this.state.addressProvenance}
+                            <br />
+                            <button
+                              type="button"
+                              name="where"
+                              disabled={this.state.isLocationLocked}
+                              onClick={() => this.setState({ isMapOpen: true })}
+                              style={{
+                                width: '100%',
+                              }}
+                            >
+                              {this.state.formatted_address
+                                ? this.state.formatted_address
+                                    .split(', ')
+                                    .slice(0, 2)
+                                    .join(', ')
+                                : 'Click to choose address on map'}
+                            </button>
+                          </label>
+
+                          <label htmlFor="isLocationLocked">
+                            <input
+                              id="isLocationLocked"
+                              type="checkbox"
+                              checked={this.state.isLocationLocked}
+                              name="isLocationLocked"
+                              onChange={this.handleInputChange}
+                            />{' '}
+                            Reuse this address
+                          </label>
+
+                          <Modal
+                            parentSelector={() =>
+                              document.querySelector(
+                                `.${homeStyles['scroll-area']}`,
+                              ) || document.body
+                            }
+                            isOpen={this.state.isMapOpen}
+                            onRequestClose={() =>
+                              this.setState({ isMapOpen: false })
+                            }
+                            style={{
+                              // The portal lives in the scroll area below the
+                              // banner, so anchor the overlay to that area
+                              // instead of the viewport.
+                              overlay: {
+                                position: 'absolute',
+                              },
+                              content: {
+                                padding: 0,
+                              },
+                            }}
+                          >
+                            <MyMapComponent
+                              key="map"
+                              position={{
+                                lat: this.state.latitude,
+                                lng: this.state.longitude,
+                              }}
+                              onRef={mapRef => {
+                                this.mapRef = mapRef;
+                              }}
+                              onCenterChanged={() => {
+                                const latitude = this.mapRef.getCenter().lat();
+                                const longitude = this.mapRef.getCenter().lng();
+                                this.setCoords({
+                                  latitude,
+                                  longitude,
+                                  addressProvenance: '(manually set)',
+                                });
+                              }}
+                              onDragStart={() => {
+                                this.isDragging = true;
+                              }}
+                              onDragEnd={() => {
+                                this.isDragging = false;
+                              }}
+                              onAutocompleteMounted={
+                                this.handleAutocompleteMounted
+                              }
+                              onSearchInputMounted={
+                                Home.handleSearchInputMounted
+                              }
+                              onPlacesChanged={() => {
+                                // `getPlace()` also returns a geometry-less result
+                                // when the user types text without picking a
+                                // prediction, so leave the map where it is then.
+                                const location =
+                                  this.autocomplete.getPlace()?.geometry
+                                    ?.location;
+                                if (!location) {
+                                  return;
+                                }
+
+                                this.setCoords({
+                                  latitude: location.lat(),
+                                  longitude: location.lng(),
+                                  addressProvenance: '(manually set)',
+                                });
+                              }}
+                            />
+
+                            <button
+                              type="button"
+                              style={{
+                                float: 'left',
+                              }}
+                              onClick={() => {
+                                geolocate()
+                                  .then(
+                                    ({
+                                      coords: { latitude, longitude },
+                                      ipProvenance = 'device',
+                                    }) => {
+                                      this.setCoords({
+                                        latitude,
+                                        longitude,
+                                        addressProvenance: `(from ${ipProvenance}: ${latitude}, ${longitude})`,
+                                      });
+                                    },
+                                  )
+                                  .catch(err => {
+                                    Home.notifyError(err.message);
+                                    console.error(err);
+                                  });
+                              }}
+                            >
+                              Use current location
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                this.setState({ isMapOpen: false })
+                              }
+                              style={{
+                                float: 'right',
+                              }}
+                            >
+                              Close
+                            </button>
+                          </Modal>
+
+                          <label htmlFor="CreateDate">
+                            When:{' '}
+                            <input
+                              required
+                              type="datetime-local"
+                              // Minutes, not the seconds the state carries. The
+                              // slice started as a workaround for an iOS picker
+                              // that refused a value carrying seconds (issue #11).
+                              // It stays on its own account: this is a field for a
+                              // person to nudge, and a phone's picker offers no
+                              // finer than a minute anyway.
+                              value={this.state.CreateDate.slice(0, 16)}
+                              name="CreateDate"
+                              onChange={this.handleInputChange}
+                            />
+                          </label>
+
+                          <label htmlFor="reportDescription">
+                            Description:{' '}
+                            <textarea
+                              value={this.state.reportDescription}
+                              name="reportDescription"
+                              onChange={this.handleInputChange}
+                              autoComplete="off"
+                            />
+                          </label>
+
+                          {this.state.isSubmitting ? (
+                            <progress
+                              max={this.state.submitProgressMax}
+                              value={this.state.submitProgressValue}
+                              style={{
+                                width: '100%',
+                              }}
+                            >
+                              {this.state.submitProgressValue}/
+                              {this.state.submitProgressMax}
+                            </progress>
+                          ) : (
+                            <React.Fragment>
+                              {tooManyAttachments(
+                                this.state.attachmentData,
+                              ) && <p>{TOO_MANY_ATTACHMENTS_MESSAGE}</p>}
+                              <button
+                                type="submit"
+                                disabled={
+                                  this.state.isSubmitting ||
+                                  !this.state.coordsAreInNyc ||
+                                  tooManyAttachments(this.state.attachmentData)
+                                }
+                                style={{
+                                  width: '100%',
+                                }}
+                              >
+                                Submit
+                              </button>
+                            </React.Fragment>
+                          )}
+                        </React.Fragment>
+                      )}
+                    </fieldset>
+                  </form>
+                )}
+
+                <br />
+
+                {this.isLoggedIn() && !isSettingsPanelOpen && (
+                  <details
+                    onToggle={evt => {
+                      const isPreviousSubmissionsOpen = evt.currentTarget.open;
+                      const shouldLoadPreviousSubmissions =
+                        isPreviousSubmissionsOpen &&
+                        !this.state.isPreviousSubmissionsLoading &&
+                        !this.state.isLoadPreviousSubmissionsEnabled &&
+                        !this.state.hasLoadedPreviousSubmissions;
+
+                      this.setState(
+                        {
+                          isPreviousSubmissionsOpen,
+                        },
+                        () => {
+                          if (shouldLoadPreviousSubmissions) {
+                            this.loadPreviousSubmissions();
+                          }
+                        },
+                      );
+                    }}
+                  >
+                    <summary>
+                      Previous Submissions ({previousSubmissionsSummary})
+                    </summary>
+
+                    {this.state.isPreviousSubmissionsOpen && (
+                      <PreviousSubmissionsList
+                        submissions={this.state.submissions}
+                        onDeleteSubmission={this.onDeleteSubmission}
+                        isLoading={this.state.isPreviousSubmissionsLoading}
+                        hasLoadedPreviousSubmissions={
+                          this.state.hasLoadedPreviousSubmissions
+                        }
+                      />
+                    )}
+                  </details>
+                )}
+
+                <div style={{ float: 'right' }}>
+                  <a
+                    href="/submissions-map"
+                    style={{
+                      background: 'black',
+                      border: '1em solid black',
+                      borderRadius: '2em',
+                      textDecoration: 'none',
+                    }}
+                  >
+                    <span role="img" aria-label="world map">
+                      🗺️
+                    </span>
+                  </a>
+                </div>
+
+                {this.props.commitHash && (
+                  <div
+                    style={{
+                      clear: 'both',
+                      textAlign: 'center',
+                      fontSize: '0.75rem',
+                      color: '#999',
+                      paddingTop: '1rem',
+                    }}
+                  >
+                    <a
+                      href={`https://github.com/josephfrazier/reported-web/commit/${this.props.commitHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      // marx.css colours anchors blue and strips their underline,
+                      // so keep the footer's grey and put the underline back to
+                      // mark the hash as a link.
+                      style={{ color: 'inherit', textDecoration: 'underline' }}
+                    >
+                      {this.props.commitHash}
+                    </a>
+                  </div>
+                )}
+              </main>
             </div>
-
-            {this.props.commitHash && (
-              <div
-                style={{
-                  clear: 'both',
-                  textAlign: 'center',
-                  fontSize: '0.75rem',
-                  color: '#999',
-                  paddingTop: '1rem',
-                }}
-              >
-                <a
-                  href={`https://github.com/josephfrazier/reported-web/commit/${this.props.commitHash}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  // marx.css colours anchors blue and strips their underline,
-                  // so keep the footer's grey and put the underline back to
-                  // mark the hash as a link.
-                  style={{ color: 'inherit', textDecoration: 'underline' }}
-                >
-                  {this.props.commitHash}
-                </a>
-              </div>
-            )}
-          </main>
+          </div>
         </div>
       </Dropzone>
     );

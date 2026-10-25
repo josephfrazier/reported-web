@@ -1,24 +1,15 @@
 /**
  * @jest-environment node
  *
- * Runs against a real Parse Server 2.8.4 (the version prod runs) backed by a
+ * Runs against a real Parse Server 9.4.0 (the version production will run once
+ * https://github.com/josephfrazier/reported-web/pull/713 is merged) backed by a
  * real MongoDB 4.4 started in-memory by mongodb-memory-server, so the actual
  * sign-up/log-in semantics are exercised instead of a fake.
  */
 
-import net from 'net';
-
 import Parse from 'parse/node';
 import { logIn, updateUserProfile } from './users.js';
-
-const { MongoMemoryServer } = require('mongodb-memory-server');
-// parse-server is deliberately installed on demand instead of being a project
-// dependency (see jest.globalSetup.js)
-const { ParseServer } = require('parse-server');
-
-// parse-server skips its cloud/URL verification (and test-unfriendly process
-// listeners) when TESTING is set. Must be set before it is constructed.
-process.env.TESTING = '1';
+import startRealParseServer from './testUtils/realParseServer.js';
 
 jest.setTimeout(30000);
 
@@ -26,53 +17,17 @@ const email = 'test@example.com';
 const password = 'test-password';
 
 describe('users', () => {
-  let mongo;
-  let parseServer;
+  let stopParseServer;
   let verifiedUser;
 
   beforeAll(async () => {
-    // MongoDB 4.4 is the newest version whose wire protocol parse-server
-    // 2.8.4's bundled mongodb driver can talk to. Note: the binary must be
-    // downloaded once (mongodb-memory-server caches it), and on Ubuntu 24+
-    // mongod 4.4 needs libssl1.1 installed.
-    mongo = await MongoMemoryServer.create({ binary: { version: '4.4.14' } });
-
-    // create() can resolve a moment before mongod accepts connections;
-    // parse-server connects to it in its constructor, so wait until the
-    // port actually accepts a TCP connection.
-    const { port } = new URL(mongo.getUri());
-    const attemptConnection = (resolve, reject, attempts) => {
-      const socket = net.connect(Number(port), '127.0.0.1');
-      socket.once('connect', () => {
-        socket.destroy();
-        resolve();
-      });
-      socket.once('error', () => {
-        socket.destroy();
-        if (attempts < 100) {
-          setTimeout(
-            () => attemptConnection(resolve, reject, attempts + 1),
-            50,
-          );
-        } else {
-          reject(new Error('mongod never accepted connections'));
-        }
-      });
-    };
-    await new Promise((resolve, reject) => {
-      attemptConnection(resolve, reject, 0);
-    });
-
-    parseServer = ParseServer.start(
-      {
-        databaseURI: mongo.getUri(),
-        appId: 'test-app',
-        masterKey: 'test-master',
-        // Only used as a placeholder; the client points at the real port.
-        serverURL: 'http://localhost/parse',
-        mountPath: '/parse',
-        port: 0,
-        verbose: false,
+    // The master key is passed only for the seeding save below: parse-server
+    // treats emailVerified as a protected field that no client may set on
+    // itself. The modules under test need no master key: logIn() and
+    // updateUserProfile() authorize with the session token logIn() returns.
+    const { stop } = await startRealParseServer({
+      masterKey: 'test-master',
+      serverOptions: {
         // Production requires a verified address and refuses to log in
         // without one. In that configuration sign-up returns no session
         // token at all (parse-server's RestWrite#createSessionTokenIfNeeded),
@@ -84,21 +39,10 @@ describe('users', () => {
         // Nothing reads the mail; the calls just have to succeed.
         emailAdapter: { sendMail: () => Promise.resolve() },
       },
-      () => {},
-    );
-    await new Promise((resolve, reject) => {
-      parseServer.server.once('listening', resolve);
-      parseServer.server.once('error', reject);
     });
-    // parse-server initializes its own nested parse SDK; ours needs it too.
-    // The master key is passed only for the seeding save below: parse-server
-    // treats emailVerified as a protected field that no client may set on
-    // itself. The modules under test need no master key: logIn() and
-    // updateUserProfile() authorize with the session token logIn() returns.
-    Parse.initialize('test-app', undefined, 'test-master');
-    Parse.serverURL = `http://localhost:${parseServer.server.address().port}/parse`;
+    stopParseServer = stop;
 
-    // Parse Server 2.8.4 leaves emailVerified unset on signUp, and logIn()
+    // Parse Server leaves emailVerified unset on signUp, and logIn()
     // throws its "check your email" error for such users, so create a
     // verified user the way prod users end up verified.
     verifiedUser = new Parse.User();
@@ -110,11 +54,7 @@ describe('users', () => {
     await verifiedUser.save(null, { useMasterKey: true });
   });
 
-  afterAll(async () => {
-    await new Promise(resolve => parseServer.server.close(resolve));
-    parseServer.handleShutdown();
-    await mongo.stop();
-  });
+  afterAll(() => stopParseServer());
 
   test('logIn returns the existing verified user', async () => {
     const user = await logIn({ email, password });
@@ -178,6 +118,7 @@ describe('users', () => {
       LastName: 'User',
       Phone: '5551234567',
       testify: true,
+      can_be_shared_publicly: false,
     });
 
     expect(saved.id).toBe(verifiedUser.id);
@@ -187,7 +128,42 @@ describe('users', () => {
       LastName: 'User',
       Phone: '5551234567',
       testify: true,
+      // Always stored, like testify: the native app reads a default of
+      // true when the field is absent, so false must be explicit.
+      can_be_shared_publicly: false,
     });
+  });
+
+  test('updateUserProfile stores the sparse NYPD flags only when true', async () => {
+    const user = await logIn({ email, password });
+    const sessionToken = user.getSessionToken();
+    const base = {
+      user,
+      sessionToken,
+      email,
+      FirstName: 'Test',
+      LastName: 'User',
+      Phone: '5551234567',
+      testify: true,
+    };
+    const exerciseSparseFlag = async flag => {
+      // true: stored on the user...
+      await updateUserProfile({ ...base, [flag]: true });
+      expect(user.get(flag)).toBe(true);
+
+      // false: unset, so non-opt-ins don't carry the field...
+      await updateUserProfile({ ...base, [flag]: false });
+      expect(user.get(flag)).toBeUndefined();
+
+      // ...and absent: left alone, so clients that don't know about the
+      // flag don't clobber a previous opt-in.
+      await updateUserProfile({ ...base, [flag]: true });
+      await updateUserProfile(base);
+      expect(user.get(flag)).toBe(true);
+    };
+
+    await exerciseSparseFlag('withhold_contact_info_from_nypd');
+    await exerciseSparseFlag('receive_nypd_sr_updates_by_email');
   });
 
   test('updateUserProfile rejects when a required field is missing', async () => {

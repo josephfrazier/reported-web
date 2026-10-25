@@ -114,8 +114,7 @@ const {
   PARSE_SERVER_URL,
   SHOW_PARSE_SERVER_BANNER,
   HEROKU_RELEASE_VERSION,
-  PLATERECOGNIZER_TOKEN,
-  PLATERECOGNIZER_TOKEN_TWO,
+  PLATERECOGNIZER_TOKEN_LIST,
 } = process.env;
 
 // http://docs.parseplatform.org/js/guide/#getting-started
@@ -227,6 +226,14 @@ app.use('/api/logIn', (req, res) => {
         LastName: user.get('LastName'),
         Phone: user.get('Phone'),
         testify: user.get('testify'),
+        can_be_shared_publicly: user.get('can_be_shared_publicly'),
+        // undefined when absent, thanks to the sparse contract on the user
+        withhold_contact_info_from_nypd: user.get(
+          'withhold_contact_info_from_nypd',
+        ),
+        receive_nypd_sr_updates_by_email: user.get(
+          'receive_nypd_sr_updates_by_email',
+        ),
       });
     })
     .catch(handlePromiseRejection(res));
@@ -292,6 +299,11 @@ app.use('/saveUser', (req, res) => {
         LastName: req.body.LastName,
         Phone: req.body.Phone,
         testify: req.body.testify,
+        can_be_shared_publicly: req.body.can_be_shared_publicly,
+        withhold_contact_info_from_nypd:
+          req.body.withhold_contact_info_from_nypd,
+        receive_nypd_sr_updates_by_email:
+          req.body.receive_nypd_sr_updates_by_email,
       }),
     )
     .then(user => res.json(user))
@@ -436,6 +448,7 @@ app.use('/submit', (req, res) => {
       reportDescription,
       can_be_shared_publicly: can_be_shared_publiclyString, // eslint-disable-line camelcase
       withhold_contact_info_from_nypd: withhold_contact_info_from_nypdString, // eslint-disable-line camelcase
+      receive_nypd_sr_updates_by_email: receive_nypd_sr_updates_by_emailString, // eslint-disable-line camelcase
       latitude: latitudeString,
       longitude: longitudeString,
       formatted_address, // eslint-disable-line camelcase
@@ -447,6 +460,9 @@ app.use('/submit', (req, res) => {
     // eslint-disable-next-line camelcase
     const withhold_contact_info_from_nypd =
       withhold_contact_info_from_nypdString === 'true'; // eslint-disable-line camelcase
+    // eslint-disable-next-line camelcase
+    const receive_nypd_sr_updates_by_email =
+      receive_nypd_sr_updates_by_emailString === 'true'; // eslint-disable-line camelcase
     const latitude = Number(latitudeString);
     const longitude = Number(longitudeString);
 
@@ -483,6 +499,7 @@ app.use('/submit', (req, res) => {
       attachmentData,
       versionNumber: Number(HEROKU_RELEASE_VERSION.slice(1)),
       withhold_contact_info_from_nypd, // eslint-disable-line camelcase
+      receive_nypd_sr_updates_by_email, // eslint-disable-line camelcase
     })
       .then(submission => {
         console.info({ submission });
@@ -502,8 +519,18 @@ app.use('/submit', (req, res) => {
 // adapted from https://docs.platerecognizer.com/?javascript#license-plate-recognition
 app.use(
   '/platerecognizer',
+  // Stamped before multer reads the body, so the handler can report how much
+  // of the request was the browser sending the photo and the parser taking it
+  // in. Express runs this as soon as the headers are in; the handler below
+  // waits for the last byte.
+  (req, res, next) => {
+    req.platerecognizerArrivedAt = Date.now();
+    next();
+  },
   upload.single('attachmentFile'),
   async (req, res) => {
+    const handlerStartedAt = Date.now();
+
     try {
       await authenticateRequest(req, res)();
     } catch (error) {
@@ -511,14 +538,34 @@ app.use(
       return;
     }
 
+    const readStartedAt = Date.now();
     const attachmentBuffer = req.file.buffer;
+
+    // Where the request's time went, in milliseconds: what this handler spent,
+    // plus the phases readLicenseViaALPR records as it works. The reading goes
+    // back with them, because the same photo added twice answers from the
+    // cache with an identical processing_time, and these numbers are the only
+    // way to tell a read that was fast from a read that never happened. A
+    // review app's log is not a place the person testing it can watch, so the
+    // response carries the same breakdown the log gets.
+    const timings = {
+      upload: handlerStartedAt - req.platerecognizerArrivedAt,
+      auth: readStartedAt - handlerStartedAt,
+    };
 
     readLicenseViaALPR({
       attachmentBuffer,
-      PLATERECOGNIZER_TOKEN,
-      PLATERECOGNIZER_TOKEN_TWO,
+      PLATERECOGNIZER_TOKEN_LIST,
+      timings,
     })
-      .then(data => res.json(data))
+      .then(data => {
+        timings.read = Date.now() - readStartedAt;
+        // Up to the moment the response is built. What the browser measures
+        // for itself is this plus the response's trip back.
+        timings.total = Date.now() - req.platerecognizerArrivedAt;
+        console.info('/platerecognizer timings', timings);
+        res.json({ ...data, timings });
+      })
       .catch(handlePromiseRejection(res));
   },
 );
@@ -671,7 +718,8 @@ app.get('*', async (req, res, next) => {
     // Decide whether this page is logged in, and migrate a legacy visitor
     // whose state cookie still holds their password (see session.js). Never
     // rejects: the page renders even if Parse is unreachable.
-    const { sessionPresent, homeState } = await resolveSsrSession({ req, res });
+    const { sessionPresent, homeState, sessionUserFields } =
+      await resolveSsrSession({ req, res });
     if (homeState) {
       // resolveSsrSession may have rewritten the state cookie (stripping the
       // password); the route must render the rewritten state, not the
@@ -691,6 +739,7 @@ app.get('*', async (req, res, next) => {
       reviewAppLabel,
       cookies,
       sessionPresent,
+      sessionUserFields,
       // The twins below are wild, be careful!
       pathname: req.path,
       query: req.query,

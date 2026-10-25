@@ -6,9 +6,11 @@
 * Copies static files to the output folder (`copy.js`)
 * Launches [Webpack](https://webpack.github.io/) compiler in a watch mode (via
   [webpack-middleware](https://github.com/kriasoft/webpack-middleware))
-* Launches Node.js server from the compiled output folder (`runServer.js`)
-* Launches [Browsersync](https://browsersync.io/) and
-  [Hot Module Replacement](https://webpack.github.io/docs/hot-module-replacement)
+* Serves the app and the in-memory bundles with Express, on
+  `http://localhost:3000` unless `PORT` says otherwise
+* Applies [Hot Module Replacement](https://webpack.github.io/docs/hot-module-replacement)
+  through `webpack-hot-middleware`, which reloads the page for the updates
+  that can't be hot-applied
 
 ### `yarn run build` (`build.js`)
 
@@ -23,7 +25,7 @@
 | `--release` | Minimizes and optimizes the compiled output                                         |
 | `--verbose` | Prints detailed information to the console                                          |
 | `--analyze` | Launches [Webpack Bundle Analyzer](https://github.com/th0r/webpack-bundle-analyzer) |
-| `--silent`  | Do not open the default browser                                                     |
+| `--silent`  | Do not open the default browser (what CI and the smoke tests pass)                   |
 
 For example:
 

@@ -6,6 +6,16 @@ import SubmissionDetails from './SubmissionDetails.js';
 require('timezone-mock').register('US/Eastern');
 require('jest-mock-now')();
 
+// The rendered tree keeps every JSX child as its own entry, so the summary --
+// which interpolates the plate, the state, the complaint and the address -- is
+// not one string in there. Join the text back up before asserting on it.
+function renderedText(node) {
+  if (node == null) return '';
+  if (typeof node === 'string') return node;
+  if (Array.isArray(node)) return node.map(renderedText).join('');
+  return renderedText(node.children);
+}
+
 describe('SubmissionDetails', () => {
   test('renders children correctly', () => {
     const submission = {
@@ -161,5 +171,36 @@ describe('SubmissionDetails', () => {
       .toJSON();
 
     expect(wrapper).toMatchSnapshot();
+  });
+
+  // The state is optional in the form, so a saved submission can have none.
+  // The summary used to print "()" for it.
+  test('leaves the state out of the summary when there is none', () => {
+    const submission = {
+      reqnumber: 'reqnumber',
+      medallionNo: 'medallionNo',
+      state: '',
+      typeofcomplaint: 'typeofcomplaint',
+      loc1_address: '82 Reade St, New York, NY 10007, USA',
+      timeofreport: new Date(Date.now()).toISOString(),
+      reportDescription: 'reportDescription',
+      status: 1,
+    };
+
+    const wrapper = renderer
+      .create(
+        <App context={{ insertCss: () => {}, fetch: () => {}, pathname: '' }}>
+          <SubmissionDetails
+            isDetailsOpen
+            submission={submission}
+            onDeleteSubmission={() => {}}
+          />
+        </App>,
+      )
+      .toJSON();
+
+    const rendered = renderedText(wrapper);
+    expect(rendered).toContain('medallionNo typeofcomplaint near');
+    expect(rendered).not.toContain('()');
   });
 });

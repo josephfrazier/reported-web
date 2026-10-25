@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Complaint Map</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" integrity="sha512-h9FcoyWjHcOcmEVkxOfTLnmZFWIH0iZhZT1H2TbOq55xssQGEJHEaIm+PgoUaZbRvQTNTluNOEfb1ZRy6D3BOw==" crossorigin="anonymous"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha512-puJW3E/qXDqYp9IfhAI54BJEaWIfloJ7JWs7OeD5i6ruC9JZL1gERT1wjtwXFlh7CjE7ZJ+/vcRZRkIYIb6p4g==" crossorigin="anonymous"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" integrity="sha512-gc3xjCmIy673V6MyOAZhIW93xhM9ei1I+gLbmFjUHIjocENRsLX/QUE1htk5q1XV2D/iie/VQ8DXI6Vu8bexvQ==" crossorigin="anonymous"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js" integrity="sha512-ozq8xQKq6urvuU6jNgkfqAmT7jKN2XumbrX1JiB3TnF7tI48DPI4Gy1GXKD/V3EExgAs1V+pRO7vwtS1LHg0Gw==" crossorigin="anonymous"></script>
 <style>
@@ -348,19 +348,28 @@
 
   .popup-meta .val { color: var(--text); }
 
+  .popup-meta a { color: var(--accent); }
+
   .popup-photos { display: flex; }
 
-  .popup-photos img {
+  /* Each photo links to the full-size image, so the link is the flex item
+     and the image fills it. */
+  .popup-photos a {
     flex: 1;
     min-width: 0;
-    height: 136px;
-    object-fit: contain;
-    background: #f0f3f8;
     display: block;
     border-right: 1px solid var(--border);
   }
 
-  .popup-photos img:last-child { border-right: none; }
+  .popup-photos a:last-child { border-right: none; }
+
+  .popup-photos img {
+    width: 100%;
+    height: 136px;
+    object-fit: contain;
+    background: #f0f3f8;
+    display: block;
+  }
 
   .popup-no-photo {
     height: 52px;
@@ -582,6 +591,17 @@ function formatDate(iso) {
   } catch(e) { return iso; }
 }
 
+// The reqnumber field holds one Service Request number, or several
+// separated by commas (`311-12345,311-67890`). Only a 311- number has a
+// page on the 311 portal. Link those, and keep any other text as it is.
+function reqNumberHtml(reqnumber) {
+  const linked = reqnumber.replace(
+    /\b311-\d+\b/g,
+    number => `<a href="https://portal.311.nyc.gov/sr-details/?srnum=${number}" target="_blank" rel="noopener noreferrer">${number}</a>`,
+  );
+  return `<span class="val">${linked}</span>`;
+}
+
 // Parse: JSON array OR newline-delimited JSON objects
 function parseInput(raw) {
   raw = raw.trim();
@@ -651,12 +671,12 @@ function populatePopup(s) {
   if (s.loc1_address) rows.push(`<span class="val">${s.loc1_address}</span>`);
   const d = formatDate(s.timeofreport?.iso);
   if (d) rows.push(d);
-  if (s.reqnumber) rows.push(`req <span class="val">${s.reqnumber}</span>`);
+  if (s.reqnumber) rows.push(`req ${reqNumberHtml(s.reqnumber)}`);
   popupMeta.innerHTML = rows.join('<br>');
 
   if (photos.length > 0) {
     popupPics.innerHTML = `<div class="popup-photos">${photos.map(p =>
-      `<img src="${p.url}" loading="lazy" onerror="this.style.display='none'">`).join('')}</div>`;
+      `<a href="${p.url}" target="_blank" rel="noopener noreferrer"><img src="${p.url}" loading="lazy" onerror="this.parentElement.style.display='none'"></a>`).join('')}</div>`;
   } else {
     popupPics.innerHTML = `<div class="popup-no-photo">no photos attached</div>`;
   }

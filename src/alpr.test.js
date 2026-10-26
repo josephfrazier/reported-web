@@ -46,6 +46,12 @@ describe('readLicenseViaALPR', () => {
     );
     const { PLATERECOGNIZER_TOKEN_LIST } = process.env;
 
+    // Plate Recognizer limits calls per token to one per second, and the test
+    // above has just used the token this one falls back to. When the list has
+    // no other usable token, the next call comes back 429 until the wait
+    // passes.
+    await new Promise(resolve => setTimeout(resolve, 1200));
+
     const result = await readLicenseViaALPR({
       attachmentBuffer,
       PLATERECOGNIZER_TOKEN_LIST: `INVALID TOKEN,${PLATERECOGNIZER_TOKEN_LIST}`,

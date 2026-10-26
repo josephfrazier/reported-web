@@ -63,6 +63,11 @@ const typeofcomplaintValues = [
 
 const insertCss = () => {};
 
+// `withStyles` returns a wrapper that carries the CSS helpers; statics such
+// as `handleSearchInputMounted` stay on the class it wraps, which the wrapper
+// exposes as `ComposedComponent`.
+const HomeWithoutStyle = Home.ComposedComponent;
+
 // jsdom has no navigator.geolocation, so promisedLocation() rejects and the
 // component falls back to ipapi.co over the network, making these tests
 // depend on a third-party service (and crash on its rate limits). Stub
@@ -86,21 +91,29 @@ const photoBytes = label =>
   Uint8Array.from([0xff, 0xd8, 0xff, 0xe0, ...Buffer.from(label, 'utf8')]);
 
 function renderHome({ initialState, homeRef, ...props } = {}) {
-  return renderer.create(
-    <StyleContext.Provider value={{ insertCss }}>
-      <App context={{ fetch: () => {}, pathname: '' }}>
-        <Home
-          ref={homeRef}
-          initialState={initialState}
-          typeofcomplaintValues={typeofcomplaintValues}
-          boroughBoundariesFeatureCollection={
-            boroughBoundariesFeatureCollection
-          }
-          {...props}
-        />
-      </App>
-    </StyleContext.Provider>,
-  );
+  let tree;
+  // ToastContainer's mount effect updates its own state. Without act, that
+  // update lands outside a test render and React warns about it. The act
+  // callback returns nothing so that act does not treat the renderer as a
+  // promise to await.
+  renderer.act(() => {
+    tree = renderer.create(
+      <StyleContext.Provider value={{ insertCss }}>
+        <App context={{ fetch: () => {}, pathname: '' }}>
+          <Home
+            ref={homeRef}
+            initialState={initialState}
+            typeofcomplaintValues={typeofcomplaintValues}
+            boroughBoundariesFeatureCollection={
+              boroughBoundariesFeatureCollection
+            }
+            {...props}
+          />
+        </App>
+      </StyleContext.Provider>,
+    );
+  });
+  return tree;
 }
 
 // Mounts Home, hands the photos to the extraction pass the way the file input
@@ -577,7 +590,7 @@ describe('Home', () => {
     const input = document.createElement('input');
     document.body.appendChild(input);
     try {
-      Home.handleSearchInputMounted(input);
+      HomeWithoutStyle.handleSearchInputMounted(input);
 
       jest.advanceTimersByTime(20);
 
@@ -593,7 +606,7 @@ describe('Home', () => {
     jest.useFakeTimers();
     const input = document.createElement('input');
     try {
-      Home.handleSearchInputMounted(input);
+      HomeWithoutStyle.handleSearchInputMounted(input);
 
       jest.advanceTimersByTime(20); // first attempt, input not attached yet
       expect(document.activeElement).not.toBe(input);
@@ -612,7 +625,7 @@ describe('Home', () => {
   test('ignores the null ref the search input passes when unmounting', () => {
     jest.useFakeTimers();
     try {
-      Home.handleSearchInputMounted(null);
+      HomeWithoutStyle.handleSearchInputMounted(null);
 
       expect(jest.getTimerCount()).toBe(0);
     } finally {
@@ -6035,7 +6048,9 @@ describe('Home', () => {
           receive_nypd_sr_updates_by_email: true,
         },
       });
-      homeRef.current.handleLogOut();
+      renderer.act(() => {
+        homeRef.current.handleLogOut();
+      });
       await new Promise(resolve => setTimeout(resolve, 0));
 
       expect(axiosPost).toHaveBeenCalledWith('/api/logOut');
@@ -6097,7 +6112,9 @@ describe('Home', () => {
         homeRef,
         initialState: { email: 'test@example.com', loginSuccessful: true },
       });
-      homeRef.current.handleSessionExpired();
+      renderer.act(() => {
+        homeRef.current.handleSessionExpired();
+      });
 
       expect(homeRef.current.state.loginSuccessful).toBe(false);
       expect(homeRef.current.state.isAuthModalOpen).toBe(true);
@@ -6113,7 +6130,9 @@ describe('Home', () => {
         homeRef,
         initialState: { loginSuccessful: false },
       });
-      homeRef.current.handleSessionExpired();
+      renderer.act(() => {
+        homeRef.current.handleSessionExpired();
+      });
 
       expect(homeRef.current.state.isAuthModalOpen).toBe(false);
       expect(homeRef.current.state.loginSuccessful).toBe(false);

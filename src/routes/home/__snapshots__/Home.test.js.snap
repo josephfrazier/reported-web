@@ -2352,7 +2352,6 @@ exports[`Home renders submission form and Previous Submissions when logged in wi
                 Where: 
                 <br />
                 <button
-                  disabled={false}
                   name="where"
                   onClick={[Function]}
                   style={
@@ -3239,7 +3238,6 @@ exports[`Home renders with allPlateResults entry missing plate and photos 1`] = 
                 Where: 
                 <br />
                 <button
-                  disabled={false}
                   name="where"
                   onClick={[Function]}
                   style={
@@ -4126,7 +4124,6 @@ exports[`Home renders with undefined allPlateResults and photos 1`] = `
                 Where: 
                 <br />
                 <button
-                  disabled={false}
                   name="where"
                   onClick={[Function]}
                   style={

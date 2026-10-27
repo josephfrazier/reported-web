@@ -4090,6 +4090,44 @@ describe('a locked address', () => {
     tree.unmount();
   });
 
+  test('lets the map move a locked place, and keeps it locked', () => {
+    const homeRef = React.createRef();
+    const tree = renderHome({ homeRef });
+
+    renderer.act(() => {
+      homeRef.current.setState({ ...chosenPlace, isLocationLocked: true });
+    });
+
+    // The map reports a new centre. A locked place would ignore this from the
+    // photos or the GPS; from the map it is the user's own move.
+    renderer.act(() => {
+      homeRef.current.setCoords(
+        {
+          latitude: 40.75,
+          longitude: -73.95,
+          addressProvenance: '(manually set)',
+        },
+        { fromMap: true },
+      );
+    });
+
+    expect(homeRef.current.state.latitude).toBe(40.75);
+    expect(homeRef.current.state.longitude).toBe(-73.95);
+    expect(homeRef.current.state.isLocationLocked).toBe(true);
+
+    // The lock still holds against the photos.
+    renderer.act(() => {
+      homeRef.current.applyPhotoPlace([
+        { latitude: 40.73, longitude: -74.01, createDateMs: 3000 },
+      ]);
+    });
+
+    expect(homeRef.current.state.latitude).toBe(40.75);
+    expect(homeRef.current.state.longitude).toBe(-73.95);
+
+    tree.unmount();
+  });
+
   test('keeps the place the user picked when a late GPS fix arrives', async () => {
     const homeRef = React.createRef();
     const tree = renderHome({ homeRef });
@@ -4300,7 +4338,7 @@ describe('a locked address', () => {
     const lockBox = () => tree.root.findByProps({ name: 'isLocationLocked' });
 
     expect(lockBox().props.checked).toBe(false);
-    expect(whereButton().props.disabled).toBe(false);
+    expect(whereButton().props.disabled).toBeUndefined();
 
     renderer.act(() => {
       lockBox().props.onChange({
@@ -4310,9 +4348,9 @@ describe('a locked address', () => {
 
     expect(homeRef.current.state.isLocationLocked).toBe(true);
     expect(lockBox().props.checked).toBe(true);
-    // The map is where an address changes, so it stays shut while the address
-    // is locked. The box is the way back.
-    expect(whereButton().props.disabled).toBe(true);
+    // The map stays open while the address is locked: a place picked there is
+    // the user's own hand, and the lock holds the new place.
+    expect(whereButton().props.disabled).toBeUndefined();
 
     renderer.act(() => {
       lockBox().props.onChange({
@@ -4321,7 +4359,7 @@ describe('a locked address', () => {
     });
 
     expect(homeRef.current.state.isLocationLocked).toBe(false);
-    expect(whereButton().props.disabled).toBe(false);
+    expect(whereButton().props.disabled).toBeUndefined();
 
     global.URL.createObjectURL = originalCreateObjectURL;
     tree.unmount();

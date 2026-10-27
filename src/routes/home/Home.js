@@ -1440,13 +1440,13 @@ class Home extends React.Component {
 
   setCoords = (
     { latitude, longitude, addressProvenance } = { addressProvenance: '' },
-    { warnOnGeosearchFailure = true } = {},
+    { warnOnGeosearchFailure = true, fromMap = false } = {},
   ) => {
     // A locked place stays where the user put it. The photos, the GPS and the
-    // reset after a submission all ask `setCoords` to move it, so they all
-    // stop here. Unchecking the box beside the address is what lets it move
-    // again.
-    if (this.state.isLocationLocked) {
+    // reset after a submission all ask `setCoords` to move it, so they stop
+    // here. The map is the user's own hand, so a place picked there comes
+    // through and the lock holds the new place.
+    if (this.state.isLocationLocked && !fromMap) {
       return;
     }
 
@@ -5260,7 +5260,6 @@ class Home extends React.Component {
                             <button
                               type="button"
                               name="where"
-                              disabled={this.state.isLocationLocked}
                               onClick={() => this.setState({ isMapOpen: true })}
                               style={{
                                 width: '100%',
@@ -5320,11 +5319,14 @@ class Home extends React.Component {
                               onCenterChanged={() => {
                                 const latitude = this.mapRef.getCenter().lat();
                                 const longitude = this.mapRef.getCenter().lng();
-                                this.setCoords({
-                                  latitude,
-                                  longitude,
-                                  addressProvenance: '(manually set)',
-                                });
+                                this.setCoords(
+                                  {
+                                    latitude,
+                                    longitude,
+                                    addressProvenance: '(manually set)',
+                                  },
+                                  { fromMap: true },
+                                );
                               }}
                               onDragStart={() => {
                                 this.isDragging = true;
@@ -5349,11 +5351,14 @@ class Home extends React.Component {
                                   return;
                                 }
 
-                                this.setCoords({
-                                  latitude: location.lat(),
-                                  longitude: location.lng(),
-                                  addressProvenance: '(manually set)',
-                                });
+                                this.setCoords(
+                                  {
+                                    latitude: location.lat(),
+                                    longitude: location.lng(),
+                                    addressProvenance: '(manually set)',
+                                  },
+                                  { fromMap: true },
+                                );
                               }}
                             />
 

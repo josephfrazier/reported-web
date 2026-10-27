@@ -554,6 +554,41 @@ function tooManyAttachments(attachmentData) {
   return pictures > 3 || attachmentData.length - pictures > 3;
 }
 
+// The trash that deletes a photo from the report. It sits in the corner of the
+// photo's tile.
+//
+// The caller positions it and says what it deletes. The label is on the button
+// rather than on the glyph, so that the button is the thing with a name and a
+// screen reader does not announce the emoji as well.
+const TrashButton = ({ label, onClick, style }) => (
+  <button
+    type="button"
+    aria-label={label}
+    style={{
+      padding: 0,
+      // Ubuntu Chrome shows the glyph black without this.
+      color: 'red',
+      background: 'white',
+      ...style,
+    }}
+    onClick={onClick}
+  >
+    <span aria-hidden="true">🗑️</span>
+  </button>
+);
+
+TrashButton.propTypes = {
+  label: PropTypes.string.isRequired,
+  onClick: PropTypes.func.isRequired,
+  style: PropTypes.objectOf(
+    PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  ),
+};
+
+TrashButton.defaultProps = {
+  style: undefined,
+};
+
 class Home extends React.Component {
   static getVehicleMakeLogoUrl({ vehicleMake }) {
     if (vehicleMake.toLowerCase() === 'nissan') {
@@ -1739,13 +1774,17 @@ class Home extends React.Component {
   // Take one photo out of the submission, from the X on its thumbnail. What
   // the submission's time and place are is asked again once it is gone: they
   // came from the photos, and the photos have changed.
-  removeAttachment = name => {
+  // Delete a photo from the report, from the trash on its tile. The report's
+  // time and place are asked again once it is gone: they came from the
+  // photos, and the photos have changed.
+  deletePhoto = photo => {
+    const { file, name } = photo;
     const previousPhotos = this.state.attachmentData;
 
     this.setState(
       state => {
         const attachmentData = state.attachmentData.filter(
-          file => file.name !== name,
+          candidate => candidate !== file,
         );
 
         if (attachmentData.length === 0) {
@@ -1784,8 +1823,8 @@ class Home extends React.Component {
         });
 
         previousPhotos
-          .filter(file => !this.state.attachmentData.includes(file))
-          .forEach(file => this.photoReadings.delete(file));
+          .filter(candidate => !this.state.attachmentData.includes(candidate))
+          .forEach(candidate => this.photoReadings.delete(candidate));
       },
     );
   };
@@ -2368,6 +2407,59 @@ class Home extends React.Component {
         });
       });
     }
+  }
+
+  // The report's photos as one grid of tiles: each the photo itself, keeping
+  // its own shape (the plate overlays are placed as fractions of the picture,
+  // so a crop would move them off the plates), with a trash that deletes it.
+  renderAttachmentGrid() {
+    const { attachmentData, plateDataByAttachmentName } = this.state;
+
+    if (attachmentData.length === 0) {
+      return null;
+    }
+
+    return (
+      <div className={homeStyles['attachment-grid']}>
+        {attachmentData.map(attachmentFile => {
+          const { name } = attachmentFile;
+          const src = getBlobUrl(attachmentFile);
+
+          return (
+            <div key={name} className={homeStyles['attachment-tile']}>
+              <a
+                href={src}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={name}
+                style={{ display: 'block' }}
+              >
+                {isImage({ ext: fileExtension(name) }) ? (
+                  <img src={src} alt={name} />
+                ) : (
+                  /* eslint-disable-next-line jsx-a11y/media-has-caption */
+                  <video src={src} aria-label={name} />
+                )}
+              </a>
+              {this.renderPlateOverlays({
+                attachmentPlateData: plateDataByAttachmentName[name],
+                attachmentFile,
+              })}
+              <TrashButton
+                label={`Delete ${name}`}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  right: 0,
+                  margin: '1px',
+                }}
+                onClick={() => this.deletePhoto({ file: attachmentFile, name })}
+              />
+            </div>
+          );
+        })}
+      </div>
+    );
   }
 
   render() {
@@ -3226,105 +3318,10 @@ class Home extends React.Component {
 
                       <div style={{ clear: 'both' }} />
 
+                      {this.renderAttachmentGrid()}
+
                       {this.state.attachmentData.length > 0 && (
                         <React.Fragment>
-                          <div
-                            style={{
-                              display: 'flex',
-                              flexWrap: 'wrap',
-                            }}
-                          >
-                            {this.state.attachmentData.map(attachmentFile => {
-                              const { name } = attachmentFile;
-                              const ext = fileExtension(name);
-                              const isImg = isImage({ ext });
-                              const src = getBlobUrl(attachmentFile);
-                              const attachmentPlateData =
-                                this.state.plateDataByAttachmentName[name];
-
-                              return (
-                                <div
-                                  key={name}
-                                  style={{
-                                    width: '33%',
-                                    margin: '0.1%',
-                                    flexGrow: 1,
-                                    position: 'relative',
-                                  }}
-                                >
-                                  <div
-                                    style={{
-                                      position: 'relative',
-                                      display: 'inline-block',
-                                      maxWidth: '100%',
-                                    }}
-                                  >
-                                    <a
-                                      href={src}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      style={{ display: 'block' }}
-                                    >
-                                      {isImg ? (
-                                        <img
-                                          src={src}
-                                          alt={name}
-                                          style={{ display: 'block' }}
-                                        />
-                                      ) : (
-                                        /* eslint-disable-next-line jsx-a11y/media-has-caption */
-                                        <video
-                                          src={src}
-                                          alt={name}
-                                          // The position:relative wrapper shrink-
-                                          // wraps its content, and plate overlays
-                                          // are percentage-positioned against that
-                                          // wrapper, so the video must fill it
-                                          // exactly like the img above does:
-                                          // display:block closes the inline
-                                          // baseline gap, and max-width:100%
-                                          // (which marx-css gives img but not
-                                          // video) keeps the video from
-                                          // overflowing the wrapper when it is
-                                          // wider than the container.
-                                          style={{
-                                            display: 'block',
-                                            maxWidth: '100%',
-                                          }}
-                                        />
-                                      )}
-                                    </a>
-                                    {this.renderPlateOverlays({
-                                      attachmentPlateData,
-                                      attachmentFile,
-                                    })}
-                                  </div>
-
-                                  <button
-                                    type="button"
-                                    style={{
-                                      position: 'absolute',
-                                      top: 0,
-                                      right: 0,
-                                      padding: 0,
-                                      margin: '1px',
-                                      color: 'red', // Ubuntu Chrome shows black otherwise
-                                      background: 'white',
-                                    }}
-                                    onClick={() => this.removeAttachment(name)}
-                                  >
-                                    <span
-                                      role="img"
-                                      aria-label="Delete photo/video"
-                                    >
-                                      ❌
-                                    </span>
-                                  </button>
-                                </div>
-                              );
-                            })}
-                          </div>
-
                           <label htmlFor="plate" ref={this.plateLabelRef}>
                             License/Medallion:
                             {this.state.isAlprLoading && (

@@ -410,3 +410,38 @@ input[type='search']::-webkit-search-cancel-button {
     align-items: stretch;
   }
 }
+
+/* The report's photos, as one grid: a tile per photo, keeping its own shape,
+   with the plate overlays on the picture and the trash in the corner. */
+.attachment-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 8px 0;
+}
+
+@media (width <= 480px) {
+  .attachment-tile {
+    flex-basis: 140px;
+  }
+}
+
+.attachment-tile {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border-radius: 4px;
+  line-height: 0;
+
+  /* Three to a row: 30 percent of the width plus its share of the space left
+     over. Four photos cannot fit, so the fourth starts a new row. Each row
+     grows to fill the width, whatever number of photos it holds. */
+  flex: 1 1 30%;
+}
+
+.attachment-tile img,
+.attachment-tile video {
+  display: block;
+  width: 100%;
+  height: auto;
+}

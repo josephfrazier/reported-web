@@ -399,6 +399,39 @@
     overflow: hidden;
   }
 
+  #draw-controls {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  #draw-controls[hidden] { display: none; }
+
+  #draw-controls button {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    border-radius: 3px;
+    padding: 7px 14px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: opacity 0.15s, border-color 0.15s;
+  }
+
+  #draw-controls button:hover:not(:disabled) { border-color: var(--text); }
+  #draw-controls button:disabled { opacity: 0.45; cursor: default; }
+
+  #draw-finish-btn {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #ffffff;
+  }
+
+  #draw-finish-btn:hover:not(:disabled) { opacity: 0.85; border-color: var(--accent); }
+
   /* When "Draw Area" tab is active, expand to fill the viewport */
   #paste-screen.draw-active {
     justify-content: flex-start;
@@ -507,8 +540,13 @@
   </div>
 
   <div id="panel-draw">
-    <p>Draw a polygon on the map to fetch public submissions in that area. Click the polygon tool <strong style="color:var(--text)">⬠</strong> in the top-left of the map, then click to add vertices. Double-click to finish.</p>
+    <p>Draw a polygon on the map to fetch public submissions in that area. Click the polygon tool <strong style="color:var(--text)">⬠</strong> in the top-left of the map, then click the map to add corners. When you have at least three, press Finish polygon. Double-clicking the last corner works too.</p>
     <div id="draw-map"></div>
+    <div id="draw-controls" hidden>
+      <button id="draw-finish-btn" type="button">Finish polygon</button>
+      <button id="draw-undo-btn" type="button">Undo point</button>
+      <button id="draw-cancel-btn" type="button">Cancel</button>
+    </div>
     <div id="draw-status">Select the polygon tool and draw a shape on the map.</div>
   </div>
 
@@ -857,6 +895,49 @@ document.getElementById('tab-my-submissions').addEventListener('click', () => se
 // ── DRAW MAP ──
 let drawMap = null;
 let drawnItems = null;
+let drawControl = null;
+
+const drawControlsEl = document.getElementById('draw-controls');
+const drawFinishBtn = document.getElementById('draw-finish-btn');
+const drawUndoBtn = document.getElementById('draw-undo-btn');
+const drawCancelBtn = document.getElementById('draw-cancel-btn');
+const drawStatusEl = document.getElementById('draw-status');
+const DRAW_STATUS_IDLE = 'Select the polygon tool and draw a shape on the map.';
+
+function polygonDrawHandler() {
+  return drawControl?._toolbars?.[L.DrawToolbar.TYPE]?._modes?.polygon?.handler;
+}
+
+function updateDrawControlButtons() {
+  const handler = polygonDrawHandler();
+  const markerCount = handler && handler._markers ? handler._markers.length : 0;
+  drawFinishBtn.disabled = markerCount < 3;
+  drawUndoBtn.disabled = markerCount < 2;
+}
+
+drawFinishBtn.addEventListener('click', () => {
+  const handler = polygonDrawHandler();
+  if (!handler) return;
+  if (!handler._markers || handler._markers.length < 3) {
+    drawStatusEl.textContent = 'Add at least 3 corners before finishing.';
+    return;
+  }
+  // completeShape() fires draw:created and ends drawing mode. It skips the
+  // intersection check that double-click-to-finish runs, so a stray
+  // near-duplicate corner from a touch double-tap cannot block the finish.
+  handler.completeShape();
+});
+
+drawUndoBtn.addEventListener('click', () => {
+  const handler = polygonDrawHandler();
+  if (handler) handler.deleteLastVertex();
+});
+
+drawCancelBtn.addEventListener('click', () => {
+  const handler = polygonDrawHandler();
+  if (handler) handler.disable();
+  drawStatusEl.textContent = DRAW_STATUS_IDLE;
+});
 
 function initDrawMap() {
   if (drawMap) {
@@ -871,7 +952,7 @@ function initDrawMap() {
 
   drawnItems = new L.FeatureGroup().addTo(drawMap);
 
-  const drawControl = new L.Control.Draw({
+  drawControl = new L.Control.Draw({
     draw: {
       rectangle: false,
       polygon: {
@@ -887,18 +968,63 @@ function initDrawMap() {
   });
   drawMap.addControl(drawControl);
 
+  // leaflet.draw binds the first corner's click-to-finish handler in the same
+  // task as the tap that created it. On a touch screen the synthetic click
+  // that follows that tap then lands on the new marker and shows "shape edges
+  // cannot cross" instead of "click to continue". Bind it after that click.
+  const polygonHandler = polygonDrawHandler();
+  polygonHandler._updateFinishHandler = function () {
+    const markerCount = this._markers.length;
+    if (markerCount === 1) {
+      setTimeout(() => {
+        if (this.enabled() && this._markers && this._markers.length >= 1) {
+          this._markers[0].on('click', this._finishShape, this);
+        }
+      }, 250);
+    }
+    if (markerCount > 2) {
+      this._markers[markerCount - 1].on('dblclick', this._finishShape, this);
+      if (markerCount > 3) {
+        this._markers[markerCount - 2].off('dblclick', this._finishShape, this);
+      }
+    }
+  };
+
+  drawMap.on(L.Draw.Event.DRAWSTART, () => {
+    drawControlsEl.hidden = false;
+    if (drawMap.doubleClickZoom) drawMap.doubleClickZoom.disable();
+    drawStatusEl.textContent =
+      'Click the map to add corners, then press Finish polygon.';
+    updateDrawControlButtons();
+  });
+
+  drawMap.on(L.Draw.Event.DRAWVERTEX, updateDrawControlButtons);
+
+  drawMap.on(L.Draw.Event.DRAWSTOP, () => {
+    drawControlsEl.hidden = true;
+    if (drawMap.doubleClickZoom) drawMap.doubleClickZoom.enable();
+  });
+
   drawMap.on(L.Draw.Event.CREATED, async (e) => {
     drawnItems.clearLayers();
     drawnItems.addLayer(e.layer);
     const polygonLatLngs = e.layer.getLatLngs()[0];
+    // A double-tap can add the same corner twice; keep one copy of each
+    // consecutive duplicate so it never reaches the polygon query.
+    const uniqueLatLngs = polygonLatLngs.filter(
+      (latLng, index) =>
+        index === 0 ||
+        latLng.lat.toFixed(6) !== polygonLatLngs[index - 1].lat.toFixed(6) ||
+        latLng.lng.toFixed(6) !== polygonLatLngs[index - 1].lng.toFixed(6),
+    );
     // Strip the closing duplicate vertex that Leaflet adds
-    const last = polygonLatLngs[polygonLatLngs.length - 1];
+    const last = uniqueLatLngs[uniqueLatLngs.length - 1];
     const vertices =
-      polygonLatLngs.length > 1 &&
-      polygonLatLngs[0].lat === last.lat &&
-      polygonLatLngs[0].lng === last.lng
-        ? polygonLatLngs.slice(0, -1)
-        : polygonLatLngs;
+      uniqueLatLngs.length > 1 &&
+      uniqueLatLngs[0].lat === last.lat &&
+      uniqueLatLngs[0].lng === last.lng
+        ? uniqueLatLngs.slice(0, -1)
+        : uniqueLatLngs;
     currentMode = 'polygon';
     currentPolygonStr = polygonToString(vertices);
     updateUrlFromState(true);

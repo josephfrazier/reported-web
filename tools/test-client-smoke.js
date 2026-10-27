@@ -281,6 +281,83 @@ const run = async () => {
       },
     ]);
 
+    // ── Submissions map: draw a polygon, finish with the button ──
+    // Finishing must not depend on a double-click landing on the 8x8 last
+    // vertex marker, which Chrome does not deliver reliably on every platform.
+    await mapPage.setViewportSize({ width: 1280, height: 720 });
+    let polygonQuery = null;
+    await loggedInContext.route('**/api/submissions-in-polygon*', route => {
+      polygonQuery = new URL(route.request().url()).searchParams.get('polygon');
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ results: [], capped: false }),
+      });
+    });
+    await mapPage.click('#reset-btn');
+    await mapPage.click('#tab-draw');
+    // initDrawMap schedules invalidateSize() 60ms after the tab switch; let it
+    // settle before the first click or the mousedown misses the draw marker.
+    await mapPage.waitForTimeout(250);
+    await mapPage.waitForSelector('.leaflet-draw-draw-polygon');
+    await mapPage.click('.leaflet-draw-draw-polygon');
+    await mapPage.waitForTimeout(150);
+    const drawBox = await mapPage.locator('#draw-map').boundingBox();
+    const clickMapPoint = async (fx, fy) => {
+      const x = drawBox.x + drawBox.width * fx;
+      const y = drawBox.y + drawBox.height * fy;
+      await mapPage.mouse.move(x, y);
+      await mapPage.waitForTimeout(60);
+      await mapPage.mouse.down();
+      await mapPage.waitForTimeout(60);
+      await mapPage.mouse.up();
+      await mapPage.waitForTimeout(150);
+    };
+    await clickMapPoint(0.25, 0.35);
+    await clickMapPoint(0.5, 0.3);
+    await clickMapPoint(0.6, 0.6);
+    const finishEnabled = await mapPage
+      .locator('#draw-finish-btn')
+      .isEnabled()
+      .catch(() => false);
+    let drawStatus = null;
+    if (finishEnabled) {
+      await mapPage.click('#draw-finish-btn');
+      await mapPage.waitForFunction(() =>
+        document
+          .getElementById('draw-status')
+          .textContent.includes('No public submissions'),
+      );
+      drawStatus = await mapPage.locator('#draw-status').textContent();
+    }
+    const drawVertices = polygonQuery ? polygonQuery.split(';') : [];
+    const drawPolygonCheck = {
+      drawStatus,
+      polygonQuery,
+      distinctVertices: new Set(drawVertices).size,
+    };
+
+    failures += runChecks([
+      {
+        name: 'submissions map: Finish button enables at three corners',
+        ok: finishEnabled,
+        detail: JSON.stringify(drawPolygonCheck),
+      },
+      {
+        name: 'submissions map: Finish button closes and queries the polygon',
+        ok:
+          drawStatus !== null &&
+          drawStatus.includes('No public submissions') &&
+          drawVertices.length === 3,
+        detail: JSON.stringify(drawPolygonCheck),
+      },
+      {
+        name: 'submissions map: polygon query has distinct corners',
+        ok: new Set(drawVertices).size === drawVertices.length,
+        detail: JSON.stringify(drawPolygonCheck),
+      },
+    ]);
+
     // ── Submissions map: logged out ──
     const loggedOutContext = await browser.newContext();
     const loggedOutPage = await loggedOutContext.newPage();

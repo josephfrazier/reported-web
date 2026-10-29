@@ -3961,6 +3961,8 @@ class Home extends React.Component {
       batchProgress,
       batchViolations,
       currentViolationIndex,
+      plate,
+      plateProvenance,
     } = this.state;
 
     // The queue is its rows, not the photos behind them. A photo leaves the
@@ -4062,6 +4064,20 @@ class Home extends React.Component {
                   isReading,
                 });
 
+                // The row for the violation in the form follows a plate the
+                // user gave the License/Medallion field -- typed, or picked
+                // off a photo's overlay -- because that plate is what the
+                // report sends: typing over a wrong reading is how the reading
+                // is corrected, and the row should name the car the report now
+                // names. A plate the app filled in is not the user's: one
+                // frame read as two cars gives the row its own plate while the
+                // field names the other, and the row keeps its own name then.
+                // An empty field leaves the row saying what it read.
+                const rowPlateLabel =
+                  isLoaded && plate && plateProvenance !== undefined
+                    ? plate
+                    : plateLabel;
+
                 return (
                   <li
                     key={identity}
@@ -4081,7 +4097,7 @@ class Home extends React.Component {
                       onChange={() => this.toggleBatchMergeSelection(identity)}
                       aria-label={`Merge ${formatBatchViolationTime(
                         violation.createDateMs,
-                      )} — ${plateLabel}`}
+                      )} — ${rowPlateLabel}`}
                     />
                     {/* The description is the control that loads this
                         violation, so the thing you read is the thing you
@@ -4094,7 +4110,7 @@ class Home extends React.Component {
                       onClick={() => this.selectBatchViolation(index)}
                     >
                       {formatBatchViolationTime(violation.createDateMs)} —{' '}
-                      {plateLabel} ({violation.photos.length} photo
+                      {rowPlateLabel} ({violation.photos.length} photo
                       {violation.photos.length === 1 ? '' : 's'})
                       {flags.length > 0 && ` — ${flags.join(', ')}`}
                       {/* Only beside a plate. A row with no plate already
@@ -4115,7 +4131,7 @@ class Home extends React.Component {
                     <RemoveXButton
                       label={`Delete ${formatBatchViolationTime(
                         violation.createDateMs,
-                      )} — ${plateLabel}`}
+                      )} — ${rowPlateLabel}`}
                       // The row is a flex line, so this pushes the X to the
                       // far end of it. It takes no background of its own
                       // either, so the highlight of the loaded row runs behind

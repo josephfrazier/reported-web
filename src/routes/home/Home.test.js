@@ -3790,6 +3790,60 @@ describe('Home', () => {
       cleanup();
     });
 
+    // The License/Medallion field is what the report sends, so the row of the
+    // violation in the form follows it: a plate typed over a wrong reading is
+    // the plate the report will name, and the row says so. The rows that are
+    // not in the form keep their own plates, because the field says nothing
+    // about them.
+    test('follows the License/Medallion field in the row of the loaded violation', async () => {
+      const photos = [
+        jpeg({ name: 'a.jpg', size: 4 }),
+        jpeg({ name: 'b.jpg', size: 5 }),
+        jpeg({ name: 'c.jpg', size: 6 }),
+        jpeg({ name: 'd.jpg', size: 7 }),
+      ];
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, tree, cleanup } = await renderBatchWithFiles(photos);
+
+      // The first violation is the one the batch opened.
+      expect(renderedText(tree.toJSON())).toContain('T696817C (2 photos)');
+
+      // Type a plate over the one the read found.
+      const input = createFakeInput({ value: 'NEW123', caret: 6 });
+      renderer.act(() => {
+        tree.root.findByProps({ name: 'plate' }).props.onChange({
+          target: input,
+        });
+      });
+      reRenderControlledInput(input, homeRef.current.state.plate);
+
+      const text = renderedText(tree.toJSON());
+      expect(text).toContain('NEW123 (2 photos)');
+      // The plate read is still in the photo overlays; what changed is the row.
+      expect(text).not.toContain('T696817C (2 photos)');
+      // The other rows are not in the form, so they keep their own plates.
+      expect(text).toContain('LDA8765 (1 photo)');
+      expect(text).toContain('K73JAU (1 photo)');
+
+      // Clearing the field leaves the row saying what it read.
+      renderer.act(() => {
+        tree.root.findByProps({ name: 'plate' }).props.onChange({
+          target: createFakeInput({ value: '', caret: 0 }),
+        });
+      });
+      expect(renderedText(tree.toJSON())).toContain('T696817C (2 photos)');
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
     test('asks for a rate-limited plate read to be retried', async () => {
       const photos = [jpeg({ name: 'a.jpg', size: 4 })];
 

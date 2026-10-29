@@ -370,6 +370,45 @@ function licenseStateForPlate({ photos, plate }) {
   }
 }
 
+// Where a row's plate was seen: the first photo with a result that reads it,
+// the box that result put it in, and the pixel size the box is measured in.
+// The queue draws this crop in place of the plate's text.
+//
+// The plate is matched the way the vote matches it -- the result's own plate
+// first, then the candidates that fold OCR variants together -- and the box is
+// measured in the uploaded frame, which is what `uploadWidth`/`uploadHeight`
+// carry (see `normalizedCenterDistance`).
+export function plateCropFor({ photos, plate }) {
+  if (!plate) {
+    return null;
+  }
+
+  const wanted = plate.toUpperCase();
+
+  for (const photo of photos) {
+    const plateResults = photo.plateResults || {};
+    const results = plateResults.results || [];
+    const result =
+      results.find(r => r.plate?.toUpperCase() === wanted) ||
+      results.find(r => candidatePlateStrings(r).includes(wanted));
+    const { box } = result || {};
+    const width =
+      photo.uploadWidth || plateResults.uploadWidth || plateResults.image_width;
+    const height =
+      photo.uploadHeight ||
+      plateResults.uploadHeight ||
+      plateResults.image_height;
+
+    // A box with no area cannot be cut out, and the crop's own arithmetic
+    // divides by its sides.
+    if (box && box.xmax > box.xmin && box.ymax > box.ymin && width && height) {
+      return { photo, box, width, height };
+    }
+  }
+
+  return null;
+}
+
 // Every plate string a photo read, and how far the nearest box it was found in
 // sits from the centre of the frame. A string with no box anywhere maps to
 // `null`, which is what `normalizedCenterDistance` answers when it cannot

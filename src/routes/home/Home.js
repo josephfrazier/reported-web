@@ -60,6 +60,7 @@ import earliestTakenPhoto from '../../earliestTakenPhoto.js';
 import createGeosearchAddressCache from '../../geosearchAddressCache.js';
 import groupAttachmentsByViolation, {
   mergeViolations,
+  plateCropFor,
 } from '../../groupAttachmentsByViolation.js';
 import { isImage, isVideo } from '../../isImage.js';
 import { expandZipFiles } from '../../zipAttachments.js';
@@ -804,6 +805,54 @@ TrashButton.propTypes = {
 
 TrashButton.defaultProps = {
   style: undefined,
+};
+
+// A plate as its photo shows it: the box ALPR found it in, cut out of the
+// picture. The queue shows this in place of the plate's text while the row's
+// plate is the read's own -- a character the read got wrong is easier to see
+// against the picture than in a string of letters.
+//
+// The crop is drawn by scaling the whole photo until the box fills the
+// element, and moving it so the box sits at the corner. The offsets are
+// percentages of the box's own width and height, so the crop is right
+// whatever size the browser gives the element.
+const PlateCrop = ({ file, box, width, height, plate }) => {
+  const cropWidth = box.xmax - box.xmin;
+  const cropHeight = box.ymax - box.ymin;
+
+  return (
+    <span
+      className={homeStyles['plate-crop']}
+      // The crop keeps the box's own shape: the element is its width across
+      // and one line tall, so a wide plate is a wide thumbnail.
+      style={{ width: `${(cropWidth / cropHeight) * 1.3}em` }}
+    >
+      <img
+        src={getBlobUrl(file)}
+        alt={plate}
+        style={{
+          width: `${(width / cropWidth) * 100}%`,
+          height: `${(height / cropHeight) * 100}%`,
+          left: `${(-box.xmin / cropWidth) * 100}%`,
+          top: `${(-box.ymin / cropHeight) * 100}%`,
+        }}
+      />
+    </span>
+  );
+};
+
+PlateCrop.propTypes = {
+  file: PropTypes.object.isRequired,
+  box: PropTypes.shape({
+    xmin: PropTypes.number.isRequired,
+    ymin: PropTypes.number.isRequired,
+    xmax: PropTypes.number.isRequired,
+    ymax: PropTypes.number.isRequired,
+  }).isRequired,
+  // The uploaded frame's size, which the box is measured in.
+  width: PropTypes.number.isRequired,
+  height: PropTypes.number.isRequired,
+  plate: PropTypes.string.isRequired,
 };
 
 // The X that discards a violation from the queue. A row's own control, so it
@@ -4078,6 +4127,23 @@ class Home extends React.Component {
                     ? plate
                     : plateLabel;
 
+                // The crop stands in for the plate's text only while the row
+                // shows the plate its photos gave it. A plate the user typed
+                // or picked is shown as text, because the picture says
+                // something else -- and a row with no box to cut out (a video,
+                // a cached read without one) keeps its text as well.
+                const crop =
+                  rowPlateLabel === plateLabel && violation.plate
+                    ? plateCropFor({
+                        photos: violation.photos,
+                        plate: violation.plate,
+                      })
+                    : null;
+                const cropFile =
+                  crop && isImage({ ext: fileExtension(crop.photo.name) })
+                    ? crop.photo.file
+                    : null;
+
                 return (
                   <li
                     key={identity}
@@ -4110,7 +4176,18 @@ class Home extends React.Component {
                       onClick={() => this.selectBatchViolation(index)}
                     >
                       {formatBatchViolationTime(violation.createDateMs)} —{' '}
-                      {rowPlateLabel} ({violation.photos.length} photo
+                      {cropFile ? (
+                        <PlateCrop
+                          file={cropFile}
+                          box={crop.box}
+                          width={crop.width}
+                          height={crop.height}
+                          plate={plateLabel}
+                        />
+                      ) : (
+                        rowPlateLabel
+                      )}{' '}
+                      ({violation.photos.length} photo
                       {violation.photos.length === 1 ? '' : 's'})
                       {flags.length > 0 && ` — ${flags.join(', ')}`}
                       {/* Only beside a plate. A row with no plate already

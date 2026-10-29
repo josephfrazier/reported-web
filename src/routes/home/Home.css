@@ -478,6 +478,27 @@ input[type='search']::-webkit-search-cancel-button {
 }
 
 /*
+ * A plate crop in a queue row: the box ALPR read the plate in, cut from its
+ * photo. The element is the window onto the crop; the picture inside it is
+ * scaled until the box fills the window and offset so the box sits at the
+ * corner. Its width comes from the box's own shape (set inline), so a wide
+ * plate makes a wide thumbnail.
+ */
+.plate-crop {
+  position: relative;
+  display: inline-block;
+  height: 1.3em;
+  overflow: hidden;
+  vertical-align: middle;
+  border-radius: 2px;
+}
+
+.plate-crop img {
+  position: absolute;
+  max-width: none;
+}
+
+/*
  * The note on a row whose photos are still being read, saying the row can
  * still divide.
  *

@@ -3561,14 +3561,30 @@ describe('Home', () => {
           }),
         // Load a violation the way the queue does: click the row's own text.
         // The description is the control, and the Delete and merge buttons are
-        // separate buttons that do not carry the plate.
-        clickQueueLoad: plate =>
+        // separate buttons that do not carry the plate. A row whose plate is
+        // the read's own shows a crop of the photo in place of the text, so
+        // the plate is in that image's alt text there.
+        clickQueueLoad: plate => {
+          const namesPlate = node => {
+            if (node == null) {
+              return false;
+            }
+            if (typeof node === 'string') {
+              return node.includes(plate);
+            }
+            if (Array.isArray(node)) {
+              return node.some(namesPlate);
+            }
+            return node.props?.alt === plate || namesPlate(node.children);
+          };
+
           renderer.act(() => {
             tree.root
               .findAllByType('button')
-              .find(({ children }) => children.join('').includes(plate))
+              .find(({ children }) => namesPlate(children))
               .props.onClick();
-          }),
+          });
+        },
         // Press the X on the queue row whose description carries `plate`. The
         // control shows an emoji rather than a word, so it is found by the
         // label it announces.
@@ -3811,8 +3827,22 @@ describe('Home', () => {
 
       const { homeRef, tree, cleanup } = await renderBatchWithFiles(photos);
 
-      // The first violation is the one the batch opened.
-      expect(renderedText(tree.toJSON())).toContain('T696817C (2 photos)');
+      // A row showing the plate its photos gave it shows the plate itself, cut
+      // from the picture, in place of the text. The first violation is the one
+      // the batch opened.
+      const cropFor = plate =>
+        tree.root.findAllByType('img').find(({ props }) => props.alt === plate);
+
+      expect(cropFor('T696817C')).toBeDefined();
+      // The frame is 1000x1000 and the box 100x100 at 400,400: the picture is
+      // scaled ten times and moved left and up by four crops.
+      expect(cropFor('T696817C').props.style).toMatchObject({
+        width: '1000%',
+        height: '1000%',
+        left: '-400%',
+        top: '-400%',
+      });
+      expect(renderedText(tree.toJSON())).not.toContain('T696817C (2 photos)');
 
       // Type a plate over the one the read found.
       const input = createFakeInput({ value: 'NEW123', caret: 6 });
@@ -3825,19 +3855,20 @@ describe('Home', () => {
 
       const text = renderedText(tree.toJSON());
       expect(text).toContain('NEW123 (2 photos)');
-      // The plate read is still in the photo overlays; what changed is the row.
-      expect(text).not.toContain('T696817C (2 photos)');
-      // The other rows are not in the form, so they keep their own plates.
-      expect(text).toContain('LDA8765 (1 photo)');
-      expect(text).toContain('K73JAU (1 photo)');
+      // The picture says T696817C, so the row shows the typed plate as text.
+      expect(cropFor('T696817C')).toBeUndefined();
+      // The other rows are not in the form, so they keep the crops of their
+      // own plates.
+      expect(cropFor('LDA8765')).toBeDefined();
+      expect(cropFor('K73JAU')).toBeDefined();
 
-      // Clearing the field leaves the row saying what it read.
+      // Clearing the field leaves the row showing what it read.
       renderer.act(() => {
         tree.root.findByProps({ name: 'plate' }).props.onChange({
           target: createFakeInput({ value: '', caret: 0 }),
         });
       });
-      expect(renderedText(tree.toJSON())).toContain('T696817C (2 photos)');
+      expect(cropFor('T696817C')).toBeDefined();
 
       exifr.gps.mockReset();
       exifr.parse.mockReset();
@@ -4409,9 +4440,13 @@ describe('Home', () => {
         await new Promise(resolve => setTimeout(resolve, 150));
       });
 
-      const reading = renderedText(tree.toJSON());
-      expect(reading).toContain('T696817C (2 photos)');
-      expect(reading).toContain('may split');
+      // The row has a plate to show -- the crop of it -- and still says so.
+      expect(
+        tree.root
+          .findAllByType('img')
+          .some(({ props }) => props.alt === 'T696817C'),
+      ).toBe(true);
+      expect(renderedText(tree.toJSON())).toContain('may split');
 
       await renderer.act(async () => {
         await adding;

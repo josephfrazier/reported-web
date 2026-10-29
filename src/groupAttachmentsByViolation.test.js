@@ -1,6 +1,7 @@
 import groupAttachmentsByViolation, {
   mergeViolations,
   normalizedCenterDistance,
+  plateCropFor,
 } from './groupAttachmentsByViolation.js';
 
 const METERS_PER_DEGREE_LATITUDE = 111320;
@@ -207,6 +208,98 @@ describe('normalizedCenterDistance', () => {
     expect(normalizedCenterDistance(undefined, 1000, 1000)).toBeNull();
     expect(normalizedCenterDistance(CORNER_BOX, undefined, 1000)).toBeNull();
     expect(normalizedCenterDistance(CORNER_BOX, 1000, undefined)).toBeNull();
+  });
+});
+
+describe('plateCropFor', () => {
+  // A photo as the batch builds it, with the response's size unless the
+  // caller gives the photo one of its own.
+  const cropPhoto = (results, { response = {}, ...photo } = {}) => ({
+    file: { name: 'frame.jpg', lastModified: 0 },
+    name: 'frame.jpg',
+    plateResults: alprResponse({ results, ...response }),
+    ...photo,
+  });
+
+  test('finds the box of a plate another result spelled differently', () => {
+    const photo = cropPhoto([
+      alprResult({ plate: 'lda8765', box: CORNER_BOX }),
+      // The read spelled the medallion as an OCR variant; the plate the row
+      // votes for is the candidate it folds into.
+      alprResult({
+        plate: 't6968i7c',
+        candidates: [
+          { plate: 't6968i7c', score: 1 },
+          { plate: 't696817c', score: 0.6 },
+        ],
+        box: CENTRED_BOX,
+      }),
+    ]);
+
+    expect(plateCropFor({ photos: [photo], plate: 'T696817C' })).toEqual({
+      photo,
+      box: CENTRED_BOX,
+      width: 1919,
+      height: 2560,
+    });
+  });
+
+  test('takes the box from the first photo that has one', () => {
+    const unread = cropPhoto([]);
+    const first = cropPhoto([
+      alprResult({ plate: 'lda8765', box: CORNER_BOX }),
+    ]);
+    const second = cropPhoto([
+      alprResult({ plate: 'lda8765', box: CENTRED_BOX }),
+    ]);
+
+    const crop = plateCropFor({
+      photos: [unread, first, second],
+      plate: 'LDA8765',
+    });
+
+    expect(crop.photo).toBe(first);
+    expect(crop.box).toBe(CORNER_BOX);
+  });
+
+  test('measures the box in the photo size the read uploaded', () => {
+    const photo = cropPhoto(
+      [alprResult({ plate: 'lda8765', box: CORNER_BOX })],
+      { uploadWidth: 2048, uploadHeight: 2048 },
+    );
+
+    const crop = plateCropFor({ photos: [photo], plate: 'LDA8765' });
+
+    expect(crop.width).toBe(2048);
+    expect(crop.height).toBe(2048);
+  });
+
+  test('answers nothing without a plate, a box, or a frame size', () => {
+    const photo = cropPhoto([
+      alprResult({ plate: 'lda8765', box: CORNER_BOX }),
+    ]);
+
+    expect(plateCropFor({ photos: [photo], plate: '' })).toBeNull();
+    expect(plateCropFor({ photos: [photo], plate: 'AAA111' })).toBeNull();
+
+    const withoutBox = cropPhoto([alprResult({ plate: 'lda8765' })]);
+    expect(plateCropFor({ photos: [withoutBox], plate: 'LDA8765' })).toBeNull();
+
+    const flatBox = cropPhoto([
+      alprResult({
+        plate: 'lda8765',
+        box: { xmin: 10, ymin: 10, xmax: 10, ymax: 10 },
+      }),
+    ]);
+    expect(plateCropFor({ photos: [flatBox], plate: 'LDA8765' })).toBeNull();
+
+    const withoutSize = cropPhoto(
+      [alprResult({ plate: 'lda8765', box: CORNER_BOX })],
+      { response: { uploadWidth: undefined, uploadHeight: undefined } },
+    );
+    expect(
+      plateCropFor({ photos: [withoutSize], plate: 'LDA8765' }),
+    ).toBeNull();
   });
 });
 

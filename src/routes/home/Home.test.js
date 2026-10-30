@@ -821,7 +821,13 @@ describe('Home', () => {
       'XYZ789 (NJ)',
     );
 
-    // Clicking another overlay moves the highlight to that plate.
+    // Clicking another overlay moves the highlight to that plate, and puts the
+    // caret in the field, where the plate can be corrected or the report
+    // filed with Enter. The label was already scrolled into view, so the
+    // focus must not scroll.
+    const focus = jest.fn();
+    homeRef.current.focusPlateField = focus;
+
     renderer.act(() => {
       overlayFor('XYZ789').props.onClick();
     });
@@ -830,6 +836,7 @@ describe('Home', () => {
     expect(overlayFor('XYZ789').props.className).toBe(
       'plate-overlay plate-overlay-selected',
     );
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
 
     tree.unmount();
     global.URL.createObjectURL = originalCreateObjectURL;

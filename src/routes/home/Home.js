@@ -1701,6 +1701,11 @@ class Home extends React.Component {
               block: 'start',
               behavior: 'smooth',
             });
+            // The plate is in the field now, and the field is where the report
+            // is confirmed: put the caret there, so the plate can be corrected
+            // or the report filed with Enter. The scroll above brings the
+            // field into view, so the focus must not scroll on its own.
+            this.focusPlateField({ preventScroll: true });
           }}
         >
           <span className={homeStyles['plate-overlay-tooltip']}>{tooltip}</span>
@@ -3474,14 +3479,16 @@ class Home extends React.Component {
     // render that puts the field back, because filing a report empties the
     // form, and an empty form has no plate field to focus.
     if (next) {
-      requestAnimationFrame(this.focusPlateField);
+      requestAnimationFrame(() => this.focusPlateField());
     }
   };
 
   // Put the caret in the License/Medallion field. A ref rather than a query:
-  // the field is the one the form renders, and there is only ever one.
-  focusPlateField = () => {
-    this.plateRef.current?.focus?.();
+  // the field is the one the form renders, and there is only ever one. A
+  // caller that has already scrolled the field into view asks for
+  // `preventScroll`, so the focus does not drag the page somewhere else.
+  focusPlateField = ({ preventScroll = false } = {}) => {
+    this.plateRef.current?.focus?.({ preventScroll });
   };
 
   // Attach or detach one of a loaded violation's photos. A group of more than

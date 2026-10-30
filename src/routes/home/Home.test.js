@@ -4739,6 +4739,68 @@ describe('Home', () => {
       cleanup();
     });
 
+    // A report that leaves photos behind makes a new violation of them, and
+    // that violation sits where the report was in capture order -- before the
+    // violations photographed after it. It is the next one to open: walking
+    // the queue in that order is how the user knows no photo was skipped.
+    test('opens the violation a submit leaves behind before the one after it', async () => {
+      const photos = [
+        jpeg({ name: 'a.jpg', size: 4 }),
+        jpeg({ name: 'b.jpg', size: 5 }),
+        jpeg({ name: 'c.jpg', size: 6 }),
+        jpeg({ name: 'd.jpg', size: 7 }),
+      ];
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, toggleAttachment, submit, cleanup } =
+        await renderBatchWithFiles(photos);
+
+      // The opened violation holds two photos of the first car; the report
+      // takes one of them and leaves the other in the batch.
+      expect(
+        homeRef.current.state.batchViolations.map(violation => [
+          violation.plate,
+          violation.photos.length,
+        ]),
+      ).toEqual([
+        ['T696817C', 2],
+        ['LDA8765', 1],
+        ['K73JAU', 1],
+      ]);
+      toggleAttachment('b.jpg', false);
+
+      await submit();
+      // Publishing the photos the report left behind is a pass of its own.
+      await renderer.act(async () => {
+        for (let i = 0; i < 3; i += 1) {
+          // eslint-disable-next-line no-await-in-loop -- one round per pending promise chain.
+          await new Promise(resolve => setImmediate(resolve));
+        }
+      });
+
+      const { batchViolations, currentViolationIndex, attachmentData } =
+        homeRef.current.state;
+
+      // The photo left behind is a violation of its own, and first in the
+      // queue: it was shot before the two cars that follow.
+      expect(
+        batchViolations.map(violation =>
+          violation.photos.map(photo => photo.name),
+        ),
+      ).toEqual([['b.jpg'], ['c.jpg'], ['d.jpg']]);
+      expect(currentViolationIndex).toBe(0);
+      expect(attachmentData.map(file => file.name)).toEqual(['b.jpg']);
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
     test('removes the violation when the X takes its last photo', async () => {
       const photos = ['p1', 'p2'].map((name, index) => {
         const file = new File(['picture'], `${name}.jpg`, {

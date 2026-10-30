@@ -2813,7 +2813,11 @@ class Home extends React.Component {
   //
   // Each violation is geocoded before it is published, so loading one finds
   // the batch's lookup in the memo instead of starting its own.
-  publishBatchViolations = async () => {
+  // `afterPublish` runs once the rows are in state, whether or not any were
+  // added: a caller that opens a row after a submit has to know the queue is
+  // final, and one that was waiting for a row that never came still has a row
+  // to open.
+  publishBatchViolations = async ({ afterPublish = null } = {}) => {
     const { batchPhotos, batchViolations } = this.state;
 
     const publishedPhotos = new Set(
@@ -2826,6 +2830,9 @@ class Home extends React.Component {
     );
 
     if (unpublished.length === 0) {
+      if (afterPublish) {
+        afterPublish();
+      }
       return;
     }
 
@@ -2841,39 +2848,47 @@ class Home extends React.Component {
       await this.geocodeBatchViolation(violation);
     }
 
-    this.setState(state => {
-      // By identity rather than by first photo: one frame can read as two cars,
-      // and the row of each of them opens with that same frame.
-      const published = new Set(
-        state.batchViolations.map(batchViolationIdentity),
-      );
-      const added = flagged.filter(
-        violation => !published.has(batchViolationIdentity(violation)),
-      );
+    this.setState(
+      state => {
+        // By identity rather than by first photo: one frame can read as two cars,
+        // and the row of each of them opens with that same frame.
+        const published = new Set(
+          state.batchViolations.map(batchViolationIdentity),
+        );
+        const added = flagged.filter(
+          violation => !published.has(batchViolationIdentity(violation)),
+        );
 
-      if (added.length === 0) {
-        return null;
-      }
+        if (added.length === 0) {
+          return null;
+        }
 
-      // Oldest first, the way the batch was shot: the queue is walked in
-      // that order. Appending instead would list violations in whatever
-      // order they were published in.
-      const oldestFirst = state.batchViolations
-        .concat(added)
-        .sort((a, b) => a.createDateMs - b.createDateMs);
+        // Oldest first, the way the batch was shot: the queue is walked in
+        // that order. Appending instead would list violations in whatever
+        // order they were published in.
+        const oldestFirst = state.batchViolations
+          .concat(added)
+          .sort((a, b) => a.createDateMs - b.createDateMs);
 
-      // Sorting moves rows, so an index no longer identifies the loaded
-      // violation. Follow it by identity instead: these are the same objects,
-      // only reordered.
-      const loaded = state.batchViolations[state.currentViolationIndex];
+        // Sorting moves rows, so an index no longer identifies the loaded
+        // violation. Follow it by identity instead: these are the same objects,
+        // only reordered.
+        const loaded = state.batchViolations[state.currentViolationIndex];
 
-      return {
-        batchViolations: oldestFirst,
-        currentViolationIndex: loaded
-          ? oldestFirst.indexOf(loaded)
-          : state.currentViolationIndex,
-      };
-    }, this.loadFirstViolationIfNoneLoaded);
+        return {
+          batchViolations: oldestFirst,
+          currentViolationIndex: loaded
+            ? oldestFirst.indexOf(loaded)
+            : state.currentViolationIndex,
+        };
+      },
+      () => {
+        this.loadFirstViolationIfNoneLoaded();
+        if (afterPublish) {
+          afterPublish();
+        }
+      },
+    );
   };
 
   // One photo's date and place, from its own metadata. Local work, with no
@@ -3387,6 +3402,27 @@ class Home extends React.Component {
     // `withoutDismissedRows`.
     const reported = batchViolations[currentViolationIndex];
 
+    // What the report leaves behind: the photos of its row that it does not
+    // carry. They are published as a violation of their own, and that one
+    // comes before the rows shot after it -- it is where the queue was. The
+    // user walks the queue in capture order, so this is the row to open; the
+    // one after it would leave the photos it holds to be found on the way
+    // back.
+    const leftBehind = reported
+      ? reported.photos
+          .filter(photo => !submitted.has(photo.file))
+          .map(photo => photo.file)
+      : [];
+
+    // The row that takes the report's place when nothing is left behind. Kept
+    // as the row itself rather than its index: publishing the leftovers
+    // re-sorts the queue, and an index stops naming that row.
+    const following =
+      remainingViolations[
+        Math.min(currentViolationIndex, remainingViolations.length - 1)
+      ];
+    const knownRows = new Set(remainingViolations.map(batchViolationIdentity));
+
     if (reported) {
       this.dismissedRows.add(batchViolationIdentity(reported));
     }
@@ -3400,13 +3436,28 @@ class Home extends React.Component {
         // Group the leftovers now. Publishing otherwise waits for the user to
         // add another photo, which would leave a violation this one produced
         // invisible until then -- and nothing on screen would say it was there.
-        this.publishBatchViolations();
-
-        this.loadBatchViolation(
-          Math.min(currentViolationIndex, remainingViolations.length - 1),
-        );
+        this.publishBatchViolations({
+          // Only after the leftover row exists: it is what gets opened. A row
+          // that already held one of these photos -- one frame, several cars
+          // -- is not new, and the queue moves on past it as it always did.
+          afterPublish: () =>
+            this.openAfterSubmit({ leftBehind, following, knownRows }),
+        });
       },
     );
+  };
+
+  // The violation to put in the form once a report is filed: the row made of
+  // the photos it left behind, when there is one, and otherwise the row that
+  // follows the report in the queue.
+  openAfterSubmit = ({ leftBehind, following, knownRows }) => {
+    const { batchViolations } = this.state;
+    const leftoverRow = rowHoldingFile(batchViolations, leftBehind[0]);
+    const leftoverRowIsNew =
+      leftoverRow && !knownRows.has(batchViolationIdentity(leftoverRow));
+    const next = leftoverRowIsNew ? leftoverRow : following;
+
+    this.loadBatchViolation(batchViolations.indexOf(next));
   };
 
   // Attach or detach one of a loaded violation's photos. A group of more than

@@ -1858,7 +1858,7 @@ exports[`Home renders submission form and Previous Submissions when logged in wi
                       list="plateSuggestions"
                       name="plate"
                       onChange={[Function]}
-                      required={true}
+                      placeholder="UNKNOWN"
                       type="search"
                       value=""
                     />
@@ -2718,7 +2718,7 @@ exports[`Home renders with allPlateResults entry missing plate and photos 1`] = 
                       list="plateSuggestions"
                       name="plate"
                       onChange={[Function]}
-                      required={true}
+                      placeholder="UNKNOWN"
                       type="search"
                       value=""
                     />
@@ -3578,7 +3578,7 @@ exports[`Home renders with undefined allPlateResults and photos 1`] = `
                       list="plateSuggestions"
                       name="plate"
                       onChange={[Function]}
-                      required={true}
+                      placeholder="UNKNOWN"
                       type="search"
                       value=""
                     />

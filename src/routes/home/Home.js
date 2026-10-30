@@ -743,6 +743,13 @@ const isMissingAttachmentError = error =>
 const TOO_MANY_ATTACHMENTS_MESSAGE =
   'A report can include at most 3 pictures and 3 videos. Remove the extra ones to submit it.';
 
+// What a report without a plate files as. The plate can be out of the picture,
+// or unreadable in it, and that is no reason to hold the report back -- but the
+// server requires a value, so an empty License/Medallion field is sent as this
+// one. The field's placeholder says so, and the field no longer insists on a
+// value of its own.
+const UNKNOWN_PLATE = 'UNKNOWN';
+
 // Whether the report holds more of one kind of photo than a report can carry.
 //
 // A report takes three pictures and three videos, which is what
@@ -5058,6 +5065,10 @@ class Home extends React.Component {
                       // ways of sending those are what differ between attempts.
                       const reportFields = {
                         ...this.getPerSubmissionState(),
+                        // The server requires a plate, and the field may be
+                        // empty: the report files as UNKNOWN, which is what
+                        // the field's placeholder promises.
+                        plate: this.state.plate || UNKNOWN_PLATE,
                         CreateDate: new Date(
                           this.state.CreateDate,
                         ).toISOString(),
@@ -5291,14 +5302,16 @@ class Home extends React.Component {
                             >
                               <div style={{ minWidth: 0, flex: 1 }}>
                                 <input
-                                  required
                                   type="search"
                                   value={this.state.plate}
                                   name="plate"
                                   list="plateSuggestions"
                                   autoComplete="off"
                                   ref={this.plateRef}
-                                  placeholder={this.state.allPlateData?.results?.[0]?.plate?.toUpperCase()}
+                                  // A plate is not required: an empty field
+                                  // files as UNKNOWN, and the placeholder says
+                                  // what that value is.
+                                  placeholder={UNKNOWN_PLATE}
                                   onChange={event => {
                                     const plate = upperCaseInputValueInPlace(
                                       event.target,

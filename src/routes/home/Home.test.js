@@ -2699,6 +2699,18 @@ describe('Home', () => {
     cleanup();
   });
 
+  // A plate can be out of the picture or unreadable in it, and the report
+  // still counts. The field says what an empty one files as, and no longer
+  // stops the form from submitting when it is empty.
+  test('hints that an empty plate files as UNKNOWN', () => {
+    const { plateInput, cleanup } = renderPlateInput();
+
+    expect(plateInput.props.placeholder).toBe('UNKNOWN');
+    expect(plateInput.props.required).toBeUndefined();
+
+    cleanup();
+  });
+
   test('tolerates inputs that do not report a selection', () => {
     const { homeRef, plateInput, cleanup } = renderPlateInput();
 
@@ -3880,6 +3892,42 @@ describe('Home', () => {
         });
       });
       expect(cropFor('T696817C')).toBeDefined();
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    // The field can be emptied, and the report still goes: the server requires
+    // a plate, so an empty one files as UNKNOWN. That is what the placeholder
+    // promises, and this is the half of the promise the server sees.
+    test('files a report whose plate was left empty as UNKNOWN', async () => {
+      const photos = [
+        jpeg({ name: 'a.jpg', size: 4 }),
+        jpeg({ name: 'b.jpg', size: 5 }),
+      ];
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, tree, submit, axiosPost, cleanup } =
+        await renderBatchWithFiles(photos);
+
+      // Clear the plate the read filled in.
+      renderer.act(() => {
+        tree.root.findByProps({ name: 'plate' }).props.onChange({
+          target: createFakeInput({ value: '', caret: 0 }),
+        });
+      });
+      expect(homeRef.current.state.plate).toBe('');
+
+      await submit();
+
+      const [, body] = axiosPost.mock.calls.find(([url]) => url === '/submit');
+      expect(body.get('plate')).toBe('UNKNOWN');
 
       exifr.gps.mockReset();
       exifr.parse.mockReset();

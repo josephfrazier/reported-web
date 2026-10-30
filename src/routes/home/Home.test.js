@@ -3145,6 +3145,48 @@ describe('Home', () => {
       cleanup();
     });
 
+    // The server requires a plate, and the field may be empty: the report
+    // still goes, and files as UNKNOWN. That is what the field's placeholder
+    // promises, and this is the half of the promise the server sees.
+    test('files a report whose plate was left empty as UNKNOWN', async () => {
+      const photo = new File(['photo'], 'photo.jpg', { type: 'image/jpeg' });
+      const { homeRef, axiosPost, submit, cleanup } = await renderWithFiles({
+        files: [photo],
+      });
+
+      expect(homeRef.current.state.plate).toBe('');
+
+      await submit();
+
+      const [, submitBody] = axiosPost.mock.calls.find(
+        ([url]) => url === '/submit',
+      );
+      expect(submitBody.get('plate')).toBe('UNKNOWN');
+
+      cleanup();
+    });
+
+    // The other side of it: a plate in the field is the plate that goes.
+    test('sends the plate that is in the field', async () => {
+      const photo = new File(['photo'], 'photo.jpg', { type: 'image/jpeg' });
+      const { homeRef, axiosPost, submit, cleanup } = await renderWithFiles({
+        files: [photo],
+      });
+
+      renderer.act(() => {
+        homeRef.current.setState({ plate: 'ABC123' });
+      });
+
+      await submit();
+
+      const [, submitBody] = axiosPost.mock.calls.find(
+        ([url]) => url === '/submit',
+      );
+      expect(submitBody.get('plate')).toBe('ABC123');
+
+      cleanup();
+    });
+
     test('caches the new submission so it survives into the next page load', async () => {
       localStorage.clear();
       const photo = new File(['photo'], 'photo.jpg', { type: 'image/jpeg' });

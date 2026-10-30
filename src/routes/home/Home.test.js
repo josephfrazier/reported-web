@@ -4904,6 +4904,42 @@ describe('Home', () => {
       cleanup();
     });
 
+    // A batch is walked from the keyboard: filing a report opens the next
+    // violation and puts the caret in its plate field, where Enter submits the
+    // report (the field is inside the form).
+    test('puts the caret in the plate field for the violation a submit opens', async () => {
+      const photos = [
+        jpeg({ name: 'a.jpg', size: 4 }),
+        jpeg({ name: 'b.jpg', size: 5 }),
+        jpeg({ name: 'c.jpg', size: 6 }),
+      ];
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, submit, cleanup } = await renderBatchWithFiles(photos);
+
+      // The field is a host element, and the test renderer gives refs to
+      // those nothing to focus, so the call is what is watched.
+      const focus = jest.fn();
+      homeRef.current.focusPlateField = focus;
+
+      await submit();
+      // The caret waits for the frame after the next violation renders.
+      await renderer.act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 50));
+      });
+
+      expect(focus).toHaveBeenCalledTimes(1);
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
     test('removes the violation when the X takes its last photo', async () => {
       const photos = ['p1', 'p2'].map((name, index) => {
         const file = new File(['picture'], `${name}.jpg`, {

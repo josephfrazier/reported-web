@@ -3467,6 +3467,21 @@ class Home extends React.Component {
     const next = leftoverRowIsNew ? leftoverRow : following;
 
     this.loadBatchViolation(batchViolations.indexOf(next));
+
+    // The next violation is in the form now, so put the caret in the plate
+    // field: Enter submits the report from there (the field is inside the
+    // form), and a batch can be walked from the keyboard. It waits for the
+    // render that puts the field back, because filing a report empties the
+    // form, and an empty form has no plate field to focus.
+    if (next) {
+      requestAnimationFrame(this.focusPlateField);
+    }
+  };
+
+  // Put the caret in the License/Medallion field. A ref rather than a query:
+  // the field is the one the form renders, and there is only ever one.
+  focusPlateField = () => {
+    this.plateRef.current?.focus?.();
   };
 
   // Attach or detach one of a loaded violation's photos. A group of more than

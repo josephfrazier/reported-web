@@ -488,6 +488,11 @@ input[type='search']::-webkit-search-cancel-button {
   position: relative;
   display: inline-block;
   height: 1.3em;
+
+  /* The row's plate text comes first, so the crop is held off it. The gap is
+     a margin rather than a space in the markup, which keeps the row's text
+     reading "PLATE (n photos)" for a screen reader and for a test. */
+  margin-left: 0.35em;
   overflow: hidden;
   vertical-align: middle;
   border-radius: 2px;

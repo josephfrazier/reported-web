@@ -816,7 +816,7 @@ TrashButton.defaultProps = {
 // element, and moving it so the box sits at the corner. The offsets are
 // percentages of the box's own width and height, so the crop is right
 // whatever size the browser gives the element.
-const PlateCrop = ({ file, box, width, height, plate }) => {
+const PlateCrop = ({ file, box, width, height }) => {
   const cropWidth = box.xmax - box.xmin;
   const cropHeight = box.ymax - box.ymin;
 
@@ -829,7 +829,10 @@ const PlateCrop = ({ file, box, width, height, plate }) => {
     >
       <img
         src={getBlobUrl(file)}
-        alt={plate}
+        // The row says the plate in its text, so the picture says nothing a
+        // screen reader needs to hear twice.
+        alt=""
+        className={homeStyles['plate-crop-image']}
         style={{
           width: `${(width / cropWidth) * 100}%`,
           height: `${(height / cropHeight) * 100}%`,
@@ -852,7 +855,6 @@ PlateCrop.propTypes = {
   // The uploaded frame's size, which the box is measured in.
   width: PropTypes.number.isRequired,
   height: PropTypes.number.isRequired,
-  plate: PropTypes.string.isRequired,
 };
 
 // The X that discards a violation from the queue. A row's own control, so it
@@ -4227,16 +4229,14 @@ class Home extends React.Component {
                       onClick={() => this.selectBatchViolation(index)}
                     >
                       {formatBatchViolationTime(violation.createDateMs)} —{' '}
-                      {cropFile ? (
+                      {rowPlateLabel}
+                      {cropFile && (
                         <PlateCrop
                           file={cropFile}
                           box={crop.box}
                           width={crop.width}
                           height={crop.height}
-                          plate={plateLabel}
                         />
-                      ) : (
-                        rowPlateLabel
                       )}{' '}
                       ({violation.photos.length} photo
                       {violation.photos.length === 1 ? '' : 's'})

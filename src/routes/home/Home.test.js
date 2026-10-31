@@ -24,6 +24,7 @@ import Modal from 'react-modal';
 import Dropzone from '@josephfrazier/react-dropzone';
 import { MAP } from 'react-google-maps/lib/constants';
 import App from '../../components/App.js';
+import plateReadRetry from '../../plateReadRetry.js';
 import Home, { NycAddressAutocomplete } from './Home.js';
 import boroughBoundariesFeatureCollection from '../../boroughBoundaries.js';
 import {
@@ -39,10 +40,11 @@ jest.mock('react-modal', () =>
 );
 
 // exifr reads the metadata out of real image bytes, which no test here has.
-// Mocked rather than spied on: the imported object's properties are getters,
-// so `jest.spyOn` cannot replace them. A test that wants an extraction to
-// succeed gives these implementations; every other test leaves them
-// returning nothing, which fails an extraction exactly as junk bytes do.
+// Mocked rather than spied on: the imported object's properties are getters
+// under Jest (they are writable when the module is required from Node
+// directly), so `jest.spyOn` cannot replace them. A test that wants an
+// extraction to succeed gives these implementations; every other test leaves
+// them returning nothing, which fails an extraction exactly as junk bytes do.
 jest.mock('exifr/dist/full.umd.js', () => ({
   __esModule: true,
   default: { gps: jest.fn(), parse: jest.fn() },
@@ -322,6 +324,18 @@ function renderPlateInput() {
       global.URL.createObjectURL = originalCreateObjectURL;
     },
   };
+}
+
+// The rendered tree keeps every JSX child as its own entry, so a sentence with
+// interpolations in it is not one string in there: the error message serializes
+// as "Could not look up make/model of ", "ABC123", " in", " ", "ON", ",". Join
+// the text back together before asserting on a sentence, the way a reader sees
+// it.
+function renderedText(node) {
+  if (node == null) return '';
+  if (typeof node === 'string') return node;
+  if (Array.isArray(node)) return node.map(renderedText).join('');
+  return renderedText(node.children);
 }
 
 describe('Home', () => {
@@ -807,7 +821,13 @@ describe('Home', () => {
       'XYZ789 (NJ)',
     );
 
-    // Clicking another overlay moves the highlight to that plate.
+    // Clicking another overlay moves the highlight to that plate, and puts the
+    // caret in the field, where the plate can be corrected or the report
+    // filed with Enter. The label was already scrolled into view, so the
+    // focus must not scroll.
+    const focus = jest.fn();
+    homeRef.current.focusPlateField = focus;
+
     renderer.act(() => {
       overlayFor('XYZ789').props.onClick();
     });
@@ -816,6 +836,7 @@ describe('Home', () => {
     expect(overlayFor('XYZ789').props.className).toBe(
       'plate-overlay plate-overlay-selected',
     );
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
 
     tree.unmount();
     global.URL.createObjectURL = originalCreateObjectURL;
@@ -1165,8 +1186,14 @@ describe('Home', () => {
   };
 
   const dropPhoto = async (homeRef, settle, name) => {
+    const photo = {
+      file: homeRef.current.state.attachmentData.find(
+        file => file.name === name,
+      ),
+      name,
+    };
     await renderer.act(async () => {
-      homeRef.current.removeAttachment(name);
+      homeRef.current.deletePhoto(photo);
     });
     await settle();
   };
@@ -1569,6 +1596,7 @@ describe('Home', () => {
     });
 
     const coordinates = { latitude: 40.7129, longitude: -74.0061 };
+    const elsewhere = { latitude: 40.73, longitude: -74.01 };
     const searches = () =>
       axiosPost.mock.calls.filter(([url]) => url === '/api/geosearch');
 
@@ -1584,6 +1612,16 @@ describe('Home', () => {
     );
     expect(searches()).toHaveLength(1);
 
+    // Somewhere else is a different address, so that lookup still goes out:
+    // the memo answers for coordinates it has seen, not for every pair.
+    renderer.act(() => {
+      homeRef.current.setCoords(elsewhere);
+    });
+    await renderer.act(async () => {
+      jest.advanceTimersByTime(500);
+    });
+    expect(searches()).toHaveLength(2);
+
     // The same coordinates again, as moving the map off a curb and back gives.
     // The address is a function of them alone, so this is answered from what
     // was already looked up rather than asked again.
@@ -1598,7 +1636,7 @@ describe('Home', () => {
     expect(homeRef.current.state.formatted_address).toBe(
       '123 Main St, Manhattan',
     );
-    expect(searches()).toHaveLength(1);
+    expect(searches()).toHaveLength(2);
 
     jest.useRealTimers();
     axiosGet.mockRestore();
@@ -2789,7 +2827,7 @@ describe('Home', () => {
     // extraction pipelines, and adds the given files through the same code
     // path as the file <input>. Returns spies for asserting on the
     // background upload and submit requests.
-    async function renderWithFiles({ files, uploadError }) {
+    async function renderWithFiles({ files, uploadError, submitErrors = [] }) {
       const initialState = {
         email: 'test@example.com',
         password: 'test-password',
@@ -2805,6 +2843,7 @@ describe('Home', () => {
       document.querySelector = jest.fn(() => ({ scrollTo: jest.fn() }));
 
       const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+      let submitCalls = 0;
       const axiosPost = jest
         .spyOn(axios, 'post')
         .mockImplementation((url, body) => {
@@ -2819,6 +2858,15 @@ describe('Home', () => {
             return Promise.resolve({
               data: { id: `uploaded-${body.get('attachmentData').name}` },
             });
+          }
+          if (url === '/submit') {
+            submitCalls += 1;
+            const error = submitErrors[submitCalls - 1];
+            if (error) {
+              const rejection = Promise.reject(error);
+              rejection.catch(() => {});
+              return rejection;
+            }
           }
           return Promise.resolve({
             data: {
@@ -3010,6 +3058,100 @@ describe('Home', () => {
       cleanup();
     });
 
+    // The server holds a pre-uploaded attachment for an hour and loses every
+    // one of them to a restart, so an id the page still holds can name a file
+    // that is no longer there. The page has the bytes, so it sends them.
+    test('sends the files when the server no longer has the attachments it was given', async () => {
+      const photo = new File(['photo'], 'photo.jpg', { type: 'image/jpeg' });
+      const { homeRef, axiosPost, submit, toastError, cleanup } =
+        await renderWithFiles({
+          files: [photo],
+          submitErrors: [
+            {
+              response: {
+                data: {
+                  error: {
+                    message:
+                      'Attachment not found; please re-add your files and try again',
+                  },
+                },
+              },
+            },
+          ],
+        });
+
+      await submit();
+
+      // The failure and the second read of the files are two more turns of the
+      // chain, so let it finish before the tree goes away.
+      await renderer.act(async () => {
+        for (let i = 0; i < 4; i += 1) {
+          // eslint-disable-next-line no-await-in-loop -- one round per pending promise chain.
+          await new Promise(resolve => setImmediate(resolve));
+        }
+      });
+
+      const submitCalls = axiosPost.mock.calls.filter(
+        ([url]) => url === '/submit',
+      );
+      expect(submitCalls).toHaveLength(2);
+
+      // The first attempt is the ids one, and the retry carries the files
+      // instead: the ids are what the server has lost.
+      const [, firstBody] = submitCalls[0];
+      expect(JSON.parse(firstBody.get('attachmentIds'))).toEqual([
+        'uploaded-photo.jpg',
+      ]);
+      expect(firstBody.get('attachmentData[]')).toBeNull();
+
+      const [, secondBody] = submitCalls[1];
+      expect(secondBody.get('attachmentIds')).toBeNull();
+      const submitted = secondBody.get('attachmentData[]');
+      expect(submitted).not.toBe(photo);
+      const submittedBytes = await blobUtil.blobToArrayBuffer(submitted);
+      expect(Buffer.from(submittedBytes)).toEqual(Buffer.from('photo'));
+
+      // The retry succeeded, so nothing was reported to the user and the
+      // report left the form.
+      expect(toastError).not.toHaveBeenCalled();
+      expect(homeRef.current.state.attachmentData).toEqual([]);
+
+      cleanup();
+    });
+
+    test('reports a submit failure that sending the files cannot fix', async () => {
+      const photo = new File(['photo'], 'photo.jpg', { type: 'image/jpeg' });
+      const { axiosPost, submit, toastError, cleanup } = await renderWithFiles({
+        files: [photo],
+        submitErrors: [
+          {
+            response: {
+              data: { error: { message: 'Something else went wrong' } },
+            },
+          },
+        ],
+      });
+
+      await submit();
+
+      await renderer.act(async () => {
+        for (let i = 0; i < 4; i += 1) {
+          // eslint-disable-next-line no-await-in-loop -- one round per pending promise chain.
+          await new Promise(resolve => setImmediate(resolve));
+        }
+      });
+
+      // One attempt: there is nothing to try again with.
+      expect(
+        axiosPost.mock.calls.filter(([url]) => url === '/submit'),
+      ).toHaveLength(1);
+      expect(toastError.mock.calls[0][0]).toBe(
+        'Error: Something else went wrong ',
+      );
+
+      cleanup();
+    });
+
     // The server requires a plate, and the field may be empty: the report
     // still goes, and files as UNKNOWN. That is what the field's placeholder
     // promises, and this is the half of the promise the server sees.
@@ -3174,6 +3316,2714 @@ describe('Home', () => {
     tree.unmount();
     axiosPost.mockRestore();
     consoleError.mockRestore();
+  });
+
+  describe('semi-automatic mode', () => {
+    // A JPEG `size` bytes long. The header is what mime-bytes'
+    // detectFromBuffer() reads to call the file an image, and the length is
+    // what identifies the photo further in: the ALPR request carries the
+    // bytes, not the file name, so the mocked route tells them apart by size.
+    const jpeg = ({ name, size }) =>
+      new File(
+        [
+          new Uint8Array([
+            0xff,
+            0xd8,
+            0xff,
+            0xe0,
+            ...new Array(size - 4).fill(0),
+          ]),
+        ],
+        name,
+        { type: 'image/jpeg' },
+      );
+
+    const plateResult = ({ plate, candidates = [] }) => ({
+      plate,
+      score: 0.9,
+      candidates,
+      box: { xmin: 400, ymin: 400, xmax: 500, ymax: 500 },
+      // The overlay's box is in the pixel space of the uploaded image, so the
+      // frame's own dimensions come back with the results.
+      region: { code: 'us-ny' },
+      vehicle: { box: { xmin: 300, ymin: 300, xmax: 600, ymax: 600 } },
+    });
+
+    // One ALPR response per photo, keyed by its byte length: what it read, and
+    // the size of the frame the box is in. Two photos of one medallion plate
+    // (the candidates are what fold them together), a different car at the same
+    // curb, and one more a minute later.
+    const plateResultsForSize = size => {
+      const resultsBySize = {
+        4: [
+          plateResult({
+            plate: 't696817c',
+            candidates: [{ plate: 't6968i7c', score: 0.4 }],
+          }),
+        ],
+        5: [
+          plateResult({
+            plate: 't6968i7c',
+            candidates: [{ plate: 't696817c', score: 0.6 }],
+          }),
+        ],
+        6: [plateResult({ plate: 'lda8765' })],
+        7: [plateResult({ plate: 'k73jau' })],
+        // A third photo of the first car and a second of the second, so that a
+        // car's photos can have another car's reading land between them.
+        8: [
+          plateResult({
+            plate: 't696817c',
+            candidates: [{ plate: 't6968i7c', score: 0.4 }],
+          }),
+        ],
+        9: [plateResult({ plate: 'lda8765' })],
+        // Two cars in the one frame, read where they are rather than from a
+        // closeup: the frame is the only photo of each of them, and the two
+        // readings sit in the same response.
+        10: [
+          plateResult({ plate: 'aaa111' }),
+          plateResult({ plate: 'bbb222' }),
+        ],
+      };
+
+      return {
+        results: resultsBySize[size],
+        uploadWidth: 1000,
+        uploadHeight: 1000,
+      };
+    };
+
+    // When each photo was shot, keyed by byte length: a second apart, a second
+    // apart again, then a minute later — far enough that the last one groups on
+    // its own.
+    const createDatesBySize = {
+      4: '2024-01-01T12:00:00.000Z',
+      5: '2024-01-01T12:00:01.000Z',
+      6: '2024-01-01T12:00:02.000Z',
+      7: '2024-01-01T12:01:00.000Z',
+      8: '2024-01-01T12:00:03.000Z',
+      9: '2024-01-01T12:00:04.000Z',
+      10: '2024-01-01T12:02:00.000Z',
+    };
+
+    // Renders the form as a logged-in user with semi-automatic mode on, adds
+    // the given files through the same entry point the folder and loose-file
+    // inputs (and the drop and paste handlers) use, and lets the batch pass
+    // finish. Returns the spied axios so the tests can count ALPR and geosearch
+    // requests, and helpers that drive the rendered batch UI.
+    async function renderBatchWithFiles(
+      files,
+      {
+        // Answers a coordinate with its own address. The default mock answers
+        // every coordinate the same way, which cannot show a stale address:
+        // whichever one is on screen looks right.
+        addressAt = () => ({ housenumber: '123', street: 'Main St' }),
+        // Holds an ALPR response back by photo size, so a test can make a
+        // photo finish before one that was started earlier. Three concurrent
+        // requests do that on their own.
+        alprDelayMsBySize = {},
+        // Answers the plate reads with these call numbers (counting from
+        // one) the way a rate limit does: a rejection carrying a 429, which
+        // leaves that photo with no `plateResults` at all. The reads run in
+        // capture order, so call 1 belongs to the earliest photo. Failing
+        // only the batch's calls, and not the later ones, is what makes a
+        // second chance testable.
+        failAlprCalls = [],
+      } = {},
+    ) {
+      const initialState = {
+        email: 'test@example.com',
+        password: 'test-password',
+        loginSuccessful: true,
+      };
+
+      const originalCreateObjectURL = global.URL.createObjectURL;
+      global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+      // The submit success path scrolls to the top of the page; the rendered
+      // tree isn't attached to the jsdom document, so provide a stand-in.
+      const originalQuerySelector = document.querySelector;
+      document.querySelector = jest.fn(() => ({ scrollTo: jest.fn() }));
+
+      const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+      let alprCalls = 0;
+      // When each read was asked for, on a clock the tests do not mock: `Date`
+      // is frozen for this file, and a spacing test needs real elapsed time.
+      const alprCallTimes = [];
+      const axiosPost = jest
+        .spyOn(axios, 'post')
+        .mockImplementation((url, body) => {
+          if (url === '/platerecognizer') {
+            alprCalls += 1;
+            alprCallTimes.push(Number(process.hrtime.bigint()) / 1e6);
+            if (failAlprCalls.includes(alprCalls)) {
+              return Promise.reject(
+                Object.assign(
+                  new Error('Request failed with status code 429'),
+                  { response: { status: 429 } },
+                ),
+              );
+            }
+
+            const { size } = body.get('attachmentFile');
+            const delayMs = alprDelayMsBySize[size] || 0;
+
+            return new Promise(resolve => {
+              setTimeout(
+                () => resolve({ data: plateResultsForSize(size) }),
+                delayMs,
+              );
+            });
+          }
+          if (url === '/api/geosearch') {
+            return Promise.resolve({
+              data: {
+                features: [
+                  {
+                    properties: {
+                      ...addressAt(body),
+                      borough: 'Manhattan',
+                    },
+                  },
+                ],
+              },
+            });
+          }
+          if (url === '/api/uploadAttachment') {
+            return Promise.resolve({
+              data: { id: `uploaded-${body.get('attachmentData').name}` },
+            });
+          }
+          return Promise.resolve({
+            data: {
+              submission: {
+                objectId: 'objectId123',
+                timeofreport: '2020-01-01T00:00:00.000Z',
+                timeofreported: '2020-01-01T00:00:00.000Z',
+              },
+            },
+          });
+        });
+      const toastSuccess = jest
+        .spyOn(toast, 'success')
+        .mockImplementation(() => null);
+      const toastWarn = jest
+        .spyOn(toast, 'warn')
+        .mockImplementation(() => null);
+      const toastError = jest
+        .spyOn(toast, 'error')
+        .mockImplementation(() => null);
+      const consoleError = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
+
+      let tree;
+      const homeRef = React.createRef();
+      renderer.act(() => {
+        tree = renderHome({ initialState, homeRef });
+      });
+      renderer.act(() => {
+        homeRef.current.setState({ isSemiAutomaticMode: true });
+      });
+
+      if (files.length > 0) {
+        await renderer.act(async () => {
+          await homeRef.current.addFilesToBatch(files);
+          // Let the extraction pipeline settle so it doesn't touch state after
+          // the tree is unmounted.
+          await new Promise(resolve => setImmediate(resolve));
+          await new Promise(resolve => setImmediate(resolve));
+        });
+      }
+
+      const findButton = text =>
+        tree.root
+          .findAllByType('button')
+          .find(({ children }) => children.includes(text));
+
+      // A queue row's merge checkbox, found by the plate its label names.
+      const mergeBox = text =>
+        tree.root.findAllByType('input').find(({ props }) => {
+          const label = props['aria-label'];
+          return (
+            typeof label === 'string' &&
+            label.startsWith('Merge ') &&
+            label.includes(text)
+          );
+        });
+
+      return {
+        homeRef,
+        tree,
+        axiosPost,
+        toastSuccess,
+        toastWarn,
+        toastError,
+        platerecognizerCalls: () =>
+          axiosPost.mock.calls.filter(([url]) => url === '/platerecognizer'),
+        // When each read was asked for, in milliseconds since an arbitrary
+        // start, so a test can measure the spacing between them.
+        platerecognizerCallTimes: () => [...alprCallTimes],
+        // Loading a violation reads its unread plates in the background, and
+        // nothing in the form waits for that. The promise it left on the
+        // instance is what to wait for here: it resolves when the last of a
+        // violation's photos has been read again.
+        settle: async () =>
+          renderer.act(async () => {
+            await (homeRef.current.plateReread || Promise.resolve());
+          }),
+        geosearchCalls: () =>
+          axiosPost.mock.calls.filter(([url]) => url === '/api/geosearch'),
+        uploadAttachmentCalls: () =>
+          axiosPost.mock.calls.filter(
+            ([url]) => url === '/api/uploadAttachment',
+          ),
+        clickButton: text =>
+          renderer.act(() => {
+            findButton(text).props.onClick();
+          }),
+        // The merge button on the heading's line. It is always rendered, and
+        // disabled until two rows are ticked.
+        mergeButton: () => findButton('Merge'),
+        // Press the trash on a photo's tile: the control that deletes the
+        // photo, rather than the tick, which only leaves it out of the report.
+        clickAttachmentDelete: name =>
+          renderer.act(() => {
+            tree.root
+              .findAllByType('button')
+              .find(({ props }) => props['aria-label'] === `Delete ${name}`)
+              .props.onClick();
+          }),
+        // What the CreateDate field is given. It has to stay minute-precision
+        // even though the state behind it carries seconds, because iOS Safari
+        // rejects a `datetime-local` value that has them.
+        createDateInputValue: () =>
+          tree.root.findByProps({ name: 'CreateDate' }).props.value,
+        // Put a queue row in the merge selection. A row opened with nothing
+        // ticked is in already, so this ticks what is not ticked rather than
+        // flipping it: it says the row is in, whatever the selection held
+        // before.
+        tickMerge: text =>
+          renderer.act(() => {
+            const box = mergeBox(text);
+            if (!box.props.checked) {
+              box.props.onChange();
+            }
+          }),
+        // Take a queue row out of the merge selection, which is how a test
+        // gets back to the empty selection the queue ticks a row on.
+        untickMerge: text =>
+          renderer.act(() => {
+            const box = mergeBox(text);
+            if (box.props.checked) {
+              box.props.onChange();
+            }
+          }),
+        // Load a violation the way the queue does: click the row's own text.
+        // The description is the control, and the Delete and merge buttons are
+        // separate buttons that do not carry the plate. A row whose plate is
+        // the read's own shows a crop of the photo in place of the text, so
+        // the plate is in that image's alt text there.
+        clickQueueLoad: plate => {
+          const namesPlate = node => {
+            if (node == null) {
+              return false;
+            }
+            if (typeof node === 'string') {
+              return node.includes(plate);
+            }
+            if (Array.isArray(node)) {
+              return node.some(namesPlate);
+            }
+            return node.props?.alt === plate || namesPlate(node.children);
+          };
+
+          renderer.act(() => {
+            tree.root
+              .findAllByType('button')
+              .find(({ children }) => namesPlate(children))
+              .props.onClick();
+          });
+        },
+        // Press the X on the queue row whose description carries `plate`. The
+        // control shows an emoji rather than a word, so it is found by the
+        // label it announces.
+        clickRowDelete: plate =>
+          renderer.act(() => {
+            tree.root
+              .findAllByType('button')
+              .find(({ props }) => {
+                const label = props['aria-label'];
+                return (
+                  typeof label === 'string' &&
+                  label.startsWith('Delete ') &&
+                  label.includes(plate)
+                );
+              })
+              .props.onClick();
+          }),
+        // Tick or untick one photo in a loaded group's attachment picker, by
+        // the name its checkbox announces: the label is the photo itself, so
+        // the name is not in its text.
+        toggleAttachment: (name, checked) => {
+          const input = tree.root
+            .findAllByType('input')
+            .find(({ props }) => props['aria-label'] === `Attach ${name}`);
+          renderer.act(() => {
+            input.props.onChange({ target: { checked } });
+          });
+        },
+        submit: () => {
+          const form = tree.root
+            .findAllByType('form')
+            .find(formEl => typeof formEl.props.onSubmit === 'function');
+          return renderer.act(async () => {
+            await form.props.onSubmit({ preventDefault() {} });
+          });
+        },
+        // The report's own Submit button, for its disabled state.
+        submitButton: () => {
+          const form = tree.root
+            .findAllByType('form')
+            .find(formEl => typeof formEl.props.onSubmit === 'function');
+          return form.findByProps({ type: 'submit' });
+        },
+        cleanup: () => {
+          tree.unmount();
+          axiosGet.mockRestore();
+          axiosPost.mockRestore();
+          toastSuccess.mockRestore();
+          toastWarn.mockRestore();
+          toastError.mockRestore();
+          consoleError.mockRestore();
+          document.querySelector = originalQuerySelector;
+          global.URL.createObjectURL = originalCreateObjectURL;
+        },
+      };
+    }
+
+    test('uploads the violation it loads, not the folder it came from', async () => {
+      const photos = [
+        jpeg({ name: 'a.jpg', size: 4 }),
+        jpeg({ name: 'b.jpg', size: 5 }),
+        jpeg({ name: 'c.jpg', size: 6 }),
+        jpeg({ name: 'd.jpg', size: 7 }),
+      ];
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, uploadAttachmentCalls, cleanup } =
+        await renderBatchWithFiles(photos);
+
+      const uploaded = uploadAttachmentCalls().map(
+        ([, body]) => body.get('attachmentData').name,
+      );
+
+      // Four photos went in and grouped into three violations. Only the one
+      // that loaded was uploaded, and only the photos its report holds: the
+      // rest of the folder is never sent anywhere.
+      expect(homeRef.current.state.batchViolations).toHaveLength(3);
+      expect(uploaded.length).toBeLessThan(photos.length);
+      expect(uploaded).toEqual(
+        homeRef.current.state.attachmentData.map(file => file.name),
+      );
+
+      cleanup();
+    });
+
+    test('groups the batch, looks each place up once, and loads the first violation as it settles', async () => {
+      const photos = [
+        jpeg({ name: 'a.jpg', size: 4 }),
+        jpeg({ name: 'b.jpg', size: 5 }),
+        jpeg({ name: 'c.jpg', size: 6 }),
+        jpeg({ name: 'd.jpg', size: 7 }),
+      ];
+
+      // Every photo carries the same GPS, so the batch's lookups all land on
+      // one address.
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const {
+        homeRef,
+        platerecognizerCalls,
+        geosearchCalls,
+        createDateInputValue,
+        submit,
+        cleanup,
+      } = await renderBatchWithFiles(photos);
+
+      const { batchViolations } = homeRef.current.state;
+      expect(batchViolations).toHaveLength(3);
+      expect(batchViolations.map(v => [v.plate, v.photos.length])).toEqual([
+        ['T696817C', 2],
+        ['LDA8765', 1],
+        ['K73JAU', 1],
+      ]);
+
+      // One ALPR request per photo, and one geosearch request for the whole
+      // batch: every violation is at the same coordinates, so the memo serves
+      // the second and third lookups.
+      expect(platerecognizerCalls()).toHaveLength(4);
+      expect(geosearchCalls()).toHaveLength(1);
+
+      // The first violation is loaded as soon as it settles, without waiting to
+      // be asked: nothing is clicked here.
+      const { state } = homeRef.current;
+      expect(state.currentViolationIndex).toBe(0);
+      expect(state.plate).toBe('T696817C');
+      expect(state.licenseState).toBe('NY');
+      // The group's photos, in capture order.
+      expect(state.attachmentData).toHaveLength(2);
+      expect(state.attachmentData[0]).toBe(photos[0]);
+      expect(state.attachmentData[1]).toBe(photos[1]);
+      expect(state.latitude).toBe(40.7129);
+      expect(state.longitude).toBe(-74.0061);
+      // From the batch's geocode, not a fresh request.
+      expect(state.formatted_address).toBe('123 Main St, Manhattan');
+      // 2024-01-01T12:00:00Z, less the -05:00 offset the camera recorded.
+      // Seconds and all: the EXIF time is 12:00:00Z, less the -05:00 the
+      // camera recorded. They are what the batch groups on, and the
+      // `datetime-local` field shows only the first 16 characters.
+      expect(state.CreateDate).toBe('2024-01-01T07:00:00');
+
+      // And the field itself still shows only minutes.
+      expect(createDateInputValue()).toBe('2024-01-01T07:00');
+
+      // Loading a violation re-uses what the batch already extracted:
+      // neither ALPR nor geosearch is asked again.
+      expect(platerecognizerCalls()).toHaveLength(4);
+      expect(geosearchCalls()).toHaveLength(1);
+
+      await submit();
+
+      // The submitted violation leaves the queue, and the next one loads in
+      // its place rather than leaving an empty form behind.
+      const afterSubmit = homeRef.current.state;
+      expect(afterSubmit.batchViolations).toHaveLength(2);
+      expect(afterSubmit.currentViolationIndex).toBe(0);
+      expect(afterSubmit.plate).toBe('LDA8765');
+      expect(afterSubmit.attachmentData).toHaveLength(1);
+      expect(afterSubmit.attachmentData[0]).toBe(photos[2]);
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    test('loads a violation when its row is clicked, and ignores a click on the one already loaded', async () => {
+      const photos = [
+        jpeg({ name: 'a.jpg', size: 4 }),
+        jpeg({ name: 'b.jpg', size: 5 }),
+        jpeg({ name: 'c.jpg', size: 6 }),
+        jpeg({ name: 'd.jpg', size: 7 }),
+      ];
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, clickQueueLoad, cleanup } =
+        await renderBatchWithFiles(photos);
+
+      expect(homeRef.current.state.batchViolations).toHaveLength(3);
+
+      // Jump to the last violation, out of the queue's own order.
+      clickQueueLoad('K73JAU');
+      expect(homeRef.current.state.currentViolationIndex).toBe(2);
+      expect(homeRef.current.state.plate).toBe('K73JAU');
+      expect(homeRef.current.state.attachmentData).toEqual([photos[3]]);
+
+      // And back to the first.
+      clickQueueLoad('T696817C');
+      expect(homeRef.current.state.currentViolationIndex).toBe(0);
+      expect(homeRef.current.state.plate).toBe('T696817C');
+      expect(homeRef.current.state.attachmentData).toEqual([
+        photos[0],
+        photos[1],
+      ]);
+
+      // Loading the violation that is already loaded must be a no-op. Loading
+      // resets the attachment selection to the group's default, so a reload
+      // here would silently undo a swap made with the picker -- stand in for
+      // one by leaving a single photo attached.
+      homeRef.current.setState({ attachmentData: [photos[0]] });
+      clickQueueLoad('T696817C');
+      expect(homeRef.current.state.currentViolationIndex).toBe(0);
+      expect(homeRef.current.state.attachmentData).toEqual([photos[0]]);
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    // The License/Medallion field is what the report sends, so the row of the
+    // violation in the form follows it: a plate typed over a wrong reading is
+    // the plate the report will name, and the row says so. The rows that are
+    // not in the form keep their own plates, because the field says nothing
+    // about them.
+    test('follows the License/Medallion field in the row of the loaded violation', async () => {
+      const photos = [
+        jpeg({ name: 'a.jpg', size: 4 }),
+        jpeg({ name: 'b.jpg', size: 5 }),
+        jpeg({ name: 'c.jpg', size: 6 }),
+        jpeg({ name: 'd.jpg', size: 7 }),
+      ];
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, tree, cleanup } = await renderBatchWithFiles(photos);
+
+      // A row showing the plate its photos gave it shows the plate's letters
+      // and, after them, the plate cut from the picture. The first violation
+      // is the one the batch opened.
+      // The crop in the row that names `plate`. It is a picture, not the
+      // row's words, so it is found inside the row rather than by its text.
+      const cropFor = plate => {
+        const row = tree.root
+          .findAllByType('button')
+          .find(
+            ({ props, children }) =>
+              props.className === 'batch-violation-description' &&
+              renderedText(children).includes(plate),
+          );
+        return row && row.findAllByType('img')[0];
+      };
+
+      expect(cropFor('T696817C')).toBeDefined();
+      expect(renderedText(tree.toJSON())).toContain('T696817C (2 photos)');
+      // The frame is 1000x1000 and the box 100x100 at 400,400: the picture is
+      // scaled ten times and moved left and up by four crops.
+      expect(cropFor('T696817C').props.style).toMatchObject({
+        width: '1000%',
+        height: '1000%',
+        left: '-400%',
+        top: '-400%',
+      });
+
+      // Type a plate over the one the read found.
+      const input = createFakeInput({ value: 'NEW123', caret: 6 });
+      renderer.act(() => {
+        tree.root.findByProps({ name: 'plate' }).props.onChange({
+          target: input,
+        });
+      });
+      reRenderControlledInput(input, homeRef.current.state.plate);
+
+      const text = renderedText(tree.toJSON());
+      expect(text).toContain('NEW123 (2 photos)');
+      // The picture says T696817C, so the row drops the crop and shows the
+      // typed plate as text.
+      expect(cropFor('T696817C')).toBeUndefined();
+      // The other rows are not in the form, so they keep the crops of their
+      // own plates.
+      expect(cropFor('LDA8765')).toBeDefined();
+      expect(cropFor('K73JAU')).toBeDefined();
+
+      // Clearing the field leaves the row showing what it read.
+      renderer.act(() => {
+        tree.root.findByProps({ name: 'plate' }).props.onChange({
+          target: createFakeInput({ value: '', caret: 0 }),
+        });
+      });
+      expect(cropFor('T696817C')).toBeDefined();
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    // The field can be emptied, and the report still goes: the server requires
+    // a plate, so an empty one files as UNKNOWN. That is what the placeholder
+    // promises, and this is the half of the promise the server sees.
+    test('files a report whose plate was left empty as UNKNOWN', async () => {
+      const photos = [
+        jpeg({ name: 'a.jpg', size: 4 }),
+        jpeg({ name: 'b.jpg', size: 5 }),
+      ];
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, tree, submit, axiosPost, cleanup } =
+        await renderBatchWithFiles(photos);
+
+      // Clear the plate the read filled in.
+      renderer.act(() => {
+        tree.root.findByProps({ name: 'plate' }).props.onChange({
+          target: createFakeInput({ value: '', caret: 0 }),
+        });
+      });
+      expect(homeRef.current.state.plate).toBe('');
+
+      await submit();
+
+      const [, body] = axiosPost.mock.calls.find(([url]) => url === '/submit');
+      expect(body.get('plate')).toBe('UNKNOWN');
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    test('asks for a rate-limited plate read to be retried', async () => {
+      const photos = [jpeg({ name: 'a.jpg', size: 4 })];
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { platerecognizerCalls, cleanup } =
+        await renderBatchWithFiles(photos);
+
+      // What a repeat is worth is `plateReadRetry`'s, and that module's own
+      // test drives a real axios instance through those options. This is the
+      // other half: that the plate read asks for it. Whether the repeat then
+      // happens cannot be watched from here -- mocking `axios.post` replaces
+      // the very method whose interceptors do the retrying.
+      const [[, , config]] = platerecognizerCalls();
+      expect(config['axios-retry']).toBe(plateReadRetry);
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    test('spaces the reads out once one of them is refused', async () => {
+      const photos = [
+        jpeg({ name: 'a.jpg', size: 4 }),
+        jpeg({ name: 'b.jpg', size: 5 }),
+        jpeg({ name: 'c.jpg', size: 6 }),
+        jpeg({ name: 'd.jpg', size: 7 }),
+      ];
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      // The first read is refused, and the three after it are held back just
+      // long enough that the refusal is known before the fourth read is
+      // started by whichever worker frees up first.
+      const { platerecognizerCallTimes, cleanup } = await renderBatchWithFiles(
+        photos,
+        {
+          failAlprCalls: [1],
+          alprDelayMsBySize: { 5: 300, 6: 300, 7: 300 },
+        },
+      );
+
+      // The batch's four reads; anything after them is the second chance the
+      // load gives the photo that was refused.
+      const times = platerecognizerCallTimes().slice(0, 4);
+      expect(times).toHaveLength(4);
+
+      // The first three start together, which is what the pool does until
+      // something is refused.
+      expect(times[2] - times[0]).toBeLessThan(200);
+
+      // The read after the refusal waits out the second the API asked for
+      // instead of spending itself on the same limit.
+      expect(times[3] - times[0]).toBeGreaterThanOrEqual(1000);
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    test('reads a plate again when the violation is loaded, after a read the 429 refused', async () => {
+      const photos = [jpeg({ name: 'a.jpg', size: 4 })];
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      // The batch's one read is answered the way a rate limit answers it. The
+      // photo is left with no `plateResults` at all, which is what used to be
+      // final: the row read "(no plate read)" and the form opened with an
+      // empty License field, however readable the picture was.
+      const { homeRef, settle, platerecognizerCalls, cleanup } =
+        await renderBatchWithFiles(photos, { failAlprCalls: [1] });
+
+      await settle();
+
+      // Two calls in all: the one the 429 refused, and the one the load made.
+      // A read that had succeeded is not repeated -- the test below holds
+      // that -- so the second call can only be the second chance.
+      expect(platerecognizerCalls()).toHaveLength(2);
+      expect(homeRef.current.state.batchViolations[0].plate).toBe('T696817C');
+      expect(homeRef.current.state.plate).toBe('T696817C');
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    test('reads again only the photos the batch could not read', async () => {
+      // Two photos of one medallion plate, a second apart, so they group into
+      // one violation -- the second read is the one that fails.
+      const photos = [
+        jpeg({ name: 'a.jpg', size: 4 }),
+        jpeg({ name: 'b.jpg', size: 5 }),
+      ];
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, settle, platerecognizerCalls, cleanup } =
+        await renderBatchWithFiles(photos, { failAlprCalls: [2] });
+
+      expect(homeRef.current.state.batchViolations).toHaveLength(1);
+
+      await settle();
+
+      // Three calls, not four: the photo that read is answered from the
+      // cache, so only the one that failed is read again. A photo that read
+      // cleanly and found nothing is not re-read either -- there is nothing
+      // to learn from asking twice.
+      expect(platerecognizerCalls()).toHaveLength(3);
+      expect(homeRef.current.state.batchViolations[0].plate).toBe('T696817C');
+      expect(homeRef.current.state.plate).toBe('T696817C');
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    test('divides a row the second chance shows to be two cars', async () => {
+      // A photo of one car and a photo of another, a minute apart, which the
+      // time window leaves in one row. Both reads are refused, so until the
+      // second chance reads them the row has no plate to divide it by.
+      const photos = [
+        jpeg({ name: 'a.jpg', size: 4 }),
+        jpeg({ name: 'd.jpg', size: 7 }),
+      ];
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, settle, platerecognizerCalls, cleanup } =
+        await renderBatchWithFiles(photos, { failAlprCalls: [1, 2] });
+
+      await settle();
+
+      // The second chance read both photos, they disagree, and the row divides
+      // into the two cars it was holding. Four calls in all: the batch's two,
+      // and the two the second chance made.
+      expect(platerecognizerCalls()).toHaveLength(4);
+      expect(
+        homeRef.current.state.batchViolations.map(violation => violation.plate),
+      ).toEqual(['T696817C', 'K73JAU']);
+
+      // The form was on the row when it divided, so it is on one of the two
+      // now -- the one holding the photos it had attached -- with that car's
+      // plate rather than an empty field.
+      expect(homeRef.current.state.plate).toBe('T696817C');
+      expect(homeRef.current.state.attachmentData).toEqual([photos[0]]);
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    test('shows the address of the violation that was clicked, not the last one', async () => {
+      const photos = [
+        jpeg({ name: 'near.jpg', size: 4 }),
+        jpeg({ name: 'far.jpg', size: 7 }),
+      ];
+
+      // Two different places in Manhattan, a minute apart, so each photo is a
+      // violation of its own with its own address.
+      const gpsBySize = {
+        4: { latitude: 40.7129, longitude: -74.0061 },
+        7: { latitude: 40.758, longitude: -73.9855 },
+      };
+      exifr.gps.mockImplementation(
+        async arrayBuffer => gpsBySize[arrayBuffer.byteLength],
+      );
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, clickQueueLoad, cleanup } = await renderBatchWithFiles(
+        photos,
+        {
+          addressAt: ({ lat }) =>
+            lat === gpsBySize[4].latitude
+              ? { housenumber: '123', street: 'Main St' }
+              : { housenumber: '9', street: 'Elm St' },
+        },
+      );
+
+      expect(homeRef.current.state.batchViolations).toHaveLength(2);
+
+      // The first violation loads on its own, with the address for its place.
+      expect(homeRef.current.state.formatted_address).toBe(
+        '123 Main St, Manhattan',
+      );
+
+      // Clicking Load on the second has to bring its address with it.
+      clickQueueLoad('K73JAU');
+      expect(homeRef.current.state.formatted_address).toBe(
+        '9 Elm St, Manhattan',
+      );
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    test('keeps a violation together when its photos finish out of order', async () => {
+      const photos = [
+        jpeg({ name: 'a.jpg', size: 4 }),
+        jpeg({ name: 'b.jpg', size: 5 }),
+        jpeg({ name: 'c.jpg', size: 7 }),
+      ];
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      // `a` and `b` are one second apart and are one violation; `c` is a
+      // minute later and is its own. Holding `b` back makes `c` finish first,
+      // which is what three concurrent requests do on their own -- and `c` is
+      // a minute ahead, so treating it as the boundary would call the first
+      // violation final while `b` was still in flight.
+      const { homeRef, cleanup } = await renderBatchWithFiles(photos, {
+        alprDelayMsBySize: { 5: 30 },
+      });
+
+      expect(
+        homeRef.current.state.batchViolations.map(v => [
+          v.plate,
+          v.photos.length,
+        ]),
+      ).toEqual([
+        ['T696817C', 2],
+        ['K73JAU', 1],
+      ]);
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    test('lists the queue oldest first when photos arrive in more than one pick', async () => {
+      const early = jpeg({ name: 'early.jpg', size: 4 });
+      const late = jpeg({ name: 'late.jpg', size: 7 });
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      // `late.jpg` is shot a minute after `early.jpg` and is added first, so it
+      // is the violation published first. The queue still has to read oldest
+      // first, which means the later pick has to sort in front of it.
+      const { homeRef, cleanup } = await renderBatchWithFiles([late]);
+
+      expect(homeRef.current.state.plate).toBe('K73JAU');
+
+      await renderer.act(async () => {
+        await homeRef.current.addFilesToBatch([early]);
+        await new Promise(resolve => setImmediate(resolve));
+      });
+
+      expect(homeRef.current.state.batchViolations.map(v => v.plate)).toEqual([
+        'T696817C',
+        'K73JAU',
+      ]);
+
+      // The loaded violation is followed by identity, so the re-sort does not
+      // leave the form pointing at whichever violation took its index.
+      expect(homeRef.current.state.currentViolationIndex).toBe(1);
+      expect(homeRef.current.state.plate).toBe('K73JAU');
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    // A batch shot inside the linking window is one time-cluster, and the
+    // readings are what tell the cars in it apart. They arrive one at a time,
+    // in whatever order the pass gets through them, and a car's photos can
+    // have another car's reading land between them. Every read has to be
+    // weighed against the whole batch: a read that only re-groups the row it
+    // lands in leaves the rows the earlier reads broke apart to stand, so a
+    // cluster of two cars settles as one row per photo read.
+    test('settles a time-cluster into one row per car, whatever order the reads arrive in', async () => {
+      // Three photos of one car and two of another, all inside the linking
+      // window, listed here in capture order.
+      const photos = [
+        jpeg({ name: 'first.jpg', size: 4 }),
+        jpeg({ name: 'second.jpg', size: 5 }),
+        jpeg({ name: 'other-car.jpg', size: 6 }),
+        jpeg({ name: 'third.jpg', size: 8 }),
+        jpeg({ name: 'other-car-again.jpg', size: 9 }),
+      ];
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, cleanup } = await renderBatchWithFiles(photos, {
+        // These answers come back 4, 6, 5, 9, 8: the other car's reading lands
+        // between the first car's first and second, and the first car's third
+        // photo is answered last of all. Three reads run at once, so the
+        // second and third photos start together and the fourth and fifth take
+        // the slots the first two leave.
+        alprDelayMsBySize: { 4: 0, 5: 200, 6: 100, 8: 800, 9: 400 },
+      });
+
+      const { batchViolations } = homeRef.current.state;
+      expect(
+        batchViolations.map(violation => [
+          violation.plate,
+          violation.photos.map(photo => photo.name),
+        ]),
+      ).toEqual([
+        ['T696817C', ['first.jpg', 'second.jpg', 'third.jpg']],
+        ['LDA8765', ['other-car.jpg', 'other-car-again.jpg']],
+      ]);
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    test('puts the rows on screen before a plate is read', async () => {
+      const photos = [
+        jpeg({ name: 'a.jpg', size: 4 }),
+        jpeg({ name: 'b.jpg', size: 5 }),
+        jpeg({ name: 'c.jpg', size: 6 }),
+        jpeg({ name: 'd.jpg', size: 7 }),
+      ];
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, cleanup } = await renderBatchWithFiles([]);
+
+      // What the queue looked like when it was published. The batch's dates and
+      // places are local work and the plates are not, so this is the moment the
+      // rows can first be on screen -- and the whole point of publishing here
+      // is that it is not after the last read, which for a batch shot inside
+      // the linking window was the only moment the old rule allowed.
+      const original = homeRef.current.publishBatchViolations;
+      const passes = [];
+      jest
+        .spyOn(homeRef.current, 'publishBatchViolations')
+        .mockImplementation(async options => {
+          const result = await original.call(homeRef.current, options);
+          const { batchPhotos, batchViolations } = homeRef.current.state;
+          passes.push({
+            reads: batchPhotos.filter(photo => photo.plateRead).length,
+            violations: batchViolations.length,
+          });
+          return result;
+        });
+
+      await renderer.act(async () => {
+        await homeRef.current.addFilesToBatch(photos);
+        // The per-photo passes are not awaited by the worker that starts them,
+        // so let anything still settling finish before asserting on it.
+        for (let i = 0; i < 5; i += 1) {
+          // eslint-disable-next-line no-await-in-loop -- one round per pending promise chain; the rounds are the point.
+          await new Promise(resolve => setImmediate(resolve));
+        }
+      });
+
+      // One publish, of the whole batch, with every row in it and no plate read
+      // yet: the four photos are one time-cluster, because the plate that
+      // divides them has not been read.
+      expect(passes).toEqual([{ reads: 0, violations: 1 }]);
+
+      // And it is still the grouping that decides, once the plates are in: the
+      // row divided as they arrived, so the queue ends up with one row per car.
+      expect(
+        homeRef.current.state.batchViolations.map(v => [
+          v.plate,
+          v.photos.length,
+        ]),
+      ).toEqual([
+        ['T696817C', 2],
+        ['LDA8765', 1],
+        ['K73JAU', 1],
+      ]);
+      expect(homeRef.current.state.batchProgress).toBeNull();
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    test('merges the violations the user ticks together', async () => {
+      // The shape this exists for: a far shot with no plate read, three
+      // minutes before the closeup that names the car. The time window keeps
+      // them apart, and only the user knows they are one report.
+      const farAt = 1704108600000;
+      const nearAt = 1704110400000;
+      const photoAt = (name, createDateMs) => ({
+        file: new File(['picture'], name, { type: 'image/jpeg' }),
+        name,
+        createDateMs,
+      });
+      const farPhoto = photoAt('far.jpg', farAt);
+      const nearPhoto = photoAt('near.jpg', nearAt);
+      const photos = [farPhoto, nearPhoto];
+      const far = {
+        photos: [farPhoto],
+        plate: '',
+        licenseState: '',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs: farAt,
+      };
+      const near = {
+        photos: [nearPhoto],
+        plate: 'T696817C',
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs: nearAt,
+      };
+
+      const { homeRef, tickMerge, clickButton, mergeButton, cleanup } =
+        await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchPhotos: photos,
+          batchViolations: [far, near],
+        });
+      });
+
+      expect(homeRef.current.state.batchViolations).toHaveLength(2);
+
+      // The button holds its place on the heading's line from the start, so
+      // that ticking a row cannot move the list. It is disabled until there
+      // are two rows to combine.
+      expect(mergeButton().props.disabled).toBe(true);
+
+      tickMerge('nothing readable');
+
+      // One is not a merge.
+      expect(mergeButton().props.disabled).toBe(true);
+
+      tickMerge('T696817C');
+      expect(mergeButton().props.disabled).toBe(false);
+      clickButton('Merge');
+
+      const { batchViolations, batchMergeSelection } = homeRef.current.state;
+
+      expect(batchViolations).toHaveLength(1);
+      // The plate survives: the far shot had none to offer.
+      expect(batchViolations[0].plate).toBe('T696817C');
+      // Both photos, oldest first, and the earlier one's time.
+      expect(batchViolations[0].photos.map(photo => photo.name)).toEqual([
+        'far.jpg',
+        'near.jpg',
+      ]);
+      expect(batchViolations[0].createDateMs).toBe(farAt);
+      expect(batchMergeSelection).toEqual([]);
+
+      cleanup();
+    });
+
+    test('keeps a row the user merged when a read lands on it afterwards', async () => {
+      // Two cars at one kerb, read apart by the grouping and put together by
+      // the user: their report, for whatever reason they have.
+      const first = jpeg({ name: 'first.jpg', size: 4 });
+      const other = jpeg({ name: 'other.jpg', size: 6 });
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, tickMerge, clickButton, cleanup } =
+        await renderBatchWithFiles([first, other]);
+
+      expect(
+        homeRef.current.state.batchViolations.map(violation => violation.plate),
+      ).toEqual(['T696817C', 'LDA8765']);
+
+      tickMerge('T696817C');
+      tickMerge('LDA8765');
+      clickButton('Merge');
+      expect(homeRef.current.state.batchViolations).toHaveLength(1);
+
+      // A read lands on one of the row's photos afterwards -- the second
+      // chance a failed read gets when the row is opened, say. Grouping the
+      // batch again would take the two cars apart; the row the user made is
+      // left as it is.
+      const [merged] = homeRef.current.state.batchViolations;
+      const [photo] = merged.photos;
+      renderer.act(() => {
+        homeRef.current.setState(
+          homeRef.current.applyPlateRead({
+            photo,
+            read: { ...photo, plateResults: photo.plateResults },
+          }),
+        );
+      });
+
+      const { batchViolations } = homeRef.current.state;
+      expect(batchViolations).toHaveLength(1);
+      expect(batchViolations[0].photos.map(p => p.name)).toEqual([
+        'first.jpg',
+        'other.jpg',
+      ]);
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    // A row is one violation, and a violation is what its photos say it is: a
+    // reading still to come can take a photo, and the ones reading with it,
+    // into a row of their own. Until the readings are in, the row is a guess.
+    test('says a row may split while some of its photos are still being read', async () => {
+      // Two photos of one car. The first is read at once, which is what puts a
+      // plate on the row and makes it look settled; the second is held back.
+      const first = jpeg({ name: 'a.jpg', size: 4 });
+      const second = jpeg({ name: 'b.jpg', size: 5 });
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, tree, cleanup } = await renderBatchWithFiles([], {
+        alprDelayMsBySize: { 5: 500 },
+      });
+
+      let adding;
+      renderer.act(() => {
+        adding = homeRef.current.addFilesToBatch([first, second]);
+      });
+
+      // The row is up as soon as the local metadata pass is done, with one
+      // reading in and one still out.
+      await renderer.act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 150));
+      });
+
+      // The row has a plate to show -- its letters and the crop of it -- and
+      // still says so.
+      expect(renderedText(tree.toJSON())).toContain('T696817C (2 photos)');
+      expect(
+        tree.root
+          .findAllByType('img')
+          .some(({ props }) => props.className === 'plate-crop-image'),
+      ).toBe(true);
+      expect(renderedText(tree.toJSON())).toContain('may split');
+
+      await renderer.act(async () => {
+        await adding;
+      });
+
+      // Every reading is in, so the row is what its photos say it is.
+      expect(renderedText(tree.toJSON())).not.toContain('may split');
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    test('says a row is still reading while a reading it lost is tried again', async () => {
+      const photo = jpeg({ name: 'a.jpg', size: 4 });
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, tree, settle, cleanup } = await renderBatchWithFiles(
+        [photo],
+        // The batch's own reading is refused, and the second chance is held
+        // back so the queue can be read while it is out.
+        { failAlprCalls: [1], alprDelayMsBySize: { 4: 500 } },
+      );
+
+      // The pass is over and the row's one photo has no reading: what the row
+      // says now is what a second chance is doing. Opening the row starts it,
+      // and the row opens itself as soon as it settles.
+      expect(homeRef.current.state.batchProgress).toBeNull();
+
+      await renderer.act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 50));
+      });
+
+      // Not "nothing readable": a reading is out, and the row says so.
+      expect(renderedText(tree.toJSON())).toContain('reading plates…');
+
+      await settle();
+
+      expect(renderedText(tree.toJSON())).toContain('T696817C');
+      expect(renderedText(tree.toJSON())).not.toContain('may split');
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    // A row's tick is for merging it with another row, and a row opened with
+    // nothing ticked is the one a merge usually starts from: it ticks itself,
+    // so that putting it together with the row beside it is one tick rather
+    // than two. Opening a row never adds to a selection that is already there.
+    test('ticks the row opened when nothing is ticked', async () => {
+      const photos = ['a', 'b'].map(name => {
+        const file = new File(['picture'], `${name}.jpg`, {
+          type: 'image/jpeg',
+        });
+        return { file, name: file.name, createDateMs: 1704110400000 };
+      });
+      const row = (photo, plate, createDateMs) => ({
+        photos: [photo],
+        plate,
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs,
+      });
+      // What a tick names: the row's time, its plate, and the photo it opens
+      // with. See `batchViolationIdentity`.
+      const identity = (photo, plate, createDateMs) =>
+        `${createDateMs}-${plate}-${photo.name}`;
+
+      const { homeRef, clickQueueLoad, tickMerge, untickMerge, cleanup } =
+        await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        homeRef.current.geosearchAddressCache.set({
+          latitude: 40.7129,
+          longitude: -74.0061,
+          address: '123 Main St, Manhattan',
+        });
+        homeRef.current.setState({
+          batchPhotos: photos,
+          batchViolations: [
+            row(photos[0], 'AAA111', 1704110400000),
+            row(photos[1], 'BBB222', 1704110500000),
+          ],
+        });
+      });
+
+      // Nothing is opened yet, so nothing is ticked.
+      expect(homeRef.current.state.batchMergeSelection).toEqual([]);
+
+      // The first row opened ticks itself: nothing was ticked when it was
+      // clicked.
+      clickQueueLoad('AAA111');
+      expect(homeRef.current.state.batchMergeSelection).toEqual([
+        identity(photos[0], 'AAA111', 1704110400000),
+      ]);
+
+      // A selection is already there, so opening another row does not touch it.
+      clickQueueLoad('BBB222');
+      expect(homeRef.current.state.batchMergeSelection).toEqual([
+        identity(photos[0], 'AAA111', 1704110400000),
+      ]);
+
+      tickMerge('BBB222');
+      expect(homeRef.current.state.batchMergeSelection).toEqual([
+        identity(photos[0], 'AAA111', 1704110400000),
+        identity(photos[1], 'BBB222', 1704110500000),
+      ]);
+
+      // Empty again, so the next row opened ticks itself.
+      untickMerge('AAA111');
+      untickMerge('BBB222');
+      expect(homeRef.current.state.batchMergeSelection).toEqual([]);
+
+      clickQueueLoad('AAA111');
+      expect(homeRef.current.state.batchMergeSelection).toEqual([
+        identity(photos[0], 'AAA111', 1704110400000),
+      ]);
+
+      cleanup();
+    });
+
+    // One frame can hold several cars, and the row of each of them opens with
+    // that same picture: what tells those rows apart, to the queue and to the
+    // person reading it, is the plate.
+    test('ticks the row a plate names, not every row showing its picture', async () => {
+      const frame = new File(['picture'], 'wide.jpg', { type: 'image/jpeg' });
+      const photo = {
+        file: frame,
+        name: frame.name,
+        createDateMs: 1704110400000,
+      };
+      const row = plate => ({
+        photos: [photo],
+        plate,
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs: 1704110400000,
+      });
+
+      const { homeRef, tickMerge, clickButton, cleanup } =
+        await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchPhotos: [photo],
+          batchViolations: [row('AAA111'), row('BBB222'), row('CCC333')],
+        });
+      });
+
+      tickMerge('BBB222');
+      expect(homeRef.current.state.batchMergeSelection).toEqual([
+        '1704110400000-BBB222-wide.jpg',
+      ]);
+
+      // Two ticks are two rows, so the merge has something to combine.
+      tickMerge('AAA111');
+      clickButton('Merge');
+      expect(homeRef.current.state.batchViolations).toHaveLength(2);
+      expect(
+        homeRef.current.state.batchViolations.map(violation => violation.plate),
+      ).toContain('CCC333');
+
+      cleanup();
+    });
+
+    test('does not load a violation when its delete or merge control is used', async () => {
+      const photos = ['a', 'b'].map(name => {
+        const file = new File(['picture'], `${name}.jpg`, {
+          type: 'image/jpeg',
+        });
+        return { file, name: file.name, createDateMs: 1704110400000 };
+      });
+      const violation = (photo, plate, createDateMs) => ({
+        photos: [photo],
+        plate,
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs,
+      });
+
+      const { homeRef, tickMerge, clickRowDelete, cleanup } =
+        await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchPhotos: photos,
+          batchViolations: [
+            violation(photos[0], 'AAA111', 1704110400000),
+            violation(photos[1], 'BBB222', 1704110500000),
+          ],
+        });
+      });
+
+      // Nothing is loaded, and neither control beside the description may
+      // load one: they are siblings of it, not children.
+      expect(homeRef.current.state.currentViolationIndex).toBe(-1);
+
+      tickMerge('AAA111');
+      expect(homeRef.current.state.batchMergeSelection).toHaveLength(1);
+      expect(homeRef.current.state.currentViolationIndex).toBe(-1);
+
+      clickRowDelete('AAA111');
+      expect(homeRef.current.state.batchViolations).toHaveLength(1);
+      expect(homeRef.current.state.currentViolationIndex).toBe(-1);
+
+      cleanup();
+    });
+
+    // The row is the report: with nothing attached there is nothing to file,
+    // so the violation goes rather than sitting there as an empty shell.
+    const oneRowOf = async photos => {
+      const violation = {
+        photos,
+        plate: 'T696817C',
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs: 1704110400000,
+      };
+
+      const rendered = await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        rendered.homeRef.current.geosearchAddressCache.set({
+          latitude: 40.7129,
+          longitude: -74.0061,
+          address: '123 Main St, Manhattan',
+        });
+        rendered.homeRef.current.setState({
+          batchPhotos: photos,
+          batchViolations: [violation],
+        });
+      });
+      rendered.clickQueueLoad('T696817C');
+
+      return { ...rendered, violation };
+    };
+
+    // The queue can come by its first row without a read landing to notice it:
+    // the photos a report left behind are published as a row of their own, and
+    // with the form sitting empty the row has to open itself, or the user is
+    // left looking at a queue they have to click into.
+    test('opens on the violation a submit leaves behind', async () => {
+      const photos = ['p1', 'p2', 'p3', 'p4'].map((name, index) => {
+        const file = new File(['picture'], `${name}.jpg`, {
+          type: 'image/jpeg',
+        });
+        return {
+          file,
+          name: file.name,
+          // Read, as the batch's own pass leaves them: a row that has been
+          // read is a violation the queue can open on.
+          plateRead: 'read',
+          createDateMs: 1704110400000 + index * 1000,
+          latitude: 40.7129,
+          longitude: -74.0061,
+        };
+      });
+
+      const { homeRef, submit, cleanup } = await oneRowOf(photos);
+
+      // Three fit, so the fourth is left behind and the queue empties when the
+      // report goes.
+      await submit();
+      await renderer.act(async () => {
+        for (let i = 0; i < 3; i += 1) {
+          // eslint-disable-next-line no-await-in-loop -- one round per pending promise chain.
+          await new Promise(resolve => setImmediate(resolve));
+        }
+      });
+
+      const { batchViolations, currentViolationIndex, attachmentData } =
+        homeRef.current.state;
+
+      expect(batchViolations.map(violation => violation.photos.length)).toEqual(
+        [1],
+      );
+      expect(currentViolationIndex).toBe(0);
+      expect(attachmentData.map(file => file.name)).toEqual(['p4.jpg']);
+
+      cleanup();
+    });
+
+    // A report that leaves photos behind makes a new violation of them, and
+    // that violation sits where the report was in capture order -- before the
+    // violations photographed after it. It is the next one to open: walking
+    // the queue in that order is how the user knows no photo was skipped.
+    test('opens the violation a submit leaves behind before the one after it', async () => {
+      const photos = [
+        jpeg({ name: 'a.jpg', size: 4 }),
+        jpeg({ name: 'b.jpg', size: 5 }),
+        jpeg({ name: 'c.jpg', size: 6 }),
+        jpeg({ name: 'd.jpg', size: 7 }),
+      ];
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, toggleAttachment, submit, cleanup } =
+        await renderBatchWithFiles(photos);
+
+      // The opened violation holds two photos of the first car; the report
+      // takes one of them and leaves the other in the batch.
+      expect(
+        homeRef.current.state.batchViolations.map(violation => [
+          violation.plate,
+          violation.photos.length,
+        ]),
+      ).toEqual([
+        ['T696817C', 2],
+        ['LDA8765', 1],
+        ['K73JAU', 1],
+      ]);
+      toggleAttachment('b.jpg', false);
+
+      await submit();
+      // Publishing the photos the report left behind is a pass of its own.
+      await renderer.act(async () => {
+        for (let i = 0; i < 3; i += 1) {
+          // eslint-disable-next-line no-await-in-loop -- one round per pending promise chain.
+          await new Promise(resolve => setImmediate(resolve));
+        }
+      });
+
+      const { batchViolations, currentViolationIndex, attachmentData } =
+        homeRef.current.state;
+
+      // The photo left behind is a violation of its own, and first in the
+      // queue: it was shot before the two cars that follow.
+      expect(
+        batchViolations.map(violation =>
+          violation.photos.map(photo => photo.name),
+        ),
+      ).toEqual([['b.jpg'], ['c.jpg'], ['d.jpg']]);
+      expect(currentViolationIndex).toBe(0);
+      expect(attachmentData.map(file => file.name)).toEqual(['b.jpg']);
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    // A batch is walked from the keyboard: filing a report opens the next
+    // violation and puts the caret in its plate field, where Enter submits the
+    // report (the field is inside the form).
+    test('puts the caret in the plate field for the violation a submit opens', async () => {
+      const photos = [
+        jpeg({ name: 'a.jpg', size: 4 }),
+        jpeg({ name: 'b.jpg', size: 5 }),
+        jpeg({ name: 'c.jpg', size: 6 }),
+      ];
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, submit, cleanup } = await renderBatchWithFiles(photos);
+
+      // The field is a host element, and the test renderer gives refs to
+      // those nothing to focus, so the call is what is watched.
+      const focus = jest.fn();
+      homeRef.current.focusPlateField = focus;
+
+      await submit();
+      // The caret waits for the frame after the next violation renders.
+      await renderer.act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 50));
+      });
+
+      expect(focus).toHaveBeenCalledTimes(1);
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    test('removes the violation when the X takes its last photo', async () => {
+      const photos = ['p1', 'p2'].map((name, index) => {
+        const file = new File(['picture'], `${name}.jpg`, {
+          type: 'image/jpeg',
+        });
+        return {
+          file,
+          name: file.name,
+          createDateMs: 1704110400000 + index * 1000,
+          latitude: 40.7129,
+          longitude: -74.0061,
+        };
+      });
+
+      const { homeRef, clickAttachmentDelete, cleanup } =
+        await oneRowOf(photos);
+
+      clickAttachmentDelete('p1.jpg');
+
+      // One photo is still a report, so the row stays.
+      expect(homeRef.current.state.batchViolations).toHaveLength(1);
+      expect(
+        homeRef.current.state.attachmentData.map(file => file.name),
+      ).toEqual(['p2.jpg']);
+
+      clickAttachmentDelete('p2.jpg');
+
+      expect(homeRef.current.state.batchViolations).toEqual([]);
+      // The photos went with the row: nothing is left to report from them.
+      expect(homeRef.current.state.batchPhotos).toEqual([]);
+
+      cleanup();
+    });
+
+    // The picker is the report's own selection, and a violation with more than
+    // three photos is one whose picker exists: unticking every photo leaves the
+    // violation where it is, with nothing attached, so that any of them can be
+    // ticked again. None of its photos have been removed.
+    test('keeps the violation when the picker unticks every photo', async () => {
+      const photos = ['p1', 'p2', 'p3', 'p4'].map((name, index) => {
+        const file = new File(['picture'], `${name}.jpg`, {
+          type: 'image/jpeg',
+        });
+        return {
+          file,
+          name: file.name,
+          createDateMs: 1704110400000 + index * 1000,
+          latitude: 40.7129,
+          longitude: -74.0061,
+        };
+      });
+
+      const { homeRef, tree, cleanup } = await oneRowOf(photos);
+
+      // The picker only appears for a violation with more than three photos.
+      const pickerBox = name =>
+        tree.root.findByProps({
+          id: `batch-photo-${photos.findIndex(p => p.name === name)}`,
+        });
+      const untick = name =>
+        renderer.act(() => {
+          pickerBox(name).props.onChange({ target: { checked: false } });
+        });
+
+      untick('p1.jpg');
+      untick('p2.jpg');
+      untick('p3.jpg');
+
+      expect(homeRef.current.state.attachmentData).toEqual([]);
+      expect(homeRef.current.state.batchViolations).toHaveLength(1);
+      expect(homeRef.current.state.batchPhotos).toEqual(photos);
+
+      // And back again: the violation never went anywhere.
+      renderer.act(() => {
+        pickerBox('p4.jpg').props.onChange({ target: { checked: true } });
+      });
+      expect(
+        homeRef.current.state.attachmentData.map(file => file.name),
+      ).toEqual(['p4.jpg']);
+
+      cleanup();
+    });
+
+    // The picker shows the violation's photos rather than their names: a name
+    // is hard to tell one photo from another by, and the picture is what the
+    // report is about. Each carries its own box at the top-left, so ticking
+    // one is a click on the picture.
+    test('shows the violation photos as pictures, one box each', async () => {
+      const photos = ['p1', 'p2', 'p3', 'p4'].map((name, index) => {
+        const file = new File(['picture'], `${name}.jpg`, {
+          type: 'image/jpeg',
+        });
+        return {
+          file,
+          name: file.name,
+          createDateMs: 1704110400000 + index * 1000,
+          latitude: 40.7129,
+          longitude: -74.0061,
+        };
+      });
+
+      const { tree, cleanup } = await oneRowOf(photos);
+
+      // One choice per photo the violation holds, each its own picture, and
+      // each with the trash that deletes it rather than leaving it out.
+      const choices = tree.root
+        .findAllByType('input')
+        .filter(({ props }) => String(props.id).startsWith('batch-photo-'));
+      expect(choices).toHaveLength(photos.length);
+
+      choices.forEach((choice, index) => {
+        const tile = choice.parent;
+        const [picture] = tile.findAllByType('img');
+        expect(picture.props.alt).toBe(photos[index].name);
+        expect(picture.props.src).toBe('blob:mock');
+        // The box, ticked for the three the violation loaded with: a picture
+        // with three is what fits in a report.
+        expect(choice.props.checked).toBe(index < 3);
+        expect(
+          tile
+            .findAllByType('button')
+            .some(
+              ({ props }) =>
+                props['aria-label'] === `Delete ${photos[index].name}`,
+            ),
+        ).toBe(true);
+      });
+
+      cleanup();
+    });
+
+    // The picker decides what the report holds, and the report's time and place
+    // come from the photos it holds. A photo the picker ticks is the same
+    // evidence as one attached on load, so it has to feed them the same way: a
+    // report made only of photos the load never attached has none otherwise,
+    // and the form falls back to the default place, which empties the address.
+    test('takes the place from the photos ticked in the picker', async () => {
+      const photos = ['p1', 'p2', 'p3', 'p4', 'p5'].map((name, index) => {
+        const file = new File(['picture'], `${name}.jpg`, {
+          type: 'image/jpeg',
+        });
+        return {
+          file,
+          name: file.name,
+          createDateMs: 1704110400000 + index * 1000,
+          // The place `oneRowOf` has already had looked up.
+          latitude: 40.7129,
+          longitude: -74.0061,
+        };
+      });
+
+      const { homeRef, tree, cleanup } = await oneRowOf(photos);
+
+      const pickerBox = name =>
+        tree.root.findByProps({
+          id: `batch-photo-${photos.findIndex(p => p.name === name)}`,
+        });
+      const tick = (name, checked) =>
+        renderer.act(() => {
+          pickerBox(name).props.onChange({ target: { checked } });
+        });
+
+      // Three pictures fit, so the first three are attached and the rest are
+      // the picker's to choose. The place, and the address, came from them.
+      expect(
+        homeRef.current.state.attachmentData.map(file => file.name),
+      ).toEqual(['p1.jpg', 'p2.jpg', 'p3.jpg']);
+      expect(homeRef.current.state.formatted_address).toBe(
+        '123 Main St, Manhattan',
+      );
+
+      // A report made of two the load never attached.
+      tick('p1.jpg', false);
+      tick('p2.jpg', false);
+      tick('p3.jpg', false);
+      tick('p4.jpg', true);
+      tick('p5.jpg', true);
+
+      // The two the report now holds know where they were, and that is where
+      // the report is -- with its address.
+      expect(
+        homeRef.current.state.attachmentData.map(file => file.name),
+      ).toEqual(['p4.jpg', 'p5.jpg']);
+      expect(homeRef.current.state.latitude).toBe(40.7129);
+      expect(homeRef.current.state.longitude).toBe(-74.0061);
+      expect(homeRef.current.state.formatted_address).toBe(
+        '123 Main St, Manhattan',
+      );
+
+      cleanup();
+    });
+
+    // The trash deletes the photo, and a photo is the batch's, not a row's:
+    // one frame is evidence for every car in it, so deleting it takes it from
+    // every row that holds it, and a row that was only that photo goes.
+    test('deletes a shared photo from every row that holds it', async () => {
+      const photo = name => ({
+        file: new File(['picture'], name, { type: 'image/jpeg' }),
+        name,
+        createDateMs: 1704110400000,
+        latitude: 40.7129,
+        longitude: -74.0061,
+      });
+      const wide = photo('wide.jpg');
+      const closeup = photo('closeup.jpg');
+      const row = (plate, photos) => ({
+        photos,
+        plate,
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs: 1704110400000,
+      });
+
+      const rendered = await renderBatchWithFiles([]);
+      const { homeRef, clickQueueLoad, clickAttachmentDelete, cleanup } =
+        rendered;
+
+      renderer.act(() => {
+        homeRef.current.geosearchAddressCache.set({
+          latitude: 40.7129,
+          longitude: -74.0061,
+          address: '123 Main St, Manhattan',
+        });
+        homeRef.current.setState({
+          batchPhotos: [wide, closeup],
+          batchViolations: [
+            row('AAA111', [wide, closeup]),
+            row('BBB222', [wide]),
+          ],
+        });
+      });
+      clickQueueLoad('AAA111');
+
+      clickAttachmentDelete('wide.jpg');
+
+      // The row that held only the frame goes with it. The row that is left
+      // keeps the photo of its own, and the frame is in neither the rows nor
+      // the batch, so nothing can put it back.
+      expect(
+        homeRef.current.state.batchViolations.map(violation => violation.plate),
+      ).toEqual(['AAA111']);
+      expect(homeRef.current.state.batchViolations[0].photos).toEqual([
+        closeup,
+      ]);
+      expect(homeRef.current.state.batchPhotos).toEqual([closeup]);
+
+      // Nor can a reading that lands afterwards build it back into the rows:
+      // the regrouping works from the photos the rows hold, and no row holds
+      // it any more.
+      renderer.act(() => {
+        const [remaining] = homeRef.current.state.batchPhotos;
+        homeRef.current.setState(
+          homeRef.current.applyPlateRead({
+            photo: remaining,
+            read: { ...remaining },
+          }),
+        );
+      });
+
+      expect(
+        homeRef.current.state.batchViolations.map(violation =>
+          violation.photos.map(each => each.name),
+        ),
+      ).toEqual([['closeup.jpg']]);
+
+      cleanup();
+    });
+
+    // Two rows read from one frame: submitting the first takes the frame out
+    // of the batch with it, and the row that shared it is still a violation
+    // with a report of its own to make. It has to stay on screen -- it used to
+    // go with the frame, and come back when the next batch put photos into the
+    // batch again, which reads as a violation resurrecting.
+    test('keeps a row on screen when a submitted row takes the last photo', async () => {
+      const frame = jpeg({ name: 'frame.jpg', size: 10 });
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, tree, submit, cleanup } = await renderBatchWithFiles([
+        frame,
+      ]);
+
+      const settled = async () => {
+        await renderer.act(async () => {
+          for (let i = 0; i < 3; i += 1) {
+            // eslint-disable-next-line no-await-in-loop -- one round per pending promise chain.
+            await new Promise(resolve => setImmediate(resolve));
+          }
+        });
+      };
+
+      // The queue row itself, by the label its delete control announces --
+      // not by the plate's name on screen, which the form's plate suggestions
+      // carry whether or not the row is there.
+      const rowOnScreen = plate =>
+        tree.root.findAllByType('button').some(({ props }) => {
+          const label = props['aria-label'];
+          return (
+            typeof label === 'string' &&
+            label.startsWith('Delete ') &&
+            label.includes(plate)
+          );
+        });
+
+      expect(homeRef.current.state.batchViolations.map(v => v.plate)).toEqual([
+        'AAA111',
+        'BBB222',
+      ]);
+
+      await submit();
+      await settled();
+
+      // The frame went with the submitted report. The row that is left holds
+      // it, so it is still in the queue, and still on screen.
+      expect(homeRef.current.state.batchPhotos).toEqual([]);
+      expect(homeRef.current.state.batchViolations.map(v => v.plate)).toEqual([
+        'BBB222',
+      ]);
+      expect(rowOnScreen('BBB222')).toBe(true);
+
+      // The next batch does not bring anything back with it: the row was here
+      // all along, and the new one joins it.
+      await renderer.act(async () => {
+        await homeRef.current.addFilesToBatch([
+          jpeg({ name: 'later.jpg', size: 4 }),
+        ]);
+        await new Promise(resolve => setImmediate(resolve));
+        await new Promise(resolve => setImmediate(resolve));
+      });
+      await settled();
+
+      // Oldest first, as the queue lists them: the new photo was taken before
+      // the frame, so its row comes first.
+      expect(homeRef.current.state.batchViolations.map(v => v.plate)).toEqual([
+        'T696817C',
+        'BBB222',
+      ]);
+      expect(rowOnScreen('BBB222')).toBe(true);
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    test('gives the photos left out of a report a violation of their own', async () => {
+      // What the metadata pass hands back for each photo: the camera's own
+      // time and place. A violation takes its time and place from these, so a
+      // fixture without them describes a violation the app cannot build.
+      const photos = ['p1', 'p2', 'p3', 'p4'].map((name, index) => {
+        const file = new File(['picture'], `${name}.jpg`, {
+          type: 'image/jpeg',
+        });
+        return {
+          file,
+          name: file.name,
+          createDateMs: 1704110400000 + index * 1000,
+          latitude: 40.7129,
+          longitude: -74.0061,
+        };
+      });
+      const violation = {
+        photos,
+        plate: 'T696817C',
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs: 1704110400000,
+      };
+
+      const { homeRef, clickQueueLoad, submit, cleanup } =
+        await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        homeRef.current.geosearchAddressCache.set({
+          latitude: 40.7129,
+          longitude: -74.0061,
+          address: '123 Main St, Manhattan',
+        });
+        homeRef.current.setState({
+          batchPhotos: photos,
+          batchViolations: [violation],
+        });
+      });
+      clickQueueLoad('T696817C');
+
+      // Only three pictures fit, so the fourth starts unattached.
+      expect(
+        homeRef.current.state.attachmentData.map(file => file.name),
+      ).toEqual(['p1.jpg', 'p2.jpg', 'p3.jpg']);
+
+      await submit();
+
+      // The regroup happens off the submit's own path, so let it land.
+      await renderer.act(async () => {
+        for (let i = 0; i < 3; i += 1) {
+          // eslint-disable-next-line no-await-in-loop -- one round per pending promise chain.
+          await new Promise(resolve => setImmediate(resolve));
+        }
+      });
+
+      const { batchPhotos, batchViolations } = homeRef.current.state;
+
+      // Only the attached photos left the batch, which is what the picker
+      // promises when it says the rest stay.
+      expect(batchPhotos.map(photo => photo.name)).toEqual(['p4.jpg']);
+
+      // And the one left behind has a violation already, rather than waiting
+      // for the user to add another photo before it appears.
+      expect(batchViolations).toHaveLength(1);
+      expect(batchViolations[0].photos.map(photo => photo.name)).toEqual([
+        'p4.jpg',
+      ]);
+
+      cleanup();
+    });
+
+    // A violation's time and place come from its earliest photo, so which
+    // photos the report holds decides both. These two tests are the pair: the
+    // form follows the photos until the user sets either by hand.
+    // Four photos ten minutes apart, each somewhere new, so that which of them
+    // a value came from is readable off the value itself.
+    const fourPhotosApart = () =>
+      [
+        ['p1.jpg', 40.7, -74.0],
+        ['p2.jpg', 40.71, -74.01],
+        ['p3.jpg', 40.72, -74.02],
+        ['p4.jpg', 40.73, -74.03],
+      ].map(([name, latitude, longitude], index) => {
+        const file = new File(['picture'], name, { type: 'image/jpeg' });
+        return {
+          file,
+          name,
+          createDateMs: Date.UTC(2024, 0, 1, 12, index * 10, 0),
+          // The offset the camera recorded, so what the field shows is a
+          // plain UTC time rather than one shifted by this machine's zone.
+          createDateOffset: 0,
+          latitude,
+          longitude,
+        };
+      });
+
+    // The address each photo's coordinates resolve to, so that following the
+    // photos never asks the network.
+    const cacheAddresses = (homeRef, photos) => {
+      photos.forEach(photo => {
+        homeRef.current.geosearchAddressCache.set({
+          latitude: photo.latitude,
+          longitude: photo.longitude,
+          address: `where ${photo.name} was taken`,
+        });
+      });
+    };
+
+    test('moves the time and place onto the photos the report still holds', async () => {
+      const photos = fourPhotosApart();
+      const violation = {
+        photos,
+        plate: 'T696817C',
+        licenseState: 'NY',
+        latitude: photos[0].latitude,
+        longitude: photos[0].longitude,
+        createDateMs: photos[0].createDateMs,
+      };
+
+      const {
+        homeRef,
+        clickQueueLoad,
+        createDateInputValue,
+        toggleAttachment,
+        cleanup,
+      } = await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        cacheAddresses(homeRef, photos);
+        homeRef.current.setState({
+          batchPhotos: photos,
+          batchViolations: [violation],
+        });
+      });
+      clickQueueLoad('T696817C');
+
+      // Four photos, and a report carries three, so the newest is left out.
+      // The time is the earliest attached photo's and the place is the latest
+      // attached photo's, which is the third.
+      expect(createDateInputValue()).toBe('2024-01-01T12:00');
+      expect(homeRef.current.state.latitude).toBe(40.72);
+      expect(homeRef.current.state.longitude).toBe(-74.02);
+
+      // Dropping the newest moves the place back a photo, and leaves the time
+      // where it was: the report is still of the same moment.
+      toggleAttachment('p3.jpg', false);
+
+      expect(createDateInputValue()).toBe('2024-01-01T12:00');
+      expect(homeRef.current.state.latitude).toBe(40.71);
+      expect(homeRef.current.state.longitude).toBe(-74.01);
+
+      // Dropping the oldest is the other way round.
+      toggleAttachment('p1.jpg', false);
+
+      expect(createDateInputValue()).toBe('2024-01-01T12:10');
+      expect(homeRef.current.state.latitude).toBe(40.71);
+
+      cleanup();
+    });
+
+    test('leaves a time and place the user set by hand alone', async () => {
+      const photos = fourPhotosApart();
+      const violation = {
+        photos,
+        plate: 'T696817C',
+        licenseState: 'NY',
+        latitude: photos[0].latitude,
+        longitude: photos[0].longitude,
+        createDateMs: photos[0].createDateMs,
+      };
+
+      const { homeRef, clickQueueLoad, toggleAttachment, cleanup } =
+        await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        homeRef.current.geosearchAddressCache.set({
+          latitude: 40.7,
+          longitude: -74.0,
+          address: 'where the first photo was taken',
+        });
+        homeRef.current.setState({
+          batchPhotos: photos,
+          batchViolations: [violation],
+        });
+      });
+      clickQueueLoad('T696817C');
+
+      // The user drags the pin and types a time: the two things the photos
+      // would otherwise decide.
+      renderer.act(() => {
+        homeRef.current.setState({
+          latitude: 40.9,
+          longitude: -73.9,
+          addressProvenance: '(manually set)',
+          CreateDate: '2024-01-01T09:00',
+        });
+      });
+
+      toggleAttachment('p1.jpg', false);
+
+      // Dropping a photo does not take either back off them.
+      expect(homeRef.current.state.latitude).toBe(40.9);
+      expect(homeRef.current.state.longitude).toBe(-73.9);
+      expect(homeRef.current.state.CreateDate).toBe('2024-01-01T09:00');
+
+      cleanup();
+    });
+
+    test('moves the time and place when the X takes a photo out', async () => {
+      const photos = fourPhotosApart();
+      const violation = {
+        photos,
+        plate: 'T696817C',
+        licenseState: 'NY',
+        latitude: photos[0].latitude,
+        longitude: photos[0].longitude,
+        createDateMs: photos[0].createDateMs,
+      };
+
+      const {
+        homeRef,
+        clickQueueLoad,
+        clickAttachmentDelete,
+        createDateInputValue,
+        cleanup,
+      } = await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        cacheAddresses(homeRef, photos);
+        homeRef.current.setState({
+          batchPhotos: photos,
+          batchViolations: [violation],
+        });
+      });
+      clickQueueLoad('T696817C');
+
+      expect(homeRef.current.state.latitude).toBe(40.72);
+      expect(createDateInputValue()).toBe('2024-01-01T12:00');
+
+      // The X is the only way out of a report of three or fewer, and it makes
+      // the picker's promise: the report describes the photos that are left.
+      // Dropping the newest moves the place back a photo...
+      clickAttachmentDelete('p3.jpg');
+
+      expect(homeRef.current.state.latitude).toBe(40.71);
+      expect(createDateInputValue()).toBe('2024-01-01T12:00');
+
+      // ...and dropping the oldest moves the time forward.
+      clickAttachmentDelete('p1.jpg');
+
+      expect(homeRef.current.state.latitude).toBe(40.71);
+      expect(createDateInputValue()).toBe('2024-01-01T12:10');
+
+      cleanup();
+    });
+
+    // The trash deletes a photo outright: it is not left behind to become a
+    // violation of its own, and a submit afterwards has nothing of it to
+    // publish.
+    test.each([
+      [['p1.jpg', 'p2.jpg'], 'p2.jpg'],
+      [['p1.jpg', 'p2.jpg', 'p3.jpg'], 'p2.jpg'],
+    ])(
+      'does not bring a deleted photo back as a violation of its own (%s)',
+      async (names, deleted) => {
+        const photos = names.map((name, index) => {
+          const file = new File(['picture'], name, { type: 'image/jpeg' });
+          return {
+            file,
+            name,
+            createDateMs: 1704110400000 + index * 1000,
+            latitude: 40.7129,
+            longitude: -74.0061,
+          };
+        });
+        const violation = {
+          photos,
+          plate: 'T696817C',
+          licenseState: 'NY',
+          latitude: 40.7129,
+          longitude: -74.0061,
+          createDateMs: 1704110400000,
+        };
+        const kept = names.filter(name => name !== deleted);
+
+        const {
+          homeRef,
+          clickQueueLoad,
+          clickAttachmentDelete,
+          submit,
+          cleanup,
+        } = await renderBatchWithFiles([]);
+
+        renderer.act(() => {
+          homeRef.current.geosearchAddressCache.set({
+            latitude: 40.7129,
+            longitude: -74.0061,
+            address: '123 Main St, Manhattan',
+          });
+          homeRef.current.setState({
+            batchPhotos: photos,
+            batchViolations: [violation],
+          });
+        });
+        clickQueueLoad('T696817C');
+
+        // Every one of them fits, so every one starts attached.
+        expect(
+          homeRef.current.state.attachmentData.map(file => file.name),
+        ).toEqual(names);
+
+        // The trash deletes one, from the report and from the violation.
+        clickAttachmentDelete(deleted);
+        expect(
+          homeRef.current.state.attachmentData.map(file => file.name),
+        ).toEqual(kept);
+        expect(
+          homeRef.current.state.batchPhotos.map(photo => photo.name),
+        ).toEqual(kept);
+
+        await submit();
+
+        await renderer.act(async () => {
+          for (let i = 0; i < 3; i += 1) {
+            // eslint-disable-next-line no-await-in-loop -- one round per pending promise chain.
+            await new Promise(resolve => setImmediate(resolve));
+          }
+        });
+
+        const { batchPhotos, batchViolations } = homeRef.current.state;
+
+        // The submitted photos have left the batch, and the deleted one is
+        // nowhere: no photo, and no row made from it.
+        expect(batchPhotos).toEqual([]);
+        expect(batchViolations).toEqual([]);
+
+        cleanup();
+      },
+    );
+
+    // One wide shot of several cars is evidence for every car in it, so the
+    // rows share the photo: it is in each of their reports, and what happens
+    // to one row must not take it from the others.
+    const sharedPhotoRows = async () => {
+      const photo = (name, createDateMs) => ({
+        file: new File(['picture'], name, { type: 'image/jpeg' }),
+        name,
+        createDateMs,
+        latitude: 40.7129,
+        longitude: -74.0061,
+      });
+      const wide = photo('wide.jpg', 1704110400000);
+      const later = photo('later.jpg', 1704110600000);
+      const row = (plate, photos, createDateMs) => ({
+        photos,
+        plate,
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs,
+      });
+
+      const rendered = await renderBatchWithFiles([]);
+      const { homeRef } = rendered;
+
+      renderer.act(() => {
+        homeRef.current.geosearchAddressCache.set({
+          latitude: 40.7129,
+          longitude: -74.0061,
+          address: '123 Main St, Manhattan',
+        });
+        homeRef.current.setState({
+          batchPhotos: [wide, later],
+          batchViolations: [
+            row('AAA111', [wide], 1704110400000),
+            row('BBB222', [wide], 1704110400000),
+            row('FFF666', [later], 1704110600000),
+          ],
+        });
+      });
+
+      return { ...rendered, wide, later };
+    };
+
+    // A frame that reads as two cars is the only photo of each of them, so
+    // each row holds it and neither has a photo of its own.
+    const twoCarsInOneFrame = async () => {
+      const frame = jpeg({ name: 'frame.jpg', size: 10 });
+      const rendered = await renderBatchWithFiles([frame]);
+
+      const plates = () =>
+        rendered.homeRef.current.state.batchViolations.map(
+          violation => violation.plate,
+        );
+
+      expect(plates()).toEqual(['AAA111', 'BBB222']);
+      expect(
+        rendered.homeRef.current.state.batchViolations[0].photos.map(
+          photo => photo.name,
+        ),
+      ).toEqual([frame.name]);
+
+      return { ...rendered, frame, plates };
+    };
+
+    test('keeps a deleted row deleted when the frame it was read from stays', async () => {
+      const { homeRef, frame, plates, clickRowDelete, cleanup } =
+        await twoCarsInOneFrame();
+
+      clickRowDelete('AAA111');
+      expect(plates()).toEqual(['BBB222']);
+
+      // The frame stays for the row that is left, and the row that went must
+      // not come back with it: the reading landing here regroups the batch,
+      // the way the pass's own readings do.
+      expect(
+        homeRef.current.state.batchPhotos.map(photo => photo.name),
+      ).toEqual([frame.name]);
+
+      renderer.act(() => {
+        const [photo] = homeRef.current.state.batchPhotos;
+        homeRef.current.setState(
+          homeRef.current.applyPlateRead({ photo, read: { ...photo } }),
+        );
+      });
+
+      expect(plates()).toEqual(['BBB222']);
+
+      // The second row takes the frame out of the batch with it, so the image
+      // leaves rather than staying as a row the user cannot get rid of.
+      clickRowDelete('BBB222');
+      expect(plates()).toEqual([]);
+      expect(homeRef.current.state.batchPhotos).toEqual([]);
+
+      cleanup();
+    });
+
+    test('ticks the row whose box was clicked, not the row beside it', async () => {
+      const { homeRef, clickButton, tickMerge, cleanup } =
+        await twoCarsInOneFrame();
+
+      // The form opened on the first row, so that one is ticked already.
+      tickMerge('AAA111');
+      tickMerge('BBB222');
+
+      const { batchMergeSelection } = homeRef.current.state;
+      expect(batchMergeSelection).toHaveLength(2);
+      expect(batchMergeSelection[0]).toMatch(/AAA111-frame\.jpg$/);
+      expect(batchMergeSelection[1]).toMatch(/BBB222-frame\.jpg$/);
+
+      // Two ticks have to be two rows for the merge to have anything to
+      // combine. Both rows hold the one frame, so a merge that took both ticks
+      // for the same row would leave the queue as it was.
+      clickButton('Merge');
+      expect(homeRef.current.state.batchViolations).toHaveLength(1);
+
+      cleanup();
+    });
+
+    test('leaves the other rows their shared photo when one row is deleted', async () => {
+      const { homeRef, clickRowDelete, wide, cleanup } =
+        await sharedPhotoRows();
+
+      clickRowDelete('AAA111');
+
+      const { batchViolations } = homeRef.current.state;
+      expect(batchViolations.map(violation => violation.plate)).toEqual([
+        'BBB222',
+        'FFF666',
+      ]);
+      // The photo itself stays in the batch, and in the row that still needs
+      // it: the row that went was one of the two that held it.
+      expect(batchViolations[0].photos).toEqual([wide]);
+      expect(
+        homeRef.current.state.batchPhotos.map(photo => photo.name),
+      ).toEqual(['wide.jpg', 'later.jpg']);
+
+      cleanup();
+    });
+
+    // A submission consumes the attachments it sent, so the ids the page holds
+    // for them are spent. The photo of one row can be the photo of another --
+    // one frame, several cars -- and the next row's submit has to be able to
+    // use it, which means uploading it again rather than sending an id for a
+    // file the server has deleted.
+    test('uploads a shared photo again once a report has used it', async () => {
+      const {
+        homeRef,
+        clickQueueLoad,
+        uploadAttachmentCalls,
+        submit,
+        cleanup,
+      } = await sharedPhotoRows();
+
+      clickQueueLoad('AAA111');
+      const uploadsOfWide = () =>
+        uploadAttachmentCalls().filter(
+          ([, body]) => body.get('attachmentData').name === 'wide.jpg',
+        ).length;
+
+      // The upload reads the file before it goes out, so it lands a turn
+      // after the row is opened.
+      await renderer.act(async () => {
+        for (let i = 0; i < 3; i += 1) {
+          // eslint-disable-next-line no-await-in-loop -- one round per pending promise chain.
+          await new Promise(resolve => setImmediate(resolve));
+        }
+      });
+
+      expect(uploadsOfWide()).toBe(1);
+
+      await submit();
+      await renderer.act(async () => {
+        for (let i = 0; i < 3; i += 1) {
+          // eslint-disable-next-line no-await-in-loop -- one round per pending promise chain.
+          await new Promise(resolve => setImmediate(resolve));
+        }
+      });
+
+      // The queue loaded the row that is left, and that row holds the same
+      // frame: it goes up again rather than being sent as the spent id.
+      expect(
+        homeRef.current.state.attachmentData.map(file => file.name),
+      ).toEqual(['wide.jpg']);
+      expect(uploadsOfWide()).toBe(2);
+
+      cleanup();
+    });
+
+    test('submits one row that shares a photo without touching the others', async () => {
+      const { homeRef, clickQueueLoad, submit, wide, cleanup } =
+        await sharedPhotoRows();
+
+      clickQueueLoad('AAA111');
+      expect(homeRef.current.state.attachmentData).toEqual([wide.file]);
+
+      await submit();
+
+      await renderer.act(async () => {
+        for (let i = 0; i < 3; i += 1) {
+          // eslint-disable-next-line no-await-in-loop -- one round per pending promise chain.
+          await new Promise(resolve => setImmediate(resolve));
+        }
+      });
+
+      const { batchViolations } = homeRef.current.state;
+
+      // The row that was submitted is gone; the rows that shared its photo
+      // are not, and neither gained a second copy of it.
+      expect(batchViolations.map(violation => violation.plate)).toEqual([
+        'BBB222',
+        'FFF666',
+      ]);
+      expect(batchViolations[0].photos).toEqual([wide]);
+
+      cleanup();
+    });
+
+    // A folder of photos arrives from a phone or a share sheet as a zip, so a
+    // zip is a way of picking a batch rather than a file the batch could use:
+    // it is opened out, and its photos are the batch.
+    test('makes the batch from the photos inside a picked zip', async () => {
+      const zip = new File(
+        [
+          zipSync({
+            'photos/one.jpg': photoBytes('ab'),
+            'photos/two.jpg': photoBytes('abc'),
+            // `Buffer`, because this environment has neither TextEncoder nor
+            // TextDecoder.
+            'photos/notes.txt': Buffer.from('not a photo'),
+          }),
+        ],
+        'photos.zip',
+        { type: 'application/zip' },
+      );
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, toastSuccess, cleanup } = await renderBatchWithFiles([
+        zip,
+      ]);
+
+      const { batchPhotos, batchViolations } = homeRef.current.state;
+
+      // The photos, named as the zip had them, with the folder they shared
+      // dropped; the text file is not an attachment and is not here.
+      expect(batchPhotos.map(photo => photo.name)).toEqual([
+        'one.jpg',
+        'two.jpg',
+      ]);
+
+      // And they have been through the whole pass: read, grouped, and in the
+      // queue as the cars they are.
+      expect(batchViolations.map(violation => violation.plate)).toEqual([
+        'LDA8765',
+        'K73JAU',
+      ]);
+
+      expect(toastSuccess.mock.calls[0][0]).toBe('2 pictures from photos.zip');
+
+      cleanup();
+    });
+
+    test('attaches a fourth picture, warns, and holds Submit until one is dropped', async () => {
+      const pictures = ['p1', 'p2', 'p3', 'p4'].map(
+        name => new File(['picture'], `${name}.jpg`, { type: 'image/jpeg' }),
+      );
+      const videos = ['v1', 'v2', 'v3', 'v4'].map(
+        name => new File(['video'], `${name}.mp4`, { type: 'video/mp4' }),
+      );
+      const photos = [...pictures, ...videos].map(file => ({
+        file,
+        name: file.name,
+      }));
+      const violation = {
+        photos,
+        plate: 'T696817C',
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs: 1704110400000,
+      };
+
+      const {
+        homeRef,
+        toastWarn,
+        toastError,
+        submit,
+        submitButton,
+        clickQueueLoad,
+        toggleAttachment,
+        cleanup,
+      } = await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        // The batch resolves this location before the user gets to it, which is
+        // what keeps loading a violation from asking geosearch again.
+        homeRef.current.geosearchAddressCache.set({
+          latitude: 40.7129,
+          longitude: -74.0061,
+          address: '123 Main St, Manhattan',
+        });
+        homeRef.current.setState({
+          batchPhotos: photos,
+          batchViolations: [violation],
+        });
+      });
+      clickQueueLoad('T696817C');
+
+      const attachmentNames = () =>
+        homeRef.current.state.attachmentData.map(file => file.name);
+
+      // The first three pictures and the first three videos, in capture order.
+      expect(attachmentNames()).toEqual([
+        'p1.jpg',
+        'p2.jpg',
+        'p3.jpg',
+        'v1.mp4',
+        'v2.mp4',
+        'v3.mp4',
+      ]);
+      expect(submitButton().props.disabled).toBe(false);
+
+      // A fourth picture is attached, so that its thumbnail is there to look
+      // at, and the warning says what it costs: Submit is off until the report
+      // is back within its caps.
+      toggleAttachment('p4.jpg', true);
+      expect(attachmentNames()).toEqual([
+        'p1.jpg',
+        'p2.jpg',
+        'p3.jpg',
+        'p4.jpg',
+        'v1.mp4',
+        'v2.mp4',
+        'v3.mp4',
+      ]);
+      expect(toastWarn.mock.calls[0][0]).toBe(
+        'A report can include at most 3 pictures. Uncheck one to swap it in.',
+      );
+      expect(submitButton().props.disabled).toBe(true);
+
+      // Unticking a picture frees its slot, and Submit comes back.
+      toggleAttachment('p1.jpg', false);
+      expect(attachmentNames()).toEqual([
+        'p2.jpg',
+        'p3.jpg',
+        'p4.jpg',
+        'v1.mp4',
+        'v2.mp4',
+        'v3.mp4',
+      ]);
+      expect(submitButton().props.disabled).toBe(false);
+
+      // Videos have the same cap as pictures.
+      toggleAttachment('v4.mp4', true);
+      expect(attachmentNames()).toEqual([
+        'p2.jpg',
+        'p3.jpg',
+        'p4.jpg',
+        'v1.mp4',
+        'v2.mp4',
+        'v3.mp4',
+        'v4.mp4',
+      ]);
+      expect(toastWarn.mock.calls[1][0]).toBe(
+        'A report can include at most 3 videos. Uncheck one to swap it in.',
+      );
+      expect(submitButton().props.disabled).toBe(true);
+
+      // Submitting anyway is refused with the same reason: the server keeps
+      // only the first three of each kind, and silently dropping them is what
+      // this replaces. The location is set here rather than waited for, so
+      // that the refusal this test is about is the one that comes back.
+      renderer.act(() => {
+        homeRef.current.setState({ latitude: 40.7129, longitude: -74.0061 });
+      });
+      await submit();
+      expect(toastError.mock.calls[0][0]).toBe(
+        'A report can include at most 3 pictures and 3 videos. Remove the extra ones to submit it.',
+      );
+
+      cleanup();
+    });
   });
 
   // A folder is how a camera roll arrives, and the form wants the pictures
@@ -3795,18 +6645,6 @@ describe('NycAddressAutocomplete', () => {
     expect(controlContainer.contains(input)).toBe(false);
   });
 });
-
-// The rendered tree keeps every JSX child as its own entry, so a sentence with
-// interpolations in it is not one string in there: the error message serializes
-// as "Could not look up make/model of ", "ABC123", " in", " ", "ON", ",". Join
-// the text back together before asserting on a sentence, the way a reader sees
-// it.
-function renderedText(node) {
-  if (node == null) return '';
-  if (typeof node === 'string') return node;
-  if (Array.isArray(node)) return node.map(renderedText).join('');
-  return renderedText(node.children);
-}
 
 describe('license state', () => {
   // The form only renders for a logged-in reader with a photo attached.

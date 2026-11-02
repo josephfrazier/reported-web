@@ -124,7 +124,7 @@
     "eslint-plugin-react": "^7.37.5",
     "file-loader": "^2.0.0",
     "flow-bin": "^0.81.0",
-    "glob": "^10.5.0",
+    "glob": "^14.0.2",
     "identity-obj-proxy": "^3.0.0",
     "jest": "^30.5.2",
     "jest-environment-jsdom": "^30.5.2",

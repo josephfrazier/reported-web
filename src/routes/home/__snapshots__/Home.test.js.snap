@@ -2374,7 +2374,7 @@ exports[`Home renders submission form and Previous Submissions when logged in wi
                   onChange={[Function]}
                   required={true}
                   type="datetime-local"
-                  value="2016-11-17T20:00"
+                  value="2016-11-17T19:00"
                 />
               </label>
               <label
@@ -3234,7 +3234,7 @@ exports[`Home renders with allPlateResults entry missing plate and photos 1`] = 
                   onChange={[Function]}
                   required={true}
                   type="datetime-local"
-                  value="2016-11-17T20:00"
+                  value="2016-11-17T19:00"
                 />
               </label>
               <label
@@ -4094,7 +4094,7 @@ exports[`Home renders with undefined allPlateResults and photos 1`] = `
                   onChange={[Function]}
                   required={true}
                   type="datetime-local"
-                  value="2016-11-17T20:00"
+                  value="2016-11-17T19:00"
                 />
               </label>
               <label

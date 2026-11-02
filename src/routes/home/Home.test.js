@@ -2668,6 +2668,18 @@ describe('Home', () => {
     cleanup();
   });
 
+  // A plate can be out of the picture or unreadable in it, and the report
+  // still counts. The field says what an empty one files as, and no longer
+  // stops the form from submitting when it is empty.
+  test('hints that an empty plate files as UNKNOWN', () => {
+    const { plateInput, cleanup } = renderPlateInput();
+
+    expect(plateInput.props.placeholder).toBe('UNKNOWN');
+    expect(plateInput.props.required).toBeUndefined();
+
+    cleanup();
+  });
+
   test('tolerates inputs that do not report a selection', () => {
     const { homeRef, plateInput, cleanup } = renderPlateInput();
 
@@ -2994,6 +3006,48 @@ describe('Home', () => {
       expect(Buffer.from(submittedBytes)).toEqual(Buffer.from('photo'));
 
       expect(homeRef.current.state.attachmentData).toEqual([]);
+
+      cleanup();
+    });
+
+    // The server requires a plate, and the field may be empty: the report
+    // still goes, and files as UNKNOWN. That is what the field's placeholder
+    // promises, and this is the half of the promise the server sees.
+    test('files a report whose plate was left empty as UNKNOWN', async () => {
+      const photo = new File(['photo'], 'photo.jpg', { type: 'image/jpeg' });
+      const { homeRef, axiosPost, submit, cleanup } = await renderWithFiles({
+        files: [photo],
+      });
+
+      expect(homeRef.current.state.plate).toBe('');
+
+      await submit();
+
+      const [, submitBody] = axiosPost.mock.calls.find(
+        ([url]) => url === '/submit',
+      );
+      expect(submitBody.get('plate')).toBe('UNKNOWN');
+
+      cleanup();
+    });
+
+    // The other side of it: a plate in the field is the plate that goes.
+    test('sends the plate that is in the field', async () => {
+      const photo = new File(['photo'], 'photo.jpg', { type: 'image/jpeg' });
+      const { homeRef, axiosPost, submit, cleanup } = await renderWithFiles({
+        files: [photo],
+      });
+
+      renderer.act(() => {
+        homeRef.current.setState({ plate: 'ABC123' });
+      });
+
+      await submit();
+
+      const [, submitBody] = axiosPost.mock.calls.find(
+        ([url]) => url === '/submit',
+      );
+      expect(submitBody.get('plate')).toBe('ABC123');
 
       cleanup();
     });

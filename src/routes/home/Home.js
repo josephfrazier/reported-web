@@ -3006,25 +3006,61 @@ class Home extends React.Component {
                 </Modal>
 
                 {!this.isLoggedIn() && (
-                  <div className={homeStyles['auth-prompt']}>
-                    <p>
-                      Please{' '}
-                      <button
-                        type="button"
-                        onClick={() => this.openAuthModal('login')}
-                      >
-                        log in
-                      </button>{' '}
-                      or{' '}
-                      <button
-                        type="button"
-                        onClick={() => this.openAuthModal('signup')}
-                      >
-                        sign up
-                      </button>{' '}
-                      to submit a report.
-                    </p>
-                  </div>
+                  <>
+                    <section
+                      className={homeStyles['about-reported']}
+                      aria-labelledby="about-reported-heading"
+                    >
+                      <h2 id="about-reported-heading">About Reported</h2>
+                      <p>
+                        Reported is a web app (formerly iOS/Android/Web) that
+                        lets you submit feedback about drivers in 30 seconds.
+                        Reported submits this feedback through various channels
+                        like 311 and Twitter to help hold those drivers
+                        accountable. If it&apos;s an Uber/Taxi/For hire vehicle,
+                        the Taxi and Limousine Commission will be notified and
+                        your report will usually result in a summons for the
+                        driver.
+                      </p>
+                      <p>
+                        The primary goal of Reported is to increase safety for
+                        pedestrians and cyclists on the streets of NYC by
+                        documenting driver infractions, notifying the
+                        appropriate channels and reporting the data to city
+                        agencies that have the ability to do something. Our hope
+                        is that this project can:
+                      </p>
+                      <ol>
+                        <li>
+                          Directly change driver behavior in measurable ways
+                        </li>
+                        <li>Leverage and apply new technology in novel ways</li>
+                        <li>
+                          Inform and improve the city’s enforcement practices
+                          with data
+                        </li>
+                      </ol>
+                    </section>
+                    <div className={homeStyles['auth-prompt']}>
+                      <p>
+                        Please{' '}
+                        <button
+                          type="button"
+                          onClick={() => this.openAuthModal('login')}
+                        >
+                          log in
+                        </button>{' '}
+                        or{' '}
+                        <button
+                          type="button"
+                          onClick={() => this.openAuthModal('signup')}
+                        >
+                          sign up
+                        </button>{' '}
+                        to submit a report.
+                      </p>
+                    </div>
+                  </>
                 )}
                 {this.isLoggedIn() && !isSettingsPanelOpen && (
                   <form

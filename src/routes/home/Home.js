@@ -2421,16 +2421,7 @@ class Home extends React.Component {
           >
             <div className={homeStyles.container}>
               <main>
-                <h1>
-                  <a
-                    href="https://reportedly.weebly.com/"
-                    style={{
-                      textDecoration: 'underline',
-                    }}
-                  >
-                    Reported
-                  </a>
-                </h1>
+                <h1>Reported</h1>
 
                 <ToastContainer
                   position="top-center"
@@ -3007,13 +2998,17 @@ class Home extends React.Component {
 
                 {!this.isLoggedIn() && (
                   <>
-                    <section
-                      className={homeStyles['about-reported']}
-                      aria-labelledby="about-reported-heading"
-                    >
-                      <h2 id="about-reported-heading">About Reported</h2>
+                    <section className={homeStyles['about-reported']}>
                       <p>
-                        Reported is a web app (also available on{' '}
+                        <a
+                          href="https://reportedly.weebly.com/"
+                          style={{
+                            fontWeight: 'bold',
+                          }}
+                        >
+                          Reported
+                        </a>{' '}
+                        is a web app (also available on{' '}
                         <a href="https://apps.apple.com/us/app/reported-nyc-311-made-easy/id916072964">
                           iOS
                         </a>{' '}

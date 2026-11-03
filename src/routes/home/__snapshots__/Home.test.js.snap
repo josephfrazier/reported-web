@@ -354,7 +354,14 @@ exports[`Home links the banner to the PR the review app was deployed from 1`] = 
               >
                 Android
               </a>
-              ) that lets you give feedback about drivers in 30 seconds. Reported submits this feedback to 311 and publishes photos to
+              ) that lets you give feedback about drivers in 30 seconds. Reported submits this feedback to
+               
+              <a
+                href="https://portal.311.nyc.gov/"
+              >
+                311
+              </a>
+               and publishes photos to
                
               <a
                 href="/submissions-map"
@@ -918,7 +925,14 @@ exports[`Home renders Log In modal UI 1`] = `
               >
                 Android
               </a>
-              ) that lets you give feedback about drivers in 30 seconds. Reported submits this feedback to 311 and publishes photos to
+              ) that lets you give feedback about drivers in 30 seconds. Reported submits this feedback to
+               
+              <a
+                href="https://portal.311.nyc.gov/"
+              >
+                311
+              </a>
+               and publishes photos to
                
               <a
                 href="/submissions-map"
@@ -1448,7 +1462,14 @@ exports[`Home renders Sign Up modal UI 1`] = `
               >
                 Android
               </a>
-              ) that lets you give feedback about drivers in 30 seconds. Reported submits this feedback to 311 and publishes photos to
+              ) that lets you give feedback about drivers in 30 seconds. Reported submits this feedback to
+               
+              <a
+                href="https://portal.311.nyc.gov/"
+              >
+                311
+              </a>
+               and publishes photos to
                
               <a
                 href="/submissions-map"
@@ -1642,7 +1663,14 @@ exports[`Home renders auth prompt and hides form when logged out 1`] = `
               >
                 Android
               </a>
-              ) that lets you give feedback about drivers in 30 seconds. Reported submits this feedback to 311 and publishes photos to
+              ) that lets you give feedback about drivers in 30 seconds. Reported submits this feedback to
+               
+              <a
+                href="https://portal.311.nyc.gov/"
+              >
+                311
+              </a>
+               and publishes photos to
                
               <a
                 href="/submissions-map"
@@ -4484,7 +4512,14 @@ exports[`Home shows the Parse server banner when the server enables it 1`] = `
               >
                 Android
               </a>
-              ) that lets you give feedback about drivers in 30 seconds. Reported submits this feedback to 311 and publishes photos to
+              ) that lets you give feedback about drivers in 30 seconds. Reported submits this feedback to
+               
+              <a
+                href="https://portal.311.nyc.gov/"
+              >
+                311
+              </a>
+               and publishes photos to
                
               <a
                 href="/submissions-map"

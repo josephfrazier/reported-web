@@ -3017,7 +3017,8 @@ class Home extends React.Component {
                           Android
                         </a>
                         ) that lets you give feedback about drivers in 30
-                        seconds. Reported submits this feedback to 311 and
+                        seconds. Reported submits this feedback to{' '}
+                        <a href="https://portal.311.nyc.gov/">311</a> and
                         publishes photos to{' '}
                         <a href="/submissions-map">its own map</a> to help hold
                         those drivers accountable. If it&apos;s an

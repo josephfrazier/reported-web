@@ -327,6 +327,34 @@ input[type='search']::-webkit-search-cancel-button {
   cursor: not-allowed;
 }
 
+/* The logged-out introduction. Left-aligned and capped to a readable
+   measure, unlike the centered login prompt below it. */
+.about-reported {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 0 1rem;
+  line-height: 1.6;
+  text-align: left;
+}
+
+.about-reported h2 {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+}
+
+.about-reported p {
+  margin: 0 0 1rem;
+}
+
+.about-reported ol {
+  margin: 0 0 1rem 1.5rem;
+  padding: 0;
+}
+
+.about-reported li {
+  margin-bottom: 0.25rem;
+}
+
 .auth-prompt {
   text-align: center;
   padding: 2rem;

@@ -2421,16 +2421,7 @@ class Home extends React.Component {
           >
             <div className={homeStyles.container}>
               <main>
-                <h1>
-                  <a
-                    href="https://reportedly.weebly.com/"
-                    style={{
-                      textDecoration: 'underline',
-                    }}
-                  >
-                    Reported
-                  </a>
-                </h1>
+                <h1>Reported</h1>
 
                 <ToastContainer
                   position="top-center"
@@ -3006,25 +2997,74 @@ class Home extends React.Component {
                 </Modal>
 
                 {!this.isLoggedIn() && (
-                  <div className={homeStyles['auth-prompt']}>
-                    <p>
-                      Please{' '}
-                      <button
-                        type="button"
-                        onClick={() => this.openAuthModal('login')}
-                      >
-                        log in
-                      </button>{' '}
-                      or{' '}
-                      <button
-                        type="button"
-                        onClick={() => this.openAuthModal('signup')}
-                      >
-                        sign up
-                      </button>{' '}
-                      to submit a report.
-                    </p>
-                  </div>
+                  <>
+                    <section className={homeStyles['about-reported']}>
+                      <p>
+                        <a
+                          href="https://reportedly.weebly.com/"
+                          style={{
+                            fontWeight: 'bold',
+                          }}
+                        >
+                          Reported
+                        </a>{' '}
+                        is a web app (also available on{' '}
+                        <a href="https://apps.apple.com/us/app/reported-nyc-311-made-easy/id916072964">
+                          iOS
+                        </a>{' '}
+                        and{' '}
+                        <a href="https://play.google.com/store/apps/details?id=cab.reported.nyc">
+                          Android
+                        </a>
+                        ) that lets you give feedback about drivers in 30
+                        seconds. Reported submits this feedback to{' '}
+                        <a href="https://portal.311.nyc.gov/">311</a> and
+                        publishes photos to{' '}
+                        <a href="/submissions-map">its own map</a> to help hold
+                        those drivers accountable. If it&apos;s an
+                        Uber/Lyft/Taxi/For hire vehicle, the Taxi and Limousine
+                        Commission will be notified and your report will usually
+                        result in a summons for the driver.
+                      </p>
+                      <p>
+                        The primary goal of Reported is to increase safety for
+                        pedestrians and cyclists on the streets of NYC by
+                        documenting driver infractions, notifying the
+                        appropriate channels and reporting the data to city
+                        agencies that have the ability to do something. Our hope
+                        is that this project can:
+                      </p>
+                      <ol>
+                        <li>
+                          Directly change driver behavior in measurable ways
+                        </li>
+                        <li>Leverage and apply new technology in novel ways</li>
+                        <li>
+                          Inform and improve the city’s enforcement practices
+                          with data
+                        </li>
+                      </ol>
+                    </section>
+                    <div className={homeStyles['auth-prompt']}>
+                      <p>
+                        Please{' '}
+                        <button
+                          type="button"
+                          onClick={() => this.openAuthModal('login')}
+                        >
+                          log in
+                        </button>{' '}
+                        or{' '}
+                        <button
+                          type="button"
+                          onClick={() => this.openAuthModal('signup')}
+                        >
+                          sign up
+                        </button>{' '}
+                        to submit a report.
+                      </p>
+                    </div>
+                  </>
                 )}
                 {this.isLoggedIn() && !isSettingsPanelOpen && (
                   <form

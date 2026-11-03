@@ -374,6 +374,28 @@ describe('Home', () => {
     tree.unmount();
   });
 
+  test('shows the about copy only when logged out', () => {
+    const loggedOut = renderHome();
+    const about = loggedOut.root.findByProps({
+      className: 'about-reported',
+    });
+    const paragraphs = about.findAllByType('p').map(p => p.children.join(''));
+    expect(paragraphs[0]).toContain(
+      'lets you give feedback about drivers in 30 seconds',
+    );
+    expect(paragraphs[1]).toContain('Our hope is that this project can:');
+    expect(about.findAllByType('li')).toHaveLength(3);
+    loggedOut.unmount();
+
+    const loggedIn = renderHome({
+      initialState: { email: 'test@example.com', loginSuccessful: true },
+    });
+    expect(
+      loggedIn.root.findAllByProps({ className: 'about-reported' }),
+    ).toHaveLength(0);
+    loggedIn.unmount();
+  });
+
   test('shows the Parse server banner when the server enables it', () => {
     const parseServerUrl = 'https://reported-parse.webabot.com/parse';
 

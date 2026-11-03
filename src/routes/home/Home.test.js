@@ -381,7 +381,7 @@ describe('Home', () => {
     });
     const paragraphs = about.findAllByType('p').map(p => p.children.join(''));
     expect(paragraphs[0]).toContain(
-      'lets you submit feedback about drivers in 30 seconds',
+      'lets you give feedback about drivers in 30 seconds',
     );
     expect(paragraphs[1]).toContain('Our hope is that this project can:');
     expect(about.findAllByType('li')).toHaveLength(3);

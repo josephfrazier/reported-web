@@ -3013,14 +3013,22 @@ class Home extends React.Component {
                     >
                       <h2 id="about-reported-heading">About Reported</h2>
                       <p>
-                        Reported is a web app (formerly iOS/Android/Web) that
-                        lets you submit feedback about drivers in 30 seconds.
-                        Reported submits this feedback through various channels
-                        like 311 and Twitter to help hold those drivers
-                        accountable. If it&apos;s an Uber/Taxi/For hire vehicle,
-                        the Taxi and Limousine Commission will be notified and
-                        your report will usually result in a summons for the
-                        driver.
+                        Reported is a web app (also available on{' '}
+                        <a href="https://apps.apple.com/us/app/reported-nyc-311-made-easy/id916072964">
+                          iOS
+                        </a>{' '}
+                        and{' '}
+                        <a href="https://play.google.com/store/apps/details?id=cab.reported.nyc">
+                          Android
+                        </a>
+                        ) that lets you give feedback about drivers in 30
+                        seconds. Reported submits this feedback to 311 and
+                        publishes photos to{' '}
+                        <a href="/submissions-map">its own map</a> to help hold
+                        those drivers accountable. If it&apos;s an
+                        Uber/Lyft/Taxi/For hire vehicle, the Taxi and Limousine
+                        Commission will be notified and your report will usually
+                        result in a summons for the driver.
                       </p>
                       <p>
                         The primary goal of Reported is to increase safety for

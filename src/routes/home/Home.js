@@ -1323,12 +1323,25 @@ class Home extends React.Component {
               block: 'start',
               behavior: 'smooth',
             });
+            // The plate is in the field now, and the field is where the report
+            // is confirmed: put the caret there, so the plate can be corrected
+            // or the report filed with Enter. The scroll above brings the
+            // field into view, so the focus must not scroll on its own.
+            this.focusPlateField({ preventScroll: true });
           }}
         >
           <span className={homeStyles['plate-overlay-tooltip']}>{tooltip}</span>
         </button>
       );
     });
+
+  // Put the caret in the License/Medallion field. A ref rather than a query:
+  // the field is the one the form renders, and there is only ever one. A
+  // caller that has already scrolled the field into view asks for
+  // `preventScroll`, so the focus does not drag the page somewhere else.
+  focusPlateField = ({ preventScroll = false } = {}) => {
+    this.plateRef.current?.focus?.({ preventScroll });
+  };
 
   setLicensePlate = ({ plate, licenseState, provenance = undefined }) => {
     // Both a read that found no state (null) and a caller that left the key

@@ -3258,6 +3258,7 @@ class Home extends React.Component {
     }
 
     this.loadBatchViolation(index);
+    this.scrollPlateFieldToBottom();
   };
 
   // Tick or untick a violation for merging. Any number can be ticked; the
@@ -3472,14 +3473,20 @@ class Home extends React.Component {
     const next = leftoverRowIsNew ? leftoverRow : following;
 
     this.loadBatchViolation(batchViolations.indexOf(next));
+    this.scrollPlateFieldToBottom();
 
     // The next violation is in the form now, so put the caret in the plate
     // field: Enter submits the report from there (the field is inside the
     // form), and a batch can be walked from the keyboard. It waits for the
     // render that puts the field back, because filing a report empties the
     // form, and an empty form has no plate field to focus.
+    //
+    // The focus asks for no scroll of its own: it would cancel the smooth
+    // scroll the field to the bottom of the page, which is still running.
     if (next) {
-      requestAnimationFrame(() => this.focusPlateField());
+      requestAnimationFrame(() =>
+        this.focusPlateField({ preventScroll: true }),
+      );
     }
   };
 
@@ -3489,6 +3496,24 @@ class Home extends React.Component {
   // `preventScroll`, so the focus does not drag the page somewhere else.
   focusPlateField = ({ preventScroll = false } = {}) => {
     this.plateRef.current?.focus?.({ preventScroll });
+  };
+
+  // Bring the License/Medallion field to the bottom of the page. Loading a
+  // violation fills the form above the field with its photos, so with the
+  // field at the bottom edge they fill the screen, which is what the report
+  // is checked against. It waits for a frame: opening a row replaces the
+  // photos, and the field is rendered again with them.
+  //
+  // The field, not its label: the lookup results render in the label below
+  // the field, and they land a second or so after it is filled in. Aligning
+  // the label's end would leave the field high on the page once they came in.
+  scrollPlateFieldToBottom = () => {
+    requestAnimationFrame(() =>
+      this.plateRef.current?.scrollIntoView?.({
+        block: 'end',
+        behavior: 'smooth',
+      }),
+    );
   };
 
   // Attach or detach one of a loaded violation's photos. A group of more than

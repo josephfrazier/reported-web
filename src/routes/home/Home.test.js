@@ -4955,6 +4955,8 @@ describe('Home', () => {
       // those nothing to focus, so the call is what is watched.
       const focus = jest.fn();
       homeRef.current.focusPlateField = focus;
+      const scroll = jest.fn();
+      homeRef.current.scrollPlateFieldToBottom = scroll;
 
       await submit();
       // The caret waits for the frame after the next violation renders.
@@ -4963,6 +4965,44 @@ describe('Home', () => {
       });
 
       expect(focus).toHaveBeenCalledTimes(1);
+      // The field goes to the bottom of the page at the same time, so the
+      // next violation's photos fill the screen above it.
+      expect(scroll).toHaveBeenCalledTimes(1);
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    // A row is opened by clicking its text, and the field that the report is
+    // checked and submitted from is below the photos: it goes to the bottom
+    // of the page, so the photos fill the screen above it.
+    test('brings the plate field to the bottom of the page when a row is opened', async () => {
+      const photos = [
+        jpeg({ name: 'a.jpg', size: 4 }),
+        jpeg({ name: 'b.jpg', size: 5 }),
+        jpeg({ name: 'c.jpg', size: 6 }),
+      ];
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, clickQueueLoad, cleanup } =
+        await renderBatchWithFiles(photos);
+
+      const scroll = jest.fn();
+      homeRef.current.scrollPlateFieldToBottom = scroll;
+
+      // The batch opened the first violation; open another.
+      clickQueueLoad('LDA8765');
+      expect(scroll).toHaveBeenCalledTimes(1);
+
+      // The row that is already open is not opened again, so nothing moves.
+      clickQueueLoad('LDA8765');
+      expect(scroll).toHaveBeenCalledTimes(1);
 
       exifr.gps.mockReset();
       exifr.parse.mockReset();

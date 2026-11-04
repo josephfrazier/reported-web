@@ -166,6 +166,19 @@ const inMemoryAttachment = async ({ attachmentFile }) => {
   return new File([bytes], attachmentFile.name, { type: attachmentFile.type });
 };
 
+// Whether a failed submit failed because an attachment id it carried names a
+// file the server no longer has. The message is the server's own (see
+// `src/getAttachmentData.js`): the store drops an attachment an hour after it
+// was written, and a restart of the server takes the temp directory, and so
+// every attachment in it, with it.
+//
+// The page still holds the bytes, so this is the one failure worth sending
+// again -- with the files rather than the ids.
+const isMissingAttachmentError = error =>
+  (error?.response?.data?.error?.message ?? '').startsWith(
+    'Attachment not found',
+  );
+
 const geolocate = () =>
   promisedLocation().catch(async () => {
     const { data } = await axios.get('https://ipapi.co/json');
@@ -3130,13 +3143,19 @@ class Home extends React.Component {
                       // again, so read them here rather than handing the network
                       // the Files that came from the file input (see
                       // inMemoryAttachment).
-                      const attachmentsToSubmit = !hasAllIds
-                        ? await Promise.all(
-                            this.state.attachmentData.map(attachmentFile =>
-                              inMemoryAttachment({ attachmentFile }),
-                            ),
-                          )
-                        : null;
+                      const filesForSubmit = () =>
+                        Promise.all(
+                          this.state.attachmentData.map(attachmentFile =>
+                            inMemoryAttachment({ attachmentFile }),
+                          ),
+                        );
+
+                      // Read before the report is built, not when the request goes
+                      // out: submitting the files means sending them, and the form
+                      // waits here for them the way it waits for the uploads above.
+                      const attachmentsToSubmit = hasAllIds
+                        ? null
+                        : await filesForSubmit();
 
                       // The report's own fields, without the attachments: the
                       // two ways of sending those are what differ.
@@ -3151,21 +3170,10 @@ class Home extends React.Component {
                         ).toISOString(),
                       };
 
-                      axios
-                        .post(
+                      const postSubmit = body =>
+                        axios.post(
                           '/submit',
-                          serialize(
-                            hasAllIds
-                              ? {
-                                  ...reportFields,
-                                  attachmentIds: JSON.stringify(attachmentIds),
-                                }
-                              : {
-                                  ...reportFields,
-                                  attachmentData: attachmentsToSubmit,
-                                },
-                            { allowEmptyArrays: true },
-                          ),
+                          serialize(body, { allowEmptyArrays: true }),
                           {
                             onUploadProgress: progressEvent => {
                               const {
@@ -3191,7 +3199,33 @@ class Home extends React.Component {
                               });
                             },
                           },
-                        )
+                        );
+
+                      const submitReport = () =>
+                        hasAllIds
+                          ? postSubmit({
+                              ...reportFields,
+                              attachmentIds: JSON.stringify(attachmentIds),
+                            })
+                          : postSubmit({
+                              ...reportFields,
+                              attachmentData: attachmentsToSubmit,
+                            });
+
+                      submitReport()
+                        .catch(async error => {
+                          // An id the server has lost is not the user's mistake, and
+                          // not something they can put right: the files are still
+                          // here, so the report goes again with them.
+                          if (!hasAllIds || !isMissingAttachmentError(error)) {
+                            throw error;
+                          }
+
+                          return postSubmit({
+                            ...reportFields,
+                            attachmentData: await filesForSubmit(),
+                          });
+                        })
                         .then(({ data }) => {
                           const { submission } = data;
                           this.scrollContainerRef.current?.scrollTo({

@@ -31,16 +31,7 @@ exports[`Home hides form fields when logged in with no photos uploaded 1`] = `
       >
         <main>
           <h1>
-            <a
-              href="https://reportedly.weebly.com/"
-              style={
-                {
-                  "textDecoration": "underline",
-                }
-              }
-            >
-              Reported
-            </a>
+            Reported
           </h1>
           <div
             className="Toastify"
@@ -301,16 +292,7 @@ exports[`Home links the banner to the PR the review app was deployed from 1`] = 
       >
         <main>
           <h1>
-            <a
-              href="https://reportedly.weebly.com/"
-              style={
-                {
-                  "textDecoration": "underline",
-                }
-              }
-            >
-              Reported
-            </a>
+            Reported
           </h1>
           <div
             className="Toastify"
@@ -342,6 +324,67 @@ exports[`Home links the banner to the PR the review app was deployed from 1`] = 
               </button>
             </div>
           </div>
+          <section
+            className="about-reported"
+          >
+            <p>
+              <a
+                href="https://reportedly.weebly.com/"
+                style={
+                  {
+                    "fontWeight": "bold",
+                  }
+                }
+              >
+                Reported
+              </a>
+               
+              is a web app (also available on
+               
+              <a
+                href="https://apps.apple.com/us/app/reported-nyc-311-made-easy/id916072964"
+              >
+                iOS
+              </a>
+               
+              and
+               
+              <a
+                href="https://play.google.com/store/apps/details?id=cab.reported.nyc"
+              >
+                Android
+              </a>
+              ) that lets you give feedback about drivers in 30 seconds. Reported submits this feedback to
+               
+              <a
+                href="https://portal.311.nyc.gov/"
+              >
+                311
+              </a>
+               and publishes photos to
+               
+              <a
+                href="/submissions-map"
+              >
+                its own map
+              </a>
+               to help hold those drivers accountable. If it's an Uber/Lyft/Taxi/For hire vehicle, the Taxi and Limousine Commission will be notified and your report will usually result in a summons for the driver.
+            </p>
+            <p>
+              The primary goal of Reported is to increase safety for pedestrians and cyclists on the streets of NYC by documenting driver infractions, notifying the appropriate channels and reporting the data to city agencies that have the ability to do something. Our hope is that this project can:
+            </p>
+            <ol>
+              <li>
+                Directly change driver behavior in measurable ways
+              </li>
+              <li>
+                Leverage and apply new technology in novel ways
+              </li>
+              <li>
+                Inform and improve the city’s enforcement practices with data
+              </li>
+            </ol>
+          </section>
           <div
             className="auth-prompt"
           >
@@ -450,16 +493,7 @@ exports[`Home renders Edit Profile UI 1`] = `
       >
         <main>
           <h1>
-            <a
-              href="https://reportedly.weebly.com/"
-              style={
-                {
-                  "textDecoration": "underline",
-                }
-              }
-            >
-              Reported
-            </a>
+            Reported
           </h1>
           <div
             className="Toastify"
@@ -726,16 +760,7 @@ exports[`Home renders Log In modal UI 1`] = `
       >
         <main>
           <h1>
-            <a
-              href="https://reportedly.weebly.com/"
-              style={
-                {
-                  "textDecoration": "underline",
-                }
-              }
-            >
-              Reported
-            </a>
+            Reported
           </h1>
           <div
             className="Toastify"
@@ -870,6 +895,67 @@ exports[`Home renders Log In modal UI 1`] = `
               </button>
             </div>
           </form>
+          <section
+            className="about-reported"
+          >
+            <p>
+              <a
+                href="https://reportedly.weebly.com/"
+                style={
+                  {
+                    "fontWeight": "bold",
+                  }
+                }
+              >
+                Reported
+              </a>
+               
+              is a web app (also available on
+               
+              <a
+                href="https://apps.apple.com/us/app/reported-nyc-311-made-easy/id916072964"
+              >
+                iOS
+              </a>
+               
+              and
+               
+              <a
+                href="https://play.google.com/store/apps/details?id=cab.reported.nyc"
+              >
+                Android
+              </a>
+              ) that lets you give feedback about drivers in 30 seconds. Reported submits this feedback to
+               
+              <a
+                href="https://portal.311.nyc.gov/"
+              >
+                311
+              </a>
+               and publishes photos to
+               
+              <a
+                href="/submissions-map"
+              >
+                its own map
+              </a>
+               to help hold those drivers accountable. If it's an Uber/Lyft/Taxi/For hire vehicle, the Taxi and Limousine Commission will be notified and your report will usually result in a summons for the driver.
+            </p>
+            <p>
+              The primary goal of Reported is to increase safety for pedestrians and cyclists on the streets of NYC by documenting driver infractions, notifying the appropriate channels and reporting the data to city agencies that have the ability to do something. Our hope is that this project can:
+            </p>
+            <ol>
+              <li>
+                Directly change driver behavior in measurable ways
+              </li>
+              <li>
+                Leverage and apply new technology in novel ways
+              </li>
+              <li>
+                Inform and improve the city’s enforcement practices with data
+              </li>
+            </ol>
+          </section>
           <div
             className="auth-prompt"
           >
@@ -978,16 +1064,7 @@ exports[`Home renders Preferences UI 1`] = `
       >
         <main>
           <h1>
-            <a
-              href="https://reportedly.weebly.com/"
-              style={
-                {
-                  "textDecoration": "underline",
-                }
-              }
-            >
-              Reported
-            </a>
+            Reported
           </h1>
           <div
             className="Toastify"
@@ -1201,16 +1278,7 @@ exports[`Home renders Sign Up modal UI 1`] = `
       >
         <main>
           <h1>
-            <a
-              href="https://reportedly.weebly.com/"
-              style={
-                {
-                  "textDecoration": "underline",
-                }
-              }
-            >
-              Reported
-            </a>
+            Reported
           </h1>
           <div
             className="Toastify"
@@ -1377,6 +1445,67 @@ exports[`Home renders Sign Up modal UI 1`] = `
               </button>
             </div>
           </form>
+          <section
+            className="about-reported"
+          >
+            <p>
+              <a
+                href="https://reportedly.weebly.com/"
+                style={
+                  {
+                    "fontWeight": "bold",
+                  }
+                }
+              >
+                Reported
+              </a>
+               
+              is a web app (also available on
+               
+              <a
+                href="https://apps.apple.com/us/app/reported-nyc-311-made-easy/id916072964"
+              >
+                iOS
+              </a>
+               
+              and
+               
+              <a
+                href="https://play.google.com/store/apps/details?id=cab.reported.nyc"
+              >
+                Android
+              </a>
+              ) that lets you give feedback about drivers in 30 seconds. Reported submits this feedback to
+               
+              <a
+                href="https://portal.311.nyc.gov/"
+              >
+                311
+              </a>
+               and publishes photos to
+               
+              <a
+                href="/submissions-map"
+              >
+                its own map
+              </a>
+               to help hold those drivers accountable. If it's an Uber/Lyft/Taxi/For hire vehicle, the Taxi and Limousine Commission will be notified and your report will usually result in a summons for the driver.
+            </p>
+            <p>
+              The primary goal of Reported is to increase safety for pedestrians and cyclists on the streets of NYC by documenting driver infractions, notifying the appropriate channels and reporting the data to city agencies that have the ability to do something. Our hope is that this project can:
+            </p>
+            <ol>
+              <li>
+                Directly change driver behavior in measurable ways
+              </li>
+              <li>
+                Leverage and apply new technology in novel ways
+              </li>
+              <li>
+                Inform and improve the city’s enforcement practices with data
+              </li>
+            </ol>
+          </section>
           <div
             className="auth-prompt"
           >
@@ -1485,16 +1614,7 @@ exports[`Home renders auth prompt and hides form when logged out 1`] = `
       >
         <main>
           <h1>
-            <a
-              href="https://reportedly.weebly.com/"
-              style={
-                {
-                  "textDecoration": "underline",
-                }
-              }
-            >
-              Reported
-            </a>
+            Reported
           </h1>
           <div
             className="Toastify"
@@ -1526,6 +1646,67 @@ exports[`Home renders auth prompt and hides form when logged out 1`] = `
               </button>
             </div>
           </div>
+          <section
+            className="about-reported"
+          >
+            <p>
+              <a
+                href="https://reportedly.weebly.com/"
+                style={
+                  {
+                    "fontWeight": "bold",
+                  }
+                }
+              >
+                Reported
+              </a>
+               
+              is a web app (also available on
+               
+              <a
+                href="https://apps.apple.com/us/app/reported-nyc-311-made-easy/id916072964"
+              >
+                iOS
+              </a>
+               
+              and
+               
+              <a
+                href="https://play.google.com/store/apps/details?id=cab.reported.nyc"
+              >
+                Android
+              </a>
+              ) that lets you give feedback about drivers in 30 seconds. Reported submits this feedback to
+               
+              <a
+                href="https://portal.311.nyc.gov/"
+              >
+                311
+              </a>
+               and publishes photos to
+               
+              <a
+                href="/submissions-map"
+              >
+                its own map
+              </a>
+               to help hold those drivers accountable. If it's an Uber/Lyft/Taxi/For hire vehicle, the Taxi and Limousine Commission will be notified and your report will usually result in a summons for the driver.
+            </p>
+            <p>
+              The primary goal of Reported is to increase safety for pedestrians and cyclists on the streets of NYC by documenting driver infractions, notifying the appropriate channels and reporting the data to city agencies that have the ability to do something. Our hope is that this project can:
+            </p>
+            <ol>
+              <li>
+                Directly change driver behavior in measurable ways
+              </li>
+              <li>
+                Leverage and apply new technology in novel ways
+              </li>
+              <li>
+                Inform and improve the city’s enforcement practices with data
+              </li>
+            </ol>
+          </section>
           <div
             className="auth-prompt"
           >
@@ -1634,16 +1815,7 @@ exports[`Home renders submission form and Previous Submissions when logged in wi
       >
         <main>
           <h1>
-            <a
-              href="https://reportedly.weebly.com/"
-              style={
-                {
-                  "textDecoration": "underline",
-                }
-              }
-            >
-              Reported
-            </a>
+            Reported
           </h1>
           <div
             className="Toastify"
@@ -2494,16 +2666,7 @@ exports[`Home renders with allPlateResults entry missing plate and photos 1`] = 
       >
         <main>
           <h1>
-            <a
-              href="https://reportedly.weebly.com/"
-              style={
-                {
-                  "textDecoration": "underline",
-                }
-              }
-            >
-              Reported
-            </a>
+            Reported
           </h1>
           <div
             className="Toastify"
@@ -3354,16 +3517,7 @@ exports[`Home renders with undefined allPlateResults and photos 1`] = `
       >
         <main>
           <h1>
-            <a
-              href="https://reportedly.weebly.com/"
-              style={
-                {
-                  "textDecoration": "underline",
-                }
-              }
-            >
-              Reported
-            </a>
+            Reported
           </h1>
           <div
             className="Toastify"
@@ -4231,16 +4385,7 @@ exports[`Home shows the Parse server banner when the server enables it 1`] = `
       >
         <main>
           <h1>
-            <a
-              href="https://reportedly.weebly.com/"
-              style={
-                {
-                  "textDecoration": "underline",
-                }
-              }
-            >
-              Reported
-            </a>
+            Reported
           </h1>
           <div
             className="Toastify"
@@ -4272,6 +4417,67 @@ exports[`Home shows the Parse server banner when the server enables it 1`] = `
               </button>
             </div>
           </div>
+          <section
+            className="about-reported"
+          >
+            <p>
+              <a
+                href="https://reportedly.weebly.com/"
+                style={
+                  {
+                    "fontWeight": "bold",
+                  }
+                }
+              >
+                Reported
+              </a>
+               
+              is a web app (also available on
+               
+              <a
+                href="https://apps.apple.com/us/app/reported-nyc-311-made-easy/id916072964"
+              >
+                iOS
+              </a>
+               
+              and
+               
+              <a
+                href="https://play.google.com/store/apps/details?id=cab.reported.nyc"
+              >
+                Android
+              </a>
+              ) that lets you give feedback about drivers in 30 seconds. Reported submits this feedback to
+               
+              <a
+                href="https://portal.311.nyc.gov/"
+              >
+                311
+              </a>
+               and publishes photos to
+               
+              <a
+                href="/submissions-map"
+              >
+                its own map
+              </a>
+               to help hold those drivers accountable. If it's an Uber/Lyft/Taxi/For hire vehicle, the Taxi and Limousine Commission will be notified and your report will usually result in a summons for the driver.
+            </p>
+            <p>
+              The primary goal of Reported is to increase safety for pedestrians and cyclists on the streets of NYC by documenting driver infractions, notifying the appropriate channels and reporting the data to city agencies that have the ability to do something. Our hope is that this project can:
+            </p>
+            <ol>
+              <li>
+                Directly change driver behavior in measurable ways
+              </li>
+              <li>
+                Leverage and apply new technology in novel ways
+              </li>
+              <li>
+                Inform and improve the city’s enforcement practices with data
+              </li>
+            </ol>
+          </section>
           <div
             className="auth-prompt"
           >
@@ -4380,16 +4586,7 @@ exports[`Home shows the email-updates checkbox only while withholding, and sets 
       >
         <main>
           <h1>
-            <a
-              href="https://reportedly.weebly.com/"
-              style={
-                {
-                  "textDecoration": "underline",
-                }
-              }
-            >
-              Reported
-            </a>
+            Reported
           </h1>
           <div
             className="Toastify"

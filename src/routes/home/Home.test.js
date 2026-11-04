@@ -2811,7 +2811,7 @@ describe('Home', () => {
     // extraction pipelines, and adds the given files through the same code
     // path as the file <input>. Returns spies for asserting on the
     // background upload and submit requests.
-    async function renderWithFiles({ files, uploadError }) {
+    async function renderWithFiles({ files, uploadError, submitErrors = [] }) {
       const initialState = {
         email: 'test@example.com',
         password: 'test-password',
@@ -2827,6 +2827,7 @@ describe('Home', () => {
       document.querySelector = jest.fn(() => ({ scrollTo: jest.fn() }));
 
       const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+      let submitCalls = 0;
       const axiosPost = jest
         .spyOn(axios, 'post')
         .mockImplementation((url, body) => {
@@ -2841,6 +2842,15 @@ describe('Home', () => {
             return Promise.resolve({
               data: { id: `uploaded-${body.get('attachmentData').name}` },
             });
+          }
+          if (url === '/submit') {
+            submitCalls += 1;
+            const error = submitErrors[submitCalls - 1];
+            if (error) {
+              const rejection = Promise.reject(error);
+              rejection.catch(() => {});
+              return rejection;
+            }
           }
           return Promise.resolve({
             data: {
@@ -3070,6 +3080,100 @@ describe('Home', () => {
         ([url]) => url === '/submit',
       );
       expect(submitBody.get('plate')).toBe('ABC123');
+
+      cleanup();
+    });
+
+    // The server holds a pre-uploaded attachment for an hour and loses every
+    // one of them to a restart, so an id the page still holds can name a file
+    // that is no longer there. The page has the bytes, so it sends them.
+    test('sends the files when the server no longer has the attachments it was given', async () => {
+      const photo = new File(['photo'], 'photo.jpg', { type: 'image/jpeg' });
+      const { homeRef, axiosPost, submit, toastError, cleanup } =
+        await renderWithFiles({
+          files: [photo],
+          submitErrors: [
+            {
+              response: {
+                data: {
+                  error: {
+                    message:
+                      'Attachment not found; please re-add your files and try again',
+                  },
+                },
+              },
+            },
+          ],
+        });
+
+      await submit();
+
+      // The failure and the second read of the files are two more turns of the
+      // chain, so let it finish before the tree goes away.
+      await renderer.act(async () => {
+        for (let i = 0; i < 4; i += 1) {
+          // eslint-disable-next-line no-await-in-loop -- one round per pending promise chain.
+          await new Promise(resolve => setImmediate(resolve));
+        }
+      });
+
+      const submitCalls = axiosPost.mock.calls.filter(
+        ([url]) => url === '/submit',
+      );
+      expect(submitCalls).toHaveLength(2);
+
+      // The first attempt is the ids one, and the retry carries the files
+      // instead: the ids are what the server has lost.
+      const [, firstBody] = submitCalls[0];
+      expect(JSON.parse(firstBody.get('attachmentIds'))).toEqual([
+        'uploaded-photo.jpg',
+      ]);
+      expect(firstBody.get('attachmentData[]')).toBeNull();
+
+      const [, secondBody] = submitCalls[1];
+      expect(secondBody.get('attachmentIds')).toBeNull();
+      const submitted = secondBody.get('attachmentData[]');
+      expect(submitted).not.toBe(photo);
+      const submittedBytes = await blobUtil.blobToArrayBuffer(submitted);
+      expect(Buffer.from(submittedBytes)).toEqual(Buffer.from('photo'));
+
+      // The retry succeeded, so nothing was reported to the user and the
+      // report left the form.
+      expect(toastError).not.toHaveBeenCalled();
+      expect(homeRef.current.state.attachmentData).toEqual([]);
+
+      cleanup();
+    });
+
+    test('reports a submit failure that sending the files cannot fix', async () => {
+      const photo = new File(['photo'], 'photo.jpg', { type: 'image/jpeg' });
+      const { axiosPost, submit, toastError, cleanup } = await renderWithFiles({
+        files: [photo],
+        submitErrors: [
+          {
+            response: {
+              data: { error: { message: 'Something else went wrong' } },
+            },
+          },
+        ],
+      });
+
+      await submit();
+
+      await renderer.act(async () => {
+        for (let i = 0; i < 4; i += 1) {
+          // eslint-disable-next-line no-await-in-loop -- one round per pending promise chain.
+          await new Promise(resolve => setImmediate(resolve));
+        }
+      });
+
+      // One attempt: there is nothing to try again with.
+      expect(
+        axiosPost.mock.calls.filter(([url]) => url === '/submit'),
+      ).toHaveLength(1);
+      expect(toastError.mock.calls[0][0]).toBe(
+        'Error: Something else went wrong ',
+      );
 
       cleanup();
     });

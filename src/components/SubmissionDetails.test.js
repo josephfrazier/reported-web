@@ -125,6 +125,45 @@ describe('SubmissionDetails', () => {
     expect(wrapper).toMatchSnapshot();
   });
 
+  test('shows the delete button in the summary without expanding the details', () => {
+    const onDeleteSubmission = jest.fn();
+    const submission = {
+      reqnumber: 'N/A until submitted to 311',
+      medallionNo: 'medallionNo',
+      state: 'licenseState',
+      typeofcomplaint: 'typeofcomplaint',
+      loc1_address: '82 Reade St, New York, NY 10007, USA',
+      timeofreport: new Date(Date.now()).toISOString(),
+      reportDescription: 'reportDescription',
+      status: 0,
+      objectId: 'objectId',
+    };
+
+    const wrapper = renderer.create(
+      <App context={{ insertCss: () => {}, fetch: () => {}, pathname: '' }}>
+        <SubmissionDetails
+          submission={submission}
+          onDeleteSubmission={onDeleteSubmission}
+        />
+      </App>,
+    );
+
+    const summary = wrapper.root.findByType('summary');
+    const button = summary.findByType('button');
+
+    // Just the X; the accessible name carries the words.
+    expect(renderedText(button)).toContain('❌');
+    expect(renderedText(button)).not.toContain('Delete');
+
+    const preventDefault = jest.fn();
+    button.props.onClick({ preventDefault });
+
+    // Cancelling the default action keeps the <details> closed.
+    expect(preventDefault).toHaveBeenCalled();
+    expect(onDeleteSubmission).toHaveBeenCalledWith({ objectId: 'objectId' });
+    expect(renderedText(wrapper.toJSON())).not.toContain('reportDescription');
+  });
+
   test('renders TLC and NYPD SR numbers when submission has matching tasks', () => {
     const submission = {
       medallionNo: 'medallionNo',

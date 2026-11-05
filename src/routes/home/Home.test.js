@@ -4362,6 +4362,76 @@ describe('a locked address', () => {
     tree.unmount();
   });
 
+  test('gives the place back to the photos when the lock is unchecked', () => {
+    const homeRef = React.createRef();
+    const tree = renderHome({ homeRef });
+
+    // The address lookup runs after the place is set; it is not what this
+    // test is about.
+    const axiosPost = jest
+      .spyOn(axios, 'post')
+      .mockResolvedValue({ data: { features: [] } });
+
+    const photo = new File(['photo'], 'photo.jpg', { type: 'image/jpeg' });
+    homeRef.current.photoReadings.set(photo, {
+      latitude: 40.73,
+      longitude: -74.01,
+      createDateMs: 3000,
+    });
+
+    renderer.act(() => {
+      homeRef.current.setState({
+        ...chosenPlace,
+        isLocationLocked: true,
+        attachmentData: [photo],
+      });
+    });
+
+    // Unchecking asks the photos again: the place the lock held was theirs.
+    renderer.act(() => {
+      homeRef.current.handleInputChange({
+        target: { name: 'isLocationLocked', type: 'checkbox', checked: false },
+      });
+    });
+
+    expect(homeRef.current.state.isLocationLocked).toBe(false);
+    expect(homeRef.current.state.latitude).toBe(40.73);
+    expect(homeRef.current.state.longitude).toBe(-74.01);
+    expect(homeRef.current.state.addressProvenance).toBe(
+      '(extracted from picture/video)',
+    );
+
+    axiosPost.mockRestore();
+    tree.unmount();
+  });
+
+  test('leaves the place alone when the lock goes and no photo knows one', () => {
+    const homeRef = React.createRef();
+    const tree = renderHome({ homeRef });
+
+    const photo = new File(['photo'], 'photo.jpg', { type: 'image/jpeg' });
+
+    renderer.act(() => {
+      homeRef.current.setState({
+        ...chosenPlace,
+        isLocationLocked: true,
+        attachmentData: [photo],
+      });
+    });
+
+    renderer.act(() => {
+      homeRef.current.handleInputChange({
+        target: { name: 'isLocationLocked', type: 'checkbox', checked: false },
+      });
+    });
+
+    // Nothing else would have moved it either, so the place is the user's.
+    expect(homeRef.current.state.isLocationLocked).toBe(false);
+    expectChosenPlace(homeRef);
+
+    tree.unmount();
+  });
+
   test('keeps the place the user picked when a late GPS fix arrives', async () => {
     const homeRef = React.createRef();
     const tree = renderHome({ homeRef });

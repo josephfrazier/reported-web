@@ -39,7 +39,6 @@ exports[`readLicenseViaALPR falling back to the next token 1`] = `
         "score": 0.906,
         "type": "Sedan",
       },
-      "vehicleCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: aa2f05ca8a22d20442a0f93cae69e69fb8eff991c3f42fbe3e6f9dd443cca7b6",
     },
     {
       "box": {
@@ -84,7 +83,6 @@ exports[`readLicenseViaALPR falling back to the next token 1`] = `
         "score": 0.823,
         "type": "SUV",
       },
-      "vehicleCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: 59c20373735a11c73f60925b89166bb41cb76474cc65a46cc95e04b2cf967533",
     },
     {
       "box": {
@@ -117,7 +115,6 @@ exports[`readLicenseViaALPR falling back to the next token 1`] = `
         "score": 0.451,
         "type": "Sedan",
       },
-      "vehicleCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: aa8cc4fb86e85a34b5327989db107044de45a957f0a6e1dd76eb46f42d02299b",
     },
   ],
   "timestamp": "timestamp REMOVED BECAUSE IT CHANGES",
@@ -166,7 +163,6 @@ exports[`readLicenseViaALPR using the first token in the list 1`] = `
         "score": 0.906,
         "type": "Sedan",
       },
-      "vehicleCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: aa2f05ca8a22d20442a0f93cae69e69fb8eff991c3f42fbe3e6f9dd443cca7b6",
     },
     {
       "box": {
@@ -211,7 +207,6 @@ exports[`readLicenseViaALPR using the first token in the list 1`] = `
         "score": 0.823,
         "type": "SUV",
       },
-      "vehicleCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: 59c20373735a11c73f60925b89166bb41cb76474cc65a46cc95e04b2cf967533",
     },
     {
       "box": {
@@ -244,7 +239,6 @@ exports[`readLicenseViaALPR using the first token in the list 1`] = `
         "score": 0.451,
         "type": "Sedan",
       },
-      "vehicleCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: aa8cc4fb86e85a34b5327989db107044de45a957f0a6e1dd76eb46f42d02299b",
     },
   ],
   "timestamp": "timestamp REMOVED BECAUSE IT CHANGES",

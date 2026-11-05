@@ -152,7 +152,14 @@ const defaultLatitude = 40.7128;
 const defaultLongitude = -74.006;
 
 // adapted from https://www.bignerdranch.com/blog/dont-over-react/
-const urls = new WeakMap();
+// The object URL of each photo the page shows. One photo, one URL.
+//
+// A Map rather than a WeakMap, because an object URL is not the garbage
+// collector's to free: the browser holds the photo's bytes until the page
+// revokes the URL, whatever the page itself still references. A sitting of
+// many reports therefore keeps every photo it ever showed, unless the URL is
+// released when the photo leaves.
+const urls = new Map();
 const getBlobUrl = blob => {
   if (urls.has(blob)) {
     return urls.get(blob);
@@ -160,6 +167,24 @@ const getBlobUrl = blob => {
   const blobUrl = window.URL.createObjectURL(blob);
   urls.set(blob, blobUrl);
   return blobUrl;
+};
+
+// Let go of a photo the page no longer shows.
+const releaseBlobUrl = blob => {
+  const blobUrl = urls.get(blob);
+  if (!blobUrl) {
+    return;
+  }
+
+  urls.delete(blob);
+  // The test environment has no revoker; a browser always does.
+  window.URL.revokeObjectURL?.(blobUrl);
+};
+
+// Let go of every photo at once, for a page that is going away.
+const releaseAllBlobUrls = () => {
+  urls.forEach(blobUrl => window.URL.revokeObjectURL?.(blobUrl));
+  urls.clear();
 };
 
 // Tracks in-progress background upload promises keyed by File object
@@ -1423,6 +1448,8 @@ class Home extends React.Component {
   componentWillUnmount() {
     document.removeEventListener('keydown', this.handleDocumentKeyDown);
     onUnauthorized = null;
+    // The page is going away: nothing will show these photos again.
+    releaseAllBlobUrls();
   }
 
   onDeleteSubmission = ({ objectId }) => {
@@ -2231,7 +2258,14 @@ class Home extends React.Component {
           previousPhotos,
         });
 
-        this.photoReadings.delete(file);
+        previousPhotos
+          .filter(file => !this.state.attachmentData.includes(file))
+          .forEach(file => {
+            // The photo is off the page now, so its bytes do not need to be
+            // held for it.
+            releaseBlobUrl(file);
+            this.photoReadings.delete(file);
+          });
       },
     );
   };
@@ -5237,15 +5271,24 @@ class Home extends React.Component {
                             );
                           }
 
-                          this.setState(state => ({
-                            attachmentData: [],
-                            submissions: [submission].concat(state.submissions),
-                            allPlateData: null,
-                            plateDataByAttachmentName: {},
-                            vehicleInfoComponent: null,
-                            violationSummaryComponent: null,
-                            reportDescription: '',
-                          }));
+                          this.setState(
+                            state => ({
+                              attachmentData: [],
+                              submissions: [submission].concat(
+                                state.submissions,
+                              ),
+                              allPlateData: null,
+                              plateDataByAttachmentName: {},
+                              vehicleInfoComponent: null,
+                              violationSummaryComponent: null,
+                              reportDescription: '',
+                            }),
+                            () => {
+                              // The report has the photos now: nothing on the
+                              // page shows them, so their bytes can go.
+                              submittedFiles.forEach(releaseBlobUrl);
+                            },
+                          );
                           this.setLicensePlate({
                             plate: '',
                             licenseState: 'NY',

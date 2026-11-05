@@ -1288,6 +1288,53 @@ describe('Home', () => {
     cleanup();
   });
 
+  // A photo's object URL is what holds its bytes in memory: the browser keeps
+  // them until the page revokes the URL. A photo that leaves gives its URL
+  // back, and so does every photo when the page goes.
+  test("releases a photo's object URL when the photo leaves", () => {
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    const originalRevokeObjectURL = global.URL.revokeObjectURL;
+    let made = 0;
+    global.URL.createObjectURL = jest.fn(() => {
+      made += 1;
+      return `blob:photo-${made}`;
+    });
+    global.URL.revokeObjectURL = jest.fn();
+
+    const initialState = { email: 'test@example.com', loginSuccessful: true };
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ initialState, homeRef });
+    });
+
+    const photo = new File(['photo'], 'photo.jpg', { type: 'image/jpeg' });
+    renderer.act(() => {
+      homeRef.current.setState({ attachmentData: [photo] });
+    });
+
+    // The grid drew the photo, which made its URL.
+    const url = global.URL.createObjectURL.mock.results.slice(-1)[0].value;
+    expect(url).toBeTruthy();
+
+    renderer.act(() => {
+      homeRef.current.deletePhoto({ file: photo, name: 'photo.jpg' });
+    });
+    expect(global.URL.revokeObjectURL).toHaveBeenCalledWith(url);
+
+    // And a page that goes away lets go of whatever it still holds.
+    renderer.act(() => {
+      homeRef.current.setState({ attachmentData: [photo] });
+    });
+    tree.unmount();
+    expect(global.URL.revokeObjectURL.mock.calls.length).toBeGreaterThanOrEqual(
+      2,
+    );
+
+    global.URL.createObjectURL = originalCreateObjectURL;
+    global.URL.revokeObjectURL = originalRevokeObjectURL;
+  });
+
   test('takes the plate with the photo that read it', async () => {
     // One photo whose read named the car, and one that read nothing at all.
     const named = labelledPhoto('named');

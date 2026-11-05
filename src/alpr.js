@@ -340,9 +340,6 @@ function readFromPlateRecognizer({ attachmentBuffer, tokens, cacheKey, lap }) {
             data.results.map(async result => {
               const crops = {};
               try {
-                crops.vehicleCropDataUrl = await cropBox(
-                  result.vehicle && result.vehicle.box,
-                );
                 crops.plateCropDataUrl = await cropBox(result.box);
               } catch (err) {
                 console.error('Failed to crop image:', err);

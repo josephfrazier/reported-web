@@ -4962,7 +4962,7 @@ describe('Home', () => {
       const focus = jest.fn();
       homeRef.current.focusPlateField = focus;
       const scroll = jest.fn();
-      homeRef.current.scrollPlateFieldToBottom = scroll;
+      homeRef.current.scrollPlateFieldsToBottom = scroll;
 
       await submit();
       // The caret waits for the frame after the next violation renders.
@@ -4980,10 +4980,10 @@ describe('Home', () => {
       cleanup();
     });
 
-    // A row is opened by clicking its text, and the field that the report is
-    // checked and submitted from is below the photos: it goes to the bottom
-    // of the page, so the photos fill the screen above it.
-    test('brings the plate field to the bottom of the page when a row is opened', async () => {
+    // A row is opened by clicking its text, and the fields that the report is
+    // checked and submitted from are below the photos: they go to the bottom
+    // of the page, so the photos fill the screen above them.
+    test('brings the plate fields to the bottom of the page when a row is opened', async () => {
       const photos = [
         jpeg({ name: 'a.jpg', size: 4 }),
         jpeg({ name: 'b.jpg', size: 5 }),
@@ -5000,7 +5000,7 @@ describe('Home', () => {
         await renderBatchWithFiles(photos);
 
       const scroll = jest.fn();
-      homeRef.current.scrollPlateFieldToBottom = scroll;
+      homeRef.current.scrollPlateFieldsToBottom = scroll;
 
       // The batch opened the first violation; open another.
       clickQueueLoad('LDA8765');

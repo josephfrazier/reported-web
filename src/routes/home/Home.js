@@ -1277,6 +1277,9 @@ class Home extends React.Component {
     // again whenever the photos change -- see applyPhotosToForm.
     this.photoReadings = new Map();
     this.plateRef = React.createRef();
+    // The state field is below the plate field when the two wrap, so a scroll
+    // that aims at the bottom of the pair aims at this one.
+    this.licenseStateRef = React.createRef();
     this.folderInputRef = React.createRef();
     this.plateLabelRef = React.createRef();
     this.loginEmailRef = React.createRef();
@@ -3258,7 +3261,7 @@ class Home extends React.Component {
     }
 
     this.loadBatchViolation(index);
-    this.scrollPlateFieldToBottom();
+    this.scrollPlateFieldsToBottom();
   };
 
   // Tick or untick a violation for merging. Any number can be ticked; the
@@ -3480,7 +3483,7 @@ class Home extends React.Component {
     const next = leftoverRowIsNew ? leftoverRow : following;
 
     this.loadBatchViolation(batchViolations.indexOf(next));
-    this.scrollPlateFieldToBottom();
+    this.scrollPlateFieldsToBottom();
 
     // The next violation is in the form now, so put the caret in the plate
     // field: Enter submits the report from there (the field is inside the
@@ -3505,18 +3508,20 @@ class Home extends React.Component {
     this.plateRef.current?.focus?.({ preventScroll });
   };
 
-  // Bring the License/Medallion field to the bottom of the page. Loading a
-  // violation fills the form above the field with its photos, so with the
-  // field at the bottom edge they fill the screen, which is what the report
-  // is checked against. It waits for a frame: opening a row replaces the
-  // photos, and the field is rendered again with them.
+  // Bring the License/Medallion fields to the bottom of the page. Loading a
+  // violation fills the form above them with its photos, so with the fields at
+  // the bottom edge they fill the screen, which is what the report is checked
+  // against. It waits for a frame: opening a row replaces the photos, and the
+  // fields are rendered again with them.
   //
-  // The field, not its label: the lookup results render in the label below
-  // the field, and they land a second or so after it is filled in. Aligning
-  // the label's end would leave the field high on the page once they came in.
-  scrollPlateFieldToBottom = () => {
+  // The state field, because it is the lower of the two when they wrap onto
+  // separate lines: aligning it leaves the plate field on screen above it.
+  // Not the label: the lookup results render in the label below the fields,
+  // and they land a second or so after they are filled in, which would leave
+  // the fields high on the page.
+  scrollPlateFieldsToBottom = () => {
     requestAnimationFrame(() =>
-      this.plateRef.current?.scrollIntoView?.({
+      this.licenseStateRef.current?.scrollIntoView?.({
         block: 'end',
         behavior: 'smooth',
       }),
@@ -5442,6 +5447,7 @@ class Home extends React.Component {
                                   }}
                                   value={this.state.licenseState}
                                   name="licenseState"
+                                  ref={this.licenseStateRef}
                                   list="stateSuggestion"
                                   autoComplete="off"
                                   placeholder="State"

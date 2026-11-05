@@ -3658,9 +3658,26 @@ class Home extends React.Component {
       stateChange.hasSeenWithholdNotice = true;
     }
 
-    this.setState(stateChange, () =>
-      debouncedSavePersistentStateToCookie(this),
-    );
+    this.setState(stateChange, () => {
+      debouncedSavePersistentStateToCookie(this);
+
+      if (name === 'isLocationLocked' && value === false) {
+        this.unlockLocation();
+      }
+    });
+  };
+
+  // Unchecking the lock asks the photos where the report was. The lock held
+  // the place they would have given, so with the lock gone that place is what
+  // the report shows -- the same place it would have had without the box. A
+  // photo the report holds that knows where it was is what answers; with none,
+  // the place stays where the user left it, because nothing else would have
+  // moved it either.
+  unlockLocation = () => {
+    const readings = this.readingsOf(this.state.attachmentData);
+    if (latestLocatedPhoto(readings)) {
+      this.applyPhotoPlace(readings);
+    }
   };
 
   dismissWithholdNotice = () => {

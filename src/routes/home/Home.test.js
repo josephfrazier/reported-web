@@ -5074,6 +5074,41 @@ describe('Home', () => {
       cleanup();
     });
 
+    // A deleted row's photos, the ones no other row holds, are out of the
+    // batch for good. Their object URLs are what keep their bytes in memory,
+    // so they go with the row.
+    test('releases the photos a deleted row no longer needs', async () => {
+      const photos = [
+        jpeg({ name: 'a.jpg', size: 4 }),
+        jpeg({ name: 'b.jpg', size: 5 }),
+        jpeg({ name: 'c.jpg', size: 6 }),
+      ];
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, clickRowDelete, cleanup } =
+        await renderBatchWithFiles(photos);
+
+      const originalRevokeObjectURL = global.URL.revokeObjectURL;
+      global.URL.revokeObjectURL = jest.fn();
+
+      // The loaded row holds the first two photos; deleting it takes both out
+      // of the batch, because no other row holds them.
+      clickRowDelete('T696817C');
+      expect(global.URL.revokeObjectURL).toHaveBeenCalled();
+      expect(homeRef.current.state.batchViolations).toHaveLength(1);
+
+      global.URL.revokeObjectURL = originalRevokeObjectURL;
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
     test('removes the violation when the X takes its last photo', async () => {
       const photos = ['p1', 'p2'].map((name, index) => {
         const file = new File(['picture'], `${name}.jpg`, {

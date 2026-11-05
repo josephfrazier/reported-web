@@ -2259,12 +2259,12 @@ class Home extends React.Component {
         });
 
         previousPhotos
-          .filter(file => !this.state.attachmentData.includes(file))
-          .forEach(file => {
+          .filter(removed => !this.state.attachmentData.includes(removed))
+          .forEach(removed => {
             // The photo is off the page now, so its bytes do not need to be
             // held for it.
-            releaseBlobUrl(file);
-            this.photoReadings.delete(file);
+            releaseBlobUrl(removed);
+            this.photoReadings.delete(removed);
           });
       },
     );
@@ -3423,6 +3423,11 @@ class Home extends React.Component {
             Math.min(index, remainingViolations.length - 1),
           );
         }
+
+        // The photos this row held and no other does are out of the batch for
+        // good, so nothing will show them again: their bytes can go. It waits
+        // for the load above, which takes them off the page.
+        removedPhotos.forEach(photo => releaseBlobUrl(photo.file));
       },
     );
   };

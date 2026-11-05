@@ -1181,6 +1181,19 @@ exports[`Home renders Preferences UI 1`] = `
                
               Load previous submissions on page load
             </label>
+            <label
+              htmlFor="isSemiAutomaticMode"
+            >
+              <input
+                checked={false}
+                id="isSemiAutomaticMode"
+                name="isSemiAutomaticMode"
+                onChange={[Function]}
+                type="checkbox"
+              />
+               
+              Semiautomatic Mode: Add a batch of pictures/videos, then review each violation
+            </label>
           </div>
           <br />
           <div
@@ -1945,54 +1958,29 @@ exports[`Home renders submission form and Previous Submissions when logged in wi
                 }
               />
               <div
-                style={
-                  {
-                    "display": "flex",
-                    "flexWrap": "wrap",
-                  }
-                }
+                className="attachment-grid"
               >
                 <div
-                  style={
-                    {
-                      "flexGrow": 1,
-                      "margin": "0.1%",
-                      "position": "relative",
-                      "width": "33%",
-                    }
-                  }
+                  className="attachment-tile"
                 >
-                  <div
+                  <a
+                    href="blob:mock"
+                    rel="noopener noreferrer"
                     style={
                       {
-                        "display": "inline-block",
-                        "maxWidth": "100%",
-                        "position": "relative",
+                        "display": "block",
                       }
                     }
+                    target="_blank"
+                    title="photo.jpg"
                   >
-                    <a
-                      href="blob:mock"
-                      rel="noopener noreferrer"
-                      style={
-                        {
-                          "display": "block",
-                        }
-                      }
-                      target="_blank"
-                    >
-                      <img
-                        alt="photo.jpg"
-                        src="blob:mock"
-                        style={
-                          {
-                            "display": "block",
-                          }
-                        }
-                      />
-                    </a>
-                  </div>
+                    <img
+                      alt="photo.jpg"
+                      src="blob:mock"
+                    />
+                  </a>
                   <button
+                    aria-label="Delete photo.jpg"
                     onClick={[Function]}
                     style={
                       {
@@ -2008,10 +1996,9 @@ exports[`Home renders submission form and Previous Submissions when logged in wi
                     type="button"
                   >
                     <span
-                      aria-label="Delete photo/video"
-                      role="img"
+                      aria-hidden="true"
                     >
-                      ❌
+                      🗑️
                     </span>
                   </button>
                 </div>
@@ -2822,54 +2809,29 @@ exports[`Home renders with allPlateResults entry missing plate and photos 1`] = 
                 }
               />
               <div
-                style={
-                  {
-                    "display": "flex",
-                    "flexWrap": "wrap",
-                  }
-                }
+                className="attachment-grid"
               >
                 <div
-                  style={
-                    {
-                      "flexGrow": 1,
-                      "margin": "0.1%",
-                      "position": "relative",
-                      "width": "33%",
-                    }
-                  }
+                  className="attachment-tile"
                 >
-                  <div
+                  <a
+                    href="blob:mock"
+                    rel="noopener noreferrer"
                     style={
                       {
-                        "display": "inline-block",
-                        "maxWidth": "100%",
-                        "position": "relative",
+                        "display": "block",
                       }
                     }
+                    target="_blank"
+                    title="photo.jpg"
                   >
-                    <a
-                      href="blob:mock"
-                      rel="noopener noreferrer"
-                      style={
-                        {
-                          "display": "block",
-                        }
-                      }
-                      target="_blank"
-                    >
-                      <img
-                        alt="photo.jpg"
-                        src="blob:mock"
-                        style={
-                          {
-                            "display": "block",
-                          }
-                        }
-                      />
-                    </a>
-                  </div>
+                    <img
+                      alt="photo.jpg"
+                      src="blob:mock"
+                    />
+                  </a>
                   <button
+                    aria-label="Delete photo.jpg"
                     onClick={[Function]}
                     style={
                       {
@@ -2885,10 +2847,9 @@ exports[`Home renders with allPlateResults entry missing plate and photos 1`] = 
                     type="button"
                   >
                     <span
-                      aria-label="Delete photo/video"
-                      role="img"
+                      aria-hidden="true"
                     >
-                      ❌
+                      🗑️
                     </span>
                   </button>
                 </div>
@@ -3699,54 +3660,29 @@ exports[`Home renders with undefined allPlateResults and photos 1`] = `
                 }
               />
               <div
-                style={
-                  {
-                    "display": "flex",
-                    "flexWrap": "wrap",
-                  }
-                }
+                className="attachment-grid"
               >
                 <div
-                  style={
-                    {
-                      "flexGrow": 1,
-                      "margin": "0.1%",
-                      "position": "relative",
-                      "width": "33%",
-                    }
-                  }
+                  className="attachment-tile"
                 >
-                  <div
+                  <a
+                    href="blob:mock"
+                    rel="noopener noreferrer"
                     style={
                       {
-                        "display": "inline-block",
-                        "maxWidth": "100%",
-                        "position": "relative",
+                        "display": "block",
                       }
                     }
+                    target="_blank"
+                    title="photo.jpg"
                   >
-                    <a
-                      href="blob:mock"
-                      rel="noopener noreferrer"
-                      style={
-                        {
-                          "display": "block",
-                        }
-                      }
-                      target="_blank"
-                    >
-                      <img
-                        alt="photo.jpg"
-                        src="blob:mock"
-                        style={
-                          {
-                            "display": "block",
-                          }
-                        }
-                      />
-                    </a>
-                  </div>
+                    <img
+                      alt="photo.jpg"
+                      src="blob:mock"
+                    />
+                  </a>
                   <button
+                    aria-label="Delete photo.jpg"
                     onClick={[Function]}
                     style={
                       {
@@ -3762,10 +3698,9 @@ exports[`Home renders with undefined allPlateResults and photos 1`] = `
                     type="button"
                   >
                     <span
-                      aria-label="Delete photo/video"
-                      role="img"
+                      aria-hidden="true"
                     >
-                      ❌
+                      🗑️
                     </span>
                   </button>
                 </div>

@@ -59,6 +59,7 @@ import formatGeosearchAddress from '../../formatGeosearchAddress.js';
 import earliestTakenPhoto from '../../earliestTakenPhoto.js';
 import createGeosearchAddressCache from '../../geosearchAddressCache.js';
 import { isImage, isVideo } from '../../isImage.js';
+import photoPreview from '../../photoPreview.js';
 import { expandZipFiles } from '../../zipAttachments.js';
 import latestLocatedPhoto from '../../latestLocatedPhoto.js';
 import plateReadRetry from '../../plateReadRetry.js';
@@ -151,6 +152,14 @@ const defaultLongitude = -74.006;
 // many reports therefore keeps every photo it ever showed, unless the URL is
 // released when the photo leaves.
 const urls = new Map();
+
+// The small copy of each photo the grid draws, as a data URL, once it is ready.
+// The photo itself is still what is uploaded and submitted; only the picture
+// on the page is the preview. A WeakMap keyed by the photo: the preview goes
+// when the photo does.
+const previewUrls = new WeakMap();
+// The preview being made for a photo, so a photo added twice makes one.
+const previewPromises = new WeakMap();
 const getBlobUrl = blob => {
   if (urls.has(blob)) {
     return urls.get(blob);
@@ -944,6 +953,9 @@ class Home extends React.Component {
     // it is attached. The form's time and place are worked out from these
     // again whenever the photos change -- see applyPhotosToForm.
     this.photoReadings = new Map();
+    // Set when the page goes away: a preview that lands after that has no grid
+    // to redraw.
+    this.isUnmounted = false;
     this.plateRef = React.createRef();
     this.folderInputRef = React.createRef();
     this.plateLabelRef = React.createRef();
@@ -1082,6 +1094,7 @@ class Home extends React.Component {
     onUnauthorized = null;
     // The page is going away: nothing will show these photos again.
     releaseAllBlobUrls();
+    this.isUnmounted = true;
   }
 
   onDeleteSubmission = ({ objectId }) => {
@@ -1855,6 +1868,35 @@ class Home extends React.Component {
     );
   };
 
+  // Make the small copies the grid draws photos by. Nothing waits for them: a
+  // photo is drawn at full size until its preview is ready, and the grid is
+  // redrawn when it is.
+  startPhotoPreviews = attachmentData => {
+    attachmentData
+      .filter(file => isImage({ ext: fileExtension(file.name) }))
+      .forEach(file => {
+        if (previewUrls.has(file) || previewPromises.has(file)) {
+          return;
+        }
+
+        previewPromises.set(
+          file,
+          photoPreview(file)
+            .then(preview => {
+              if (!preview) {
+                return;
+              }
+
+              previewUrls.set(file, preview);
+              if (!this.isUnmounted) {
+                this.forceUpdate();
+              }
+            })
+            .catch(() => {}),
+        );
+      });
+  };
+
   handleAttachmentData = async ({ attachmentData }) => {
     // The photos already attached, so that the time and place the user set by
     // hand can be told from the ones the photos gave. `concat` leaves this
@@ -1892,6 +1934,10 @@ class Home extends React.Component {
             fileUploadPromises.set(attachmentFile, uploadPromise);
           }
         });
+
+        // The grid draws each photo through a small copy of it; the browser
+        // decodes that one, not the whole picture.
+        this.startPhotoPreviews(attachmentData);
 
         const listsOfExtractions = await Promise.all(
           this.state.attachmentData.map(async (attachmentFile, index) => {
@@ -3382,6 +3428,12 @@ class Home extends React.Component {
                               const ext = fileExtension(name);
                               const isImg = isImage({ ext });
                               const src = getBlobUrl(attachmentFile);
+                              // The picture on the page is the photo's
+                              // preview, when there is one: the photo itself
+                              // is only what the report carries. The link
+                              // still opens the photo.
+                              const previewSrc =
+                                previewUrls.get(attachmentFile) || src;
                               const attachmentPlateData =
                                 this.state.plateDataByAttachmentName[name];
 
@@ -3410,7 +3462,7 @@ class Home extends React.Component {
                                     >
                                       {isImg ? (
                                         <img
-                                          src={src}
+                                          src={previewSrc}
                                           alt={name}
                                           style={{ display: 'block' }}
                                         />

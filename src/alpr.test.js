@@ -34,7 +34,6 @@ describe('readLicenseViaALPR', () => {
 
     result.results.forEach(res => {
       res.plateCropDataUrl = makeHash(res.plateCropDataUrl);
-      res.vehicleCropDataUrl = makeHash(res.vehicleCropDataUrl);
     });
 
     expect(result).toMatchSnapshot();
@@ -63,7 +62,6 @@ describe('readLicenseViaALPR', () => {
 
     result.results.forEach(res => {
       res.plateCropDataUrl = makeHash(res.plateCropDataUrl);
-      res.vehicleCropDataUrl = makeHash(res.vehicleCropDataUrl);
     });
 
     expect(result).toMatchSnapshot();

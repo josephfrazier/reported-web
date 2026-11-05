@@ -49,3 +49,22 @@ export default async function photoPreview(file) {
     bitmap.close?.();
   }
 }
+
+// The previews are made one at a time. `createImageBitmap` decodes the whole
+// photo before the canvas turns it into the small one, and a batch of 25
+// photos decoded together holds 25 of those bitmaps at once; one at a time,
+// it holds one.
+//
+// Decoding straight to the small size would be better still: the browser can
+// take `resizeWidth`/`resizeHeight`. It needs the photo's dimensions to do
+// that, though, and a browser gives them only after a decode -- so the small
+// decode would need a full one first, which is the cost this avoids.
+let previewQueue = Promise.resolve();
+
+export function queuePreview(file) {
+  const make = () => photoPreview(file);
+  const next = previewQueue.then(make, make);
+  // A preview that fails must not stop the ones behind it.
+  previewQueue = next.catch(() => {});
+  return next;
+}

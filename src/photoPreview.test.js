@@ -1,4 +1,7 @@
-import photoPreview, { PREVIEW_MAX_EDGE } from './photoPreview.js';
+import photoPreview, {
+  PREVIEW_MAX_EDGE,
+  queuePreview,
+} from './photoPreview.js';
 
 const originalCreateImageBitmap = global.createImageBitmap;
 
@@ -47,6 +50,40 @@ test('answers nothing where the browser cannot decode at all', async () => {
   delete global.createImageBitmap;
 
   expect(await photoPreview(new File(['photo'], 'photo.jpg'))).toBeNull();
+});
+
+// A batch of photos is decoded for its previews one at a time: each decode
+// holds the whole photo for a moment, and 25 together hold 25 of them.
+test('makes one preview at a time', async () => {
+  let inFlight = 0;
+  let mostAtOnce = 0;
+  const settle = [];
+  global.createImageBitmap = jest.fn(
+    () =>
+      new Promise(resolve => {
+        inFlight += 1;
+        mostAtOnce = Math.max(mostAtOnce, inFlight);
+        settle.push(() => {
+          inFlight -= 1;
+          resolve(bitmapOf({ width: 800, height: 600 }));
+        });
+      }),
+  );
+
+  const first = queuePreview(new File(['a'], 'a.jpg'));
+  const second = queuePreview(new File(['b'], 'b.jpg'));
+
+  // Let the queue start the first one and nothing else.
+  await new Promise(resolve => setTimeout(resolve, 0));
+  expect(settle).toHaveLength(1);
+
+  settle[0]();
+  await new Promise(resolve => setTimeout(resolve, 0));
+  expect(settle).toHaveLength(2);
+
+  settle[1]();
+  await Promise.all([first, second]);
+  expect(mostAtOnce).toBe(1);
 });
 
 test('keeps the preview under the size it promises', () => {

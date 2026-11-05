@@ -59,7 +59,7 @@ import formatGeosearchAddress from '../../formatGeosearchAddress.js';
 import earliestTakenPhoto from '../../earliestTakenPhoto.js';
 import createGeosearchAddressCache from '../../geosearchAddressCache.js';
 import { isImage, isVideo } from '../../isImage.js';
-import photoPreview from '../../photoPreview.js';
+import { queuePreview } from '../../photoPreview.js';
 import { expandZipFiles } from '../../zipAttachments.js';
 import latestLocatedPhoto from '../../latestLocatedPhoto.js';
 import plateReadRetry from '../../plateReadRetry.js';
@@ -1881,7 +1881,7 @@ class Home extends React.Component {
 
         previewPromises.set(
           file,
-          photoPreview(file)
+          queuePreview(file)
             .then(preview => {
               if (!preview) {
                 return;

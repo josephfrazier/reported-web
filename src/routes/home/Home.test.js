@@ -4630,11 +4630,11 @@ describe('Home', () => {
       cleanup();
     });
 
-    // A row's tick is for merging it with another row, and a row opened with
-    // nothing ticked is the one a merge usually starts from: it ticks itself,
-    // so that putting it together with the row beside it is one tick rather
-    // than two. Opening a row never adds to a selection that is already there.
-    test('ticks the row opened when nothing is ticked', async () => {
+    // A row's tick is for merging it with another row, and one open row is not
+    // a merge: the tick moves with the row the form shows, so a merge starts
+    // from the row in front of the user. Two or more ticked are a selection
+    // the user is building, and opening another row leaves it alone.
+    test('moves the tick with the row the form shows, until a merge is under way', async () => {
       const photos = ['a', 'b'].map(name => {
         const file = new File(['picture'], `${name}.jpg`, {
           type: 'image/jpeg',
@@ -4682,26 +4682,32 @@ describe('Home', () => {
         identity(photos[0], 'AAA111', 1704110400000),
       ]);
 
-      // A selection is already there, so opening another row does not touch it.
+      // One tick is the row the form showed, not a merge: opening another row
+      // moves the tick to it.
       clickQueueLoad('BBB222');
       expect(homeRef.current.state.batchMergeSelection).toEqual([
-        identity(photos[0], 'AAA111', 1704110400000),
-      ]);
-
-      tickMerge('BBB222');
-      expect(homeRef.current.state.batchMergeSelection).toEqual([
-        identity(photos[0], 'AAA111', 1704110400000),
         identity(photos[1], 'BBB222', 1704110500000),
       ]);
 
-      // Empty again, so the next row opened ticks itself.
-      untickMerge('AAA111');
-      untickMerge('BBB222');
-      expect(homeRef.current.state.batchMergeSelection).toEqual([]);
+      // A second tick is a merge the user is building, and opening another row
+      // leaves the two alone.
+      tickMerge('AAA111');
+      expect(homeRef.current.state.batchMergeSelection).toEqual([
+        identity(photos[1], 'BBB222', 1704110500000),
+        identity(photos[0], 'AAA111', 1704110400000),
+      ]);
 
       clickQueueLoad('AAA111');
       expect(homeRef.current.state.batchMergeSelection).toEqual([
+        identity(photos[1], 'BBB222', 1704110500000),
         identity(photos[0], 'AAA111', 1704110400000),
+      ]);
+
+      // Back to one tick, and the tick follows the form again.
+      untickMerge('BBB222');
+      clickQueueLoad('BBB222');
+      expect(homeRef.current.state.batchMergeSelection).toEqual([
+        identity(photos[1], 'BBB222', 1704110500000),
       ]);
 
       cleanup();
@@ -4927,6 +4933,12 @@ describe('Home', () => {
       ).toEqual([['b.jpg'], ['c.jpg'], ['d.jpg']]);
       expect(currentViolationIndex).toBe(0);
       expect(attachmentData.map(file => file.name)).toEqual(['b.jpg']);
+
+      // The tick was on the report that left; it moves to the row the queue
+      // opened, so a merge starts from the one in front of the user.
+      const { batchMergeSelection } = homeRef.current.state;
+      expect(batchMergeSelection).toHaveLength(1);
+      expect(batchMergeSelection[0]).toMatch(/-b\.jpg$/);
 
       // The reading of the photo the report carried goes with it: nothing
       // shows that photo any more. The one left behind keeps its reading,

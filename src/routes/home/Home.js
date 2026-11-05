@@ -3134,13 +3134,14 @@ class Home extends React.Component {
     // submit to send the file itself.
     startBackgroundUploads(attached.map(photo => photo.file));
 
-    // Opening a row with nothing ticked ticks that row, so that putting it
-    // together with the row beside it is one tick rather than two. A selection
-    // that is already there belongs to the user, and opening a row leaves it
-    // as it is.
+    // Opening a row ticks it, so that putting it together with the row beside
+    // it is one tick rather than two. One tick is what opening a row leaves
+    // behind, not something to merge: the tick moves with the row the form
+    // shows. Two or more ticked are a merge the user is building, and opening
+    // another row must not undo it -- so the selection is left as it is.
     const identity = batchViolationIdentity(violation);
     const { batchMergeSelection } = this.state;
-    const tickThisRow = batchMergeSelection.length === 0;
+    const selectionFollowsTheForm = batchMergeSelection.length < 2;
 
     this.setState(
       {
@@ -3150,7 +3151,9 @@ class Home extends React.Component {
           violation.photos.find(photo => photo.plateResults)?.plateResults ||
           null,
         plateDataByAttachmentName,
-        batchMergeSelection: tickThisRow ? [identity] : batchMergeSelection,
+        batchMergeSelection: selectionFollowsTheForm
+          ? [identity]
+          : batchMergeSelection,
       },
       // The form is usable as it opens; this only fills in what the batch
       // could not read. It runs from the callback so that the violation is

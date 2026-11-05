@@ -3442,6 +3442,13 @@ class Home extends React.Component {
       this.dismissedRows.add(batchViolationIdentity(reported));
     }
 
+    // The report carries these photos now, and the queue no longer shows
+    // them: their readings are only memory now. A photo the report leaves
+    // behind keeps its reading, because the row made of it is next in the
+    // queue -- and a photo shared with another row gets its reading back when
+    // that row is opened.
+    submittedFiles.forEach(file => this.photoReadings.delete(file));
+
     this.setState(
       {
         batchViolations: remainingViolations,

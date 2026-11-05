@@ -4928,6 +4928,12 @@ describe('Home', () => {
       expect(currentViolationIndex).toBe(0);
       expect(attachmentData.map(file => file.name)).toEqual(['b.jpg']);
 
+      // The reading of the photo the report carried goes with it: nothing
+      // shows that photo any more. The one left behind keeps its reading,
+      // because the row made of it is the one now open.
+      expect(homeRef.current.photoReadings.has(photos[0])).toBe(false);
+      expect(homeRef.current.photoReadings.has(photos[1])).toBe(true);
+
       exifr.gps.mockReset();
       exifr.parse.mockReset();
       cleanup();

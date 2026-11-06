@@ -311,8 +311,8 @@ app.use('/saveUser', (req, res) => {
 });
 
 app.use('/api/geosearch', (req, res) => {
-  const { lat, long } = req.body;
-  geosearch({ lat, long })
+  const { lat, long, address } = req.body;
+  geosearch({ lat, long, address })
     .then(body => res.json(body))
     .catch(handlePromiseRejection(res));
 });

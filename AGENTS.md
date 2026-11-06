@@ -104,7 +104,8 @@ Never squash the trio together: each step is independently reviewable, and the h
 
 ## Validation and CI gotchas
 
-- CI runs Node `26.13.0`; local sandboxes may not. Yarn refuses to run unless the local Node exactly matches the `engines.node` pin. Workaround: use `nvm install` and `nvm use` (the checked-in `.nvmrc` points to `26.13.0`) before running Yarn commands.
+- CI runs Node `26.13.0`; local sandboxes may not. Use `nvm install` and `nvm use` (the checked-in `.nvmrc` points to `26.13.0`) to match it.
+- `.yarnrc` sets `ignore-engines`, so Yarn no longer enforces any `engines.node` field. The reason is `parse-server` 9.4.0: it declares a Node range that stops below 26, and its first release that names Node 26 (9.11.0) changes how a master-key signup and a pointer `$in` query behave. Keep local Node at the `.nvmrc` pin by hand; Yarn will not catch a mismatch.
 - `yarn lint` currently passes with an existing warning in `src/routes/home/Home.js` for `react/no-danger`.
 - `yarn build` succeeds locally, but emits existing webpack deprecation warnings and one existing `exifr` “Critical dependency” warning.
 - `yarn test` is not a hermetic unit suite. Several tests call live external services:

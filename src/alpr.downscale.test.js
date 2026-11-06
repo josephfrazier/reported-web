@@ -35,7 +35,7 @@ async function captureUpload({ attachmentBuffer }) {
   try {
     const data = await readLicenseViaALPR({
       attachmentBuffer,
-      PLATERECOGNIZER_TOKEN: 'token-under-test',
+      PLATERECOGNIZER_TOKEN_LIST: 'token-under-test',
     });
     return { uploaded: data.uploaded, logs, data };
   } finally {

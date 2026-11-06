@@ -9,7 +9,16 @@ let sessionPromise = null;
 
 function getSession() {
   if (!sessionPromise) {
-    sessionPromise = createSession({ browser: 'firefox_151', os: 'macos' });
+    // Use the operating system trust store. The default `combined` mode also
+    // trusts a bundled Mozilla root set that is frozen when the package is
+    // built, so it does not follow CA removals such as the October 2026
+    // eMudhra intermediate CA compromise. `defaultPaths` lets platform
+    // updates take effect.
+    sessionPromise = createSession({
+      browser: 'firefox_151',
+      os: 'macos',
+      trustStore: 'defaultPaths',
+    });
   }
   return sessionPromise;
 }

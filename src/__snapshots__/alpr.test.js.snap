@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
 
-exports[`readLicenseViaALPR falling back to the second token 1`] = `
+exports[`readLicenseViaALPR falling back to the next token 1`] = `
 {
   "camera_id": null,
   "filename": "filename REMOVED BECAUSE IT CHANGES",
@@ -26,7 +26,7 @@ exports[`readLicenseViaALPR falling back to the second token 1`] = `
       "plateCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: f50ce32cfb8f8813e232baba07f33f93053ec9ae7d613021771b717b5dbe3823",
       "region": {
         "code": "us-nj",
-        "score": 0.658,
+        "score": 0.656,
       },
       "score": 1,
       "vehicle": {
@@ -39,7 +39,6 @@ exports[`readLicenseViaALPR falling back to the second token 1`] = `
         "score": 0.906,
         "type": "Sedan",
       },
-      "vehicleCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: aa2f05ca8a22d20442a0f93cae69e69fb8eff991c3f42fbe3e6f9dd443cca7b6",
     },
     {
       "box": {
@@ -71,7 +70,7 @@ exports[`readLicenseViaALPR falling back to the second token 1`] = `
       "plateCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: ec9d94539bffdf02c10ce402994db6119edd46c1ab9434e39e67f0d1d03df93c",
       "region": {
         "code": "us-ny",
-        "score": 0.759,
+        "score": 0.716,
       },
       "score": 1,
       "vehicle": {
@@ -84,7 +83,6 @@ exports[`readLicenseViaALPR falling back to the second token 1`] = `
         "score": 0.823,
         "type": "SUV",
       },
-      "vehicleCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: 59c20373735a11c73f60925b89166bb41cb76474cc65a46cc95e04b2cf967533",
     },
     {
       "box": {
@@ -104,7 +102,7 @@ exports[`readLicenseViaALPR falling back to the second token 1`] = `
       "plateCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: a33dfcc1590f9d2cb94c7892a921cc847dc36e4b2fae2b96c025afdd00a8e8ed",
       "region": {
         "code": "us-ny",
-        "score": 0.907,
+        "score": 0.909,
       },
       "score": 1,
       "vehicle": {
@@ -117,7 +115,6 @@ exports[`readLicenseViaALPR falling back to the second token 1`] = `
         "score": 0.451,
         "type": "Sedan",
       },
-      "vehicleCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: aa8cc4fb86e85a34b5327989db107044de45a957f0a6e1dd76eb46f42d02299b",
     },
   ],
   "timestamp": "timestamp REMOVED BECAUSE IT CHANGES",
@@ -127,7 +124,7 @@ exports[`readLicenseViaALPR falling back to the second token 1`] = `
 }
 `;
 
-exports[`readLicenseViaALPR using only the first token 1`] = `
+exports[`readLicenseViaALPR using the first token in the list 1`] = `
 {
   "camera_id": null,
   "filename": "filename REMOVED BECAUSE IT CHANGES",
@@ -153,7 +150,7 @@ exports[`readLicenseViaALPR using only the first token 1`] = `
       "plateCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: f50ce32cfb8f8813e232baba07f33f93053ec9ae7d613021771b717b5dbe3823",
       "region": {
         "code": "us-nj",
-        "score": 0.658,
+        "score": 0.656,
       },
       "score": 1,
       "vehicle": {
@@ -166,7 +163,6 @@ exports[`readLicenseViaALPR using only the first token 1`] = `
         "score": 0.906,
         "type": "Sedan",
       },
-      "vehicleCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: aa2f05ca8a22d20442a0f93cae69e69fb8eff991c3f42fbe3e6f9dd443cca7b6",
     },
     {
       "box": {
@@ -198,7 +194,7 @@ exports[`readLicenseViaALPR using only the first token 1`] = `
       "plateCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: ec9d94539bffdf02c10ce402994db6119edd46c1ab9434e39e67f0d1d03df93c",
       "region": {
         "code": "us-ny",
-        "score": 0.759,
+        "score": 0.716,
       },
       "score": 1,
       "vehicle": {
@@ -211,7 +207,6 @@ exports[`readLicenseViaALPR using only the first token 1`] = `
         "score": 0.823,
         "type": "SUV",
       },
-      "vehicleCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: 59c20373735a11c73f60925b89166bb41cb76474cc65a46cc95e04b2cf967533",
     },
     {
       "box": {
@@ -231,7 +226,7 @@ exports[`readLicenseViaALPR using only the first token 1`] = `
       "plateCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: a33dfcc1590f9d2cb94c7892a921cc847dc36e4b2fae2b96c025afdd00a8e8ed",
       "region": {
         "code": "us-ny",
-        "score": 0.907,
+        "score": 0.909,
       },
       "score": 1,
       "vehicle": {
@@ -244,7 +239,6 @@ exports[`readLicenseViaALPR using only the first token 1`] = `
         "score": 0.451,
         "type": "Sedan",
       },
-      "vehicleCropDataUrl": "THIS IS HASHED TO REDUCE LENGTH WHILE ASSURING INTEGRITY: aa8cc4fb86e85a34b5327989db107044de45a957f0a6e1dd76eb46f42d02299b",
     },
   ],
   "timestamp": "timestamp REMOVED BECAUSE IT CHANGES",

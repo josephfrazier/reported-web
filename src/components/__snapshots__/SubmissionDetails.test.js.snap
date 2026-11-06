@@ -7,9 +7,8 @@ exports[`SubmissionDetails renders TLC and NYPD SR numbers when submission has m
 >
   <summary>
     medallionNo
-     (
-    licenseState
-    ) 
+     (licenseState)
+     
     typeofcomplaint
      near
      
@@ -132,15 +131,34 @@ exports[`SubmissionDetails renders children correctly 1`] = `
 >
   <summary>
     medallionNo
-     (
-    licenseState
-    ) 
+     (licenseState)
+     
     typeofcomplaint
      near
      
     82 Reade St
      on 
     11/17/2016, 7:00:00 PM
+     
+    <button
+      onClick={[Function]}
+      style={
+        {
+          "background": "white",
+          "color": "red",
+          "margin": "1px",
+        }
+      }
+      title="Delete Submission"
+      type="button"
+    >
+      <span
+        aria-label="Delete Submission"
+        role="img"
+      >
+        ❌
+      </span>
+    </button>
   </summary>
   <p>
     reportDescription
@@ -215,25 +233,6 @@ exports[`SubmissionDetails renders children correctly 1`] = `
       src="videoData2"
     />
   </a>
-  <button
-    onClick={[Function]}
-    style={
-      {
-        "background": "white",
-        "color": "red",
-        "margin": "1px",
-      }
-    }
-    type="button"
-  >
-    <span
-      aria-label="Delete Submission"
-      role="img"
-    >
-      ❌
-    </span>
-    Delete Submission
-  </button>
 </details>
 `;
 
@@ -244,15 +243,34 @@ exports[`SubmissionDetails renders children correctly when medallionNo is missin
 >
   <summary>
     license
-     (
-    licenseState
-    ) 
+     (licenseState)
+     
     typeofcomplaint
      near
      
     82 Reade St
      on 
     11/17/2016, 7:00:00 PM
+     
+    <button
+      onClick={[Function]}
+      style={
+        {
+          "background": "white",
+          "color": "red",
+          "margin": "1px",
+        }
+      }
+      title="Delete Submission"
+      type="button"
+    >
+      <span
+        aria-label="Delete Submission"
+        role="img"
+      >
+        ❌
+      </span>
+    </button>
   </summary>
   <p>
     reportDescription
@@ -327,25 +345,6 @@ exports[`SubmissionDetails renders children correctly when medallionNo is missin
       src="videoData2"
     />
   </a>
-  <button
-    onClick={[Function]}
-    style={
-      {
-        "background": "white",
-        "color": "red",
-        "margin": "1px",
-      }
-    }
-    type="button"
-  >
-    <span
-      aria-label="Delete Submission"
-      role="img"
-    >
-      ❌
-    </span>
-    Delete Submission
-  </button>
 </details>
 `;
 
@@ -356,15 +355,34 @@ exports[`SubmissionDetails renders delete button correctly 1`] = `
 >
   <summary>
     medallionNo
-     (
-    licenseState
-    ) 
+     (licenseState)
+     
     typeofcomplaint
      near
      
     82 Reade St
      on 
     11/17/2016, 7:00:00 PM
+     
+    <button
+      onClick={[Function]}
+      style={
+        {
+          "background": "white",
+          "color": "red",
+          "margin": "1px",
+        }
+      }
+      title="Delete Submission"
+      type="button"
+    >
+      <span
+        aria-label="Delete Submission"
+        role="img"
+      >
+        ❌
+      </span>
+    </button>
   </summary>
   <p>
     reportDescription
@@ -439,24 +457,5 @@ exports[`SubmissionDetails renders delete button correctly 1`] = `
       src="videoData2"
     />
   </a>
-  <button
-    onClick={[Function]}
-    style={
-      {
-        "background": "white",
-        "color": "red",
-        "margin": "1px",
-      }
-    }
-    type="button"
-  >
-    <span
-      aria-label="Delete Submission"
-      role="img"
-    >
-      ❌
-    </span>
-    Delete Submission
-  </button>
 </details>
 `;

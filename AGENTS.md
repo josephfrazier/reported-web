@@ -21,11 +21,11 @@
 
 ## Toolchain and setup
 
-- Expected toolchain is Node `24.20.0` and Yarn `1.22.22` (`package.json` pins both).
+- Expected toolchain is Node `24.22.1` and Yarn `1.22.22` (`package.json` pins both).
 - Use `nvm` with the checked-in `.nvmrc` to get the exact Node version:
   - `nvm install`
   - `nvm use`
-- Install dependencies with `yarn install` after switching to Node `24.20.0`.
+- Install dependencies with `yarn install` after switching to Node `24.22.1`.
 - Copy `.env.example` to `.env` before running app flows that need external services.
 
 ## Common commands
@@ -44,7 +44,7 @@
 
 - Parse/local app flows need `PARSE_APP_ID`, `PARSE_JAVASCRIPT_KEY`, `PARSE_MASTER_KEY`, and `PARSE_SERVER_URL`.
 - Reverse geocoding/location validation uses `GEO_APP_KEY` and `GOOGLE_API_KEY`.
-- ALPR flows/tests use `PLATERECOGNIZER_TOKEN` and optionally `PLATERECOGNIZER_TOKEN_TWO`.
+- ALPR flows/tests use `PLATERECOGNIZER_TOKEN_LIST`, a comma-separated list of tokens. A read tries the token used longest ago first, puts tokens the service rate limited behind the free ones until their wait passes, and drops a token that answers 403 (depleted) for the life of the process.
 - `HEROKU_APP_NAME`, `API_SERVER_URL`, `API_CLIENT_URL`, and `TRUST_PROXY` affect deployed/server behavior.
 
 ## Change guidance
@@ -86,7 +86,7 @@ Never squash the trio together: each step is independently reviewable, and the h
 
 ## Verifying UI changes
 
-- `playwright` is a devDependency and its browsers are installed, so real-browser verification needs no extra setup; `tools/test-client-smoke.js` and `tools/test-dev-server-smoke.js` show the harness pattern. Boot `yarn start --silent` (browser-sync on `http://localhost:3000`), then drive headless chromium — `toast.screenshot({ path })` captures a single element rather than the whole page. Screenshots from an actual browser are the only way to settle CSS/rendering questions.
+- `playwright` is a devDependency and its browsers are installed, so real-browser verification needs no extra setup; `tools/test-client-smoke.js` and `tools/test-dev-server-smoke.js` show the harness pattern. Boot `yarn start --silent` (the Express dev server on `http://localhost:3000`), then drive headless chromium — `toast.screenshot({ path })` captures a single element rather than the whole page. Screenshots from an actual browser are the only way to settle CSS/rendering questions.
 - Write these scratch scripts outside the repo, and require playwright by **absolute path** (`require('<repo>/node_modules/playwright')`): node resolves a bare `require` from the script's own directory, so a script outside the repo fails with `MODULE_NOT_FOUND`.
 - `yarn start`'s HMR does **not** re-render an edited component. `src/client.js` accepts `./router` and calls `deepForceUpdate(appInstance)` plus `onLocationChange`, which re-runs the module that is already loaded instead of re-mounting the component, so a toast fired from `componentDidMount` doesn't re-fire and keeps its old text. For throwaway previews, register `module.hot.dispose(() => window.location.reload())` in the module being edited, guarded by `typeof window !== 'undefined' && module.hot` so SSR, jest and release builds are unaffected.
 
@@ -104,7 +104,7 @@ Never squash the trio together: each step is independently reviewable, and the h
 
 ## Validation and CI gotchas
 
-- CI runs Node `24.20.0`; local sandboxes may not. Yarn refuses to run unless the local Node exactly matches the `engines.node` pin. Workaround: use `nvm install` and `nvm use` (the checked-in `.nvmrc` points to `24.20.0`) before running Yarn commands.
+- CI runs Node `24.22.1`; local sandboxes may not. Yarn refuses to run unless the local Node exactly matches the `engines.node` pin. Workaround: use `nvm install` and `nvm use` (the checked-in `.nvmrc` points to `24.22.1`) before running Yarn commands.
 - `yarn lint` currently passes with an existing warning in `src/routes/home/Home.js` for `react/no-danger`.
 - `yarn build` succeeds locally, but emits existing webpack deprecation warnings and one existing `exifr` “Critical dependency” warning.
 - `yarn test` is not a hermetic unit suite. Several tests call live external services:

@@ -1,26 +1,17 @@
 /**
  * @jest-environment node
  *
- * Runs against a real Parse Server 2.8.4 (the version prod runs) backed by a
+ * Runs against a real Parse Server 9.4.0 (the version production will run once
+ * https://github.com/josephfrazier/reported-web/pull/713 is merged) backed by a
  * real MongoDB 4.4 started in-memory by mongodb-memory-server, so the actual
  * deletion and ownership-check semantics are exercised instead of a fake.
  */
-
-import net from 'net';
 
 import Parse from 'parse/node';
 import stringify from 'json-stringify-safe';
 
 import deleteSubmission from './deleteSubmission.js';
-
-const { MongoMemoryServer } = require('mongodb-memory-server');
-// parse-server is deliberately installed on demand instead of being a project
-// dependency (see jest.globalSetup.js)
-const { ParseServer } = require('parse-server');
-
-// parse-server skips its cloud/URL verification (and test-unfriendly process
-// listeners) when TESTING is set. Must be set before it is constructed.
-process.env.TESTING = '1';
+import startRealParseServer from './testUtils/realParseServer.js';
 
 jest.setTimeout(30000);
 
@@ -31,8 +22,7 @@ const authenticate = jest.fn(() =>
 );
 
 describe('deleteSubmission', () => {
-  let mongo;
-  let parseServer;
+  let stopParseServer;
   let ownedSubmission;
   let iosStyleSubmission;
   let otherUsersSubmission;
@@ -42,61 +32,17 @@ describe('deleteSubmission', () => {
   let pointerOnlySubmission;
 
   beforeAll(async () => {
-    // MongoDB 4.4 is the newest version whose wire protocol parse-server
-    // 2.8.4's bundled mongodb driver can talk to. Note: the binary must be
-    // downloaded once (mongodb-memory-server caches it), and on Ubuntu 24+
-    // mongod 4.4 needs libssl1.1 installed.
-    mongo = await MongoMemoryServer.create({ binary: { version: '4.4.14' } });
-
-    // create() can resolve a moment before mongod accepts connections;
-    // parse-server connects to it in its constructor, so wait until the
-    // port actually accepts a TCP connection.
-    const { port } = new URL(mongo.getUri());
-    const attemptConnection = (resolve, reject, attempts) => {
-      const socket = net.connect(Number(port), '127.0.0.1');
-      socket.once('connect', () => {
-        socket.destroy();
-        resolve();
-      });
-      socket.once('error', () => {
-        socket.destroy();
-        if (attempts < 100) {
-          setTimeout(
-            () => attemptConnection(resolve, reject, attempts + 1),
-            50,
-          );
-        } else {
-          reject(new Error('mongod never accepted connections'));
-        }
-      });
-    };
-    await new Promise((resolve, reject) => {
-      attemptConnection(resolve, reject, 0);
-    });
-
-    parseServer = ParseServer.start(
-      {
-        databaseURI: mongo.getUri(),
-        appId: 'test-app',
-        masterKey: 'test-master',
-        // Only used as a placeholder; the client points at the real port.
-        serverURL: 'http://localhost/parse',
-        mountPath: '/parse',
-        port: 0,
-        verbose: false,
-      },
-      () => {},
-    );
-    await new Promise((resolve, reject) => {
-      parseServer.server.once('listening', resolve);
-      parseServer.server.once('error', reject);
-    });
-    // parse-server initializes its own nested parse SDK; ours needs it too.
     // deleteSubmission() fetches and destroys with the master key, because a
     // submission made by the mobile client belongs to a different Parse user
     // (see the iOS-style entry below), so it is passed here.
-    Parse.initialize('test-app', undefined, 'test-master');
-    Parse.serverURL = `http://localhost:${parseServer.server.address().port}/parse`;
+    const { stop } = await startRealParseServer({
+      masterKey: 'test-master',
+      // parse-server 5+ defaults client class creation to off. These tests
+      // save `submission`/`tasks` objects as an ordinary client, and in
+      // production both classes already exist in the schema.
+      serverOptions: { allowClientClassCreation: true },
+    });
+    stopParseServer = stop;
 
     const Submission = Parse.Object.extend('submission');
 
@@ -155,11 +101,7 @@ describe('deleteSubmission', () => {
     await pointerOnlySubmission.save();
   });
 
-  afterAll(async () => {
-    await new Promise(resolve => parseServer.server.close(resolve));
-    parseServer.handleShutdown();
-    await mongo.stop();
-  });
+  afterAll(() => stopParseServer());
 
   const Submission = Parse.Object.extend('submission');
   const callDeleteSubmission = objectId =>

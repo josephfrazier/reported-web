@@ -1,13 +1,12 @@
 /**
  * @jest-environment node
  *
- * The cookie helpers and the Origin guard are pure, but `authenticate`
- * resolves tokens against a real Parse Server 2.8.4 (the version prod runs),
+ * The cookie helpers and the Origin guard are pure, but `authenticate` resolves
+ * tokens against a real Parse Server 9.4.0 (the version production will run
+ * once https://github.com/josephfrazier/reported-web/pull/713 is merged),
  * backed by MongoDB 4.4 from mongodb-memory-server, so the session semantics
  * under test are the real ones.
  */
-
-import net from 'net';
 
 import Parse from 'parse/node';
 import { HOME_STATE_COOKIE, serializeHomeState } from './homeStateCookie.js';
@@ -22,15 +21,7 @@ import {
   resolveSsrSession,
   setSessionCookie,
 } from './session.js';
-
-const { MongoMemoryServer } = require('mongodb-memory-server');
-// parse-server is deliberately installed on demand instead of being a project
-// dependency (see jest.globalSetup.js)
-const { ParseServer } = require('parse-server');
-
-// parse-server skips its cloud/URL verification (and test-unfriendly process
-// listeners) when TESTING is set. Must be set before it is constructed.
-process.env.TESTING = '1';
+import startRealParseServer from './testUtils/realParseServer.js';
 
 jest.setTimeout(30000);
 
@@ -152,68 +143,19 @@ describe('rejectCrossSiteRequest', () => {
 });
 
 describe('authenticate', () => {
-  let mongo;
-  let parseServer;
+  let stopParseServer;
   let verifiedUser;
 
   beforeAll(async () => {
-    // MongoDB 4.4 is the newest version whose wire protocol parse-server
-    // 2.8.4's bundled mongodb driver can talk to. Note: the binary must be
-    // downloaded once (mongodb-memory-server caches it), and on Ubuntu 24+
-    // mongod 4.4 needs libssl1.1 installed.
-    mongo = await MongoMemoryServer.create({ binary: { version: '4.4.14' } });
-
-    // create() can resolve a moment before mongod accepts connections;
-    // parse-server connects to it in its constructor, so wait until the
-    // port actually accepts a TCP connection.
-    const { port } = new URL(mongo.getUri());
-    const attemptConnection = (resolve, reject, attempts) => {
-      const socket = net.connect(Number(port), '127.0.0.1');
-      socket.once('connect', () => {
-        socket.destroy();
-        resolve();
-      });
-      socket.once('error', () => {
-        socket.destroy();
-        if (attempts < 100) {
-          setTimeout(
-            () => attemptConnection(resolve, reject, attempts + 1),
-            50,
-          );
-        } else {
-          reject(new Error('mongod never accepted connections'));
-        }
-      });
-    };
-    await new Promise((resolve, reject) => {
-      attemptConnection(resolve, reject, 0);
-    });
-
-    parseServer = ParseServer.start(
-      {
-        databaseURI: mongo.getUri(),
-        appId: 'test-app',
-        masterKey: 'test-master',
-        // Only used as a placeholder; the client points at the real port.
-        serverURL: 'http://localhost/parse',
-        mountPath: '/parse',
-        port: 0,
-        verbose: false,
-      },
-      () => {},
-    );
-    await new Promise((resolve, reject) => {
-      parseServer.server.once('listening', resolve);
-      parseServer.server.once('error', reject);
-    });
-    // parse-server initializes its own nested parse SDK; ours needs it too.
     // The master key is switched on globally, as prod's server.js does today,
     // so the tests prove a bogus token still fails with it enabled.
-    Parse.initialize('test-app', undefined, 'test-master');
-    Parse.Cloud.useMasterKey();
-    Parse.serverURL = `http://localhost:${parseServer.server.address().port}/parse`;
+    const { stop } = await startRealParseServer({
+      masterKey: 'test-master',
+      useMasterKey: true,
+    });
+    stopParseServer = stop;
 
-    // Parse Server 2.8.4 leaves emailVerified unset on signUp, and logIn()
+    // Parse Server leaves emailVerified unset on signUp, and logIn()
     // throws its "check your email" error for such users, so create a
     // verified user the way prod users end up verified.
     verifiedUser = new Parse.User();
@@ -227,11 +169,7 @@ describe('authenticate', () => {
     });
   });
 
-  afterAll(async () => {
-    await new Promise(resolve => parseServer.server.close(resolve));
-    parseServer.handleShutdown();
-    await mongo.stop();
-  });
+  afterAll(() => stopParseServer());
 
   test('resolves a valid session token', async () => {
     const result = await authenticate(
@@ -357,6 +295,54 @@ describe('authenticate', () => {
   });
 
   describe('resolveSsrSession', () => {
+    test('surfaces the profile booleans saved on the user', async () => {
+      // A user whose account holds saved flags, like the web or native
+      // profile forms write them.
+      const flaggedUser = new Parse.User();
+      flaggedUser.setUsername('flagged@example.com');
+      flaggedUser.set('email', 'flagged@example.com');
+      flaggedUser.setPassword(password);
+      await flaggedUser.signUp();
+      flaggedUser.set({
+        testify: true,
+        can_be_shared_publicly: false,
+        withhold_contact_info_from_nypd: true,
+        receive_nypd_sr_updates_by_email: true,
+      });
+      await flaggedUser.save(null, {
+        sessionToken: flaggedUser.getSessionToken(),
+      });
+
+      const result = await resolveSsrSession({
+        req: cookieRequest(flaggedUser.getSessionToken()),
+        res: fakeResponse(),
+      });
+
+      expect(result.sessionUserFields).toEqual({
+        testify: true,
+        can_be_shared_publicly: false,
+        withhold_contact_info_from_nypd: true,
+        receive_nypd_sr_updates_by_email: true,
+      });
+    });
+
+    test('leaves profile booleans the user never saved to the cookie', async () => {
+      // A fresh account has none of the booleans stored, so the fields are
+      // absent and the state cookie's values stand.
+      const freshUser = new Parse.User();
+      freshUser.setUsername('fresh@example.com');
+      freshUser.set('email', 'fresh@example.com');
+      freshUser.setPassword(password);
+      await freshUser.signUp();
+
+      const result = await resolveSsrSession({
+        req: cookieRequest(freshUser.getSessionToken()),
+        res: fakeResponse(),
+      });
+
+      expect(result.sessionUserFields).toEqual({});
+    });
+
     test('reports a session and slides its cookie', async () => {
       const req = cookieRequest(verifiedUser.getSessionToken());
       const res = fakeResponse();

@@ -27,6 +27,7 @@ const createSubmission = async ({
   reportDescription,
   can_be_shared_publicly, // eslint-disable-line camelcase
   withhold_contact_info_from_nypd, // eslint-disable-line camelcase
+  receive_nypd_sr_updates_by_email, // eslint-disable-line camelcase
   latitude,
   longitude,
   formatted_address, // eslint-disable-line camelcase
@@ -47,12 +48,17 @@ const createSubmission = async ({
     LastName,
     Phone,
     testify,
+    can_be_shared_publicly, // eslint-disable-line camelcase
+    withhold_contact_info_from_nypd, // eslint-disable-line camelcase
+    receive_nypd_sr_updates_by_email, // eslint-disable-line camelcase
   });
 
-  // make sure all required fields are present
+  // Make sure all required fields are present. `licenseState` is deliberately
+  // absent: the state list is US-centric, so a plate can arrive with a state
+  // it does not hold, or with none the reporter can name, and the form asks
+  // for it without insisting.
   Object.entries({
     plate,
-    licenseState,
     typeofcomplaint,
     latitude,
     longitude,
@@ -121,6 +127,15 @@ const createSubmission = async ({
   // eslint-disable-next-line camelcase
   if (withhold_contact_info_from_nypd) {
     submission.set('withhold_contact_info_from_nypd', true);
+  }
+
+  // Same sparse pattern as above: only stored when true. The backend
+  // subscribes the reporter to the NYPD SR by email when this flag and
+  // withhold_contact_info_from_nypd are both set. See
+  // https://github.com/jeffrono/Reported/pull/81
+  // eslint-disable-next-line camelcase
+  if (receive_nypd_sr_updates_by_email) {
+    submission.set('receive_nypd_sr_updates_by_email', true);
   }
 
   // upload attachments

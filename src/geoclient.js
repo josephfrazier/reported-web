@@ -6,16 +6,35 @@ import normalizeAddress from './normalizeAddress.js';
 const GEOSEARCH_URL = 'https://geosearch.planninglabs.nyc/v2/reverse';
 const PAD_URL = 'https://data.cityofnewyork.us/resource/64uk-42ks.json';
 
+const PAD_RETRY_LIMIT = 3;
+const PAD_RETRY_BASE_DELAY_MS = 250;
+
+// PAD (Socrata) intermittently returns 503 ("Service unavailable") on
+// filtered queries, so retry a few times with a short delay. Retries live
+// inside the mem wrapper so a lookup that fails after every retry is not
+// cached, and a later lookup retries again.
+const getPadAddressData = (bbl, attempt = 1) =>
+  axios
+    .get(PAD_URL, {
+      params: { bbl },
+      timeout: 5000,
+    })
+    .catch(error => {
+      if (error.response?.status !== 503 || attempt > PAD_RETRY_LIMIT) {
+        throw error;
+      }
+      return new Promise(resolve =>
+        setTimeout(resolve, PAD_RETRY_BASE_DELAY_MS * attempt),
+      ).then(() => getPadAddressData(bbl, attempt + 1));
+    });
+
 // The city's Property Address Directory (PAD) provides the official address
 // for each BBL, e.g. https://data.cityofnewyork.us/resource/64uk-42ks.json?bbl=3001940042
 // returns 146 HOYT STREET. Cache lookups for a day, since addresses rarely
 // change and nearby submissions often share a BBL.
-const getPadAddress = mem(
+export const getPadAddress = mem(
   async bbl => {
-    const { data } = await axios.get(PAD_URL, {
-      params: { bbl },
-      timeout: 5000,
-    });
+    const { data } = await getPadAddressData(bbl);
     return data[0]?.address;
   },
   {

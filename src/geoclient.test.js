@@ -2,7 +2,13 @@
  * @jest-environment node
  */
 
-import { geosearch, selectCanonicalFeature } from './geoclient.js';
+import axios from 'axios';
+
+import {
+  geosearch,
+  getPadAddress,
+  selectCanonicalFeature,
+} from './geoclient.js';
 
 const feature = ({ name, bbl, layer = 'venue' }) => ({
   properties: {
@@ -138,6 +144,51 @@ describe('selectCanonicalFeature', () => {
 
     expect(getPadAddressForBbl).not.toHaveBeenCalled();
     expect(result.properties.layer).toBe('venue');
+  });
+});
+
+describe('getPadAddress', () => {
+  const serviceUnavailableError = () =>
+    Object.assign(new Error('Service unavailable'), {
+      response: { status: 503 },
+    });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    jest.useRealTimers();
+  });
+
+  test('retries when PAD returns 503', async () => {
+    jest.useFakeTimers();
+    const axiosGet = jest.spyOn(axios, 'get');
+    axiosGet
+      .mockRejectedValueOnce(serviceUnavailableError())
+      .mockResolvedValueOnce({ data: [{ address: '123 MAIN STREET' }] });
+
+    const promise = getPadAddress('9999999999');
+    await Promise.resolve();
+    await jest.advanceTimersByTimeAsync(250);
+
+    await expect(promise).resolves.toBe('123 MAIN STREET');
+    expect(axiosGet).toHaveBeenCalledTimes(2);
+  });
+
+  test('gives up after three retries', async () => {
+    jest.useFakeTimers();
+    const axiosGet = jest.spyOn(axios, 'get');
+    axiosGet.mockRejectedValue(serviceUnavailableError());
+
+    const promise = getPadAddress('8888888888');
+    promise.catch(() => {});
+    await Promise.resolve();
+    await jest.advanceTimersByTimeAsync(250);
+    await Promise.resolve();
+    await jest.advanceTimersByTimeAsync(500);
+    await Promise.resolve();
+    await jest.advanceTimersByTimeAsync(750);
+
+    await expect(promise).rejects.toThrow('Service unavailable');
+    expect(axiosGet).toHaveBeenCalledTimes(4);
   });
 });
 

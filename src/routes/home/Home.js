@@ -1122,8 +1122,12 @@ class Home extends React.Component {
   };
 
   getPerSubmissionState() {
-    return omit(this.state, (val, key) =>
-      Object.keys(this.initialStatePerSubmission).includes(key),
+    // Spell the filter out: `object.omit` with a function keeps the keys
+    // the function accepts, which reads backwards from the name `omit`.
+    return Object.fromEntries(
+      Object.entries(this.state).filter(([key]) =>
+        Object.keys(this.initialStatePerSubmission).includes(key),
+      ),
     );
   }
 

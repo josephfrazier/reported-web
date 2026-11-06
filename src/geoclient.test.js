@@ -9,6 +9,10 @@ import {
   getPadAddress,
   selectCanonicalFeature,
 } from './geoclient.js';
+import { geosearchFixtures, padFixtures } from './geoclient.fixtures.js';
+
+const GEOSEARCH_URL = 'https://geosearch.planninglabs.nyc/v2/reverse';
+const PAD_URL = 'https://data.cityofnewyork.us/resource/64uk-42ks.json';
 
 const feature = ({ name, bbl, layer = 'venue' }) => ({
   properties: {
@@ -193,6 +197,38 @@ describe('getPadAddress', () => {
 });
 
 describe('geosearch', () => {
+  // These tests mock axios.get with responses recorded from the live
+  // geosearch and PAD APIs, since those services go down intermittently
+  // (see the retry in getPadAddress) and used to take these tests down
+  // with them.
+  beforeEach(() => {
+    jest.spyOn(axios, 'get').mockImplementation(async (url, config) => {
+      if (url === GEOSEARCH_URL) {
+        const { 'point.lat': lat, 'point.lon': long } = config.params;
+        const fixture = geosearchFixtures[`${lat},${long}`];
+        if (!fixture) {
+          throw new Error(`No geosearch fixture for ${lat},${long}`);
+        }
+        return { data: fixture };
+      }
+
+      if (url === PAD_URL) {
+        const { bbl } = config.params;
+        const fixture = padFixtures[bbl];
+        if (!fixture) {
+          throw new Error(`No PAD fixture for ${bbl}`);
+        }
+        return { data: fixture };
+      }
+
+      throw new Error(`Unexpected axios.get URL: ${url}`);
+    });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   test('returns 146 HOYT STREET for the point selected by searching 127 Bergen', async () => {
     const result = await geosearch({
       lat: 40.686051,

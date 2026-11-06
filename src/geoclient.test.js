@@ -212,6 +212,18 @@ describe('geosearch', () => {
     expect(result.features[0].properties.name).toBe('127 BERGEN STREET');
   });
 
+  // The point on the NYU Tandon campus that inspired the BBL dedupe: the
+  // top result for this point is D AND M OTHMER RESIDENCE HALL, and the
+  // PAD's official address for its BBL is 101 TECH PLACE.
+  test('returns 101 TECH PLACE for the point that inspired the BBL dedupe', async () => {
+    const result = await geosearch({
+      lat: 40.69488611111111,
+      long: -73.986175,
+    });
+
+    expect(result.features[0].properties.name).toBe('101 TECH PLACE');
+  });
+
   test('returns the right object around the Empire State Building', async () => {
     const result = await geosearch({
       lat: 40.748817,

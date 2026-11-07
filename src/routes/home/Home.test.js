@@ -4805,6 +4805,150 @@ describe('Home', () => {
       cleanup();
     });
 
+    // A photo can be dragged into another row: that is the user saying which
+    // violation it belongs to. It leaves the report it came from, and the row
+    // it lands in is marked as the user's own, so a later read does not take
+    // it apart.
+    test('moves a photo into the row it is dropped on', async () => {
+      const photos = ['a', 'b', 'c'].map(name => {
+        const file = new File(['picture'], `${name}.jpg`, {
+          type: 'image/jpeg',
+        });
+        return { file, name: file.name, createDateMs: 1704110400000 };
+      });
+      const row = (photoList, plate, createDateMs) => ({
+        photos: photoList,
+        plate,
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs,
+      });
+
+      const { homeRef, tree, clickQueueLoad, cleanup } =
+        await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchPhotos: photos,
+          batchViolations: [
+            row(photos.slice(0, 2), 'AAA111', 1704110400000),
+            row([photos[2]], 'BBB222', 1704110500000),
+          ],
+        });
+      });
+
+      // Open the first row: its photos are the ones on screen, and the ones a
+      // drag can start from.
+      clickQueueLoad('AAA111');
+      expect(homeRef.current.state.currentViolationIndex).toBe(0);
+
+      const tileFor = name =>
+        tree.root
+          .findAll(node => node.props.draggable === true)
+          .find(tile =>
+            tile.findAllByType('img').some(img => img.props.alt === name),
+          );
+
+      renderer.act(() => {
+        tileFor('b.jpg').props.onDragStart({
+          dataTransfer: { setData: jest.fn(), effectAllowed: '' },
+        });
+      });
+
+      const rowFor = plate =>
+        tree.root
+          .findAllByType('li')
+          .find(item =>
+            item
+              .findAllByType('button')
+              .some(button =>
+                String(button.props['aria-label']).includes(plate),
+              ),
+          );
+
+      const event = {
+        preventDefault: jest.fn(),
+        stopPropagation: jest.fn(),
+        dataTransfer: {},
+      };
+      renderer.act(() => {
+        rowFor('BBB222').props.onDrop(event);
+      });
+
+      const { batchViolations, attachmentData } = homeRef.current.state;
+      expect(
+        batchViolations.map(violation => [
+          violation.plate,
+          violation.photos.map(photo => photo.name),
+          Boolean(violation.mergedByUser),
+        ]),
+      ).toEqual([
+        ['AAA111', ['a.jpg'], false],
+        ['BBB222', ['c.jpg', 'b.jpg'], true],
+      ]);
+
+      // The photo left the report with its old row.
+      expect(attachmentData.map(file => file.name)).toEqual(['a.jpg']);
+      expect(event.preventDefault).toHaveBeenCalled();
+
+      cleanup();
+    });
+
+    test('closes the row a moved photo leaves empty, and opens the next', async () => {
+      const photos = ['a', 'b'].map(name => {
+        const file = new File(['picture'], `${name}.jpg`, {
+          type: 'image/jpeg',
+        });
+        return { file, name: file.name, createDateMs: 1704110400000 };
+      });
+      const row = (photoList, plate, createDateMs) => ({
+        photos: photoList,
+        plate,
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs,
+      });
+
+      const { homeRef, clickQueueLoad, cleanup } = await renderBatchWithFiles(
+        [],
+      );
+
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchPhotos: photos,
+          batchViolations: [
+            row([photos[0]], 'AAA111', 1704110400000),
+            row([photos[1]], 'BBB222', 1704110500000),
+          ],
+        });
+      });
+
+      clickQueueLoad('AAA111');
+
+      // Its only photo goes to the other row, so the row goes with it.
+      renderer.act(() => {
+        homeRef.current.movePhotoToViolation({
+          photo: photos[0],
+          violation: homeRef.current.state.batchViolations[1],
+        });
+      });
+
+      const { batchViolations, currentViolationIndex, attachmentData } =
+        homeRef.current.state;
+      expect(
+        batchViolations.map(violation => [
+          violation.plate,
+          violation.photos.map(photo => photo.name),
+        ]),
+      ).toEqual([['BBB222', ['b.jpg', 'a.jpg']]]);
+      expect(currentViolationIndex).toBe(0);
+      expect(attachmentData.map(file => file.name)).toEqual(['b.jpg', 'a.jpg']);
+
+      cleanup();
+    });
+
     test('does not load a violation when its delete or merge control is used', async () => {
       const photos = ['a', 'b'].map(name => {
         const file = new File(['picture'], `${name}.jpg`, {

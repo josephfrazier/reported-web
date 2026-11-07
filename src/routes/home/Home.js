@@ -1214,6 +1214,9 @@ class Home extends React.Component {
       isReverseGeocodingEnabled: true,
       isLoadPreviousSubmissionsEnabled: false,
       isMapOpen: false,
+      // The row a dragged photo is over, by identity: what tells the user
+      // where the photo will land.
+      dropTargetIdentity: null,
       // While this is true, nothing moves the place: see `setCoords`.
       isLocationLocked: false,
       isPreviousSubmissionsOpen: false,
@@ -1301,6 +1304,9 @@ class Home extends React.Component {
     // it is attached. The form's time and place are worked out from these
     // again whenever the photos change -- see applyPhotosToForm.
     this.photoReadings = new Map();
+    // The photo a drag is carrying. A drag's dataTransfer cannot hold a File,
+    // so the page keeps the photo itself for the drop.
+    this.draggedPhoto = null;
     this.plateRef = React.createRef();
     // The state field is below the plate field when the two wrap, so a scroll
     // that aims at the bottom of the pair aims at this one.
@@ -2164,6 +2170,144 @@ class Home extends React.Component {
   //
   // The report's time and place are asked again once it is gone: they came
   // from the photos, and the photos have changed.
+  // A photo tile starts a drag: keep the photo itself, because a dataTransfer
+  // cannot carry a File. `text/plain` is set because a drag with no data at
+  // all does not start in every browser.
+  startPhotoDrag = ({ photo, event }) => {
+    this.draggedPhoto = photo;
+    const { dataTransfer } = event;
+    dataTransfer?.setData('text/plain', photo.name);
+    if (dataTransfer) {
+      dataTransfer.effectAllowed = 'move';
+    }
+  };
+
+  endPhotoDrag = () => {
+    this.draggedPhoto = null;
+    if (this.state.dropTargetIdentity !== null) {
+      this.setState({ dropTargetIdentity: null });
+    }
+  };
+
+  // The row under the drag says so, so the user can see where the photo will
+  // land.
+  enterRowWithPhoto = identity => {
+    if (this.draggedPhoto && identity !== this.state.dropTargetIdentity) {
+      this.setState({ dropTargetIdentity: identity });
+    }
+  };
+
+  leaveRowWithPhoto = identity => {
+    if (this.state.dropTargetIdentity === identity) {
+      this.setState({ dropTargetIdentity: null });
+    }
+  };
+
+  rowAllowsPhoto = event => {
+    if (!this.draggedPhoto) {
+      return;
+    }
+
+    // A drop is allowed only when this page started the drag; a file dragged
+    // in from the desktop is the dropzone's business.
+    event.preventDefault();
+    event.stopPropagation();
+    const { dataTransfer } = event;
+    if (dataTransfer) {
+      dataTransfer.dropEffect = 'move';
+    }
+  };
+
+  dropPhotoOnRow = ({ event, violation }) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const photo = this.draggedPhoto;
+    this.endPhotoDrag();
+    if (!photo) {
+      return;
+    }
+
+    this.movePhotoToViolation({ photo, violation });
+  };
+
+  // Move a photo from the row that holds it into another row. The user is
+  // saying which violation the photo belongs to, so the row it lands in is
+  // marked as the user's own, and no later read takes it apart again (see
+  // `rowsAfterRead`). The photo leaves the report with its old row: the form
+  // holds the photos of the violation it shows.
+  movePhotoToViolation = ({ photo, violation: target }) => {
+    const { attachmentData, batchViolations, currentViolationIndex } =
+      this.state;
+
+    const source = batchViolations.find(row =>
+      row.photos.some(candidate => candidate.file === photo.file),
+    );
+
+    if (!source || source === target) {
+      return;
+    }
+
+    const previousPhotos = attachmentData;
+    const loaded = batchViolations[currentViolationIndex];
+
+    let loadedAfter = null;
+    const rows = [];
+    batchViolations.forEach(row => {
+      const next =
+        row === source
+          ? {
+              ...row,
+              photos: row.photos.filter(
+                candidate => candidate.file !== photo.file,
+              ),
+            }
+          : row === target
+            ? {
+                ...row,
+                photos: row.photos.concat(photo),
+                mergedByUser: true,
+              }
+            : row;
+
+      if (next.photos.length === 0) {
+        return;
+      }
+
+      if (row === loaded) {
+        loadedAfter = next;
+      }
+
+      rows.push(next);
+    });
+
+    const sourceIndex = batchViolations.indexOf(source);
+    const nextIndex = loadedAfter
+      ? rows.indexOf(loadedAfter)
+      : Math.min(sourceIndex, rows.length - 1);
+
+    this.setState(
+      {
+        batchViolations: rows,
+        currentViolationIndex: nextIndex,
+        attachmentData: attachmentData.filter(
+          candidate => candidate !== photo.file,
+        ),
+      },
+      () => {
+        if (loadedAfter) {
+          // The row on screen is still there, with one photo less.
+          this.applyPhotosToForm(this.state.attachmentData, {
+            previousPhotos,
+          });
+        } else {
+          // The row went with its last photo: show what is next.
+          this.loadBatchViolation(this.state.currentViolationIndex);
+        }
+      },
+    );
+  };
+
   deletePhoto = photo => {
     const { file, name } = photo;
     const previousPhotos = this.state.attachmentData;
@@ -4125,6 +4269,17 @@ class Home extends React.Component {
                     ? ` ${homeStyles['attachment-tile-selected']}`
                     : ''
                 }`}
+                // A photo drags into a queue row to say which violation it
+                // belongs to. The plain form has no rows, so nothing is added
+                // to its tiles.
+                {...(loadedViolation
+                  ? {
+                      draggable: true,
+                      onDragStart: event =>
+                        this.startPhotoDrag({ photo, event }),
+                      onDragEnd: this.endPhotoDrag,
+                    }
+                  : {})}
               >
                 {loadedViolation && (
                   <input
@@ -4188,6 +4343,7 @@ class Home extends React.Component {
       batchProgress,
       batchViolations,
       currentViolationIndex,
+      dropTargetIdentity,
       plate,
       plateProvenance,
     } = this.state;
@@ -4327,10 +4483,18 @@ class Home extends React.Component {
                     key={identity}
                     className={`${homeStyles['batch-violation-row']}${
                       isLoaded ? ` ${homeStyles['batch-violation-loaded']}` : ''
+                    }${
+                      dropTargetIdentity === identity
+                        ? ` ${homeStyles['batch-violation-row-drop']}`
+                        : ''
                     }`}
                     // The highlight is the visible marker; this is the one a
                     // screen reader gets.
                     aria-current={isLoaded ? 'true' : undefined}
+                    onDragOver={this.rowAllowsPhoto}
+                    onDragEnter={() => this.enterRowWithPhoto(identity)}
+                    onDragLeave={() => this.leaveRowWithPhoto(identity)}
+                    onDrop={event => this.dropPhotoOnRow({ event, violation })}
                   >
                     {/* Ticking two of these is how a report the grouping split
                         in two is put back together; see

@@ -470,6 +470,16 @@ input[type='search']::-webkit-search-cancel-button {
 }
 
 /*
+ * The row a dragged photo will land in. A dashed outline marks the target
+ * without changing the row's size, so the list does not move under the
+ * pointer while the photo is still being carried.
+ */
+.batch-violation-row-drop {
+  outline: 2px dashed rgb(26 115 232 / 80%);
+  outline-offset: -2px;
+}
+
+/*
  * A queue row's description, which is the control that loads that violation.
  *
  * It is a button so the keyboard reaches it, and it is stripped back to the

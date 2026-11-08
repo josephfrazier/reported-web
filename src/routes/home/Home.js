@@ -1307,6 +1307,9 @@ class Home extends React.Component {
     // The photo a drag is carrying. A drag's dataTransfer cannot hold a File,
     // so the page keeps the photo itself for the drop.
     this.draggedPhoto = null;
+    // The row a drag is carrying, for a row dropped on another: the two are
+    // one violation, the same as ticking both and pressing Merge.
+    this.draggedRow = null;
     this.plateRef = React.createRef();
     // The state field is below the plate field when the two wrap, so a scroll
     // that aims at the bottom of the pair aims at this one.
@@ -2175,6 +2178,9 @@ class Home extends React.Component {
   // all does not start in every browser.
   startPhotoDrag = ({ photo, event }) => {
     this.draggedPhoto = photo;
+    // A tile sits inside a row, and the row is draggable too: without this,
+    // the row would take the photo's drag for its own.
+    event.stopPropagation();
     const { dataTransfer } = event;
     dataTransfer?.setData('text/plain', photo.name);
     if (dataTransfer) {
@@ -2182,29 +2188,44 @@ class Home extends React.Component {
     }
   };
 
-  endPhotoDrag = () => {
+  startRowDrag = ({ violation, event }) => {
+    this.draggedRow = violation;
+    const { dataTransfer } = event;
+    dataTransfer?.setData(
+      'text/plain',
+      formatBatchViolationTime(violation.createDateMs),
+    );
+    if (dataTransfer) {
+      dataTransfer.effectAllowed = 'move';
+    }
+  };
+
+  endDrag = () => {
     this.draggedPhoto = null;
+    this.draggedRow = null;
     if (this.state.dropTargetIdentity !== null) {
       this.setState({ dropTargetIdentity: null });
     }
   };
 
+  dragInProgress = () => Boolean(this.draggedPhoto || this.draggedRow);
+
   // The row under the drag says so, so the user can see where the photo will
   // land.
-  enterRowWithPhoto = identity => {
-    if (this.draggedPhoto && identity !== this.state.dropTargetIdentity) {
+  enterRowWithDrag = identity => {
+    if (this.dragInProgress() && identity !== this.state.dropTargetIdentity) {
       this.setState({ dropTargetIdentity: identity });
     }
   };
 
-  leaveRowWithPhoto = identity => {
+  leaveRowWithDrag = identity => {
     if (this.state.dropTargetIdentity === identity) {
       this.setState({ dropTargetIdentity: null });
     }
   };
 
-  rowAllowsPhoto = event => {
-    if (!this.draggedPhoto) {
+  rowAllowsDrop = event => {
+    if (!this.dragInProgress()) {
       return;
     }
 
@@ -2218,17 +2239,40 @@ class Home extends React.Component {
     }
   };
 
-  dropPhotoOnRow = ({ event, violation }) => {
+  dropOnRow = ({ event, violation }) => {
     event.preventDefault();
     event.stopPropagation();
 
     const photo = this.draggedPhoto;
-    this.endPhotoDrag();
-    if (!photo) {
+    const row = this.draggedRow;
+    this.endDrag();
+
+    if (row) {
+      this.mergeDraggedRows({ row, violation });
+    } else if (photo) {
+      this.movePhotoToViolation({ photo, violation });
+    }
+  };
+
+  // The row dropped on another: the two are one violation. The merge is the
+  // one the tick and the Merge button do, so a read leaves the result whole
+  // -- see `mergeSelectedBatchViolations`. The row dropped on goes first in
+  // the selection, which is what keeps its plate when the two hold as many
+  // photos as each other.
+  mergeDraggedRows = ({ row, violation }) => {
+    if (!row || row === violation) {
       return;
     }
 
-    this.movePhotoToViolation({ photo, violation });
+    this.setState(
+      {
+        batchMergeSelection: [
+          batchViolationIdentity(violation),
+          batchViolationIdentity(row),
+        ],
+      },
+      () => this.mergeSelectedBatchViolations(),
+    );
   };
 
   // Move a photo from the row that holds it into another row. The user is
@@ -4277,7 +4321,7 @@ class Home extends React.Component {
                       draggable: true,
                       onDragStart: event =>
                         this.startPhotoDrag({ photo, event }),
-                      onDragEnd: this.endPhotoDrag,
+                      onDragEnd: this.endDrag,
                     }
                   : {})}
               >
@@ -4491,10 +4535,17 @@ class Home extends React.Component {
                     // The highlight is the visible marker; this is the one a
                     // screen reader gets.
                     aria-current={isLoaded ? 'true' : undefined}
-                    onDragOver={this.rowAllowsPhoto}
-                    onDragEnter={() => this.enterRowWithPhoto(identity)}
-                    onDragLeave={() => this.leaveRowWithPhoto(identity)}
-                    onDrop={event => this.dropPhotoOnRow({ event, violation })}
+                    // The row drags onto another row to merge the two, the
+                    // way ticking both and pressing Merge does.
+                    draggable
+                    onDragStart={event =>
+                      this.startRowDrag({ violation, event })
+                    }
+                    onDragEnd={this.endDrag}
+                    onDragOver={this.rowAllowsDrop}
+                    onDragEnter={() => this.enterRowWithDrag(identity)}
+                    onDragLeave={() => this.leaveRowWithDrag(identity)}
+                    onDrop={event => this.dropOnRow({ event, violation })}
                   >
                     {/* Ticking two of these is how a report the grouping split
                         in two is put back together; see

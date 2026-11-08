@@ -4853,6 +4853,7 @@ describe('Home', () => {
       renderer.act(() => {
         tileFor('b.jpg').props.onDragStart({
           dataTransfer: { setData: jest.fn(), effectAllowed: '' },
+          stopPropagation: jest.fn(),
         });
       });
 
@@ -4891,6 +4892,90 @@ describe('Home', () => {
       // The photo left the report with its old row.
       expect(attachmentData.map(file => file.name)).toEqual(['a.jpg']);
       expect(event.preventDefault).toHaveBeenCalled();
+
+      cleanup();
+    });
+
+    // Dragging a row onto another is the merge the tick and the Merge button
+    // do: the two are one violation, and a later read leaves it whole.
+    test('merges the row it is dropped on', async () => {
+      const photos = ['a', 'b'].map(name => {
+        const file = new File(['picture'], `${name}.jpg`, {
+          type: 'image/jpeg',
+        });
+        return { file, name: file.name, createDateMs: 1704110400000 };
+      });
+      const row = (photoList, plate, createDateMs) => ({
+        photos: photoList,
+        plate,
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs,
+      });
+
+      const { homeRef, tree, cleanup } = await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchPhotos: photos,
+          batchViolations: [
+            row([photos[0]], 'AAA111', 1704110400000),
+            row([photos[1]], 'BBB222', 1704110500000),
+          ],
+        });
+      });
+
+      const rowFor = plate =>
+        tree.root
+          .findAllByType('li')
+          .find(item =>
+            item
+              .findAllByType('button')
+              .some(button =>
+                String(button.props['aria-label']).includes(plate),
+              ),
+          );
+
+      const dragFrom = plate => {
+        renderer.act(() => {
+          rowFor(plate).props.onDragStart({
+            dataTransfer: { setData: jest.fn(), effectAllowed: '' },
+            stopPropagation: jest.fn(),
+          });
+        });
+      };
+
+      const dropOn = plate => {
+        const event = {
+          preventDefault: jest.fn(),
+          stopPropagation: jest.fn(),
+          dataTransfer: {},
+        };
+        renderer.act(() => {
+          rowFor(plate).props.onDrop(event);
+        });
+      };
+
+      // A row dropped on itself says nothing.
+      dragFrom('AAA111');
+      dropOn('AAA111');
+      expect(homeRef.current.state.batchViolations).toHaveLength(2);
+
+      // The drop ends the drag, so the second one starts a new drag.
+      dragFrom('AAA111');
+      dropOn('BBB222');
+
+      const { batchViolations } = homeRef.current.state;
+      expect(batchViolations).toHaveLength(1);
+      expect(batchViolations[0].photos.map(photo => photo.name)).toEqual([
+        'b.jpg',
+        'a.jpg',
+      ]);
+      // The row dropped on keeps its plate when the two are as large, and the
+      // row is the user's own from then on.
+      expect(batchViolations[0].plate).toBe('BBB222');
+      expect(batchViolations[0].mergedByUser).toBe(true);
 
       cleanup();
     });

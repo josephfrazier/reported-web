@@ -4998,6 +4998,184 @@ describe('Home', () => {
       cleanup();
     });
 
+    // The target for a photo that is a violation of its own: it shows while a
+    // photo is dragged, and only then.
+    test('shows the new-violation target while a photo is dragged', async () => {
+      const photos = ['a'].map(name => {
+        const file = new File(['picture'], `${name}.jpg`, {
+          type: 'image/jpeg',
+        });
+        return { file, name: file.name, createDateMs: 1704110400000 };
+      });
+      const row = {
+        photos,
+        plate: 'AAA111',
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs: 1704110400000,
+      };
+
+      const { homeRef, tree, cleanup } = await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchPhotos: photos,
+          batchViolations: [row],
+        });
+      });
+
+      const targets = () =>
+        tree.root.findAll(node =>
+          String(node.props.className || '').includes(
+            'batch-new-violation-drop',
+          ),
+        ).length;
+
+      expect(targets()).toBe(0);
+
+      renderer.act(() => {
+        homeRef.current.startPhotoDrag({
+          photo: photos[0],
+          event: {
+            stopPropagation: jest.fn(),
+            dataTransfer: { setData: jest.fn() },
+          },
+        });
+      });
+      expect(targets()).toBe(1);
+
+      renderer.act(() => {
+        homeRef.current.endDrag();
+      });
+      expect(targets()).toBe(0);
+
+      // A row drag is not a photo, so there is no photo to put in a new row.
+      renderer.act(() => {
+        homeRef.current.startRowDrag({
+          violation: row,
+          event: { dataTransfer: { setData: jest.fn() } },
+        });
+      });
+      expect(targets()).toBe(0);
+      renderer.act(() => {
+        homeRef.current.endDrag();
+      });
+
+      cleanup();
+    });
+
+    // A photo dropped there gets a row of its own, built from what the photo
+    // itself read.
+    test('gives a dropped photo a violation of its own', async () => {
+      const photos = ['a', 'b', 'c'].map(name => {
+        const file = new File(['picture'], `${name}.jpg`, {
+          type: 'image/jpeg',
+        });
+        return {
+          file,
+          name: file.name,
+          createDateMs: 1704110400000,
+          latitude: 40.7129,
+          longitude: -74.0061,
+        };
+      });
+      // The first photo's own read names a car.
+      photos[0].plateResults = {
+        results: [
+          {
+            plate: 'ccc333',
+            score: 1,
+            candidates: [{ plate: 'ccc333', score: 1 }],
+            box: { xmin: 0, ymin: 0, xmax: 10, ymax: 10 },
+            region: { code: 'us-ny' },
+          },
+        ],
+        uploadWidth: 100,
+        uploadHeight: 100,
+      };
+      const row = (photoList, plate, createDateMs) => ({
+        photos: photoList,
+        plate,
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs,
+      });
+
+      const { homeRef, tree, clickQueueLoad, cleanup } =
+        await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchPhotos: photos,
+          batchViolations: [
+            row(photos.slice(0, 2), 'AAA111', 1704110400000),
+            row([photos[2]], 'BBB222', 1704110500000),
+          ],
+        });
+      });
+
+      clickQueueLoad('AAA111');
+
+      const tileFor = name =>
+        tree.root
+          .findAll(node => node.props.draggable === true)
+          .find(tile =>
+            tile.findAllByType('img').some(img => img.props.alt === name),
+          );
+
+      renderer.act(() => {
+        tileFor('a.jpg').props.onDragStart({
+          dataTransfer: { setData: jest.fn(), effectAllowed: '' },
+          stopPropagation: jest.fn(),
+        });
+      });
+
+      const target = tree.root
+        .findAll(node =>
+          String(node.props.className || '').includes(
+            'batch-new-violation-drop',
+          ),
+        )
+        .find(node => typeof node.props.onDrop === 'function');
+
+      renderer.act(() => {
+        target.props.onDrop({
+          preventDefault: jest.fn(),
+          stopPropagation: jest.fn(),
+          dataTransfer: {},
+        });
+      });
+
+      const { batchViolations, currentViolationIndex, attachmentData } =
+        homeRef.current.state;
+
+      expect(
+        batchViolations.map(violation => [
+          violation.plate,
+          violation.photos.map(photo => photo.name),
+          Boolean(violation.mergedByUser),
+        ]),
+      ).toEqual([
+        ['AAA111', ['b.jpg'], false],
+        // Built from the photo's own read, and kept as the user's row.
+        ['CCC333', ['a.jpg'], true],
+        ['BBB222', ['c.jpg'], false],
+      ]);
+      expect(currentViolationIndex).toBe(0);
+      expect(attachmentData.map(file => file.name)).toEqual(['b.jpg']);
+
+      // The moved photo was the row's first, so the row is named by a new
+      // photo now: the tick follows the row, not the new violation that took
+      // the photo's old name.
+      expect(homeRef.current.state.batchMergeSelection).toEqual([
+        '1704110400000-AAA111-b.jpg',
+      ]);
+
+      cleanup();
+    });
+
     test('closes the row a moved photo leaves empty, and opens the next', async () => {
       const photos = ['a', 'b'].map(name => {
         const file = new File(['picture'], `${name}.jpg`, {

@@ -799,6 +799,11 @@ const BATCH_STAGE_LABELS = {
   alpr: 'Reading license plates',
 };
 
+// What the new-violation drop target is called in `dropTargetIdentity`. Row
+// identities are a time, a plate and a photo name, so this cannot collide
+// with one.
+const NEW_VIOLATION_DROP = 'new-violation';
+
 const formatBatchViolationTime = createDateMs =>
   Number.isFinite(createDateMs)
     ? new Date(createDateMs).toLocaleString()
@@ -1218,6 +1223,9 @@ class Home extends React.Component {
       // The row a dragged photo is over, by identity: what tells the user
       // where the photo will land.
       dropTargetIdentity: null,
+      // Whether a photo is being dragged: the new-violation target shows only
+      // while one is.
+      photoDragInProgress: false,
       // While this is true, nothing moves the place: see `setCoords`.
       isLocationLocked: false,
       isPreviousSubmissionsOpen: false,
@@ -2197,6 +2205,7 @@ class Home extends React.Component {
   // all does not start in every browser.
   startPhotoDrag = ({ photo, event }) => {
     this.draggedPhoto = photo;
+    this.setState({ photoDragInProgress: true });
     // A tile sits inside a row, and the row is draggable too: without this,
     // the row would take the photo's drag for its own.
     event.stopPropagation();
@@ -2222,9 +2231,10 @@ class Home extends React.Component {
   endDrag = () => {
     this.draggedPhoto = null;
     this.draggedRow = null;
-    if (this.state.dropTargetIdentity !== null) {
-      this.setState({ dropTargetIdentity: null });
-    }
+    this.setState({
+      dropTargetIdentity: null,
+      photoDragInProgress: false,
+    });
   };
 
   dragInProgress = () => Boolean(this.draggedPhoto || this.draggedRow);
@@ -2273,6 +2283,120 @@ class Home extends React.Component {
     }
   };
 
+  // A moved photo can change its old row's identity: the row is named by its
+  // first photo, and that may be the one that moved. The tick that named the
+  // row follows it, the way it follows the form -- unless two or more rows
+  // are ticked, which is a merge the user is building.
+  selectionAfterMove = ({ source, sourceAfter }) => {
+    const { batchMergeSelection } = this.state;
+    const namesTheSource =
+      batchMergeSelection.length < 2 &&
+      batchMergeSelection.includes(batchViolationIdentity(source));
+
+    if (!namesTheSource || !sourceAfter) {
+      return batchMergeSelection;
+    }
+
+    return [batchViolationIdentity(sourceAfter)];
+  };
+
+  // A photo dropped on the new-violation target gets a row of its own: the
+  // user is saying it does not belong to the violation it was in. The row is
+  // built from the photo itself -- its time, its place, the plate it read --
+  // and marked as the user's own, so a later read does not fold it back.
+  dropOnNewViolation = event => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const photo = this.draggedPhoto;
+    this.endDrag();
+    if (!photo) {
+      return;
+    }
+
+    this.movePhotoToNewViolation(photo);
+  };
+
+  movePhotoToNewViolation = photo => {
+    const { attachmentData, batchViolations, currentViolationIndex } =
+      this.state;
+
+    const source = batchViolations.find(row =>
+      row.photos.some(candidate => candidate.file === photo.file),
+    );
+
+    if (!source) {
+      return;
+    }
+
+    const previousPhotos = attachmentData;
+    const loaded = batchViolations[currentViolationIndex];
+    const sourceIndex = batchViolations.indexOf(source);
+
+    const [built] = this.withNycFlags(groupAttachmentsByViolation([photo]));
+    const created = { ...built, mergedByUser: true };
+
+    let loadedAfter = null;
+    let sourceAfter = null;
+    const kept = [];
+    batchViolations.forEach(row => {
+      const next =
+        row === source
+          ? {
+              ...row,
+              photos: row.photos.filter(
+                candidate => candidate.file !== photo.file,
+              ),
+            }
+          : row;
+
+      if (next.photos.length === 0) {
+        return;
+      }
+
+      if (row === loaded) {
+        loadedAfter = next;
+      }
+      if (row === source) {
+        sourceAfter = next;
+      }
+
+      kept.push(next);
+    });
+
+    // Oldest first, the way the queue is kept: the new row sits where its
+    // photo's time says, not at the end.
+    const rows = kept
+      .concat(created)
+      .sort((a, b) => a.createDateMs - b.createDateMs);
+
+    const nextIndex = loadedAfter
+      ? rows.indexOf(loadedAfter)
+      : Math.min(sourceIndex, rows.length - 1);
+
+    this.setState(
+      {
+        batchViolations: rows,
+        currentViolationIndex: nextIndex,
+        batchMergeSelection: this.selectionAfterMove({ source, sourceAfter }),
+        attachmentData: attachmentData.filter(
+          candidate => candidate !== photo.file,
+        ),
+      },
+      () => {
+        if (loadedAfter) {
+          // The row on screen is still there, with one photo less.
+          this.applyPhotosToForm(this.state.attachmentData, {
+            previousPhotos,
+          });
+        } else {
+          // The row went with its last photo: show what is next.
+          this.loadBatchViolation(this.state.currentViolationIndex);
+        }
+      },
+    );
+  };
+
   // The row dropped on another: the two are one violation. The merge is the
   // one the tick and the Merge button do, so a read leaves the result whole
   // -- see `mergeSelectedBatchViolations`. The row dropped on goes first in
@@ -2315,6 +2439,7 @@ class Home extends React.Component {
     const loaded = batchViolations[currentViolationIndex];
 
     let loadedAfter = null;
+    let sourceAfter = null;
     const rows = [];
     batchViolations.forEach(row => {
       const next =
@@ -2340,6 +2465,9 @@ class Home extends React.Component {
       if (row === loaded) {
         loadedAfter = next;
       }
+      if (row === source) {
+        sourceAfter = next;
+      }
 
       rows.push(next);
     });
@@ -2353,6 +2481,7 @@ class Home extends React.Component {
       {
         batchViolations: rows,
         currentViolationIndex: nextIndex,
+        batchMergeSelection: this.selectionAfterMove({ source, sourceAfter }),
         attachmentData: attachmentData.filter(
           candidate => candidate !== photo.file,
         ),
@@ -4407,6 +4536,7 @@ class Home extends React.Component {
       batchViolations,
       currentViolationIndex,
       dropTargetIdentity,
+      photoDragInProgress,
       plate,
       plateProvenance,
     } = this.state;
@@ -4455,6 +4585,25 @@ class Home extends React.Component {
                 Found {batchViolations.length} violation
                 {batchViolations.length === 1 ? '' : 's'}
               </h3>
+              {/* A photo dragged here gets a violation of its own, for a
+                  picture that does not belong to the row it is in. It shows
+                  only while a photo is being dragged, so the heading keeps
+                  its line the rest of the time. */}
+              {photoDragInProgress && (
+                <div
+                  className={`${homeStyles['batch-new-violation-drop']}${
+                    dropTargetIdentity === NEW_VIOLATION_DROP
+                      ? ` ${homeStyles['batch-new-violation-drop-over']}`
+                      : ''
+                  }`}
+                  onDragEnter={() => this.enterRowWithDrag(NEW_VIOLATION_DROP)}
+                  onDragLeave={() => this.leaveRowWithDrag(NEW_VIOLATION_DROP)}
+                  onDragOver={this.rowAllowsDrop}
+                  onDrop={this.dropOnNewViolation}
+                >
+                  New violation
+                </div>
+              )}
               <button
                 type="button"
                 className={homeStyles['batch-queue-merge']}

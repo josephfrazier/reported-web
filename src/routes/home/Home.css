@@ -480,6 +480,26 @@ input[type='search']::-webkit-search-cancel-button {
 }
 
 /*
+ * The new-violation target on the queue's heading line. It shows only while a
+ * photo is being dragged, and sits between the count and the Merge button.
+ * The dashed edge and the padding keep it from reading as a button.
+ */
+.batch-new-violation-drop {
+  padding: 2px 8px;
+  border: 1px dashed rgb(0 0 0 / 35%);
+  border-radius: 4px;
+  color: rgb(0 0 0 / 65%);
+  font-size: 0.9em;
+  white-space: nowrap;
+}
+
+.batch-new-violation-drop-over {
+  border-color: rgb(26 115 232 / 80%);
+  background: rgb(26 115 232 / 10%);
+  color: rgb(0 0 0 / 85%);
+}
+
+/*
  * A queue row's description, which is the control that loads that violation.
  *
  * It is a button so the keyboard reaches it, and it is stripped back to the

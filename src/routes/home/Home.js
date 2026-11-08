@@ -3383,8 +3383,7 @@ class Home extends React.Component {
                         }}
                       >
                         <button type="button" style={{ whiteSpace: 'wrap' }}>
-                          Add pictures/videos or a zip (up to 3 each, 20MB max
-                          each)
+                          Add pictures/videos or a zip (20MB max each)
                         </button>
                       </FileReaderInput>
 

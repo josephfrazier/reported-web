@@ -140,7 +140,7 @@ exports[`Home hides form fields when logged in with no photos uploaded 1`] = `
                   }
                   type="button"
                 >
-                  Add pictures/videos or a zip (up to 3 each, 20MB max each)
+                  Add pictures/videos or a zip (20MB max each)
                 </button>
               </div>
               <button
@@ -1911,7 +1911,7 @@ exports[`Home renders submission form and Previous Submissions when logged in wi
                   }
                   type="button"
                 >
-                  Add pictures/videos or a zip (up to 3 each, 20MB max each)
+                  Add pictures/videos or a zip (20MB max each)
                 </button>
               </div>
               <button
@@ -2788,7 +2788,7 @@ exports[`Home renders with allPlateResults entry missing plate and photos 1`] = 
                   }
                   type="button"
                 >
-                  Add pictures/videos or a zip (up to 3 each, 20MB max each)
+                  Add pictures/videos or a zip (20MB max each)
                 </button>
               </div>
               <button
@@ -3665,7 +3665,7 @@ exports[`Home renders with undefined allPlateResults and photos 1`] = `
                   }
                   type="button"
                 >
-                  Add pictures/videos or a zip (up to 3 each, 20MB max each)
+                  Add pictures/videos or a zip (20MB max each)
                 </button>
               </div>
               <button

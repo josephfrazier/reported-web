@@ -1230,6 +1230,9 @@ class Home extends React.Component {
       isLocationLocked: false,
       isPreviousSubmissionsOpen: false,
       hasSeenWithholdNotice: false,
+      // Whether the note about adding a whole folder has been seen or
+      // dismissed. It lives in the cookie with the rest.
+      hasSeenBatchNotice: false,
       loginSuccessful: false,
       isSemiAutomaticMode: false,
     };
@@ -2763,6 +2766,14 @@ class Home extends React.Component {
       return this.batchQueue;
     }
 
+    // Files arriving is the tip doing its job: nothing needs to say again
+    // that a whole folder can go in.
+    if (!this.state.hasSeenBatchNotice) {
+      this.setState({ hasSeenBatchNotice: true }, () =>
+        debouncedSavePersistentStateToCookie(this),
+      );
+    }
+
     // Chain the passes: two quick picks must not both regroup against the same
     // starting list of photos. Nothing else writes batchPhotos, so each pass
     // sees the one before it. A zip is opened out first, so what the pass sees
@@ -4016,6 +4027,12 @@ class Home extends React.Component {
     }
   };
 
+  dismissBatchNotice = () => {
+    this.setState({ hasSeenBatchNotice: true }, () =>
+      debouncedSavePersistentStateToCookie(this),
+    );
+  };
+
   dismissWithholdNotice = () => {
     this.setState({ hasSeenWithholdNotice: true }, () =>
       debouncedSavePersistentStateToCookie(this),
@@ -4259,6 +4276,7 @@ class Home extends React.Component {
         withhold_contact_info_from_nypd: false,
         receive_nypd_sr_updates_by_email: false,
         hasSeenWithholdNotice: false,
+        hasSeenBatchNotice: false,
         submissions: [],
         isEditProfileOpen: false,
         isPreferencesOpen: false,
@@ -5705,6 +5723,19 @@ class Home extends React.Component {
                           // Batch mode reports one violation at a time, so take
                           // the submitted one out of the queue and load the next
                           // rather than leaving the user at an empty form.
+                          // The report is the queue's last one, and it takes
+                          // all its photos: nothing is left to go through.
+                          const reported =
+                            this.state.batchViolations[
+                              this.state.currentViolationIndex
+                            ];
+                          const queueIsDone =
+                            Boolean(reported) &&
+                            this.state.batchViolations.length === 1 &&
+                            reported.photos.every(photo =>
+                              submittedFiles.includes(photo.file),
+                            );
+
                           if (
                             this.state.isSemiAutomaticMode &&
                             this.state.currentViolationIndex >= 0
@@ -5719,6 +5750,13 @@ class Home extends React.Component {
                                 It may take up to 24 hours for it to be
                                 processed.
                               </p>
+                              {this.state.isSemiAutomaticMode &&
+                                queueIsDone && (
+                                  <p>
+                                    Have more photos? Add a folder and we will
+                                    go through them one at a time.
+                                  </p>
+                                )}
 
                               {/*
                         <p>objectId: {data.submission.objectId}</p>
@@ -5829,6 +5867,54 @@ class Home extends React.Component {
                       )}
 
                       <div style={{ clear: 'both' }} />
+
+                      {/* One-time note about the whole batch: the picker
+                          takes a folder or a zip, and the queue walks
+                          through what it finds. It shows only while nothing
+                          has been added, so it never sits over a form in
+                          progress. */}
+                      {this.state.isSemiAutomaticMode &&
+                        this.state.batchPhotos.length === 0 &&
+                        this.state.attachmentData.length === 0 &&
+                        (this.state.hasSeenBatchNotice ? (
+                          <p className={homeStyles['batch-hint']}>
+                            One photo, a folder, or a zip: we split the photos
+                            into violations and open them one at a time.
+                          </p>
+                        ) : (
+                          <div
+                            role="status"
+                            className={homeStyles['batch-notice-banner']}
+                          >
+                            <span>
+                              <span role="img" aria-label="photos">
+                                📂
+                              </span>{' '}
+                              You can add a whole folder, or a zip, of photos.
+                              We find each violation and open them one at a
+                              time.
+                            </span>
+                            <span className={homeStyles['user-actions']}>
+                              <button
+                                type="button"
+                                className={homeStyles['status-bar-btn-primary']}
+                                onClick={() => {
+                                  this.dismissBatchNotice();
+                                  this.batchFolderInputRef.current?.click();
+                                }}
+                              >
+                                Add a folder
+                              </button>
+                              <button
+                                type="button"
+                                className={homeStyles['status-bar-btn']}
+                                onClick={this.dismissBatchNotice}
+                              >
+                                Got it
+                              </button>
+                            </span>
+                          </div>
+                        ))}
 
                       {this.state.isSemiAutomaticMode &&
                         this.renderBatchStatus()}

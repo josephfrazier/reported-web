@@ -338,6 +338,15 @@ function renderedText(node) {
   return renderedText(node.children);
 }
 
+// The text of a React element that was handed to a toast, read the way
+// renderedText reads a rendered tree.
+function elementText(node) {
+  if (node == null) return '';
+  if (typeof node === 'string') return node;
+  if (Array.isArray(node)) return node.map(elementText).join('');
+  return elementText(node.props?.children);
+}
+
 describe('Home', () => {
   test('renders submission form and Previous Submissions when logged in with photos', () => {
     const initialState = {
@@ -3790,6 +3799,56 @@ describe('Home', () => {
       };
     }
 
+    // The picker takes a whole folder or a zip, and the queue walks through
+    // what it finds. A one-time note says so where the choice is made, and a
+    // one-line version stays once the note is gone.
+    test('says once that a whole folder of photos can go in', async () => {
+      const { homeRef, tree, cleanup } = await renderBatchWithFiles([]);
+
+      expect(renderedText(tree.toJSON())).toContain(
+        'You can add a whole folder, or a zip, of photos',
+      );
+
+      renderer.act(() => {
+        homeRef.current.dismissBatchNotice();
+      });
+
+      const text = renderedText(tree.toJSON());
+      expect(text).not.toContain('You can add a whole folder');
+      expect(text).toContain('One photo, a folder, or a zip');
+      expect(homeRef.current.state.hasSeenBatchNotice).toBe(true);
+
+      // Logging out clears it, so the next account gets the note.
+      renderer.act(() => {
+        homeRef.current.handleLogOut();
+      });
+      expect(homeRef.current.state.hasSeenBatchNotice).toBe(false);
+
+      cleanup();
+    });
+
+    test('drops the note once photos arrive', async () => {
+      const photo = jpeg({ name: 'a.jpg', size: 4 });
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, tree, cleanup } = await renderBatchWithFiles([photo]);
+
+      // The photos are the point: the note is not needed once they are in.
+      expect(homeRef.current.state.hasSeenBatchNotice).toBe(true);
+      expect(renderedText(tree.toJSON())).not.toContain(
+        'You can add a whole folder',
+      );
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
     test('uploads the violation it loads, not the folder it came from', async () => {
       const photos = [
         jpeg({ name: 'a.jpg', size: 4 }),
@@ -5308,6 +5367,41 @@ describe('Home', () => {
     // the photos a report left behind are published as a row of their own, and
     // with the form sitting empty the row has to open itself, or the user is
     // left looking at a queue they have to click into.
+    // When the last report is filed, the toast says where the next photos
+    // can come from.
+    test('points at the folder picker when the queue is done', async () => {
+      const photos = ['p1', 'p2'].map((name, index) => {
+        const file = new File(['picture'], `${name}.jpg`, {
+          type: 'image/jpeg',
+        });
+        return {
+          file,
+          name: file.name,
+          plateRead: 'read',
+          createDateMs: 1704110400000 + index * 1000,
+          latitude: 40.7129,
+          longitude: -74.0061,
+        };
+      });
+
+      const { homeRef, submit, toastSuccess, cleanup } = await oneRowOf(photos);
+
+      await submit();
+      await renderer.act(async () => {
+        for (let i = 0; i < 3; i += 1) {
+          // eslint-disable-next-line no-await-in-loop -- one round per pending promise chain.
+          await new Promise(resolve => setImmediate(resolve));
+        }
+      });
+
+      expect(homeRef.current.state.batchViolations).toEqual([]);
+      expect(elementText(toastSuccess.mock.calls[0][0])).toContain(
+        'Have more photos? Add a folder',
+      );
+
+      cleanup();
+    });
+
     test('opens on the violation a submit leaves behind', async () => {
       const photos = ['p1', 'p2', 'p3', 'p4'].map((name, index) => {
         const file = new File(['picture'], `${name}.jpg`, {

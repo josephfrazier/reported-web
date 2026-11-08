@@ -4540,6 +4540,12 @@ class Home extends React.Component {
             );
           })}
         </div>
+
+        {/* The cap is a report's, and the photos over it are here: say so
+            where they are, not only beside Submit. */}
+        {tooManyAttachments(attachmentData) && (
+          <p>{TOO_MANY_ATTACHMENTS_MESSAGE}</p>
+        )}
       </React.Fragment>
     );
   }
@@ -5811,7 +5817,7 @@ class Home extends React.Component {
                               this.batchPhotosInputRef.current?.click()
                             }
                           >
-                            Add pictures/videos or a zip
+                            Add pictures/videos or a zip file
                           </button>
                           <input
                             ref={this.batchPhotosInputRef}
@@ -5841,8 +5847,7 @@ class Home extends React.Component {
                               type="button"
                               style={{ whiteSpace: 'wrap' }}
                             >
-                              Add pictures/videos or a zip (up to 3 each, 20MB
-                              max each)
+                              Add pictures/videos or a zip file
                             </button>
                           </FileReaderInput>
 
@@ -5870,7 +5875,7 @@ class Home extends React.Component {
                       <div style={{ clear: 'both' }} />
 
                       {/* One-time note about the whole batch: the picker
-                          takes a folder or a zip, and the queue walks
+                          takes a folder or a zip file, and the queue walks
                           through what it finds. It shows only while nothing
                           has been added, so it never sits over a form in
                           progress. */}
@@ -5879,8 +5884,8 @@ class Home extends React.Component {
                         this.state.attachmentData.length === 0 &&
                         (this.state.hasSeenBatchNotice ? (
                           <p className={homeStyles['batch-hint']}>
-                            One photo, a folder, or a zip: we split the photos
-                            into violations and open them one at a time.
+                            One photo, a folder, or a zip file: we split the
+                            photos into violations and open them one at a time.
                           </p>
                         ) : (
                           <div
@@ -5892,8 +5897,8 @@ class Home extends React.Component {
                                 📂
                               </span>{' '}
                               You can add a whole folder of photos and videos,
-                              or a zip. We find each violation and open them one
-                              at a time.
+                              or a zip file. We find each violation and open
+                              them one at a time.
                             </span>
                             <span className={homeStyles['user-actions']}>
                               <button
@@ -5921,6 +5926,19 @@ class Home extends React.Component {
                         this.renderBatchStatus()}
 
                       {this.renderAttachmentGrid()}
+
+                      {/* The 20MB limit is a file's, and a zip is a file that
+                          is unpacked before any of this applies: say what the
+                          limit is on, rather than putting it on the button
+                          where it reads as the zip's too. */}
+                      {this.state.attachmentData.length === 0 &&
+                        (!this.state.isSemiAutomaticMode ||
+                          this.state.batchPhotos.length === 0) && (
+                          <p className={homeStyles['upload-hint']}>
+                            Each photo or video can be up to 20MB. A zip file is
+                            unpacked into photos and videos first.
+                          </p>
+                        )}
 
                       {this.state.attachmentData.length > 0 && (
                         <React.Fragment>

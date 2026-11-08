@@ -376,6 +376,40 @@ describe('Home', () => {
     global.URL.createObjectURL = originalCreateObjectURL;
   });
 
+  // The 20MB limit is a photo's or a video's. A zip is unpacked first, so the
+  // limit is on what comes out of it, not on the zip.
+  test('puts the size limit on a photo or a video, not on a zip', () => {
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+    };
+
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ initialState, homeRef });
+    });
+
+    const markup = () => JSON.stringify(tree.toJSON());
+    const hint = 'Each photo or video can be up to 20MB';
+    expect(markup()).toContain(hint);
+
+    renderer.act(() => {
+      homeRef.current.setState({
+        attachmentData: [
+          new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }),
+        ],
+      });
+    });
+    expect(markup()).not.toContain(hint);
+
+    tree.unmount();
+    global.URL.createObjectURL = originalCreateObjectURL;
+  });
+
   test('hides form fields when logged in with no photos uploaded', () => {
     const initialState = {
       email: 'test@example.com',
@@ -3015,6 +3049,7 @@ describe('Home', () => {
 
       return {
         homeRef,
+        tree,
         axiosPost,
         submit: () => {
           const form = tree.root
@@ -3288,6 +3323,34 @@ describe('Home', () => {
       expect(submitBody.get('plate')).toBe('ABC123');
 
       cleanup();
+    });
+
+    // The 3-a-report cap: the photos over it are in the grid, so the sentence
+    // that explains the held Submit sits there as well.
+    test('says where the extra photos are why Submit is held', async () => {
+      const message =
+        'A report can include at most 3 pictures and 3 videos. Remove the extra ones to submit it.';
+      const pictures = count =>
+        Array.from(
+          { length: count },
+          (_, index) =>
+            new File([`photo${index}`], `photo${index}.jpg`, {
+              type: 'image/jpeg',
+            }),
+        );
+
+      const tooMany = await renderWithFiles({ files: pictures(4) });
+      const sentences = node =>
+        node.children.length === 1 && node.children[0] === message;
+
+      // One beside the photos, one beside Submit.
+      expect(tooMany.tree.root.findAll(sentences)).toHaveLength(2);
+      expect(tooMany.submitButton().props.disabled).toBe(true);
+      tooMany.cleanup();
+
+      const withinCap = await renderWithFiles({ files: pictures(3) });
+      expect(withinCap.tree.root.findAll(sentences)).toHaveLength(0);
+      withinCap.cleanup();
     });
 
     test('caches the new submission so it survives into the next page load', async () => {
@@ -3799,14 +3862,14 @@ describe('Home', () => {
       };
     }
 
-    // The picker takes a whole folder or a zip, and the queue walks through
-    // what it finds. A one-time note says so where the choice is made, and a
-    // one-line version stays once the note is gone.
+    // The picker takes a whole folder or a zip file, and the queue walks
+    // through what it finds. A one-time note says so where the choice is made,
+    // and a one-line version stays once the note is gone.
     test('says once that a whole folder of photos can go in', async () => {
       const { homeRef, tree, cleanup } = await renderBatchWithFiles([]);
 
       expect(renderedText(tree.toJSON())).toContain(
-        'You can add a whole folder of photos and videos, or a zip',
+        'You can add a whole folder of photos and videos, or a zip file',
       );
 
       renderer.act(() => {
@@ -3815,7 +3878,7 @@ describe('Home', () => {
 
       const text = renderedText(tree.toJSON());
       expect(text).not.toContain('You can add a whole folder');
-      expect(text).toContain('One photo, a folder, or a zip');
+      expect(text).toContain('One photo, a folder, or a zip file');
       expect(homeRef.current.state.hasSeenBatchNotice).toBe(true);
 
       // Logging out clears it, so the next account gets the note.

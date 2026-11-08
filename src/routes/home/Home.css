@@ -725,3 +725,11 @@ input[type='search']::-webkit-search-cancel-button {
   outline: 3px solid #1a73e8;
   outline-offset: -3px;
 }
+
+/* The upload rule under the Add buttons: what a photo, a video and a zip can
+   be. Muted, so it reads as a note rather than as another control. */
+.upload-hint {
+  margin: 0.5rem 0 0;
+  color: #595959;
+  font-size: 0.9rem;
+}

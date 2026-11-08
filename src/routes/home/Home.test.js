@@ -353,6 +353,40 @@ describe('Home', () => {
     global.URL.createObjectURL = originalCreateObjectURL;
   });
 
+  // The 20MB limit is a photo's or a video's. A zip is unpacked first, so the
+  // limit is on what comes out of it, not on the zip.
+  test('puts the size limit on a photo or a video, not on a zip', () => {
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+    };
+
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ initialState, homeRef });
+    });
+
+    const markup = () => JSON.stringify(tree.toJSON());
+    const hint = 'Each photo or video can be up to 20MB';
+    expect(markup()).toContain(hint);
+
+    renderer.act(() => {
+      homeRef.current.setState({
+        attachmentData: [
+          new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }),
+        ],
+      });
+    });
+    expect(markup()).not.toContain(hint);
+
+    tree.unmount();
+    global.URL.createObjectURL = originalCreateObjectURL;
+  });
+
   test('hides form fields when logged in with no photos uploaded', () => {
     const initialState = {
       email: 'test@example.com',

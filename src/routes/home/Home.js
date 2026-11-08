@@ -3383,7 +3383,7 @@ class Home extends React.Component {
                         }}
                       >
                         <button type="button" style={{ whiteSpace: 'wrap' }}>
-                          Add pictures/videos or a zip
+                          Add pictures/videos or a zip file
                         </button>
                       </FileReaderInput>
 
@@ -3414,7 +3414,7 @@ class Home extends React.Component {
                           where it reads as the zip's too. */}
                       {this.state.attachmentData.length === 0 && (
                         <p className={homeStyles['upload-hint']}>
-                          Each photo or video can be up to 20MB. A zip is
+                          Each photo or video can be up to 20MB. A zip file is
                           unpacked into photos and videos first.
                         </p>
                       )}

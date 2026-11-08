@@ -5841,7 +5841,8 @@ class Home extends React.Component {
                               type="button"
                               style={{ whiteSpace: 'wrap' }}
                             >
-                              Add pictures/videos (up to 3 each, 20MB max each)
+                              Add pictures/videos or a zip (up to 3 each, 20MB
+                              max each)
                             </button>
                           </FileReaderInput>
 
@@ -5853,7 +5854,7 @@ class Home extends React.Component {
                             }}
                             onClick={() => this.folderInputRef.current?.click()}
                           >
-                            Add folder
+                            Add a folder of photos and videos
                           </button>
                           <input
                             ref={this.folderInputRef}

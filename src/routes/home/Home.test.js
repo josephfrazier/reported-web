@@ -3806,7 +3806,7 @@ describe('Home', () => {
       const { homeRef, tree, cleanup } = await renderBatchWithFiles([]);
 
       expect(renderedText(tree.toJSON())).toContain(
-        'You can add a whole folder, or a zip, of photos',
+        'You can add a whole folder of photos and videos, or a zip',
       );
 
       renderer.act(() => {

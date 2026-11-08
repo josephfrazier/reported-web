@@ -5793,7 +5793,7 @@ class Home extends React.Component {
                               this.batchFolderInputRef.current?.click()
                             }
                           >
-                            Add folder
+                            Add a folder of photos and videos
                           </button>
                           <input
                             ref={this.batchFolderInputRef}
@@ -5811,7 +5811,7 @@ class Home extends React.Component {
                               this.batchPhotosInputRef.current?.click()
                             }
                           >
-                            Add pictures/videos
+                            Add pictures/videos or a zip
                           </button>
                           <input
                             ref={this.batchPhotosInputRef}
@@ -5890,9 +5890,9 @@ class Home extends React.Component {
                               <span role="img" aria-label="photos">
                                 📂
                               </span>{' '}
-                              You can add a whole folder, or a zip, of photos.
-                              We find each violation and open them one at a
-                              time.
+                              You can add a whole folder of photos and videos,
+                              or a zip. We find each violation and open them one
+                              at a time.
                             </span>
                             <span className={homeStyles['user-actions']}>
                               <button

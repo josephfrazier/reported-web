@@ -1442,6 +1442,24 @@ describe('Home', () => {
     cleanup();
   });
 
+  test('getPerSubmissionState keeps only per-submission keys', () => {
+    const homeRef = React.createRef();
+    const tree = renderHome({ homeRef });
+
+    const posted = homeRef.current.getPerSubmissionState();
+    const postedKeys = Object.keys(posted);
+
+    // The submit posts this state as the /submit body, so it may carry only
+    // the per-submission fields: session fields like the password must never
+    // leave the client.
+    expect(postedKeys).toContain('formatted_address');
+    expect(postedKeys).toContain('plate');
+    expect(postedKeys).not.toContain('password');
+    expect(postedKeys).not.toContain('isSubmitting');
+
+    renderer.act(() => tree.unmount());
+  });
+
   test('drops a plate picked off a photo that is then dropped', async () => {
     // Two cars in one report: one photo read the taxi's medallion, the other
     // read the car behind it, and the user picks the second plate off the

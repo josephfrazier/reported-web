@@ -2,9 +2,264 @@
  * @jest-environment node
  */
 
-import { geosearch } from './geoclient.js';
+import axios from 'axios';
+
+import {
+  geosearch,
+  getPadAddress,
+  selectCanonicalFeature,
+} from './geoclient.js';
+import { geosearchFixtures, padFixtures } from './geoclient.fixtures.js';
+
+const GEOSEARCH_URL = 'https://geosearch.planninglabs.nyc/v2/reverse';
+const PAD_URL = 'https://data.cityofnewyork.us/resource/64uk-42ks.json';
+
+const feature = ({ name, bbl, layer = 'venue' }) => ({
+  properties: {
+    name,
+    addendum: { pad: { bbl } },
+    layer,
+  },
+});
+
+describe('selectCanonicalFeature', () => {
+  const getPadAddressForBbl = jest.fn(async () => '146 HOYT STREET');
+
+  afterEach(() => {
+    getPadAddressForBbl.mockClear();
+    jest.restoreAllMocks();
+  });
+
+  test('prefers the feature matching the PAD address for its BBL', async () => {
+    const features = [
+      feature({ name: '127 BERGAN STREET', bbl: '3001940042' }),
+      feature({ name: '146 HOYT STREET', bbl: '3001940042' }),
+      feature({ name: '127 BERGEN STREET', bbl: '3001940042' }),
+    ];
+
+    const result = await selectCanonicalFeature(features, getPadAddressForBbl);
+
+    expect(getPadAddressForBbl).toHaveBeenCalledWith('3001940042');
+    expect(result.properties.name).toBe('146 HOYT STREET');
+  });
+
+  test('returns the top result when no feature matches the PAD address', async () => {
+    const features = [
+      feature({ name: '127 BERGAN STREET', bbl: '3001940042' }),
+      feature({ name: '131 BERGAN STREET', bbl: '3001940042' }),
+    ];
+
+    const result = await selectCanonicalFeature(features, getPadAddressForBbl);
+
+    expect(result.properties.name).toBe('127 BERGAN STREET');
+  });
+
+  test('returns the top result when the PAD lookup fails', async () => {
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+    const features = [
+      feature({ name: '127 BERGAN STREET', bbl: '3001940042' }),
+    ];
+
+    const result = await selectCanonicalFeature(features, async () => {
+      throw new Error('PAD is down');
+    });
+
+    expect(result.properties.name).toBe('127 BERGAN STREET');
+  });
+
+  test('returns the top result when PAD has no address for the BBL', async () => {
+    const features = [
+      feature({ name: '127 BERGAN STREET', bbl: '3001940042' }),
+    ];
+
+    const result = await selectCanonicalFeature(
+      features,
+      async () => undefined,
+    );
+
+    expect(result.properties.name).toBe('127 BERGAN STREET');
+  });
+
+  test('returns the top result when it has no BBL', async () => {
+    const features = [feature({ name: 'SOMEWHERE', bbl: undefined })];
+
+    const result = await selectCanonicalFeature(features, getPadAddressForBbl);
+
+    expect(getPadAddressForBbl).not.toHaveBeenCalled();
+    expect(result.properties.name).toBe('SOMEWHERE');
+  });
+
+  test('returns undefined for empty results', async () => {
+    const result = await selectCanonicalFeature([], getPadAddressForBbl);
+
+    expect(result).toBeUndefined();
+    expect(getPadAddressForBbl).not.toHaveBeenCalled();
+  });
+
+  test('prefers the feature matching the selected search result over the PAD address', async () => {
+    const features = [
+      feature({ name: '127 BERGAN STREET', bbl: '3001940042' }),
+      feature({ name: '146 HOYT STREET', bbl: '3001940042' }),
+      feature({ name: '127 BERGEN STREET', bbl: '3001940042' }),
+    ];
+
+    const result = await selectCanonicalFeature(
+      features,
+      getPadAddressForBbl,
+      '127 Bergen St',
+    );
+
+    expect(getPadAddressForBbl).not.toHaveBeenCalled();
+    expect(result.properties.name).toBe('127 BERGEN STREET');
+  });
+
+  test('uses the PAD address when the selected search result matches no feature', async () => {
+    const features = [
+      feature({ name: '127 BERGAN STREET', bbl: '3001940042' }),
+      feature({ name: '146 HOYT STREET', bbl: '3001940042' }),
+      feature({ name: '127 BERGEN STREET', bbl: '3001940042' }),
+    ];
+
+    const result = await selectCanonicalFeature(
+      features,
+      getPadAddressForBbl,
+      '999 Nowhere St',
+    );
+
+    expect(getPadAddressForBbl).toHaveBeenCalledWith('3001940042');
+    expect(result.properties.name).toBe('146 HOYT STREET');
+  });
+
+  test('ignores features on non-address layers when matching the selected search result', async () => {
+    const features = [
+      feature({
+        name: '127 BERGEN STREET',
+        bbl: '3001940042',
+        layer: 'locality',
+      }),
+      feature({ name: '127 BERGEN STREET', bbl: '3001940042' }),
+    ];
+
+    const result = await selectCanonicalFeature(
+      features,
+      getPadAddressForBbl,
+      '127 Bergen St',
+    );
+
+    expect(getPadAddressForBbl).not.toHaveBeenCalled();
+    expect(result.properties.layer).toBe('venue');
+  });
+});
+
+describe('getPadAddress', () => {
+  const serviceUnavailableError = () =>
+    Object.assign(new Error('Service unavailable'), {
+      response: { status: 503 },
+    });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    jest.useRealTimers();
+  });
+
+  test('retries when PAD returns 503', async () => {
+    jest.useFakeTimers();
+    const axiosGet = jest.spyOn(axios, 'get');
+    axiosGet
+      .mockRejectedValueOnce(serviceUnavailableError())
+      .mockResolvedValueOnce({ data: [{ address: '123 MAIN STREET' }] });
+
+    const promise = getPadAddress('9999999999');
+    await Promise.resolve();
+    await jest.advanceTimersByTimeAsync(250);
+
+    await expect(promise).resolves.toBe('123 MAIN STREET');
+    expect(axiosGet).toHaveBeenCalledTimes(2);
+  });
+
+  test('gives up after three retries', async () => {
+    jest.useFakeTimers();
+    const axiosGet = jest.spyOn(axios, 'get');
+    axiosGet.mockRejectedValue(serviceUnavailableError());
+
+    const promise = getPadAddress('8888888888');
+    promise.catch(() => {});
+    await Promise.resolve();
+    await jest.advanceTimersByTimeAsync(250);
+    await Promise.resolve();
+    await jest.advanceTimersByTimeAsync(500);
+    await Promise.resolve();
+    await jest.advanceTimersByTimeAsync(750);
+
+    await expect(promise).rejects.toThrow('Service unavailable');
+    expect(axiosGet).toHaveBeenCalledTimes(4);
+  });
+});
 
 describe('geosearch', () => {
+  // These tests mock axios.get with responses recorded from the live
+  // geosearch and PAD APIs, since those services go down intermittently
+  // (see the retry in getPadAddress) and used to take these tests down
+  // with them.
+  beforeEach(() => {
+    jest.spyOn(axios, 'get').mockImplementation(async (url, config) => {
+      if (url === GEOSEARCH_URL) {
+        const { 'point.lat': lat, 'point.lon': long } = config.params;
+        const fixture = geosearchFixtures[`${lat},${long}`];
+        if (!fixture) {
+          throw new Error(`No geosearch fixture for ${lat},${long}`);
+        }
+        return { data: fixture };
+      }
+
+      if (url === PAD_URL) {
+        const { bbl } = config.params;
+        const fixture = padFixtures[bbl];
+        if (!fixture) {
+          throw new Error(`No PAD fixture for ${bbl}`);
+        }
+        return { data: fixture };
+      }
+
+      throw new Error(`Unexpected axios.get URL: ${url}`);
+    });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('returns 146 HOYT STREET for the point selected by searching 127 Bergen', async () => {
+    const result = await geosearch({
+      lat: 40.686051,
+      long: -73.988426,
+    });
+
+    expect(result.features[0].properties.name).toBe('146 HOYT STREET');
+  });
+
+  test('returns 127 BERGEN STREET when the selected address is 127 Bergen St', async () => {
+    const result = await geosearch({
+      lat: 40.686051,
+      long: -73.988426,
+      address: '127 Bergen St',
+    });
+
+    expect(result.features[0].properties.name).toBe('127 BERGEN STREET');
+  });
+
+  // The point on the NYU Tandon campus that inspired the BBL dedupe: the
+  // top result for this point is D AND M OTHMER RESIDENCE HALL, and the
+  // PAD's official address for its BBL is 101 TECH PLACE.
+  test('returns 101 TECH PLACE for the point that inspired the BBL dedupe', async () => {
+    const result = await geosearch({
+      lat: 40.69488611111111,
+      long: -73.986175,
+    });
+
+    expect(result.features[0].properties.name).toBe('101 TECH PLACE');
+  });
+
   test('returns the right object around the Empire State Building', async () => {
     const result = await geosearch({
       lat: 40.748817,

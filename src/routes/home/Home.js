@@ -3507,6 +3507,13 @@ class Home extends React.Component {
                             })}
                           </div>
 
+                          {/* The cap is a report's, and the photos over it are
+                              here: say so where they are, not only beside
+                              Submit. */}
+                          {tooManyAttachments(this.state.attachmentData) && (
+                            <p>{TOO_MANY_ATTACHMENTS_MESSAGE}</p>
+                          )}
+
                           <label htmlFor="plate" ref={this.plateLabelRef}>
                             License/Medallion:
                             {this.state.isAlprLoading && (

@@ -2975,6 +2975,7 @@ describe('Home', () => {
 
       return {
         homeRef,
+        tree,
         axiosPost,
         submit: () => {
           const form = tree.root
@@ -3248,6 +3249,34 @@ describe('Home', () => {
       );
 
       cleanup();
+    });
+
+    // The 3-a-report cap: the photos over it are in the grid, so the sentence
+    // that explains the held Submit sits there as well.
+    test('says where the extra photos are why Submit is held', async () => {
+      const message =
+        'A report can include at most 3 pictures and 3 videos. Remove the extra ones to submit it.';
+      const pictures = count =>
+        Array.from(
+          { length: count },
+          (_, index) =>
+            new File([`photo${index}`], `photo${index}.jpg`, {
+              type: 'image/jpeg',
+            }),
+        );
+
+      const tooMany = await renderWithFiles({ files: pictures(4) });
+      const sentences = node =>
+        node.children.length === 1 && node.children[0] === message;
+
+      // One beside the photos, one beside Submit.
+      expect(tooMany.tree.root.findAll(sentences)).toHaveLength(2);
+      expect(tooMany.submitButton().props.disabled).toBe(true);
+      tooMany.cleanup();
+
+      const withinCap = await renderWithFiles({ files: pictures(3) });
+      expect(withinCap.tree.root.findAll(sentences)).toHaveLength(0);
+      withinCap.cleanup();
     });
 
     test('caches the new submission so it survives into the next page load', async () => {

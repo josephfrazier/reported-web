@@ -4775,15 +4775,22 @@ describe('Home', () => {
       expect(alone.mergeButton()).toBeUndefined();
       expect(mergeBoxes(alone.tree)).toHaveLength(0);
       expect(discardButton(alone.tree)).toBeUndefined();
+      expect(renderedText(alone.tree.toJSON())).not.toContain(
+        'Each row becomes one report',
+      );
       alone.cleanup();
 
-      // A second row brings both back.
+      // A second row brings the controls back, and with them the sentence
+      // that says what they are for.
       const twoCars = [...oneCar, jpeg({ name: 'c.jpg', size: 6 })];
       const together = await renderBatchWithFiles(twoCars);
       expect(together.homeRef.current.state.batchViolations).toHaveLength(2);
       expect(together.mergeButton()).toBeDefined();
       expect(mergeBoxes(together.tree)).toHaveLength(2);
       expect(discardButton(together.tree)).toBeDefined();
+      expect(renderedText(together.tree.toJSON())).toContain(
+        'Each row becomes one report. Tick two rows to combine them.',
+      );
       together.cleanup();
 
       exifr.gps.mockReset();

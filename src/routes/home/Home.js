@@ -4877,6 +4877,14 @@ class Home extends React.Component {
                 </button>
               )}
             </div>
+            {/* With one row there is nothing to combine, and the count alone
+                says the app grouped the photos. From two rows on, say what a
+                row is and how two become one. */}
+            {batchViolations.length > 1 && (
+              <p className={homeStyles['batch-queue-note']}>
+                Each row becomes one report. Tick two rows to combine them.
+              </p>
+            )}
             {/* The list grows while the batch is still being read, and a list
                 that lengthens pushes everything under it -- the form for the
                 violation being reported -- down the page. Capping its height

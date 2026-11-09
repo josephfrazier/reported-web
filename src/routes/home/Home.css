@@ -810,3 +810,11 @@ input[type='search']::-webkit-search-cancel-button {
   border: 0;
   border-radius: 4px;
 }
+
+/* The sentence under the count: what a row is, and how two become one. It
+   sits above the list, where the ticks it names are. */
+.batch-queue-note {
+  margin: 0 0 0.5rem;
+  color: #595959;
+  font-size: 0.9rem;
+}

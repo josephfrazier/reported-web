@@ -3168,12 +3168,20 @@ class Home extends React.Component {
 
     const remaining = new Set(followed.photos.map(candidate => candidate.file));
 
-    return loaded.photos.some(candidate => !remaining.has(candidate.file));
+    // Only the report's own photos matter. A row that loses a photo the
+    // report never attached is not a different report, and reloading on it
+    // would reset the selection -- and silently attach whatever new photos
+    // the row gained, which is exactly what a later pick must not do.
+    return attachmentData.some(file => !remaining.has(file));
   };
 
   followReadInForm = ({ divides }) => {
     if (divides) {
-      this.loadBatchViolation(this.state.currentViolationIndex);
+      // Keep the photos the report had that are still in the row it followed:
+      // a reload that reselected the row's defaults would take the new ones.
+      this.loadBatchViolation(this.state.currentViolationIndex, {
+        attachedFiles: this.state.attachmentData,
+      });
     } else {
       this.applyReadingsToForm();
     }
@@ -3487,7 +3495,11 @@ class Home extends React.Component {
   // Load a violation into the form: its photos become the attachments, and
   // the plate, time and location come from the batch's extraction results
   // rather than from re-running it.
-  loadBatchViolation = index => {
+  //
+  // `attachedFiles` keeps a selection instead of taking the row's defaults.
+  // The form uses it when a row divides under it: the report keeps the photos
+  // it had, and any photo the row gained while doing so waits unchecked.
+  loadBatchViolation = (index, { attachedFiles = null } = {}) => {
     const { batchViolations } = this.state;
     const violation = batchViolations[index];
 
@@ -3513,7 +3525,9 @@ class Home extends React.Component {
     // than from the whole violation, because they describe the report -- and
     // with a place taken from the last photo, the two differ: a group of four
     // leaves its last photo out, and that is the one holding the newest fix.
-    const attached = defaultBatchSelection(violation.photos);
+    const attached = attachedFiles
+      ? violation.photos.filter(photo => attachedFiles.includes(photo.file))
+      : defaultBatchSelection(violation.photos);
 
     // Upload this report's photos, so submitting can send attachment IDs rather
     // than the bytes. Doing it here rather than when the folder is picked is

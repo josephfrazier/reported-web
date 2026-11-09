@@ -4718,6 +4718,59 @@ describe('Home', () => {
       cleanup();
     });
 
+    // A later pick is grouped with the batch, not with itself: the photos
+    // land where they would have if they had come with the first pick, and
+    // the row being reported does not silently take them.
+    test('groups photos added while a row is open as if they came with the first pick', async () => {
+      const first = jpeg({ name: 'a.jpg', size: 4 });
+      const second = jpeg({ name: 'b.jpg', size: 5 });
+      const other = jpeg({ name: 'c.jpg', size: 6 });
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, cleanup } = await renderBatchWithFiles([first]);
+
+      // The first row opened on its own.
+      expect(homeRef.current.state.batchViolations).toHaveLength(1);
+      expect(homeRef.current.state.currentViolationIndex).toBe(0);
+      expect(
+        homeRef.current.state.attachmentData.map(file => file.name),
+      ).toEqual(['a.jpg']);
+
+      await renderer.act(async () => {
+        await homeRef.current.addFilesToBatch([second, other]);
+        await new Promise(resolve => setImmediate(resolve));
+        await new Promise(resolve => setImmediate(resolve));
+      });
+
+      const { batchViolations, attachmentData, currentViolationIndex } =
+        homeRef.current.state;
+
+      // The photo of the open row's car joined that row; the other car made
+      // a row of its own, exactly as one pick of all three would have done.
+      expect(
+        batchViolations.map(violation => [
+          violation.plate,
+          violation.photos.map(photo => photo.name),
+        ]),
+      ).toEqual([
+        ['T696817C', ['a.jpg', 'b.jpg']],
+        ['LDA8765', ['c.jpg']],
+      ]);
+      // The open report still holds only the photo it started with: the new
+      // one waits in the grid, ticked or not by the user.
+      expect(attachmentData.map(file => file.name)).toEqual(['a.jpg']);
+      expect(currentViolationIndex).toBe(0);
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
     // A button inside a toast's content, which is an element tree rather than
     // rendered markup.
     const findButtonElement = (element, text) => {

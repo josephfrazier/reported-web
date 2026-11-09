@@ -3503,7 +3503,11 @@ class Home extends React.Component {
                                         <img
                                           src={src}
                                           alt={name}
-                                          style={{ display: 'block' }}
+                                          style={{
+                                            display: 'block',
+                                            borderRadius: 0,
+                                            marginTop: 0,
+                                          }}
                                         />
                                       ) : (
                                         /* eslint-disable-next-line jsx-a11y/media-has-caption */
@@ -3805,45 +3809,46 @@ class Home extends React.Component {
                               }}
                             />
 
-                            <button
-                              type="button"
+                            <div
                               style={{
-                                float: 'left',
-                              }}
-                              onClick={() => {
-                                geolocate()
-                                  .then(
-                                    ({
-                                      coords: { latitude, longitude },
-                                      ipProvenance = 'device',
-                                    }) => {
-                                      this.setCoords({
-                                        latitude,
-                                        longitude,
-                                        addressProvenance: `(from ${ipProvenance}: ${latitude}, ${longitude})`,
-                                      });
-                                    },
-                                  )
-                                  .catch(err => {
-                                    Home.notifyError(err.message);
-                                    console.error(err);
-                                  });
+                                display: 'flex',
+                                justifyContent: 'space-between',
                               }}
                             >
-                              Use current location
-                            </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  geolocate()
+                                    .then(
+                                      ({
+                                        coords: { latitude, longitude },
+                                        ipProvenance = 'device',
+                                      }) => {
+                                        this.setCoords({
+                                          latitude,
+                                          longitude,
+                                          addressProvenance: `(from ${ipProvenance}: ${latitude}, ${longitude})`,
+                                        });
+                                      },
+                                    )
+                                    .catch(err => {
+                                      Home.notifyError(err.message);
+                                      console.error(err);
+                                    });
+                                }}
+                              >
+                                Use current location
+                              </button>
 
-                            <button
-                              type="button"
-                              onClick={() =>
-                                this.setState({ isMapOpen: false })
-                              }
-                              style={{
-                                float: 'right',
-                              }}
-                            >
-                              Close
-                            </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  this.setState({ isMapOpen: false })
+                                }
+                              >
+                                Close
+                              </button>
+                            </div>
                           </Modal>
 
                           <label htmlFor="CreateDate">
@@ -4170,9 +4175,7 @@ const MyMapComponent = compose(
   withProps({
     googleMapURL: `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&v=3.exp&libraries=geometry,drawing,places`,
     loadingElement: <div style={{ height: `100%` }} />,
-    containerElement: (
-      <div style={{ height: `calc(100% - (18px + 1.5rem))` }} />
-    ),
+    containerElement: <div style={{ height: `100%` }} />,
     mapElement: <div style={{ height: `100%` }} />,
   }),
   withScriptjs,

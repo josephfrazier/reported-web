@@ -3575,7 +3575,9 @@ describe('Home', () => {
     });
 
     await renderer.act(async () => {
-      await homeRef.current.handleAttachmentInput(null, [[null, zip]]);
+      await homeRef.current.handleAttachmentFileInput({
+        target: { files: [zip], value: '' },
+      });
     });
     // The extraction pass runs from a setState callback through jsdom's
     // FileReader, so it needs real time rather than a microtask.

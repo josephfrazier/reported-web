@@ -4721,6 +4721,22 @@ describe('Home', () => {
       cleanup();
     });
 
+    // A button inside a toast's content, which is an element tree rather than
+    // rendered markup.
+    const findButtonElement = (element, text) => {
+      if (!element || typeof element !== 'object') {
+        return null;
+      }
+      if (element.type === 'button' && element.props?.children === text) {
+        return element;
+      }
+      const children = element.props?.children;
+      const list = Array.isArray(children) ? children : [children];
+      return (
+        list.map(child => findButtonElement(child, text)).find(Boolean) || null
+      );
+    };
+
     // One violation is a line and a form: the merge controls would have
     // nothing to do, so they arrive with the second row. The count stays,
     // because it is what tells a user who adds one report's photos that the
@@ -4791,23 +4807,6 @@ describe('Home', () => {
         longitude: -74.0061,
         createDateMs,
       });
-
-      // A button inside a toast's content, which is an element tree rather
-      // than rendered markup.
-      const findButtonElement = (element, text) => {
-        if (!element || typeof element !== 'object') {
-          return null;
-        }
-        if (element.type === 'button' && element.props?.children === text) {
-          return element;
-        }
-        const children = element.props?.children;
-        const list = Array.isArray(children) ? children : [children];
-        return (
-          list.map(child => findButtonElement(child, text)).find(Boolean) ||
-          null
-        );
-      };
 
       const { homeRef, tree, clickQueueLoad, toastInfo, cleanup } =
         await renderBatchWithFiles([]);
@@ -6166,6 +6165,104 @@ describe('Home', () => {
       expect(homeRef.current.state.batchViolations).toEqual([]);
       // The photos went with the row: nothing is left to report from them.
       expect(homeRef.current.state.batchPhotos).toEqual([]);
+
+      cleanup();
+    });
+
+    // A removed photo can be taken back: the toast holds the batch as it was
+    // for a moment, instead of a confirm dialog before every delete.
+    test('takes back a deleted photo', async () => {
+      const photos = ['p1', 'p2'].map((name, index) => ({
+        file: new File(['picture'], `${name}.jpg`, { type: 'image/jpeg' }),
+        name: `${name}.jpg`,
+        createDateMs: 1704110400000 + index * 1000,
+        latitude: 40.7129,
+        longitude: -74.0061,
+      }));
+
+      const { homeRef, toastInfo, clickAttachmentDelete, cleanup } =
+        await oneRowOf(photos);
+
+      clickAttachmentDelete('p2.jpg');
+
+      expect(
+        homeRef.current.state.attachmentData.map(file => file.name),
+      ).toEqual(['p1.jpg']);
+      expect(elementText(toastInfo.mock.calls[0][0])).toContain(
+        'Photo removed.',
+      );
+
+      const undo = findButtonElement(toastInfo.mock.calls[0][0], 'Undo');
+      expect(undo).not.toBeNull();
+      renderer.act(() => undo.props.onClick());
+
+      expect(
+        homeRef.current.state.attachmentData.map(file => file.name),
+      ).toEqual(['p1.jpg', 'p2.jpg']);
+      expect(
+        homeRef.current.state.batchViolations[0].photos.map(
+          photo => photo.name,
+        ),
+      ).toEqual(['p1.jpg', 'p2.jpg']);
+
+      cleanup();
+    });
+
+    // The row's X can be taken back the same way.
+    test('takes back a deleted violation', async () => {
+      const photos = ['a', 'b'].map(name => {
+        const file = new File(['picture'], `${name}.jpg`, {
+          type: 'image/jpeg',
+        });
+        return { file, name: file.name, createDateMs: 1704110400000 };
+      });
+      const row = (photoList, plate) => ({
+        photos: photoList,
+        plate,
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs: 1704110400000,
+      });
+
+      const { homeRef, tree, toastInfo, cleanup } = await renderBatchWithFiles(
+        [],
+      );
+
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchPhotos: photos,
+          batchViolations: [
+            row([photos[0]], 'AAA111'),
+            row([photos[1]], 'BBB222'),
+          ],
+        });
+      });
+
+      const remove = tree.root.findAllByType('button').find(({ props }) => {
+        const label = props['aria-label'];
+        return (
+          typeof label === 'string' &&
+          label.startsWith('Delete ') &&
+          label.includes('BBB222')
+        );
+      });
+      renderer.act(() => remove.props.onClick());
+
+      expect(
+        homeRef.current.state.batchViolations.map(violation => violation.plate),
+      ).toEqual(['AAA111']);
+      expect(elementText(toastInfo.mock.calls[0][0])).toContain(
+        'Violation removed.',
+      );
+
+      const undo = findButtonElement(toastInfo.mock.calls[0][0], 'Undo');
+      expect(undo).not.toBeNull();
+      renderer.act(() => undo.props.onClick());
+
+      expect(
+        homeRef.current.state.batchViolations.map(violation => violation.plate),
+      ).toEqual(['AAA111', 'BBB222']);
 
       cleanup();
     });

@@ -2522,6 +2522,7 @@ class Home extends React.Component {
 
   deletePhoto = photo => {
     const { file, name } = photo;
+    const snapshot = this.batchSnapshot();
     const previousPhotos = this.state.attachmentData;
     const loadedBefore =
       this.state.batchViolations[this.state.currentViolationIndex];
@@ -2624,6 +2625,8 @@ class Home extends React.Component {
           });
       },
     );
+
+    this.notifyBatchUndo({ message: 'Photo removed.', snapshot });
   };
 
   handleAttachmentData = async ({ attachmentData }) => {
@@ -3757,6 +3760,7 @@ class Home extends React.Component {
       return;
     }
 
+    const snapshot = this.batchSnapshot();
     this.dismissedRows.add(batchViolationIdentity(violation));
 
     const remainingViolations = batchViolations.filter((_, i) => i !== index);
@@ -3794,6 +3798,109 @@ class Home extends React.Component {
         removedPhotos.forEach(photo => releaseBlobUrl(photo.file));
       },
     );
+
+    this.notifyBatchUndo({ message: 'Violation removed.', snapshot });
+  };
+
+  // Everything a removal can change, kept so its toast can put it back. The
+  // form fields are here because a delete that empties the report resets them,
+  // and a row delete can move the form to another row.
+  batchSnapshot = () => {
+    const {
+      allPlateData,
+      attachmentData,
+      batchMergeSelection,
+      batchPhotos,
+      batchViolations,
+      CreateDate,
+      currentViolationIndex,
+      addressProvenance,
+      latitude,
+      longitude,
+      plate,
+      licenseState,
+      plateDataByAttachmentName,
+      plateProvenance,
+      vehicleInfoComponent,
+      violationSummaryComponent,
+    } = this.state;
+
+    const photos = new Set(batchPhotos);
+    batchViolations.forEach(violation =>
+      violation.photos.forEach(photo => photos.add(photo)),
+    );
+
+    return {
+      allPlateData,
+      attachmentData,
+      batchMergeSelection,
+      batchPhotos,
+      batchViolations,
+      CreateDate,
+      currentViolationIndex,
+      addressProvenance,
+      formatted_address: this.state.formatted_address,
+      latitude,
+      longitude,
+      plate,
+      licenseState,
+      plateDataByAttachmentName,
+      plateProvenance,
+      vehicleInfoComponent,
+      violationSummaryComponent,
+      dismissed: [...this.dismissedRows],
+      readings: new Map(
+        [...photos]
+          .filter(photo => this.photoReadings.has(photo.file))
+          .map(photo => [photo.file, this.photoReadings.get(photo.file)]),
+      ),
+    };
+  };
+
+  restoreBatchSnapshot = snapshot => {
+    this.dismissedRows.clear();
+    snapshot.dismissed.forEach(identity => this.dismissedRows.add(identity));
+    snapshot.readings.forEach((reading, file) =>
+      this.photoReadings.set(file, reading),
+    );
+
+    this.setState({
+      allPlateData: snapshot.allPlateData,
+      attachmentData: snapshot.attachmentData,
+      batchMergeSelection: snapshot.batchMergeSelection,
+      batchPhotos: snapshot.batchPhotos,
+      batchViolations: snapshot.batchViolations,
+      CreateDate: snapshot.CreateDate,
+      currentViolationIndex: snapshot.currentViolationIndex,
+      addressProvenance: snapshot.addressProvenance,
+      formatted_address: snapshot.formatted_address,
+      latitude: snapshot.latitude,
+      longitude: snapshot.longitude,
+      plate: snapshot.plate,
+      licenseState: snapshot.licenseState,
+      plateDataByAttachmentName: snapshot.plateDataByAttachmentName,
+      plateProvenance: snapshot.plateProvenance,
+      vehicleInfoComponent: snapshot.vehicleInfoComponent,
+      violationSummaryComponent: snapshot.violationSummaryComponent,
+    });
+  };
+
+  // A removal can be taken back: the toast holds the batch as it was, rather
+  // than a confirm dialog asking before every delete.
+  notifyBatchUndo = ({ message, snapshot }) => {
+    Home.notifyInfo(
+      <React.Fragment>
+        <p>{message}</p>
+        <button
+          type="button"
+          onClick={() => this.restoreBatchSnapshot(snapshot)}
+        >
+          Undo
+        </button>
+      </React.Fragment>,
+      // Long enough to notice the mistake and reach the button.
+      { autoClose: 8000 },
+    );
   };
 
   // "Discard the remaining violations": the queue is done with, and its
@@ -3802,47 +3909,24 @@ class Home extends React.Component {
   // type and place, so the way to stop early is to let the rest go, not to
   // send it. Undo holds the whole batch for a few seconds.
   discardRemainingViolations = () => {
-    const {
-      attachmentData,
-      allPlateData,
-      batchMergeSelection,
-      batchPhotos,
-      batchViolations,
-      currentViolationIndex,
-      plateDataByAttachmentName,
-    } = this.state;
+    const { batchPhotos, batchViolations } = this.state;
 
     if (batchViolations.length < 2) {
       return;
     }
+
+    const snapshot = this.batchSnapshot();
 
     const photos = new Set(batchPhotos);
     batchViolations.forEach(violation =>
       violation.photos.forEach(photo => photos.add(photo)),
     );
 
-    const discarded = {
-      attachmentData,
-      allPlateData,
-      batchMergeSelection,
-      batchPhotos,
-      batchViolations,
-      currentViolationIndex,
-      plateDataByAttachmentName,
-      // The form's plate, place, type and description are left alone: the
-      // fields are hidden while nothing is attached, and Undo then finds them
-      // as the user left them.
-      dismissed: batchViolations.map(batchViolationIdentity),
-      readings: new Map(
-        [...photos]
-          .filter(photo => this.photoReadings.has(photo.file))
-          .map(photo => [photo.file, this.photoReadings.get(photo.file)]),
-      ),
-    };
-
     // A read that lands after this must not build the rows again.
-    discarded.dismissed.forEach(identity => this.dismissedRows.add(identity));
-    discarded.readings.forEach((reading, file) =>
+    batchViolations.forEach(violation =>
+      this.dismissedRows.add(batchViolationIdentity(violation)),
+    );
+    snapshot.readings.forEach((reading, file) =>
       this.photoReadings.delete(file),
     );
 
@@ -3863,14 +3947,14 @@ class Home extends React.Component {
       },
     );
 
-    const count = discarded.batchViolations.length;
+    const count = snapshot.batchViolations.length;
 
     Home.notifyInfo(
       <React.Fragment>
         <p>{`Discarded ${count} violation${count === 1 ? '' : 's'}.`}</p>
         <button
           type="button"
-          onClick={() => this.restoreDiscardedViolations(discarded)}
+          onClick={() => this.restoreBatchSnapshot(snapshot)}
         >
           Undo
         </button>
@@ -3878,25 +3962,6 @@ class Home extends React.Component {
       // Longer than the default: the rows are the whole batch's work.
       { autoClose: 8000 },
     );
-  };
-
-  restoreDiscardedViolations = discarded => {
-    discarded.dismissed.forEach(identity =>
-      this.dismissedRows.delete(identity),
-    );
-    discarded.readings.forEach((reading, file) =>
-      this.photoReadings.set(file, reading),
-    );
-
-    this.setState({
-      attachmentData: discarded.attachmentData,
-      allPlateData: discarded.allPlateData,
-      batchMergeSelection: discarded.batchMergeSelection,
-      batchPhotos: discarded.batchPhotos,
-      batchViolations: discarded.batchViolations,
-      currentViolationIndex: discarded.currentViolationIndex,
-      plateDataByAttachmentName: discarded.plateDataByAttachmentName,
-    });
   };
 
   // Take a violation out of the queue once it has been submitted, and load

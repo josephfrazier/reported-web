@@ -3026,6 +3026,7 @@ describe('Home', () => {
             .find(formEl => typeof formEl.props.onSubmit === 'function');
           return form.findByProps({ type: 'submit' });
         },
+        toastSuccess,
         toastError,
         cleanup: () => {
           tree.unmount();
@@ -3118,6 +3119,45 @@ describe('Home', () => {
       // The success path cleared the submitted files.
       expect(homeRef.current.state.attachmentData).toEqual([]);
 
+      cleanup();
+    });
+
+    // A second report can go through while the last thanks is still on
+    // screen. One thanks at a time is enough.
+    test('shows one thanks toast at a time', async () => {
+      const photo = new File(['photo'], 'photo.jpg', { type: 'image/jpeg' });
+      const { homeRef, submit, toastSuccess, cleanup } = await renderWithFiles({
+        files: [photo],
+      });
+      const toastIsActive = jest
+        .spyOn(toast, 'isActive')
+        .mockReturnValue(false);
+
+      const submitAnother = async name => {
+        renderer.act(() => {
+          homeRef.current.setState({
+            attachmentData: [new File(['photo'], name, { type: 'image/jpeg' })],
+            latitude: 40.7129,
+            longitude: -74.0061,
+          });
+        });
+        await submit();
+      };
+
+      await submit();
+      expect(toastSuccess).toHaveBeenCalledTimes(1);
+
+      // The next report goes through while that toast is still open.
+      toastIsActive.mockReturnValue(true);
+      await submitAnother('photo2.jpg');
+      expect(toastSuccess).toHaveBeenCalledTimes(1);
+
+      // Once it closes, the next report gets its own.
+      toastIsActive.mockReturnValue(false);
+      await submitAnother('photo3.jpg');
+      expect(toastSuccess).toHaveBeenCalledTimes(2);
+
+      toastIsActive.mockRestore();
       cleanup();
     });
 

@@ -11,7 +11,6 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import PropTypes from 'prop-types';
 import withStyles from 'isomorphic-style-loader/withStyles';
-import FileReaderInput from 'react-file-reader-input';
 import * as blobUtil from 'blob-util';
 import exifr from 'exifr/dist/full.umd.js';
 import axios from 'axios';
@@ -966,6 +965,7 @@ class Home extends React.Component {
     // again whenever the photos change -- see applyPhotosToForm.
     this.photoReadings = new Map();
     this.plateRef = React.createRef();
+    this.attachmentInputRef = React.createRef();
     this.folderInputRef = React.createRef();
     this.plateLabelRef = React.createRef();
     this.loginEmailRef = React.createRef();
@@ -1637,7 +1637,6 @@ class Home extends React.Component {
     }
   };
 
-  // adapted from https://github.com/ngokevin/react-file-reader-input/tree/f970257f271b8c3bba9d529ffdbfa4f4731e0799#usage
   // A picked folder: every picture and video inside it becomes an attachment.
   //
   // A folder is what a camera roll is, and it holds things that are not
@@ -1677,9 +1676,21 @@ class Home extends React.Component {
     return this.handleAttachmentData({ attachmentData: files });
   };
 
-  handleAttachmentInput = async (_, results) => {
-    const picked = results.map(([, attachmentFile]) => attachmentFile);
-    return this.handleAttachmentFiles(picked);
+  // The files or zip the picker handed over. The input is a plain one: the
+  // files' contents are read where they are needed (a zip's entries, a
+  // photo's metadata), so reading the whole pick into memory first would only
+  // hold the bytes twice.
+  handleAttachmentFileInput = event => {
+    const files = [...event.target.files];
+    // Clear the input, so that picking the same file again still fires a
+    // change event.
+    event.target.value = ''; // eslint-disable-line no-param-reassign
+
+    if (files.length === 0) {
+      return undefined;
+    }
+
+    return this.handleAttachmentFiles(files);
   };
 
   // What each of a set of photos read.
@@ -3398,20 +3409,24 @@ class Home extends React.Component {
                     }}
                   >
                     <fieldset disabled={this.state.isSubmitting}>
-                      <FileReaderInput
-                        multiple
-                        accept="image/*,video/*,.zip,application/zip,application/x-zip-compressed"
-                        as="buffer"
-                        onChange={this.handleAttachmentInput}
+                      <button
+                        type="button"
                         style={{
                           float: 'left',
                           margin: '1px',
                         }}
+                        onClick={() => this.attachmentInputRef.current?.click()}
                       >
-                        <button type="button" style={{ whiteSpace: 'wrap' }}>
-                          Add pictures/videos or a zip file
-                        </button>
-                      </FileReaderInput>
+                        Add pictures/videos or a zip file
+                      </button>
+                      <input
+                        ref={this.attachmentInputRef}
+                        type="file"
+                        multiple
+                        accept="image/*,video/*,.zip,application/zip,application/x-zip-compressed"
+                        style={{ display: 'none' }}
+                        onChange={this.handleAttachmentFileInput}
+                      />
 
                       <button
                         type="button"

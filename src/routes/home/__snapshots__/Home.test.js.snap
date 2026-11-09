@@ -109,8 +109,7 @@ exports[`Home hides form fields when logged in with no photos uploaded 1`] = `
             <fieldset
               disabled={false}
             >
-              <div
-                className="_react-file-reader-input"
+              <button
                 onClick={[Function]}
                 style={
                   {
@@ -118,31 +117,21 @@ exports[`Home hides form fields when logged in with no photos uploaded 1`] = `
                     "margin": "1px",
                   }
                 }
+                type="button"
               >
-                <input
-                  accept="image/*,video/*,.zip,application/zip,application/x-zip-compressed"
-                  multiple={true}
-                  onChange={[Function]}
-                  onClick={[Function]}
-                  style={
-                    {
-                      "position": "absolute",
-                      "top": "-9999px",
-                    }
+                Add pictures/videos or a zip file
+              </button>
+              <input
+                accept="image/*,video/*,.zip,application/zip,application/x-zip-compressed"
+                multiple={true}
+                onChange={[Function]}
+                style={
+                  {
+                    "display": "none",
                   }
-                  type="file"
-                />
-                <button
-                  style={
-                    {
-                      "whiteSpace": "wrap",
-                    }
-                  }
-                  type="button"
-                >
-                  Add pictures/videos or a zip file
-                </button>
-              </div>
+                }
+                type="file"
+              />
               <button
                 onClick={[Function]}
                 style={
@@ -1885,8 +1874,7 @@ exports[`Home renders submission form and Previous Submissions when logged in wi
             <fieldset
               disabled={false}
             >
-              <div
-                className="_react-file-reader-input"
+              <button
                 onClick={[Function]}
                 style={
                   {
@@ -1894,31 +1882,21 @@ exports[`Home renders submission form and Previous Submissions when logged in wi
                     "margin": "1px",
                   }
                 }
+                type="button"
               >
-                <input
-                  accept="image/*,video/*,.zip,application/zip,application/x-zip-compressed"
-                  multiple={true}
-                  onChange={[Function]}
-                  onClick={[Function]}
-                  style={
-                    {
-                      "position": "absolute",
-                      "top": "-9999px",
-                    }
+                Add pictures/videos or a zip file
+              </button>
+              <input
+                accept="image/*,video/*,.zip,application/zip,application/x-zip-compressed"
+                multiple={true}
+                onChange={[Function]}
+                style={
+                  {
+                    "display": "none",
                   }
-                  type="file"
-                />
-                <button
-                  style={
-                    {
-                      "whiteSpace": "wrap",
-                    }
-                  }
-                  type="button"
-                >
-                  Add pictures/videos or a zip file
-                </button>
-              </div>
+                }
+                type="file"
+              />
               <button
                 onClick={[Function]}
                 style={
@@ -2762,8 +2740,7 @@ exports[`Home renders with allPlateResults entry missing plate and photos 1`] = 
             <fieldset
               disabled={false}
             >
-              <div
-                className="_react-file-reader-input"
+              <button
                 onClick={[Function]}
                 style={
                   {
@@ -2771,31 +2748,21 @@ exports[`Home renders with allPlateResults entry missing plate and photos 1`] = 
                     "margin": "1px",
                   }
                 }
+                type="button"
               >
-                <input
-                  accept="image/*,video/*,.zip,application/zip,application/x-zip-compressed"
-                  multiple={true}
-                  onChange={[Function]}
-                  onClick={[Function]}
-                  style={
-                    {
-                      "position": "absolute",
-                      "top": "-9999px",
-                    }
+                Add pictures/videos or a zip file
+              </button>
+              <input
+                accept="image/*,video/*,.zip,application/zip,application/x-zip-compressed"
+                multiple={true}
+                onChange={[Function]}
+                style={
+                  {
+                    "display": "none",
                   }
-                  type="file"
-                />
-                <button
-                  style={
-                    {
-                      "whiteSpace": "wrap",
-                    }
-                  }
-                  type="button"
-                >
-                  Add pictures/videos or a zip file
-                </button>
-              </div>
+                }
+                type="file"
+              />
               <button
                 onClick={[Function]}
                 style={
@@ -3639,8 +3606,7 @@ exports[`Home renders with undefined allPlateResults and photos 1`] = `
             <fieldset
               disabled={false}
             >
-              <div
-                className="_react-file-reader-input"
+              <button
                 onClick={[Function]}
                 style={
                   {
@@ -3648,31 +3614,21 @@ exports[`Home renders with undefined allPlateResults and photos 1`] = `
                     "margin": "1px",
                   }
                 }
+                type="button"
               >
-                <input
-                  accept="image/*,video/*,.zip,application/zip,application/x-zip-compressed"
-                  multiple={true}
-                  onChange={[Function]}
-                  onClick={[Function]}
-                  style={
-                    {
-                      "position": "absolute",
-                      "top": "-9999px",
-                    }
+                Add pictures/videos or a zip file
+              </button>
+              <input
+                accept="image/*,video/*,.zip,application/zip,application/x-zip-compressed"
+                multiple={true}
+                onChange={[Function]}
+                style={
+                  {
+                    "display": "none",
                   }
-                  type="file"
-                />
-                <button
-                  style={
-                    {
-                      "whiteSpace": "wrap",
-                    }
-                  }
-                  type="button"
-                >
-                  Add pictures/videos or a zip file
-                </button>
-              </div>
+                }
+                type="file"
+              />
               <button
                 onClick={[Function]}
                 style={

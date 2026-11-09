@@ -4716,6 +4716,50 @@ describe('Home', () => {
       cleanup();
     });
 
+    // One violation is a line and a form: the merge controls would have
+    // nothing to do, so they arrive with the second row. The count stays,
+    // because it is what tells a user who adds one report's photos that the
+    // app grouped them, and that a bigger batch is possible.
+    test('keeps the count line, but no merge controls, for one violation', async () => {
+      const oneCar = [
+        jpeg({ name: 'a.jpg', size: 4 }),
+        jpeg({ name: 'b.jpg', size: 5 }),
+      ];
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const mergeBoxes = tree =>
+        tree.root
+          .findAllByType('input')
+          .filter(
+            ({ props }) =>
+              typeof props['aria-label'] === 'string' &&
+              props['aria-label'].startsWith('Merge '),
+          );
+
+      const alone = await renderBatchWithFiles(oneCar);
+      expect(alone.homeRef.current.state.batchViolations).toHaveLength(1);
+      expect(renderedText(alone.tree.toJSON())).toContain('Found 1 violation');
+      expect(alone.mergeButton()).toBeUndefined();
+      expect(mergeBoxes(alone.tree)).toHaveLength(0);
+      alone.cleanup();
+
+      // A second row brings both back.
+      const twoCars = [...oneCar, jpeg({ name: 'c.jpg', size: 6 })];
+      const together = await renderBatchWithFiles(twoCars);
+      expect(together.homeRef.current.state.batchViolations).toHaveLength(2);
+      expect(together.mergeButton()).toBeDefined();
+      expect(mergeBoxes(together.tree)).toHaveLength(2);
+      together.cleanup();
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+    });
+
     test('keeps a row the user merged when a read lands on it afterwards', async () => {
       // Two cars at one kerb, read apart by the grouping and put together by
       // the user: their report, for whatever reason they have.

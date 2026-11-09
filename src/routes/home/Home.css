@@ -623,14 +623,15 @@ input[type='search']::-webkit-search-cancel-button {
 }
 
 /*
- * The merge button, which does not change the heading's line by being there.
+ * The merge button, which appears with the second row.
  *
- * It is always rendered and merely disabled until two rows are ticked, so the
- * heading draws the same line in every state and the list below it never
- * moves. An earlier attempt rendered it only when it was usable and made it
- * small enough to fit; that held only while the two happened to fit on one
- * line, which at 390px left 4px to spare and turned on the fonts the browser
- * chose.
+ * One violation is a line and a form: there is nothing to merge, so the count
+ * stands alone. From two rows on the button is always rendered and merely
+ * disabled until two are ticked, so the heading draws the same line in those
+ * states and ticking cannot move the list below it. An earlier attempt
+ * rendered it only when it was usable and made it small enough to fit; that
+ * held only while the two happened to fit on one line, which at 390px left
+ * 4px to spare and turned on the fonts the browser chose.
  *
  * The label stays one word for the same reason: a label that grew with the
  * count could tip the heading onto a second line.

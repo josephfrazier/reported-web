@@ -4617,10 +4617,10 @@ class Home extends React.Component {
 
         {batchViolations.length > 0 && (
           <div className={homeStyles['batch-queue']}>
-            {/* The merge button holds its place on the heading's line at all
-                times, and is merely disabled until two rows are ticked. A
-                button that came and went would change the line, and the list
-                under it would move; see .batch-queue-merge. */}
+            {/* One violation is a line and a form: the merge controls need a
+                second row, so they arrive with it. Keeping the count shows a
+                user who adds one report's photos that the app grouped them,
+                and that a bigger batch is possible. */}
             <div className={homeStyles['batch-queue-heading']}>
               <h3>
                 Found {batchViolations.length} violation
@@ -4645,14 +4645,16 @@ class Home extends React.Component {
                   New violation
                 </div>
               )}
-              <button
-                type="button"
-                className={homeStyles['batch-queue-merge']}
-                disabled={batchMergeSelection.length < 2}
-                onClick={this.mergeSelectedBatchViolations}
-              >
-                Merge
-              </button>
+              {batchViolations.length > 1 && (
+                <button
+                  type="button"
+                  className={homeStyles['batch-queue-merge']}
+                  disabled={batchMergeSelection.length < 2}
+                  onClick={this.mergeSelectedBatchViolations}
+                >
+                  Merge
+                </button>
+              )}
             </div>
             {/* The list grows while the batch is still being read, and a list
                 that lengthens pushes everything under it -- the form for the
@@ -4758,15 +4760,20 @@ class Home extends React.Component {
                   >
                     {/* Ticking two of these is how a report the grouping split
                         in two is put back together; see
-                        mergeSelectedBatchViolations. */}
-                    <input
-                      type="checkbox"
-                      checked={batchMergeSelection.includes(identity)}
-                      onChange={() => this.toggleBatchMergeSelection(identity)}
-                      aria-label={`Merge ${formatBatchViolationTime(
-                        violation.createDateMs,
-                      )} — ${rowPlateLabel}`}
-                    />
+                        mergeSelectedBatchViolations. A single row has nothing
+                        to combine with, so its box is left out. */}
+                    {batchViolations.length > 1 && (
+                      <input
+                        type="checkbox"
+                        checked={batchMergeSelection.includes(identity)}
+                        onChange={() =>
+                          this.toggleBatchMergeSelection(identity)
+                        }
+                        aria-label={`Merge ${formatBatchViolationTime(
+                          violation.createDateMs,
+                        )} — ${rowPlateLabel}`}
+                      />
+                    )}
                     {/* The description is the control that loads this
                         violation, so the thing you read is the thing you
                         click. Delete and the merge box are siblings rather

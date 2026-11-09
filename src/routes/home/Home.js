@@ -11,7 +11,6 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import PropTypes from 'prop-types';
 import withStyles from 'isomorphic-style-loader/withStyles';
-import FileReaderInput from 'react-file-reader-input';
 import * as blobUtil from 'blob-util';
 import exifr from 'exifr/dist/full.umd.js';
 import axios from 'axios';
@@ -1251,7 +1250,6 @@ class Home extends React.Component {
       // dismissed. It lives in the cookie with the rest.
       hasSeenBatchNotice: false,
       loginSuccessful: false,
-      isSemiAutomaticMode: false,
     };
 
     const initialStatePerSession = {
@@ -1425,15 +1423,9 @@ class Home extends React.Component {
         return;
       }
 
-      // Pasting is one more route for photos to arrive by, so in batch mode it
-      // feeds the batch like a pick or a drop does; with the mode off it is
-      // the single-violation flow's, as before.
-      if (this.state.isSemiAutomaticMode) {
-        this.addFilesToBatch(attachmentData);
-        return;
-      }
-
-      this.handleAttachmentData({ attachmentData });
+      // Pasting is one more route for photos to arrive by, so it feeds the
+      // batch like a pick or a drop does.
+      this.addFilesToBatch(attachmentData);
     });
 
     window.addEventListener('beforeunload', beforeUnloadEvent => {
@@ -2603,7 +2595,7 @@ class Home extends React.Component {
           loadedBefore &&
           loadedBefore.photos.every(candidate => candidate.file === file);
 
-        if (this.state.isSemiAutomaticMode && rowWent) {
+        if (rowWent) {
           this.loadBatchViolation(this.state.currentViolationIndex);
         }
 
@@ -4626,13 +4618,10 @@ class Home extends React.Component {
       attachmentData,
       batchViolations,
       currentViolationIndex,
-      isSemiAutomaticMode,
       plateDataByAttachmentName,
     } = this.state;
 
-    const loadedViolation = isSemiAutomaticMode
-      ? batchViolations[currentViolationIndex]
-      : undefined;
+    const loadedViolation = batchViolations[currentViolationIndex];
 
     const photos = loadedViolation
       ? loadedViolation.photos
@@ -5100,13 +5089,8 @@ class Home extends React.Component {
       <Dropzone
         className={homeStyles.root}
         onDrop={attachmentData => {
-          // With the mode on, every drop feeds the batch; the
-          // single-violation flow is what the toggle-off state gives you.
-          if (this.state.isSemiAutomaticMode) {
-            this.addFilesToBatch(attachmentData);
-          } else {
-            this.handleAttachmentFiles(attachmentData);
-          }
+          // Every drop feeds the batch, like a pick does.
+          this.addFilesToBatch(attachmentData);
         }}
         style={{
           position: 'fixed',
@@ -5436,18 +5420,6 @@ class Home extends React.Component {
                         onChange={this.handleInputChange}
                       />{' '}
                       Load previous submissions on page load
-                    </label>
-
-                    <label htmlFor="isSemiAutomaticMode">
-                      <input
-                        id="isSemiAutomaticMode"
-                        type="checkbox"
-                        checked={this.state.isSemiAutomaticMode}
-                        name="isSemiAutomaticMode"
-                        onChange={this.handleInputChange}
-                      />{' '}
-                      Semiautomatic Mode: Add a batch of pictures/videos, then
-                      review each violation
                     </label>
                   </div>
                 )}
@@ -6031,7 +6003,6 @@ class Home extends React.Component {
                           // Whether this report was one of the batch's rows,
                           // read before the advance moves the queue on.
                           const batchWasActive =
-                            this.state.isSemiAutomaticMode &&
                             this.state.currentViolationIndex >= 0;
 
                           if (batchWasActive) {
@@ -6045,13 +6016,12 @@ class Home extends React.Component {
                                 It may take up to 24 hours for it to be
                                 processed.
                               </p>
-                              {this.state.isSemiAutomaticMode &&
-                                queueIsDone && (
-                                  <p>
-                                    Have more photos? Add a folder and we will
-                                    go through them one at a time.
-                                  </p>
-                                )}
+                              {queueIsDone && (
+                                <p>
+                                  Have more photos? Add a folder and we will go
+                                  through them one at a time.
+                                </p>
+                              )}
                               {batchWasActive && !queueIsDone && (
                                 <p>Filed. Opening the next violation.</p>
                               )}
@@ -6076,93 +6046,49 @@ class Home extends React.Component {
                     }}
                   >
                     <fieldset disabled={this.state.isSubmitting}>
-                      {this.state.isSemiAutomaticMode ? (
-                        <React.Fragment>
-                          {/* Both inputs read `event.target.files` directly rather
-                          than going through FileReaderInput: that component is
-                          used with `as="buffer"`, which reads every selected
-                          file's contents into memory, and across a forty-photo
-                          folder that is a great deal of buffering before ALPR
-                          has even started. */}
-                          <button
-                            type="button"
-                            style={{ float: 'left', margin: '1px' }}
-                            onClick={() =>
-                              this.batchFolderInputRef.current?.click()
-                            }
-                          >
-                            Add a folder of photos and videos
-                          </button>
-                          <input
-                            ref={this.batchFolderInputRef}
-                            type="file"
-                            multiple
-                            webkitdirectory=""
-                            style={{ display: 'none' }}
-                            onChange={this.handleBatchFileInput}
-                          />
+                      <React.Fragment>
+                        {/* Both inputs read `event.target.files` directly rather
+                        than going through FileReaderInput: that component is
+                        used with `as="buffer"`, which reads every selected
+                        file's contents into memory, and across a forty-photo
+                        folder that is a great deal of buffering before ALPR
+                        has even started. */}
+                        <button
+                          type="button"
+                          style={{ float: 'left', margin: '1px' }}
+                          onClick={() =>
+                            this.batchFolderInputRef.current?.click()
+                          }
+                        >
+                          Add a folder of photos and videos
+                        </button>
+                        <input
+                          ref={this.batchFolderInputRef}
+                          type="file"
+                          multiple
+                          webkitdirectory=""
+                          style={{ display: 'none' }}
+                          onChange={this.handleBatchFileInput}
+                        />
 
-                          <button
-                            type="button"
-                            style={{ float: 'left', margin: '1px' }}
-                            onClick={() =>
-                              this.batchPhotosInputRef.current?.click()
-                            }
-                          >
-                            Add pictures/videos or a zip file
-                          </button>
-                          <input
-                            ref={this.batchPhotosInputRef}
-                            type="file"
-                            multiple
-                            accept="image/*,video/*,.zip,application/zip,application/x-zip-compressed"
-                            style={{ display: 'none' }}
-                            onChange={this.handleBatchFileInput}
-                          />
-                        </React.Fragment>
-                      ) : (
-                        <React.Fragment>
-                          {/* The plain picker, with the folder and the zip main
-                          offers: what is picked here goes to a report of its
-                          own, rather than to the batch. */}
-                          <FileReaderInput
-                            multiple
-                            accept="image/*,video/*,.zip,application/zip,application/x-zip-compressed"
-                            as="buffer"
-                            onChange={this.handleAttachmentInput}
-                            style={{
-                              float: 'left',
-                              margin: '1px',
-                            }}
-                          >
-                            <button
-                              type="button"
-                              style={{ whiteSpace: 'wrap' }}
-                            >
-                              Add pictures/videos or a zip file
-                            </button>
-                          </FileReaderInput>
-
-                          <button
-                            type="button"
-                            style={{
-                              float: 'left',
-                              margin: '1px',
-                            }}
-                            onClick={() => this.folderInputRef.current?.click()}
-                          >
-                            Add a folder of photos and videos
-                          </button>
-                          <input
-                            ref={this.folderInputRef}
-                            type="file"
-                            multiple
-                            webkitdirectory=""
-                            style={{ display: 'none' }}
-                            onChange={this.handleFolderInput}
-                          />
-                        </React.Fragment>
-                      )}
+                        <button
+                          type="button"
+                          style={{ float: 'left', margin: '1px' }}
+                          onClick={() =>
+                            this.batchPhotosInputRef.current?.click()
+                          }
+                        >
+                          Add pictures/videos or a zip file
+                        </button>
+                        <input
+                          ref={this.batchPhotosInputRef}
+                          type="file"
+                          multiple
+                          accept="image/*,video/*,.zip,application/zip,application/x-zip-compressed"
+                          style={{ display: 'none' }}
+                          onChange={this.handleBatchFileInput}
+                        />
+                      </React.Fragment>
 
                       <div style={{ clear: 'both' }} />
 
@@ -6171,8 +6097,7 @@ class Home extends React.Component {
                           through what it finds. It shows only while nothing
                           has been added, so it never sits over a form in
                           progress. */}
-                      {this.state.isSemiAutomaticMode &&
-                        this.state.batchPhotos.length === 0 &&
+                      {this.state.batchPhotos.length === 0 &&
                         this.state.attachmentData.length === 0 &&
                         (this.state.hasSeenBatchNotice ? (
                           <p className={homeStyles['batch-hint']}>
@@ -6214,8 +6139,7 @@ class Home extends React.Component {
                           </div>
                         ))}
 
-                      {this.state.isSemiAutomaticMode &&
-                        this.renderBatchStatus()}
+                      {this.renderBatchStatus()}
 
                       {this.renderAttachmentGrid()}
 
@@ -6224,8 +6148,7 @@ class Home extends React.Component {
                           limit is on, rather than putting it on the button
                           where it reads as the zip's too. */}
                       {this.state.attachmentData.length === 0 &&
-                        (!this.state.isSemiAutomaticMode ||
-                          this.state.batchPhotos.length === 0) && (
+                        this.state.batchPhotos.length === 0 && (
                           <p className={homeStyles['upload-hint']}>
                             Each photo or video can be up to 20MB. A zip file is
                             unpacked into photos and videos first.

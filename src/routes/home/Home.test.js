@@ -3725,9 +3725,6 @@ describe('Home', () => {
       renderer.act(() => {
         tree = renderHome({ initialState, homeRef });
       });
-      renderer.act(() => {
-        homeRef.current.setState({ isSemiAutomaticMode: true });
-      });
 
       if (files.length > 0) {
         await renderer.act(async () => {

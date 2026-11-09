@@ -25,6 +25,7 @@ import Dropzone from '@josephfrazier/react-dropzone';
 import { MAP } from 'react-google-maps/lib/constants';
 import App from '../../components/App.js';
 import plateReadRetry from '../../plateReadRetry.js';
+import { setBatchGroupingSender } from '../../batchGroupingEvents.js';
 import Home, { NycAddressAutocomplete } from './Home.js';
 import boroughBoundariesFeatureCollection from '../../boroughBoundaries.js';
 import {
@@ -3726,6 +3727,10 @@ describe('Home', () => {
         tree = renderHome({ initialState, homeRef });
       });
 
+      // The grouping data the batch would send, captured instead.
+      const batchGroupingEvents = jest.fn();
+      setBatchGroupingSender(batchGroupingEvents);
+
       if (files.length > 0) {
         await renderer.act(async () => {
           await homeRef.current.addFilesToBatch(files);
@@ -3760,6 +3765,7 @@ describe('Home', () => {
         toastWarn,
         toastError,
         toastInfo,
+        batchGroupingEvents,
         platerecognizerCalls: () =>
           axiosPost.mock.calls.filter(([url]) => url === '/platerecognizer'),
         // When each read was asked for, in milliseconds since an arbitrary
@@ -3897,6 +3903,7 @@ describe('Home', () => {
           toastWarn.mockRestore();
           toastError.mockRestore();
           toastInfo.mockRestore();
+          setBatchGroupingSender(null);
           consoleError.mockRestore();
           document.querySelector = originalQuerySelector;
           global.URL.createObjectURL = originalCreateObjectURL;
@@ -4715,6 +4722,78 @@ describe('Home', () => {
       expect(batchViolations[0].createDateMs).toBe(farAt);
       expect(batchMergeSelection).toEqual([]);
 
+      cleanup();
+    });
+
+    // A hand-merge is the grouping being wrong, and the event carries the raw
+    // data behind it: the photos' own capture times and places, and the ALPR
+    // responses, so the algorithm can be tried against the same batch later.
+    test('records a hand-merge with the raw batch data', async () => {
+      const first = jpeg({ name: 'first.jpg', size: 4 });
+      const other = jpeg({ name: 'other.jpg', size: 6 });
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { tickMerge, clickButton, batchGroupingEvents, cleanup } =
+        await renderBatchWithFiles([first, other]);
+
+      tickMerge('T696817C');
+      tickMerge('LDA8765');
+      clickButton('Merge');
+
+      const merges = batchGroupingEvents.mock.calls
+        .map(([payload]) => payload)
+        .filter(payload => payload.event === 'merge');
+      expect(merges).toHaveLength(1);
+      const [merge] = merges;
+      expect(merge.schema).toBe(1);
+      expect(merge.source).toBe('tick');
+      expect(merge.rowsBefore).toHaveLength(2);
+      expect(merge.rowsAfter).toHaveLength(1);
+      expect(merge.rowsAfter[0].photos).toEqual(['first.jpg', 'other.jpg']);
+
+      // Raw, not rounded: the capture time, the place, the ALPR response.
+      const photo = merge.photos.find(each => each.name === 'first.jpg');
+      expect(photo.createDateMs).toBe(Date.parse('2024-01-01T12:00:00.000Z'));
+      expect(photo.latitude).toBe(40.7129);
+      expect(photo.longitude).toBe(-74.0061);
+      expect(photo.plateResults.results[0].plate).toBe('t696817c');
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    // A sample of untouched batches is the denominator: how often the
+    // grouping is right without a hand.
+    test('samples an untouched batch for grouping data', async () => {
+      const random = jest.spyOn(Math, 'random').mockReturnValue(0);
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { batchGroupingEvents, cleanup } = await renderBatchWithFiles([
+        jpeg({ name: 'a.jpg', size: 4 }),
+      ]);
+
+      const done = batchGroupingEvents.mock.calls
+        .map(([payload]) => payload)
+        .find(payload => payload.event === 'batch-done');
+      expect(done).toBeDefined();
+      expect(done.schema).toBe(1);
+      expect(done.rowsAfter).toHaveLength(1);
+      expect(done.photos.map(photo => photo.name)).toEqual(['a.jpg']);
+
+      random.mockRestore();
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
       cleanup();
     });
 
@@ -5611,7 +5690,7 @@ describe('Home', () => {
         createDateMs,
       });
 
-      const { homeRef, tree, clickQueueLoad, cleanup } =
+      const { homeRef, tree, clickQueueLoad, batchGroupingEvents, cleanup } =
         await renderBatchWithFiles([]);
 
       renderer.act(() => {
@@ -5647,6 +5726,22 @@ describe('Home', () => {
         ['BBB222', ['c.jpg', 'b.jpg'], true],
       ]);
       expect(attachmentData.map(file => file.name)).toEqual(['a.jpg']);
+
+      // The event names the control that did it: the menu, not a drag.
+      const move = batchGroupingEvents.mock.calls
+        .map(([payload]) => payload)
+        .find(payload => payload.event === 'move');
+      expect(move).toBeDefined();
+      expect(move.source).toBe('menu');
+      expect(move.rowsBefore).toHaveLength(2);
+      // Both rows remain; the photo changed rows.
+      expect(move.rowsAfter).toHaveLength(2);
+      expect(
+        move.rowsAfter.map(row => [row.plate, row.photos]),
+      ).toEqual([
+        ['AAA111', ['a.jpg']],
+        ['BBB222', ['c.jpg', 'b.jpg']],
+      ]);
 
       cleanup();
     });

@@ -61,6 +61,7 @@ import groupAttachmentsByViolation, {
   mergeViolations,
   plateCropFor,
 } from '../../groupAttachmentsByViolation.js';
+import { captureBatchGroupingEvent } from '../../batchGroupingEvents.js';
 import { isImage, isVideo } from '../../isImage.js';
 import { expandZipFiles } from '../../zipAttachments.js';
 import latestLocatedPhoto, {
@@ -807,6 +808,11 @@ const BATCH_STAGE_LABELS = {
 // identities are a time, a plate and a photo name, so this cannot collide
 // with one.
 const NEW_VIOLATION_DROP = 'new-violation';
+
+// How many untouched batches report their grouping data. Corrections alone
+// show the mistakes; an untouched batch is the denominator that says how often
+// the grouping is right.
+const BATCH_GROUPING_SAMPLE_RATE = 0.05;
 
 const formatBatchViolationTime = createDateMs =>
   Number.isFinite(createDateMs)
@@ -2291,7 +2297,7 @@ class Home extends React.Component {
     if (row) {
       this.mergeDraggedRows({ row, violation });
     } else if (photo) {
-      this.movePhotoToViolation({ photo, violation });
+      this.movePhotoToViolation({ photo, violation, control: 'drag' });
     }
   };
 
@@ -2326,10 +2332,10 @@ class Home extends React.Component {
       return;
     }
 
-    this.movePhotoToNewViolation(photo);
+    this.movePhotoToNewViolation(photo, 'drag');
   };
 
-  movePhotoToNewViolation = photo => {
+  movePhotoToNewViolation = (photo, control = 'drag') => {
     const { attachmentData, batchViolations, currentViolationIndex } =
       this.state;
 
@@ -2340,6 +2346,8 @@ class Home extends React.Component {
     if (!source) {
       return;
     }
+
+    const before = this.batchGroupingData();
 
     const previousPhotos = attachmentData;
     const loaded = batchViolations[currentViolationIndex];
@@ -2405,6 +2413,8 @@ class Home extends React.Component {
           // The row went with its last photo: show what is next.
           this.loadBatchViolation(this.state.currentViolationIndex);
         }
+
+        this.recordBatchGrouping({ event: 'split', source: control, before });
       },
     );
   };
@@ -2426,7 +2436,7 @@ class Home extends React.Component {
           batchViolationIdentity(row),
         ],
       },
-      () => this.mergeSelectedBatchViolations(),
+      () => this.mergeSelectedBatchViolations({ source: 'drag' }),
     );
   };
 
@@ -2435,7 +2445,7 @@ class Home extends React.Component {
   // marked as the user's own, and no later read takes it apart again (see
   // `rowsAfterRead`). The photo leaves the report with its old row: the form
   // holds the photos of the violation it shows.
-  movePhotoToViolation = ({ photo, violation: target }) => {
+  movePhotoToViolation = ({ photo, violation: target, control = 'drag' }) => {
     const { attachmentData, batchViolations, currentViolationIndex } =
       this.state;
 
@@ -2446,6 +2456,8 @@ class Home extends React.Component {
     if (!source || source === target) {
       return;
     }
+
+    const before = this.batchGroupingData();
 
     const previousPhotos = attachmentData;
     const loaded = batchViolations[currentViolationIndex];
@@ -2508,6 +2520,8 @@ class Home extends React.Component {
           // The row went with its last photo: show what is next.
           this.loadBatchViolation(this.state.currentViolationIndex);
         }
+
+        this.recordBatchGrouping({ event: 'move', source: control, before });
       },
     );
   };
@@ -2951,6 +2965,19 @@ class Home extends React.Component {
     });
 
     this.setState({ batchProgress: null });
+
+    // A sample of untouched batches is the denominator the corrections need:
+    // how often the grouping was right without a hand.
+    if (Math.random() < BATCH_GROUPING_SAMPLE_RATE) {
+      const data = this.batchGroupingData();
+      captureBatchGroupingEvent({
+        schema: 1,
+        event: 'batch-done',
+        photos: data.photos,
+        rowsBefore: null,
+        rowsAfter: data.rows,
+      });
+    }
   };
 
   // Flag each violation with whether it is inside the five boroughs, so the
@@ -3691,7 +3718,7 @@ class Home extends React.Component {
   // becomes a violation of its own. Only the user knows the two are one report,
   // which is why this does what they say instead of re-running the clusterer:
   // that would split them straight back apart.
-  mergeSelectedBatchViolations = () => {
+  mergeSelectedBatchViolations = ({ source = 'tick' } = {}) => {
     const { batchMergeSelection, batchViolations, currentViolationIndex } =
       this.state;
 
@@ -3706,6 +3733,7 @@ class Home extends React.Component {
       return;
     }
 
+    const before = this.batchGroupingData();
     const chosenIdentities = new Set(chosen.map(identityOf));
     const loaded = batchViolations[currentViolationIndex];
     const loadedWasMerged = loaded && chosenIdentities.has(identityOf(loaded));
@@ -3741,6 +3769,8 @@ class Home extends React.Component {
           // rather than leaving it on a violation that no longer exists.
           this.loadBatchViolation(this.state.currentViolationIndex);
         }
+
+        this.recordBatchGrouping({ event: 'merge', source, before });
       },
     );
   };
@@ -3766,6 +3796,7 @@ class Home extends React.Component {
       return;
     }
 
+    const before = this.batchGroupingData();
     const snapshot = this.batchSnapshot();
     this.dismissedRows.add(batchViolationIdentity(violation));
 
@@ -3802,10 +3833,65 @@ class Home extends React.Component {
         // good, so nothing will show them again: their bytes can go. It waits
         // for the load above, which takes them off the page.
         removedPhotos.forEach(photo => releaseBlobUrl(photo.file));
+
+        this.recordBatchGrouping({ event: 'delete-row', before });
       },
     );
 
     this.notifyBatchUndo({ message: 'Violation removed.', snapshot });
+  };
+
+  // The batch as the grouping saw it: every photo it holds, with the raw
+  // metadata and ALPR response, and the rows at this moment. This is what a
+  // grouping correction is recorded with, so the algorithm can be improved
+  // from real batches later.
+  batchGroupingData = () => {
+    const { batchPhotos, batchViolations } = this.state;
+
+    const photosByFile = new Map();
+    batchPhotos.forEach(photo => photosByFile.set(photo.file, photo));
+    batchViolations.forEach(violation =>
+      violation.photos.forEach(photo => photosByFile.set(photo.file, photo)),
+    );
+
+    return {
+      photos: [...photosByFile.values()].map(photo => ({
+        name: photo.name,
+        createDateMs: photo.createDateMs,
+        latitude: photo.latitude,
+        longitude: photo.longitude,
+        plateRead: photo.plateRead,
+        plateResults: photo.plateResults || null,
+        uploadWidth: photo.uploadWidth,
+        uploadHeight: photo.uploadHeight,
+      })),
+      rows: batchViolations.map(violation => ({
+        plate: violation.plate,
+        licenseState: violation.licenseState,
+        createDateMs: violation.createDateMs,
+        latitude: violation.latitude,
+        longitude: violation.longitude,
+        mergedByUser: Boolean(violation.mergedByUser),
+        photos: violation.photos.map(photo => photo.name),
+      })),
+    };
+  };
+
+  // One event per correction: the rows before and after, and the photos behind
+  // both. Raw and complete, so a later grouping change can be tested against
+  // the batches it would have handled. `source` says which control did it.
+  recordBatchGrouping = ({ event, source = null, before }) => {
+    const after = this.batchGroupingData();
+
+    captureBatchGroupingEvent({
+      schema: 1,
+      event,
+      source,
+      // The discard empties the batch, so the photos come from before it.
+      photos: (before || after).photos,
+      rowsBefore: before ? before.rows : null,
+      rowsAfter: after.rows,
+    });
   };
 
   // Everything a removal can change, kept so its toast can put it back. The
@@ -3921,6 +4007,7 @@ class Home extends React.Component {
       return;
     }
 
+    const before = this.batchGroupingData();
     const snapshot = this.batchSnapshot();
 
     const photos = new Set(batchPhotos);
@@ -3950,6 +4037,8 @@ class Home extends React.Component {
         // Nothing on screen shows these photos now: their bytes can go. Undo
         // makes the object URLs again when the grid next draws the photos.
         photos.forEach(photo => releaseBlobUrl(photo.file));
+
+        this.recordBatchGrouping({ event: 'discard', before });
       },
     );
 
@@ -4749,6 +4838,7 @@ class Home extends React.Component {
                                 this.movePhotoToViolation({
                                   photo,
                                   violation: row,
+                                  control: 'menu',
                                 })
                               }
                             >
@@ -4759,7 +4849,9 @@ class Home extends React.Component {
                       <button
                         type="button"
                         aria-label={`Split ${name} into a new violation`}
-                        onClick={() => this.movePhotoToNewViolation(photo)}
+                        onClick={() =>
+                          this.movePhotoToNewViolation(photo, 'menu')
+                        }
                       >
                         New violation
                       </button>
@@ -4874,7 +4966,9 @@ class Home extends React.Component {
                   type="button"
                   className={homeStyles['batch-queue-merge']}
                   disabled={batchMergeSelection.length < 2}
-                  onClick={this.mergeSelectedBatchViolations}
+                  onClick={() =>
+                    this.mergeSelectedBatchViolations({ source: 'tick' })
+                  }
                 >
                   Merge
                 </button>

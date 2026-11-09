@@ -588,6 +588,11 @@ const TOO_MANY_ATTACHMENTS_MESSAGE =
 // value of its own.
 const UNKNOWN_PLATE = 'UNKNOWN';
 
+// The id of the toast that thanks the user for a report. A toast with this id
+// stays one at a time: the next report can go through while the last thanks is
+// still on screen, and a second copy of it says nothing new.
+const SUBMISSION_TOAST_ID = 'submission-thanks';
+
 // Whether the form holds more of one kind of photo than a submission can
 // carry.
 //
@@ -755,6 +760,18 @@ class Home extends React.Component {
 
   static notifySuccess(notificationContent) {
     return toast.success(notificationContent);
+  }
+
+  // What a filed report says, at most one at a time: while the last thanks is
+  // still on screen, the next report does not add a second copy of it.
+  static notifySubmissionThanks(notificationContent) {
+    if (toast.isActive(SUBMISSION_TOAST_ID)) {
+      return SUBMISSION_TOAST_ID;
+    }
+
+    return toast.success(notificationContent, {
+      toastId: SUBMISSION_TOAST_ID,
+    });
   }
 
   static notifyInfo(notificationContent) {
@@ -3352,7 +3369,7 @@ class Home extends React.Component {
                             latitude: defaultLatitude,
                             longitude: defaultLongitude,
                           });
-                          Home.notifySuccess(
+                          Home.notifySubmissionThanks(
                             <React.Fragment>
                               <p>Thanks for your submission!</p>
                               <p>

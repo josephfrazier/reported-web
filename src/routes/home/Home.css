@@ -301,7 +301,11 @@ input[type='search']::-webkit-search-cancel-button {
   padding: 0.5rem 0.75rem;
   border: 1px solid #ccc;
   border-radius: 4px;
-  font-size: 0.95rem;
+
+  /* iOS Safari zooms the page when a field under 16px takes focus. The
+     signup email field takes focus as the modal opens, so a smaller size
+     zooms the page in on top of the modal. */
+  font-size: 1rem;
   font-family: inherit;
   box-sizing: border-box;
 }

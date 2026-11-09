@@ -5195,6 +5195,15 @@ class Home extends React.Component {
                       padding: '1.5rem',
                       borderRadius: '8px',
                       bottom: 'auto',
+                      // The content's height follows the form, which is taller
+                      // than a small phone's screen. Cap it to the visible
+                      // area (40px top and bottom, as in the default content
+                      // style) and scroll inside the modal. Otherwise the
+                      // lower fields and the submit button sit below the
+                      // screen, where neither the modal nor the page can
+                      // scroll to reach them.
+                      maxHeight: 'calc(100% - 80px)',
+                      overflowY: 'auto',
                     },
                   }}
                 >

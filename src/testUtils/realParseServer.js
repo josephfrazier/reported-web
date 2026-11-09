@@ -12,6 +12,34 @@ const { ParseServer } = require('parse-server');
 // suite that starts a server, so the flag is set before one is constructed.
 process.env.TESTING = '1';
 
+// parse-server 9.4.0's RestWrite#destroyDuplicatedSessions fires the
+// duplicate-session delete without returning its promise; upstream fixed that
+// in https://github.com/parse-community/parse-server/pull/10319. A rejected
+// delete therefore has no caller, and Jest turns it into an unhandled
+// rejection attributed to the hook that started the server, so one failed
+// background cleanup fails every test in the suite with "Database adapter
+// error" -- a message that names neither the test nor the cause. Mark that
+// rejection handled, and log it so a real failure stays visible in CI, until
+// the parse-server devDependency moves past 9.4.0.
+const DatabaseController = require('parse-server/lib/Controllers/DatabaseController');
+
+const originalDestroy = DatabaseController.prototype.destroy;
+
+DatabaseController.prototype.destroy = function destroy(className, ...rest) {
+  const pending = originalDestroy.call(this, className, ...rest);
+  if (className === '_Session') {
+    pending.catch(error => {
+      if (error.code !== Parse.Error.OBJECT_NOT_FOUND) {
+        console.error(
+          '[realParseServer] background session delete failed:',
+          error,
+        );
+      }
+    });
+  }
+  return pending;
+};
+
 const APP_ID = 'test-app';
 const MASTER_KEY = 'test-master';
 

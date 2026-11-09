@@ -1097,8 +1097,8 @@ class Home extends React.Component {
     });
   }
 
-  static notifyInfo(notificationContent) {
-    return toast.info(notificationContent);
+  static notifyInfo(notificationContent, options) {
+    return toast.info(notificationContent, options);
   }
 
   static notifyWarning(notificationContent, options) {
@@ -3796,6 +3796,109 @@ class Home extends React.Component {
     );
   };
 
+  // "Discard the remaining violations": the queue is done with, and its
+  // photos go with it -- the rows and the photos still waiting to be grouped
+  // alike. Nothing is filed. Each report needs a person to check its plate,
+  // type and place, so the way to stop early is to let the rest go, not to
+  // send it. Undo holds the whole batch for a few seconds.
+  discardRemainingViolations = () => {
+    const {
+      attachmentData,
+      allPlateData,
+      batchMergeSelection,
+      batchPhotos,
+      batchViolations,
+      currentViolationIndex,
+      plateDataByAttachmentName,
+    } = this.state;
+
+    if (batchViolations.length < 2) {
+      return;
+    }
+
+    const photos = new Set(batchPhotos);
+    batchViolations.forEach(violation =>
+      violation.photos.forEach(photo => photos.add(photo)),
+    );
+
+    const discarded = {
+      attachmentData,
+      allPlateData,
+      batchMergeSelection,
+      batchPhotos,
+      batchViolations,
+      currentViolationIndex,
+      plateDataByAttachmentName,
+      // The form's plate, place, type and description are left alone: the
+      // fields are hidden while nothing is attached, and Undo then finds them
+      // as the user left them.
+      dismissed: batchViolations.map(batchViolationIdentity),
+      readings: new Map(
+        [...photos]
+          .filter(photo => this.photoReadings.has(photo.file))
+          .map(photo => [photo.file, this.photoReadings.get(photo.file)]),
+      ),
+    };
+
+    // A read that lands after this must not build the rows again.
+    discarded.dismissed.forEach(identity => this.dismissedRows.add(identity));
+    discarded.readings.forEach((reading, file) =>
+      this.photoReadings.delete(file),
+    );
+
+    this.setState(
+      {
+        attachmentData: [],
+        allPlateData: null,
+        batchMergeSelection: [],
+        batchPhotos: [],
+        batchViolations: [],
+        currentViolationIndex: -1,
+        plateDataByAttachmentName: {},
+      },
+      () => {
+        // Nothing on screen shows these photos now: their bytes can go. Undo
+        // makes the object URLs again when the grid next draws the photos.
+        photos.forEach(photo => releaseBlobUrl(photo.file));
+      },
+    );
+
+    const count = discarded.batchViolations.length;
+
+    Home.notifyInfo(
+      <React.Fragment>
+        <p>{`Discarded ${count} violation${count === 1 ? '' : 's'}.`}</p>
+        <button
+          type="button"
+          onClick={() => this.restoreDiscardedViolations(discarded)}
+        >
+          Undo
+        </button>
+      </React.Fragment>,
+      // Longer than the default: the rows are the whole batch's work.
+      { autoClose: 8000 },
+    );
+  };
+
+  restoreDiscardedViolations = discarded => {
+    discarded.dismissed.forEach(identity =>
+      this.dismissedRows.delete(identity),
+    );
+    discarded.readings.forEach((reading, file) =>
+      this.photoReadings.set(file, reading),
+    );
+
+    this.setState({
+      attachmentData: discarded.attachmentData,
+      allPlateData: discarded.allPlateData,
+      batchMergeSelection: discarded.batchMergeSelection,
+      batchPhotos: discarded.batchPhotos,
+      batchViolations: discarded.batchViolations,
+      currentViolationIndex: discarded.currentViolationIndex,
+      plateDataByAttachmentName: discarded.plateDataByAttachmentName,
+    });
+  };
+
   // Take a violation out of the queue once it has been submitted, and load
   // whatever took its index: the queue then always shows what is left to
   // report.
@@ -4895,6 +4998,15 @@ class Home extends React.Component {
                 );
               })}
             </ul>
+            {batchViolations.length > 1 && (
+              <button
+                type="button"
+                className={homeStyles['batch-discard']}
+                onClick={this.discardRemainingViolations}
+              >
+                Discard the remaining violations
+              </button>
+            )}
           </div>
         )}
 
@@ -5843,10 +5955,13 @@ class Home extends React.Component {
                               submittedFiles.includes(photo.file),
                             );
 
-                          if (
+                          // Whether this report was one of the batch's rows,
+                          // read before the advance moves the queue on.
+                          const batchWasActive =
                             this.state.isSemiAutomaticMode &&
-                            this.state.currentViolationIndex >= 0
-                          ) {
+                            this.state.currentViolationIndex >= 0;
+
+                          if (batchWasActive) {
                             this.advanceBatchAfterSubmit(submittedFiles);
                           }
                           Home.notifySubmissionThanks(
@@ -5864,6 +5979,9 @@ class Home extends React.Component {
                                     go through them one at a time.
                                   </p>
                                 )}
+                              {batchWasActive && !queueIsDone && (
+                                <p>Filed. Opening the next violation.</p>
+                              )}
 
                               {/*
                         <p>objectId: {data.submission.objectId}</p>

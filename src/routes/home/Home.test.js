@@ -3713,6 +3713,9 @@ describe('Home', () => {
       const toastError = jest
         .spyOn(toast, 'error')
         .mockImplementation(() => null);
+      const toastInfo = jest
+        .spyOn(toast, 'info')
+        .mockImplementation(() => null);
       const consoleError = jest
         .spyOn(console, 'error')
         .mockImplementation(() => {});
@@ -3759,6 +3762,7 @@ describe('Home', () => {
         toastSuccess,
         toastWarn,
         toastError,
+        toastInfo,
         platerecognizerCalls: () =>
           axiosPost.mock.calls.filter(([url]) => url === '/platerecognizer'),
         // When each read was asked for, in milliseconds since an arbitrary
@@ -3895,6 +3899,7 @@ describe('Home', () => {
           toastSuccess.mockRestore();
           toastWarn.mockRestore();
           toastError.mockRestore();
+          toastInfo.mockRestore();
           consoleError.mockRestore();
           document.querySelector = originalQuerySelector;
           global.URL.createObjectURL = originalCreateObjectURL;
@@ -4741,11 +4746,19 @@ describe('Home', () => {
               props['aria-label'].startsWith('Merge '),
           );
 
+      const discardButton = tree =>
+        tree.root
+          .findAllByType('button')
+          .find(({ children }) =>
+            children.includes('Discard the remaining violations'),
+          );
+
       const alone = await renderBatchWithFiles(oneCar);
       expect(alone.homeRef.current.state.batchViolations).toHaveLength(1);
       expect(renderedText(alone.tree.toJSON())).toContain('Found 1 violation');
       expect(alone.mergeButton()).toBeUndefined();
       expect(mergeBoxes(alone.tree)).toHaveLength(0);
+      expect(discardButton(alone.tree)).toBeUndefined();
       alone.cleanup();
 
       // A second row brings both back.
@@ -4754,10 +4767,107 @@ describe('Home', () => {
       expect(together.homeRef.current.state.batchViolations).toHaveLength(2);
       expect(together.mergeButton()).toBeDefined();
       expect(mergeBoxes(together.tree)).toHaveLength(2);
+      expect(discardButton(together.tree)).toBeDefined();
       together.cleanup();
 
       exifr.gps.mockReset();
       exifr.parse.mockReset();
+    });
+
+    // The way out of a batch: the rows and their photos go, nothing is filed,
+    // and the toast holds the whole batch for Undo.
+    test('discards the remaining violations, with an undo', async () => {
+      const photos = ['a', 'b', 'c'].map(name => {
+        const file = new File(['picture'], `${name}.jpg`, {
+          type: 'image/jpeg',
+        });
+        return { file, name: file.name, createDateMs: 1704110400000 };
+      });
+      const row = (photoList, plate, createDateMs) => ({
+        photos: photoList,
+        plate,
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs,
+      });
+
+      // A button inside a toast's content, which is an element tree rather
+      // than rendered markup.
+      const findButtonElement = (element, text) => {
+        if (!element || typeof element !== 'object') {
+          return null;
+        }
+        if (element.type === 'button' && element.props?.children === text) {
+          return element;
+        }
+        const children = element.props?.children;
+        const list = Array.isArray(children) ? children : [children];
+        return (
+          list.map(child => findButtonElement(child, text)).find(Boolean) ||
+          null
+        );
+      };
+
+      const { homeRef, tree, clickQueueLoad, toastInfo, cleanup } =
+        await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchPhotos: photos,
+          batchViolations: [
+            row(photos.slice(0, 2), 'AAA111', 1704110400000),
+            row([photos[2]], 'BBB222', 1704110500000),
+          ],
+        });
+      });
+      clickQueueLoad('AAA111');
+
+      const before = {
+        attachmentData: homeRef.current.state.attachmentData,
+        batchMergeSelection: homeRef.current.state.batchMergeSelection,
+        batchViolations: homeRef.current.state.batchViolations,
+        currentViolationIndex: homeRef.current.state.currentViolationIndex,
+      };
+
+      const discard = tree.root
+        .findAllByType('button')
+        .find(({ children }) =>
+          children.includes('Discard the remaining violations'),
+        );
+      expect(discard).toBeDefined();
+
+      renderer.act(() => discard.props.onClick());
+
+      expect(homeRef.current.state.batchViolations).toEqual([]);
+      expect(homeRef.current.state.batchPhotos).toEqual([]);
+      expect(homeRef.current.state.currentViolationIndex).toBe(-1);
+      expect(homeRef.current.state.attachmentData).toEqual([]);
+      expect(homeRef.current.dismissedRows.size).toBe(2);
+      expect(elementText(toastInfo.mock.calls[0][0])).toContain(
+        'Discarded 2 violations.',
+      );
+
+      // The toast's own Undo puts the rows and the form back.
+      const undo = findButtonElement(toastInfo.mock.calls[0][0], 'Undo');
+      expect(undo).not.toBeNull();
+      renderer.act(() => undo.props.onClick());
+
+      expect(homeRef.current.state.batchViolations).toEqual(
+        before.batchViolations,
+      );
+      expect(homeRef.current.state.attachmentData).toEqual(
+        before.attachmentData,
+      );
+      expect(homeRef.current.state.currentViolationIndex).toBe(
+        before.currentViolationIndex,
+      );
+      expect(homeRef.current.state.batchMergeSelection).toEqual(
+        before.batchMergeSelection,
+      );
+      expect(homeRef.current.dismissedRows.size).toBe(0);
+
+      cleanup();
     });
 
     test('keeps a row the user merged when a read lands on it afterwards', async () => {
@@ -5702,7 +5812,49 @@ describe('Home', () => {
       expect(elementText(toastSuccess.mock.calls[0][0])).toContain(
         'Have more photos? Add a folder',
       );
+      expect(elementText(toastSuccess.mock.calls[0][0])).not.toContain(
+        'Filed. Opening the next violation.',
+      );
 
+      cleanup();
+    });
+
+    // With rows left, the form jumps to the next one: the toast says why.
+    test('says the next violation is opening after a submit', async () => {
+      const photos = [
+        jpeg({ name: 'a.jpg', size: 4 }),
+        jpeg({ name: 'c.jpg', size: 6 }),
+      ];
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, submit, toastSuccess, cleanup } =
+        await renderBatchWithFiles(photos);
+
+      expect(
+        homeRef.current.state.batchViolations.map(violation => violation.plate),
+      ).toEqual(['T696817C', 'LDA8765']);
+
+      await submit();
+      await renderer.act(async () => {
+        for (let i = 0; i < 3; i += 1) {
+          // eslint-disable-next-line no-await-in-loop -- one round per pending promise chain.
+          await new Promise(resolve => setImmediate(resolve));
+        }
+      });
+
+      // The row after the one that went is in the form.
+      expect(homeRef.current.state.batchViolations).toHaveLength(1);
+      expect(elementText(toastSuccess.mock.calls[0][0])).toContain(
+        'Filed. Opening the next violation.',
+      );
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
       cleanup();
     });
 

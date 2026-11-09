@@ -5465,6 +5465,58 @@ describe('Home', () => {
       cleanup();
     });
 
+    // The last report's toast can still be on screen when the next violation
+    // goes through, a second later. One thanks at a time is enough.
+    test('shows one thanks toast at a time', async () => {
+      const photos = [
+        jpeg({ name: 'a.jpg', size: 4 }),
+        jpeg({ name: 'b.jpg', size: 5 }),
+        jpeg({ name: 'c.jpg', size: 6 }),
+        jpeg({ name: 'd.jpg', size: 7 }),
+      ];
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { submit, toastSuccess, cleanup } =
+        await renderBatchWithFiles(photos);
+      const toastIsActive = jest
+        .spyOn(toast, 'isActive')
+        .mockReturnValue(false);
+
+      const settle = () =>
+        renderer.act(async () => {
+          for (let i = 0; i < 3; i += 1) {
+            // eslint-disable-next-line no-await-in-loop -- one round per pending promise chain.
+            await new Promise(resolve => setImmediate(resolve));
+          }
+        });
+
+      await submit();
+      await settle();
+      expect(toastSuccess).toHaveBeenCalledTimes(1);
+
+      // The next violation goes through while that toast is still open.
+      toastIsActive.mockReturnValue(true);
+      await submit();
+      await settle();
+      expect(toastSuccess).toHaveBeenCalledTimes(1);
+
+      // Once it closes, the next report gets its own.
+      toastIsActive.mockReturnValue(false);
+      await submit();
+      await settle();
+      expect(toastSuccess).toHaveBeenCalledTimes(2);
+
+      toastIsActive.mockRestore();
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
     test('opens on the violation a submit leaves behind', async () => {
       const photos = ['p1', 'p2', 'p3', 'p4'].map((name, index) => {
         const file = new File(['picture'], `${name}.jpg`, {

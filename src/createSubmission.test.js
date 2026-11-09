@@ -1,0 +1,317 @@
+/**
+ * @jest-environment node
+ *
+ * Runs against a real Parse Server 9.4.0 (the version production will run once
+ * https://github.com/josephfrazier/reported-web/pull/713 is merged) backed by a
+ * real MongoDB 4.4 started in-memory by mongodb-memory-server, so the actual
+ * save/ACL/file-upload semantics are exercised instead of a fake.
+ */
+
+import Parse from 'parse/node';
+import createSubmission from './createSubmission.js';
+import startRealParseServer from './testUtils/realParseServer.js';
+
+// In-memory stand-in for a files adapter: the submission logic under test
+// only cares that Parse.File#save() succeeds and produces a URL, not where
+// the bytes are stored, and the real GridStore adapter opens its own MongoDB
+// connection that nothing shuts down (keeping the test process alive after
+// the run).
+class InMemoryFilesAdapter {
+  constructor() {
+    this.files = new Map();
+  }
+
+  createFile(filename, data) {
+    this.files.set(filename, data);
+    return Promise.resolve();
+  }
+
+  deleteFile(filename) {
+    this.files.delete(filename);
+    return Promise.resolve();
+  }
+
+  getFileData(filename) {
+    return Promise.resolve(this.files.get(filename));
+  }
+
+  // eslint-disable-next-line class-methods-use-this
+  getFileLocation(config, filename) {
+    return `${config.mount}/files/${config.applicationId}/${encodeURIComponent(filename)}`;
+  }
+}
+
+jest.setTimeout(30000);
+
+const email = 'test@example.com';
+
+// The module mutates process.env.TZ (and only restores it on the future-
+// timestamp error path, matching the prod handler it was extracted from), so
+// restore it between tests to keep them independent.
+const originalTZ = process.env.TZ;
+
+// Minimal 1x1 PNG and a minimal mp4 `ftyp` box, both small enough to inline
+// while still being recognized by the file-type detector.
+const pngBuffer = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+  'base64',
+);
+const mp4Buffer = Buffer.concat([
+  Buffer.from([0, 0, 0, 0x18]), // box size
+  Buffer.from('ftypisom'), // ftyp + major brand isom
+  Buffer.from([0, 0, 2, 0]),
+  Buffer.from('isomiso2'),
+]);
+
+describe('createSubmission', () => {
+  let stopParseServer;
+  let user;
+  let sessionToken;
+  let otherUserSessionToken;
+
+  beforeAll(async () => {
+    // No master key is passed: the submission is saved with the reporter's
+    // session token, so nothing here should need to bypass ACLs.
+    const { stop } = await startRealParseServer({
+      serverOptions: {
+        // parse-server 5+ defaults client class creation to off. These tests
+        // save `submission`/`tasks` objects as an ordinary client, and in
+        // production both classes already exist in the schema.
+        allowClientClassCreation: true,
+        filesAdapter: new InMemoryFilesAdapter(),
+      },
+    });
+    stopParseServer = stop;
+
+    user = new Parse.User();
+    user.setUsername(email);
+    user.setPassword('test-password');
+    await user.signUp();
+    // The sign-up session. Captured once: a save or fetch response without a
+    // sessionToken in it clears the attribute getSessionToken() reads.
+    sessionToken = user.getSessionToken();
+
+    // A second user, to prove the submission's ACL keeps everyone else out.
+    const otherUser = new Parse.User();
+    otherUser.setUsername('other@example.com');
+    otherUser.setPassword('test-password');
+    await otherUser.signUp();
+    otherUserSessionToken = otherUser.getSessionToken();
+  });
+
+  afterAll(() => stopParseServer());
+
+  afterEach(() => {
+    // Same delete-vs-assign subtlety as the module itself: assigning an
+    // undefined value would store the string "undefined".
+    if (originalTZ === undefined) {
+      delete process.env.TZ;
+    } else {
+      process.env.TZ = originalTZ;
+    }
+  });
+
+  const validParams = overrides => ({
+    // The signed-in account and the token that authenticated it, as the route
+    // resolves them from the session cookie.
+    user,
+    sessionToken,
+    email,
+    FirstName: 'Test',
+    LastName: 'User',
+    Phone: '5551234567',
+    testify: true,
+    plate: 'ABC1234',
+    licenseState: 'NY',
+    typeofreport: 'complaint',
+    typeofcomplaint: 'Blocked the bike lane',
+    reportDescription: 'Blocking the lane',
+    can_be_shared_publicly: true,
+    latitude: 40.7128,
+    longitude: -74.006,
+    formatted_address: 'New York, NY',
+    CreateDate: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+    attachmentData: [],
+    versionNumber: 123,
+    ...overrides,
+  });
+
+  test('saves the form fields onto the submission, ACLed to the user', async () => {
+    const params = validParams();
+    const submission = await createSubmission(params);
+
+    // The submit form doubles as a profile edit, so its fields land on the
+    // reporter's account.
+    const savedUser = await Parse.User.me(sessionToken);
+    expect(savedUser.toJSON()).toMatchObject({
+      useremail: email,
+      FirstName: 'Test',
+      LastName: 'User',
+      Phone: '5551234567',
+      testify: true,
+    });
+    expect(submission).toMatchObject({
+      FirstName: 'Test',
+      LastName: 'User',
+      Phone: '5551234567',
+      testify: true,
+      Username: email,
+      typeofreport: 'complaint',
+      selectedReport: 1,
+      colorTaxi: 'Black',
+      medallionNo: 'ABC1234',
+      license: 'ABC1234',
+      state: 'NY',
+      typeofcomplaint: 'Blocked the bike lane',
+      passenger: false,
+      locationNumber: 1,
+      latitude: '40.7128',
+      longitude: '-74.006',
+      latitude1: 40.7128,
+      longitude1: -74.006,
+      loc1_address: 'New York, NY',
+      reportDescription: 'Blocking the lane',
+      can_be_shared_publicly: true,
+      status: 0,
+      operating_system: 'web',
+      version_number: 123,
+      reqnumber: 'N/A until submitted to 311',
+    });
+    expect(submission.user).toMatchObject({
+      __type: 'Object',
+      className: '_User',
+      objectId: user.id,
+    });
+    // Unwrapped from Parse's encoded Date ({ __type: 'Date', iso }) and
+    // re-assigned from the saved id (see #788), so the client can pass it
+    // back on delete/cancel without relying on toJSON()'s encoding.
+    expect(submission.timeofreport).toBe(params.CreateDate);
+    expect(submission.timeofreported).toBe(params.CreateDate);
+    expect(submission.objectId).toEqual(expect.any(String));
+  });
+
+  test("ACLs the submission to the reporter, so other users can't read it", async () => {
+    const params = validParams();
+    const submission = await createSubmission(params);
+
+    const Submission = Parse.Object.extend('submission');
+    const query = new Parse.Query(Submission);
+
+    // The reporter (whose session token createSubmission saved with) can read
+    // it back...
+    await expect(
+      query.get(submission.objectId, { sessionToken }),
+    ).resolves.toMatchObject({ id: submission.objectId });
+
+    // ...and a different user gets the ACL's "not found" for the same id.
+    await expect(
+      query.get(submission.objectId, { sessionToken: otherUserSessionToken }),
+    ).rejects.toMatchObject({ code: 101 });
+  });
+
+  test('marks non-complaint reports differently via selectedReport', async () => {
+    const submission = await createSubmission(
+      validParams({ typeofreport: 'compliment' }),
+    );
+
+    expect(submission.selectedReport).toBe(0);
+  });
+
+  test('sets withhold_contact_info_from_nypd on the submission when true', async () => {
+    const submission = await createSubmission(
+      validParams({ withhold_contact_info_from_nypd: true }),
+    );
+
+    expect(submission.withhold_contact_info_from_nypd).toBe(true);
+  });
+
+  test('leaves withhold_contact_info_from_nypd off when false or absent', async () => {
+    const withFalse = await createSubmission(
+      validParams({ withhold_contact_info_from_nypd: false }),
+    );
+    const absent = await createSubmission(validParams());
+
+    expect(withFalse.withhold_contact_info_from_nypd).toBeUndefined();
+    expect(absent.withhold_contact_info_from_nypd).toBeUndefined();
+  });
+
+  test('sets receive_nypd_sr_updates_by_email on the submission when true', async () => {
+    const submission = await createSubmission(
+      validParams({ receive_nypd_sr_updates_by_email: true }),
+    );
+
+    expect(submission.receive_nypd_sr_updates_by_email).toBe(true);
+  });
+
+  test('leaves receive_nypd_sr_updates_by_email off when false or absent', async () => {
+    const withFalse = await createSubmission(
+      validParams({ receive_nypd_sr_updates_by_email: false }),
+    );
+    const absent = await createSubmission(validParams());
+
+    expect(withFalse.receive_nypd_sr_updates_by_email).toBeUndefined();
+    expect(absent.receive_nypd_sr_updates_by_email).toBeUndefined();
+  });
+
+  test('rejects submissions missing a required field', async () => {
+    await expect(
+      createSubmission(validParams({ plate: '' })),
+    ).rejects.toMatchObject({ message: 'plate is required' });
+  });
+
+  // The state list is US-centric, so a plate can arrive with a state it does
+  // not hold, or with none the reporter can name. The form asks for it without
+  // insisting, so neither is a reason to refuse the submission.
+  test('accepts a submission with no license state', async () => {
+    const submission = await createSubmission(
+      validParams({ licenseState: '' }),
+    );
+
+    expect(submission.state).toBe('');
+  });
+
+  test('rejects timestamps in the future, restoring the previous timezone', async () => {
+    await expect(
+      createSubmission(
+        validParams({
+          CreateDate: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+        }),
+      ),
+    ).rejects.toMatchObject({
+      message: expect.stringContaining('Timestamp cannot be in the future'),
+    });
+    expect(process.env.TZ).toBe(originalTZ);
+  });
+
+  test('uploads images as Parse Files under photoDataN and videos as URLs under videoDataN', async () => {
+    const submission = await createSubmission(
+      validParams({
+        attachmentData: [{ buffer: pngBuffer }, { buffer: mp4Buffer }],
+      }),
+    );
+
+    // The files controller prefixes stored file names with a hash, so match
+    // the suffix instead of the exact name.
+    expect(submission.photoData0).toMatchObject({
+      __type: 'File',
+      name: expect.stringMatching(/_photoData0\.png$/),
+    });
+    expect(submission.videoData0).toEqual(
+      expect.stringContaining('videoData0.mp4'),
+    );
+  });
+
+  test('keeps only the first 3 images (does not save 4th as videoData0)', async () => {
+    const submission = await createSubmission(
+      validParams({
+        attachmentData: [1, 2, 3, 4].map(() => ({ buffer: pngBuffer })),
+      }),
+    );
+
+    expect(submission.photoData0).toBeDefined();
+    expect(submission.photoData1).toBeDefined();
+    expect(submission.photoData2).toBeDefined();
+    expect(submission.photoData3).toBeUndefined();
+    expect(submission.videoData0).toBeUndefined();
+  });
+});

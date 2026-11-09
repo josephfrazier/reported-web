@@ -36,7 +36,7 @@ function createFetch(fetch: Fetch, { baseUrl, cookie }: Options) {
   };
 
   return async (url: string, options: any) =>
-    url.startsWith('/api')
+    url.startsWith('/')
       ? fetch(`${baseUrl}${url}`, {
           ...defaults,
           ...options,

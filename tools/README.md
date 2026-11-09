@@ -6,20 +6,17 @@
 * Copies static files to the output folder (`copy.js`)
 * Launches [Webpack](https://webpack.github.io/) compiler in a watch mode (via
   [webpack-middleware](https://github.com/kriasoft/webpack-middleware))
-* Launches Node.js server from the compiled output folder (`runServer.js`)
-* Launches [Browsersync](https://browsersync.io/) and
-  [Hot Module Replacement](https://webpack.github.io/docs/hot-module-replacement)
+* Serves the app and the in-memory bundles with Express, on
+  `http://localhost:3000` unless `PORT` says otherwise
+* Applies [Hot Module Replacement](https://webpack.github.io/docs/hot-module-replacement)
+  through `webpack-hot-middleware`, which reloads the page for the updates
+  that can't be hot-applied
 
 ### `yarn run build` (`build.js`)
 
 * Cleans up the output `/build` folder (`clean.js`)
 * Copies static files to the output folder (`copy.js`)
 * Creates application bundles with Webpack (`bundle.js`, `webpack.config.js`)
-
-### `yarn run deploy` (`deploy.js`)
-
-* Builds the project from source files (`build.js`)
-* Pushes the contents of the `/build` folder to a remote server with Git
 
 ## Options
 
@@ -28,9 +25,7 @@
 | `--release` | Minimizes and optimizes the compiled output                                         |
 | `--verbose` | Prints detailed information to the console                                          |
 | `--analyze` | Launches [Webpack Bundle Analyzer](https://github.com/th0r/webpack-bundle-analyzer) |
-| `--static`  | Renders [specified routes](./render.js#L15) as static html files                    |
-| `--docker`  | Build an image from a Dockerfile                                                    |
-| `--silent`  | Do not open the default browser                                                     |
+| `--silent`  | Do not open the default browser (what CI and the smoke tests pass)                   |
 
 For example:
 

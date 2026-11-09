@@ -7,7 +7,7 @@
  * LICENSE.txt file in the root directory of this source tree.
  */
 
-export function updateTag(tagName, keyName, keyValue, attrName, attrValue) {
+function updateTag(tagName, keyName, keyValue, attrName, attrValue) {
   const node = document.head.querySelector(
     `${tagName}[${keyName}="${keyValue}"]`,
   );
@@ -25,14 +25,6 @@ export function updateTag(tagName, keyName, keyValue, attrName, attrValue) {
   }
 }
 
-export function updateMeta(name, content) {
+export default function updateMeta(name, content) {
   updateTag('meta', 'name', name, 'content', content);
-}
-
-export function updateCustomMeta(property, content) {
-  updateTag('meta', 'property', property, 'content', content);
-}
-
-export function updateLink(rel, href) {
-  updateTag('link', 'rel', rel, 'href', href);
 }

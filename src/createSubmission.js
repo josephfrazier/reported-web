@@ -1,0 +1,189 @@
+import Parse from 'parse/node';
+import { detectFromBuffer } from 'mime-bytes/file-type-detector';
+
+import { isImage, isVideo } from './isImage.js';
+import { updateUserProfile } from './users.js';
+
+// Extracted from server.js's /submit handler so the submission-creation
+// logic can be tested against a real Parse Server without the surrounding
+// HTTP/multer/coercion glue. `user` and `sessionToken` are the request's
+// authenticated account (src/session.js); `versionNumber` comes from
+// server.js's app configuration; the remaining params are the form fields,
+// already coerced to their final types by the handler. Resolves to the
+// submission as the client receives it: Dates unwrapped to ISO strings and
+// objectId included (see #788).
+const createSubmission = async ({
+  user,
+  sessionToken,
+  email,
+  FirstName,
+  LastName,
+  Phone,
+  testify,
+  plate,
+  licenseState,
+  typeofreport,
+  typeofcomplaint,
+  reportDescription,
+  can_be_shared_publicly, // eslint-disable-line camelcase
+  withhold_contact_info_from_nypd, // eslint-disable-line camelcase
+  receive_nypd_sr_updates_by_email, // eslint-disable-line camelcase
+  latitude,
+  longitude,
+  formatted_address, // eslint-disable-line camelcase
+  CreateDate,
+  attachmentData,
+  versionNumber,
+}) => {
+  const timeofreport = new Date(CreateDate);
+  const timeofreported = timeofreport;
+
+  // The submit form doubles as a profile edit, as before, so the fields it
+  // carries are saved onto the reporter's account.
+  await updateUserProfile({
+    user,
+    sessionToken,
+    email,
+    FirstName,
+    LastName,
+    Phone,
+    testify,
+    can_be_shared_publicly, // eslint-disable-line camelcase
+    withhold_contact_info_from_nypd, // eslint-disable-line camelcase
+    receive_nypd_sr_updates_by_email, // eslint-disable-line camelcase
+  });
+
+  // Make sure all required fields are present. `licenseState` is deliberately
+  // absent: the state list is US-centric, so a plate can arrive with a state
+  // it does not hold, or with none the reporter can name, and the form asks
+  // for it without insisting.
+  Object.entries({
+    plate,
+    typeofcomplaint,
+    latitude,
+    longitude,
+    CreateDate,
+  }).forEach(([key, value]) => {
+    if (!value) {
+      throw { message: `${key} is required` }; // eslint-disable-line no-throw-literal
+    }
+  });
+
+  const timezone = process.env.TZ;
+  process.env.TZ = 'America/New_York';
+  if (timeofreport.valueOf() > Date.now()) {
+    const message = `Timestamp cannot be in the future (submitted time: ${timeofreport}, actual time: ${new Date()})`;
+    // Assigning an undefined value would store the string "undefined", so
+    // delete the variable instead when it was previously unset.
+    if (timezone === undefined) {
+      delete process.env.TZ;
+    } else {
+      process.env.TZ = timezone;
+    }
+    throw { message }; // eslint-disable-line no-throw-literal
+  }
+
+  const Submission = Parse.Object.extend('submission');
+  const submission = new Submission();
+  submission.set({
+    user,
+
+    FirstName,
+    LastName,
+    Phone,
+    testify,
+
+    Username: email,
+
+    typeofreport,
+    selectedReport: typeofreport === 'complaint' ? 1 : 0,
+    colorTaxi: 'Black', // see https://reportedcab.slack.com/messages/C852Q265V/p1528474895000562
+    medallionNo: plate,
+    license: plate, // https://github.com/josephfrazier/Reported-Web/issues/23
+    state: licenseState, // https://github.com/josephfrazier/Reported-Web/issues/23
+    typeofcomplaint,
+    passenger: false,
+    locationNumber: 1,
+    latitude: latitude.toString(),
+    longitude: longitude.toString(),
+    latitude1: latitude,
+    longitude1: longitude,
+    location: new Parse.GeoPoint({ latitude, longitude }),
+    loc1_address: formatted_address, // eslint-disable-line camelcase
+    timeofreport,
+    timeofreported,
+    reportDescription,
+    can_be_shared_publicly, // eslint-disable-line camelcase
+    status: 0,
+    operating_system: 'web',
+    version_number: versionNumber,
+    reqnumber: 'N/A until submitted to 311',
+  });
+  submission.setACL(new Parse.ACL(user));
+
+  // Sparse flag: only stored when true, so existing submissions are
+  // unaffected (absence means contact info is included on the 311
+  // report). See https://github.com/jeffrono/Reported/pull/66
+  // eslint-disable-next-line camelcase
+  if (withhold_contact_info_from_nypd) {
+    submission.set('withhold_contact_info_from_nypd', true);
+  }
+
+  // Same sparse pattern as above: only stored when true. The backend
+  // subscribes the reporter to the NYPD SR by email when this flag and
+  // withhold_contact_info_from_nypd are both set. See
+  // https://github.com/jeffrono/Reported/pull/81
+  // eslint-disable-next-line camelcase
+  if (receive_nypd_sr_updates_by_email) {
+    submission.set('receive_nypd_sr_updates_by_email', true);
+  }
+
+  // upload attachments
+  // http://docs.parseplatform.org/js/guide/#creating-a-parsefile
+
+  const attachmentsWithFormats = await Promise.all(
+    attachmentData.map(async ({ buffer: attachmentBuffer }) => ({
+      attachmentBuffer,
+      ext: (await detectFromBuffer(attachmentBuffer))?.name || 'jpg',
+    })),
+  );
+
+  const images = attachmentsWithFormats.filter(isImage);
+  const videos = attachmentsWithFormats.filter(isVideo);
+
+  // The submission is ACLed to its reporter, so its files and the submission
+  // itself are saved with that user's session token: parse-server then
+  // enforces the ACL instead of trusting this code to apply it.
+  await Promise.all([
+    ...images.slice(0, 3).map(async ({ attachmentBuffer, ext }, index) => {
+      const key = `photoData${index}`;
+      const file = new Parse.File(`${key}.${ext}`, {
+        base64: attachmentBuffer.toString('base64'),
+      });
+      await file.save({ sessionToken });
+      submission.set(key, file);
+    }),
+    ...videos.slice(0, 3).map(async ({ attachmentBuffer, ext }, index) => {
+      const key = `videoData${index}`;
+      const file = new Parse.File(`${key}.${ext}`, {
+        base64: attachmentBuffer.toString('base64'),
+      });
+      await file.save({ sessionToken });
+      submission.set(key, file.url());
+    }),
+  ]);
+  await submission.save(null, { sessionToken });
+
+  // Unwrap encoded Date objects into ISO strings
+  // before: { __type: 'Date', iso: '2018-05-26T23:17:22.000Z' }
+  // after: '2018-05-26T23:17:22.000Z'
+  const submissionValue = submission.toJSON();
+  submissionValue.timeofreport = submissionValue.timeofreport.iso;
+  submissionValue.timeofreported = submissionValue.timeofreported.iso;
+  // Explicitly include objectId so the client can pass it
+  // back for delete/cancel operations (see #788)
+  submissionValue.objectId = submission.id;
+  return submissionValue;
+};
+
+export default createSubmission;

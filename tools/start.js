@@ -9,7 +9,6 @@
 
 import path from 'path';
 import express from 'express';
-import browserSync from 'browser-sync';
 import webpack from 'webpack';
 import webpackDevMiddleware from 'webpack-dev-middleware';
 import webpackHotMiddleware from 'webpack-hot-middleware';
@@ -18,8 +17,11 @@ import webpackConfig from './webpack.config.js';
 import run, { format } from './run.js';
 import clean from './clean.js';
 import copy from './copy.js';
+import openBrowser from './lib/openBrowser.js';
 
-const isDebug = !process.argv.includes('--release');
+// Same default as the production server (see src/config.js), so the pages
+// the docs, the smoke tests and the Playwright scripts point at don't move.
+const port = process.env.PORT || 3000;
 
 // https://webpack.js.org/configuration/watch/#watchoptions
 const watchOptions = {
@@ -62,8 +64,15 @@ function createCompilationPromise(name, compiler, config) {
 let server;
 
 /**
- * Launches a development web server with "live reload" functionality -
- * synchronizing URLs, interactions and code changes across multiple devices.
+ * Launches the development web server: the middleware stack below, listening
+ * on its own port.
+ *
+ * Code changes reach the browser through webpack-hot-middleware, whose client
+ * (tools/lib/webpackHotDevClient.js) applies hot updates and reloads the page
+ * for the ones that can't be hot-applied. Browsersync used to wrap all of
+ * this in a second HTTP server that added live reload on top of that HMR and
+ * dragged in forty transitive dependencies, so it's gone; `--silent` now only
+ * means "don't open a browser".
  */
 async function start() {
   if (server) return server;
@@ -209,23 +218,21 @@ async function start() {
   appPromiseIsResolved = true;
   appPromiseResolve();
 
-  // Launch the development server with Browsersync and HMR
-  await new Promise((resolve, reject) =>
-    browserSync.create().init(
-      {
-        // https://www.browsersync.io/docs/options
-        server: 'src/server.js',
-        middleware: [server],
-        open: !process.argv.includes('--silent'),
-        ...(isDebug ? {} : { notify: false, ui: false }),
-      },
-      (error, bs) => (error ? reject(error) : resolve(bs)),
-    ),
-  );
+  // Launch the development server. Binding without a host listens on every
+  // interface, the way Browsersync did, so a published sandbox port or a
+  // phone on the LAN reaches it too.
+  await new Promise((resolve, reject) => {
+    const listener = server.listen(port, () => resolve());
+    listener.on('error', reject);
+  });
 
   const timeEnd = new Date();
   const time = timeEnd.getTime() - timeStart.getTime();
   console.info(`[${format(timeEnd)}] Server launched after ${time} ms`);
+  console.info(`Dev server listening at http://localhost:${port}/`);
+  if (!process.argv.includes('--silent')) {
+    openBrowser(`http://localhost:${port}/`);
+  }
   return server;
 }
 

@@ -20,9 +20,25 @@ module.exports = [
   { ignores: ignorePatterns },
   ...compat.config(rulesConfig),
 
+  // Server-side code: Node.js 24 globals
+  {
+    files: ['src/server.js', 'src/alpr.js'],
+    languageOptions: {
+      globals: {
+        globalThis: 'readonly',
+      },
+    },
+  },
+
   // Build scripts: allowed to reference build output and use dynamic requires
+  // and reference Node.js globals
   {
     files: ['tools/**/*.js'],
+    languageOptions: {
+      globals: {
+        globalThis: 'readonly',
+      },
+    },
     rules: {
       'import/no-unresolved': 'off',
       'import/no-extraneous-dependencies': 'off',

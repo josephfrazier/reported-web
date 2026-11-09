@@ -110,45 +110,29 @@ class SubmissionDetails extends React.Component {
         loading: () => 'Loading Service Request Status...',
       });
 
-    const srStatusOrDeleteButton = () => {
-      const hasSrStatus = status !== 0 && (tlcCaseId || nypdCaseId);
-      if (hasSrStatus) {
-        const TlcStatus = tlcCaseId && makeLoadableSrStatus(tlcCaseId);
-        const NypdStatus = nypdCaseId && makeLoadableSrStatus(nypdCaseId);
-        return (
-          <React.Fragment>
-            {TlcStatus && (
-              <div>
-                <strong>TLC Service Request:</strong>
-                <TlcStatus />
-              </div>
-            )}
-            {NypdStatus && (
-              <div>
-                <strong>NYPD Service Request:</strong>
-                <NypdStatus />
-              </div>
-            )}
-          </React.Fragment>
-        );
+    const hasSrStatus = status !== 0 && (tlcCaseId || nypdCaseId);
+
+    const srStatus = () => {
+      if (!hasSrStatus) {
+        return null;
       }
+      const TlcStatus = tlcCaseId && makeLoadableSrStatus(tlcCaseId);
+      const NypdStatus = nypdCaseId && makeLoadableSrStatus(nypdCaseId);
       return (
-        <button
-          type="button"
-          style={{
-            margin: '1px',
-            color: 'red', // Ubuntu Chrome shows black otherwise
-            background: 'white',
-          }}
-          onClick={() => {
-            this.props.onDeleteSubmission({ objectId });
-          }}
-        >
-          <span role="img" aria-label="Delete Submission">
-            ❌
-          </span>
-          Delete Submission
-        </button>
+        <React.Fragment>
+          {TlcStatus && (
+            <div>
+              <strong>TLC Service Request:</strong>
+              <TlcStatus />
+            </div>
+          )}
+          {NypdStatus && (
+            <div>
+              <strong>NYPD Service Request:</strong>
+              <NypdStatus />
+            </div>
+          )}
+        </React.Fragment>
       );
     };
 
@@ -162,9 +146,33 @@ class SubmissionDetails extends React.Component {
         }}
       >
         <summary>
-          {medallionNo || license} ({licenseState}) {typeofcomplaint} near{' '}
+          {medallionNo || license}
+          {licenseState ? ` (${licenseState})` : ''} {typeofcomplaint} near{' '}
           {/* eslint-disable-next-line camelcase */}
           {(loc1_address || '').split(',')[0]} on {humanTimeString}
+          {!hasSrStatus && (
+            <React.Fragment>
+              {' '}
+              <button
+                type="button"
+                title="Delete Submission"
+                style={{
+                  margin: '1px',
+                  color: 'red', // Ubuntu Chrome shows black otherwise
+                  background: 'white',
+                }}
+                onClick={evt => {
+                  // Do not let the click also toggle the <details> open.
+                  evt.preventDefault();
+                  this.props.onDeleteSubmission({ objectId });
+                }}
+              >
+                <span role="img" aria-label="Delete Submission">
+                  ❌
+                </span>
+              </button>
+            </React.Fragment>
+          )}
           {tlcCaseId && (
             <React.Fragment>
               <br />
@@ -198,7 +206,7 @@ class SubmissionDetails extends React.Component {
             <p>{reportDescription}</p>
             <ImagesAndVideos />
 
-            {srStatusOrDeleteButton()}
+            {srStatus()}
           </React.Fragment>
         )}
       </details>

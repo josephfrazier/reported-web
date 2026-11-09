@@ -4637,6 +4637,17 @@ class Home extends React.Component {
       return null;
     }
 
+    // A frame can be evidence for more than one violation: a wide shot that
+    // reads several plates gives each car a row, and the split's second pass
+    // gives the frame to every one of them (see `splitCluster`). A row whose
+    // photo appears in another row says so.
+    const rowsByFile = new Map();
+    batchViolations.forEach(violation => {
+      violation.photos.forEach(photo => {
+        rowsByFile.set(photo.file, (rowsByFile.get(photo.file) || 0) + 1);
+      });
+    });
+
     return (
       <React.Fragment>
         {batchProgress && (
@@ -4723,6 +4734,10 @@ class Home extends React.Component {
                 if (violation.photos.length > 3) {
                   flags.push('choose up to 3 to attach');
                 }
+
+                const sharesPhoto = violation.photos.some(
+                  photo => (rowsByFile.get(photo.file) || 0) > 1,
+                );
 
                 const identity = batchViolationIdentity(violation);
 
@@ -4851,6 +4866,17 @@ class Home extends React.Component {
                           title="This row has photos still to read. A reading that turns out to be another car takes that photo, and the ones with it, into a row of their own."
                         >
                           may split
+                        </span>
+                      )}
+                      {/* A shared frame is the most confusing split in the
+                          queue: the photo is in two rows because it shows two
+                          cars, and reporting either one carries it. */}
+                      {sharesPhoto && (
+                        <span
+                          className={homeStyles['batch-violation-shared']}
+                          title="One of this violation's photos also appears in another violation: the frame shows more than one car, and both reports can carry it."
+                        >
+                          shares a photo
                         </span>
                       )}
                     </button>

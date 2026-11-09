@@ -4863,6 +4863,40 @@ describe('Home', () => {
       cleanup();
     });
 
+    // One frame can be the first photo of two rows: a wide shot that reads two
+    // plates gives each car a violation, and both reports can carry the frame.
+    // The rows say so, because a photo that belongs to two rows is the most
+    // confusing split in the queue.
+    test('says when a row shares a photo with another violation', async () => {
+      const frame = jpeg({ name: 'frame.jpg', size: 10 });
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, tree, cleanup } = await renderBatchWithFiles([frame]);
+
+      expect(homeRef.current.state.batchViolations.map(v => v.plate)).toEqual([
+        'AAA111',
+        'BBB222',
+      ]);
+      expect(
+        homeRef.current.state.batchViolations.map(violation =>
+          violation.photos.map(photo => photo.name),
+        ),
+      ).toEqual([['frame.jpg'], ['frame.jpg']]);
+
+      const text = renderedText(tree.toJSON());
+      expect(text).toContain('shares a photo');
+      expect(text.match(/shares a photo/g)).toHaveLength(2);
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
     test('says a row is still reading while a reading it lost is tried again', async () => {
       const photo = jpeg({ name: 'a.jpg', size: 4 });
 

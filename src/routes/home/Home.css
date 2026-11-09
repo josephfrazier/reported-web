@@ -790,3 +790,11 @@ input[type='search']::-webkit-search-cancel-button {
   text-align: left;
   white-space: normal;
 }
+
+/* A row whose photo also sits in another violation. The same pill as the
+   pending mark, with a dashed edge: the row is settled, but one of its photos
+   belongs to another row as well. */
+.batch-violation-shared {
+  composes: batch-violation-pending;
+  border-style: dashed;
+}

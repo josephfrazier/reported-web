@@ -134,7 +134,7 @@
     "mongodb-memory-server": "^11.2.0",
     "null-loader": "^0.1.1",
     "parse-server": "9.4.0",
-    "playwright": "^1.62.1",
+    "playwright": "^1.65.0",
     "postcss": "^8.5.23",
     "postcss-calc": "^10.1.1",
     "postcss-flexbugs-fixes": "^5.0.2",

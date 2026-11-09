@@ -5382,6 +5382,129 @@ describe('Home', () => {
       cleanup();
     });
 
+    // The drag is not the only way. Each photo's tile carries a menu, so the
+    // same moves work from the keyboard: open the menu, choose the row or the
+    // new violation.
+    const photoMenu = (tree, name) =>
+      tree.root
+        .findAllByType('summary')
+        .find(node => node.props['aria-label'] === `Actions for ${name}`);
+
+    const menuAction = (tree, prefix) =>
+      tree.root
+        .findAllByType('button')
+        .find(node => String(node.props['aria-label']).startsWith(prefix));
+
+    test('moves a photo to another violation from its menu', async () => {
+      const photos = ['a', 'b', 'c'].map(name => {
+        const file = new File(['picture'], `${name}.jpg`, {
+          type: 'image/jpeg',
+        });
+        return { file, name: file.name, createDateMs: 1704110400000 };
+      });
+      const row = (photoList, plate, createDateMs) => ({
+        photos: photoList,
+        plate,
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs,
+      });
+
+      const { homeRef, tree, clickQueueLoad, cleanup } =
+        await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchPhotos: photos,
+          batchViolations: [
+            row(photos.slice(0, 2), 'AAA111', 1704110400000),
+            row([photos[2]], 'BBB222', 1704110500000),
+          ],
+        });
+      });
+
+      clickQueueLoad('AAA111');
+
+      // The menu is on the photo's tile, and names the other row.
+      expect(photoMenu(tree, 'b.jpg')).toBeDefined();
+      const moveButton = menuAction(tree, 'Move b.jpg to ');
+      expect(String(moveButton.props['aria-label'])).toContain('BBB222');
+
+      renderer.act(() => {
+        moveButton.props.onClick();
+      });
+
+      const { batchViolations, attachmentData } = homeRef.current.state;
+      expect(
+        batchViolations.map(violation => [
+          violation.plate,
+          violation.photos.map(photo => photo.name),
+          Boolean(violation.mergedByUser),
+        ]),
+      ).toEqual([
+        ['AAA111', ['a.jpg'], false],
+        ['BBB222', ['c.jpg', 'b.jpg'], true],
+      ]);
+      expect(attachmentData.map(file => file.name)).toEqual(['a.jpg']);
+
+      cleanup();
+    });
+
+    test('splits a photo into a new violation from its menu', async () => {
+      const photos = ['a', 'b'].map(name => {
+        const file = new File(['picture'], `${name}.jpg`, {
+          type: 'image/jpeg',
+        });
+        return { file, name: file.name, createDateMs: 1704110400000 };
+      });
+      const row = {
+        photos,
+        plate: 'AAA111',
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs: 1704110400000,
+      };
+
+      const { homeRef, tree, clickQueueLoad, cleanup } =
+        await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchPhotos: photos,
+          batchViolations: [row],
+        });
+      });
+
+      clickQueueLoad('AAA111');
+
+      // One row has nowhere to move a photo to, so the menu offers the split
+      // alone.
+      expect(photoMenu(tree, 'b.jpg')).toBeDefined();
+      expect(menuAction(tree, 'Move b.jpg to ')).toBeUndefined();
+
+      const splitButton = menuAction(tree, 'Split b.jpg into a new violation');
+      expect(splitButton).toBeDefined();
+      renderer.act(() => {
+        splitButton.props.onClick();
+      });
+
+      const { batchViolations, attachmentData } = homeRef.current.state;
+      expect(
+        batchViolations.map(violation => [
+          violation.photos.map(photo => photo.name),
+          Boolean(violation.mergedByUser),
+        ]),
+      ).toEqual([
+        [['a.jpg'], false],
+        [['b.jpg'], true],
+      ]);
+      expect(attachmentData.map(file => file.name)).toEqual(['a.jpg']);
+
+      cleanup();
+    });
+
     test('closes the row a moved photo leaves empty, and opens the next', async () => {
       const photos = ['a', 'b'].map(name => {
         const file = new File(['picture'], `${name}.jpg`, {

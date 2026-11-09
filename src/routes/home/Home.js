@@ -4553,6 +4553,48 @@ class Home extends React.Component {
                   }}
                   onClick={() => this.deletePhoto(photo)}
                 />
+                {loadedViolation && (
+                  <details
+                    className={homeStyles['batch-photo-actions']}
+                    // The tile itself drags the photo, so the menu must not
+                    // start a drag when it is used.
+                    onDragStart={event => event.stopPropagation()}
+                  >
+                    <summary aria-label={`Actions for ${name}`}>⋯</summary>
+                    <div className={homeStyles['batch-photo-actions-menu']}>
+                      {batchViolations
+                        .filter(row => row !== loadedViolation)
+                        .map(row => {
+                          const targetLabel = `${formatBatchViolationTime(
+                            row.createDateMs,
+                          )} — ${row.plate || 'nothing readable'}`;
+
+                          return (
+                            <button
+                              type="button"
+                              key={batchViolationIdentity(row)}
+                              aria-label={`Move ${name} to ${targetLabel}`}
+                              onClick={() =>
+                                this.movePhotoToViolation({
+                                  photo,
+                                  violation: row,
+                                })
+                              }
+                            >
+                              Move to {targetLabel}
+                            </button>
+                          );
+                        })}
+                      <button
+                        type="button"
+                        aria-label={`Split ${name} into a new violation`}
+                        onClick={() => this.movePhotoToNewViolation(photo)}
+                      >
+                        New violation
+                      </button>
+                    </div>
+                  </details>
+                )}
               </div>
             );
           })}

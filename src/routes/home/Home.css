@@ -738,3 +738,55 @@ input[type='search']::-webkit-search-cancel-button {
   color: #595959;
   font-size: 0.9rem;
 }
+
+/* A photo's own actions: move it to another violation, or split it into one
+   of its own, without a drag. The panel opens over the photo rather than
+   beside it, because the tile has no room outside its own edge. */
+.batch-photo-actions {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  z-index: 2;
+  width: max-content;
+}
+
+.batch-photo-actions summary {
+  display: block;
+  width: max-content;
+  padding: 0 6px;
+  list-style: none;
+  background: rgb(255 255 255 / 85%);
+  border-radius: 2px;
+  font-size: 1rem;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.batch-photo-actions summary::-webkit-details-marker {
+  display: none;
+}
+
+.batch-photo-actions-menu {
+  position: absolute;
+  right: 0;
+  bottom: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 15rem;
+  max-height: 9rem;
+  overflow-y: auto;
+  padding: 6px;
+  background: white;
+  border: 1px solid rgb(0 0 0 / 20%);
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
+  font-size: 0.9rem;
+  line-height: 1.2;
+}
+
+.batch-photo-actions .batch-photo-actions-menu button {
+  padding: 4px 6px;
+  text-align: left;
+  white-space: normal;
+}

@@ -563,7 +563,7 @@
             <tr><th>Case</th><th>Behaviour</th></tr>
           </thead>
           <tbody>
-            <tr><td>Photo with no GPS</td><td>Links on time alone — Android strips GPS (issue&nbsp;#751)</td></tr>
+            <tr><td>Photo with no GPS</td><td>Links on time alone — Android strips GPS (<a href="https://github.com/josephfrazier/reported-web/issues/751">issue&nbsp;#751</a>)</td></tr>
             <tr><td>Photo with no EXIF time</td><td>Falls back to file last-modified, sorts last</td></tr>
             <tr><td>Group with no plate read</td><td>Still created, flagged for manual entry</td></tr>
             <tr><td>After Submit</td><td>Auto-advances to the next violation</td></tr>
@@ -684,7 +684,7 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         image's pixel space, and <code>alpr.js</code> already attaches <code>uploadWidth</code> and
         <code>uploadHeight</code> to the response — normalising against those lets a 4096-wide and a
         2048-wide photo be compared fairly. The medallion pattern survives as an extra tie-break,
-        preserving the intent of issue&nbsp;#584.
+        preserving the intent of <a href="https://github.com/josephfrazier/reported-web/issues/584">issue&nbsp;#584</a>.
       </p>
 
       <div class="note">
@@ -1233,7 +1233,7 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
       </ol>
       <p>
         The feature grew past that sequence. The batch became the only attachment flow, the
-        single-report path was deleted, and main's server-side ALPR cache arrived in a merge. The
+        single-report path was deleted, and <a href="https://github.com/josephfrazier/reported-web/tree/main">main</a>'s server-side ALPR cache arrived in a merge. The
         grouping module and its tests still stand on their own and are the place to start a review.
       </p>
       <p>

@@ -6370,24 +6370,6 @@ class Home extends React.Component {
                           type="button"
                           style={{ float: 'left', margin: '1px' }}
                           onClick={() =>
-                            this.batchFolderInputRef.current?.click()
-                          }
-                        >
-                          Add a folder of photos and videos
-                        </button>
-                        <input
-                          ref={this.batchFolderInputRef}
-                          type="file"
-                          multiple
-                          webkitdirectory=""
-                          style={{ display: 'none' }}
-                          onChange={this.handleBatchFileInput}
-                        />
-
-                        <button
-                          type="button"
-                          style={{ float: 'left', margin: '1px' }}
-                          onClick={() =>
                             this.batchPhotosInputRef.current?.click()
                           }
                         >
@@ -6398,6 +6380,24 @@ class Home extends React.Component {
                           type="file"
                           multiple
                           accept="image/*,video/*,.zip,application/zip,application/x-zip-compressed"
+                          style={{ display: 'none' }}
+                          onChange={this.handleBatchFileInput}
+                        />
+
+                        <button
+                          type="button"
+                          style={{ float: 'left', margin: '1px' }}
+                          onClick={() =>
+                            this.batchFolderInputRef.current?.click()
+                          }
+                        >
+                          Add a folder of photos and videos
+                        </button>
+                        <input
+                          ref={this.batchFolderInputRef}
+                          type="file"
+                          multiple
+                          webkitdirectory=""
                           style={{ display: 'none' }}
                           onChange={this.handleBatchFileInput}
                         />

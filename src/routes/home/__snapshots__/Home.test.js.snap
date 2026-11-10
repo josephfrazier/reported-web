@@ -119,29 +119,6 @@ exports[`Home hides form fields when logged in with no photos uploaded 1`] = `
                 }
                 type="button"
               >
-                Add a folder of photos and videos
-              </button>
-              <input
-                multiple={true}
-                onChange={[Function]}
-                style={
-                  {
-                    "display": "none",
-                  }
-                }
-                type="file"
-                webkitdirectory=""
-              />
-              <button
-                onClick={[Function]}
-                style={
-                  {
-                    "float": "left",
-                    "margin": "1px",
-                  }
-                }
-                type="button"
-              >
                 Add pictures/videos or a zip file
               </button>
               <input
@@ -154,6 +131,29 @@ exports[`Home hides form fields when logged in with no photos uploaded 1`] = `
                   }
                 }
                 type="file"
+              />
+              <button
+                onClick={[Function]}
+                style={
+                  {
+                    "float": "left",
+                    "margin": "1px",
+                  }
+                }
+                type="button"
+              >
+                Add a folder of photos and videos
+              </button>
+              <input
+                multiple={true}
+                onChange={[Function]}
+                style={
+                  {
+                    "display": "none",
+                  }
+                }
+                type="file"
+                webkitdirectory=""
               />
               <div
                 style={
@@ -1889,29 +1889,6 @@ exports[`Home renders submission form and Previous Submissions when logged in wi
                 }
                 type="button"
               >
-                Add a folder of photos and videos
-              </button>
-              <input
-                multiple={true}
-                onChange={[Function]}
-                style={
-                  {
-                    "display": "none",
-                  }
-                }
-                type="file"
-                webkitdirectory=""
-              />
-              <button
-                onClick={[Function]}
-                style={
-                  {
-                    "float": "left",
-                    "margin": "1px",
-                  }
-                }
-                type="button"
-              >
                 Add pictures/videos or a zip file
               </button>
               <input
@@ -1924,6 +1901,29 @@ exports[`Home renders submission form and Previous Submissions when logged in wi
                   }
                 }
                 type="file"
+              />
+              <button
+                onClick={[Function]}
+                style={
+                  {
+                    "float": "left",
+                    "margin": "1px",
+                  }
+                }
+                type="button"
+              >
+                Add a folder of photos and videos
+              </button>
+              <input
+                multiple={true}
+                onChange={[Function]}
+                style={
+                  {
+                    "display": "none",
+                  }
+                }
+                type="file"
+                webkitdirectory=""
               />
               <div
                 style={
@@ -2729,29 +2729,6 @@ exports[`Home renders with allPlateResults entry missing plate and photos 1`] = 
                 }
                 type="button"
               >
-                Add a folder of photos and videos
-              </button>
-              <input
-                multiple={true}
-                onChange={[Function]}
-                style={
-                  {
-                    "display": "none",
-                  }
-                }
-                type="file"
-                webkitdirectory=""
-              />
-              <button
-                onClick={[Function]}
-                style={
-                  {
-                    "float": "left",
-                    "margin": "1px",
-                  }
-                }
-                type="button"
-              >
                 Add pictures/videos or a zip file
               </button>
               <input
@@ -2764,6 +2741,29 @@ exports[`Home renders with allPlateResults entry missing plate and photos 1`] = 
                   }
                 }
                 type="file"
+              />
+              <button
+                onClick={[Function]}
+                style={
+                  {
+                    "float": "left",
+                    "margin": "1px",
+                  }
+                }
+                type="button"
+              >
+                Add a folder of photos and videos
+              </button>
+              <input
+                multiple={true}
+                onChange={[Function]}
+                style={
+                  {
+                    "display": "none",
+                  }
+                }
+                type="file"
+                webkitdirectory=""
               />
               <div
                 style={
@@ -3569,29 +3569,6 @@ exports[`Home renders with undefined allPlateResults and photos 1`] = `
                 }
                 type="button"
               >
-                Add a folder of photos and videos
-              </button>
-              <input
-                multiple={true}
-                onChange={[Function]}
-                style={
-                  {
-                    "display": "none",
-                  }
-                }
-                type="file"
-                webkitdirectory=""
-              />
-              <button
-                onClick={[Function]}
-                style={
-                  {
-                    "float": "left",
-                    "margin": "1px",
-                  }
-                }
-                type="button"
-              >
                 Add pictures/videos or a zip file
               </button>
               <input
@@ -3604,6 +3581,29 @@ exports[`Home renders with undefined allPlateResults and photos 1`] = `
                   }
                 }
                 type="file"
+              />
+              <button
+                onClick={[Function]}
+                style={
+                  {
+                    "float": "left",
+                    "margin": "1px",
+                  }
+                }
+                type="button"
+              >
+                Add a folder of photos and videos
+              </button>
+              <input
+                multiple={true}
+                onChange={[Function]}
+                style={
+                  {
+                    "display": "none",
+                  }
+                }
+                type="file"
+                webkitdirectory=""
               />
               <div
                 style={

@@ -2879,14 +2879,13 @@ class Home extends React.Component {
     return this.batchQueue;
   };
 
-  // The pass over newly picked files: read each one, publishing whatever
-  // grouping has settled as it goes, then publish the rest.
+  // The pass over newly picked files: read each one's date and place, publish
+  // every row at once, then read the plates and let those reads divide rows.
   //
-  // Publishing is progressive, so the first violation can be reviewed while the
-  // rest of the batch is still being read. A violation settles once no photo
-  // still to come could join it (see isViolationSettled), and the last one can
-  // never settle on its own -- settling needs a later photo to pass it, and
-  // there is none -- so the final pass publishes everything that is left.
+  // Publishing before any plate is read is what puts the queue on screen while
+  // the plates are still being read: a plate only ever splits a time cluster,
+  // never merges two, so with the dates and places in hand the rows are already
+  // known. The plate reads refine them as they land.
   //
   // Only the new files are read on an add, not the whole batch: re-walking
   // every photo each time the array grows would re-read a whole folder on

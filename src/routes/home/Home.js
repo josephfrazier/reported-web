@@ -293,6 +293,65 @@ const momentOf = ({ createDateMs, createDateOffset }) => ({
   offset: createDateOffset,
 });
 
+// The file name a media URL ends in, if it names one.
+const fileNameFromUrl = url => {
+  try {
+    const name = new URL(url, 'https://example.invalid').pathname
+      .split('/')
+      .pop();
+    return name ? decodeURIComponent(name) : '';
+  } catch {
+    return '';
+  }
+};
+
+// The extension a media URL ends in, if it names one.
+const extensionFromUrl = url => {
+  const match = fileNameFromUrl(url).match(/\.([a-z0-9]+)$/i);
+  return match ? `.${match[1].toLowerCase()}` : '';
+};
+
+// The media a previous submission holds, as URLs and file names. Pictures
+// come back as Parse File objects (`{ name, url }`); videos as URL strings.
+const submissionMediaFiles = submission => {
+  const pictures = [
+    submission.photoData,
+    submission.photoData0,
+    submission.photoData1,
+    submission.photoData2,
+  ]
+    .filter(photoData => photoData?.url)
+    .map((photoData, index) => ({
+      url: photoData.url,
+      name:
+        photoData.name ||
+        fileNameFromUrl(photoData.url) ||
+        `photo${index}${extensionFromUrl(photoData.url)}`,
+    }));
+
+  const videos = [
+    submission.videoData0,
+    submission.videoData1,
+    submission.videoData2,
+  ]
+    .filter(url => typeof url === 'string' && url)
+    .map((url, index) => ({
+      url,
+      name: fileNameFromUrl(url) || `video${index}${extensionFromUrl(url)}`,
+    }));
+
+  return [...pictures, ...videos];
+};
+
+// The files a previous submission's media URLs hold, fetched for the form.
+const downloadSubmissionMedia = submission =>
+  Promise.all(
+    submissionMediaFiles(submission).map(async ({ url, name }) => {
+      const { data } = await axios.get(url, { responseType: 'blob' });
+      return new File([data], name, { type: data.type });
+    }),
+  );
+
 async function blobToBuffer({ attachmentFile }) {
   console.time(`blobUtil.blobToArrayBuffer(${attachmentFile.name})`); // eslint-disable-line no-console
   const attachmentArrayBuffer =
@@ -1214,25 +1273,95 @@ class Home extends React.Component {
     if (!window.confirm(confirmationMessage)) {
       return;
     }
-    axios
-      .post('/api/deleteSubmission', {
-        ...this.getPerSubmissionState(),
-        objectId,
-      })
-      .then(() => {
-        // Drop it from the cache too, so it doesn't come back on the next
-        // page load before the background fetch replaces the cached list.
-        removeCachedSubmission(objectId);
+    this.deletePreviousSubmission(objectId).catch(error => {
+      Home.handleAxiosError(error);
+    });
+  };
 
-        this.setState(state => ({
-          submissions: state.submissions.filter(
-            sub => sub.objectId !== objectId,
-          ),
-        }));
-      })
-      .catch(error => {
-        Home.handleAxiosError(error);
+  // Turn a previous submission back into the report in the form: its media,
+  // time, place and report fields replace what is there. The submission is
+  // deleted after the media is in hand, so a failed download leaves it.
+  onEditSubmission = async submission => {
+    const { objectId } = submission;
+
+    if (!objectId) {
+      Home.notifyError(
+        'Unable to edit this submission — no objectId available. Try reloading the page and loading previous submissions to get the server-assigned ID.',
+      );
+      return;
+    }
+
+    const confirmationMessage =
+      'Editing this submission deletes it and replaces the current report with its details. Continue?';
+    // eslint-disable-next-line no-alert
+    if (!window.confirm(confirmationMessage)) {
+      return;
+    }
+
+    let files;
+    try {
+      files = await downloadSubmissionMedia(submission);
+    } catch (error) {
+      console.error(error);
+      Home.notifyError(
+        "Could not load this submission's photos and videos. Try again.",
+      );
+      return;
+    }
+
+    try {
+      await this.deletePreviousSubmission(objectId);
+    } catch (error) {
+      Home.handleAxiosError(error);
+      return;
+    }
+
+    const createDateMs = new Date(submission.timeofreport).getTime();
+    const createDateOffset = getNycTimezoneOffset(new Date(createDateMs));
+    const latitude = Number(submission.latitude1 ?? submission.latitude);
+    const longitude = Number(submission.longitude1 ?? submission.longitude);
+
+    files.forEach(file => {
+      this.photoReadings.set(file, {
+        ...emptyReading(file),
+        createDateMs,
+        createDateOffset,
+        latitude,
+        longitude,
       });
+    });
+
+    startBackgroundUploads(files);
+
+    this.setState(state => ({
+      attachmentData: files,
+      allPlateData: null,
+      plateDataByAttachmentName: {},
+      plate: submission.medallionNo || submission.license || '',
+      licenseState: submission.state || 'NY',
+      plateProvenance: PLATE_TYPED,
+      CreateDate: createDateValue({
+        millisecondsSinceEpoch: createDateMs,
+        offset: createDateOffset,
+      }),
+      latitude,
+      longitude,
+      formatted_address: submission.loc1_address || '',
+      addressProvenance: '',
+      coordsAreInNyc: true,
+      typeofcomplaint: submission.typeofcomplaint ?? state.typeofcomplaint,
+      reportDescription: submission.reportDescription ?? '',
+      can_be_shared_publicly: submission.can_be_shared_publicly ?? true,
+      withhold_contact_info_from_nypd: Boolean(
+        submission.withhold_contact_info_from_nypd,
+      ),
+      receive_nypd_sr_updates_by_email: Boolean(
+        submission.receive_nypd_sr_updates_by_email,
+      ),
+      testify: Boolean(submission.testify),
+      vehicleInfoComponent: null,
+      violationSummaryComponent: null,
+    }));
   };
 
   getPerSubmissionState() {
@@ -1244,6 +1373,30 @@ class Home extends React.Component {
       ),
     );
   }
+
+  deletePreviousSubmission = objectId =>
+    axios
+      .post('/api/deleteSubmission', {
+        ...this.getPerSubmissionState(),
+        objectId,
+      })
+      .then(
+        () =>
+          new Promise(resolve => {
+            // Drop it from the cache too, so it doesn't come back on the next
+            // page load before the background fetch replaces the cached list.
+            removeCachedSubmission(objectId);
+
+            this.setState(
+              state => ({
+                submissions: state.submissions.filter(
+                  sub => sub.objectId !== objectId,
+                ),
+              }),
+              resolve,
+            );
+          }),
+      );
 
   // Request the browser's geolocation permission and update coordinates.
   // Deferred until after login so the permission prompt appears in a trusted
@@ -4090,6 +4243,7 @@ class Home extends React.Component {
                       <PreviousSubmissionsList
                         submissions={this.state.submissions}
                         onDeleteSubmission={this.onDeleteSubmission}
+                        onEditSubmission={this.onEditSubmission}
                         isLoading={this.state.isPreviousSubmissionsLoading}
                         hasLoadedPreviousSubmissions={
                           this.state.hasLoadedPreviousSubmissions

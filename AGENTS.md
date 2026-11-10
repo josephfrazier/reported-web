@@ -51,6 +51,14 @@
 
 - **Keep the `runtime-dyno-metadata` lab.** `version_number` on each Parse submission is `Number(HEROKU_RELEASE_VERSION.slice(1))` (`src/server.js`). The Back4App column is typed Number, so a commit hash cannot replace it. The user looks up the commit for a release with `heroku releases`. Do not propose removing the lab.
 - **Do not unset `HEROKU_RELEASE_VERSION` anywhere.** On review apps it comes from a frozen 2021 snapshot in the pipeline's review-app config vars (`v326`, next to `HEROKU_APP_NAME=reported-web`). Without the variable, `undefined.slice` throws in the multer callback and the process exits on every submission. Clean the snapshot only after `versionNumber` gets a fallback.
+- **Review apps copy config vars only at creation.** A new parent variable is absent until you set it on the review app or recreate the app. On 2026-10-22 the review app for PR #1103 failed every ALPR read because it predated `PLATERECOGNIZER_TOKEN_LIST`. Copy a variable without a rebuild:
+
+  ```bash
+  heroku config:set -a <review-app> \
+    PLATERECOGNIZER_TOKEN_LIST="$(heroku config:get PLATERECOGNIZER_TOKEN_LIST -a reported-web)"
+  ```
+
+  Review app names look like `reported-web-<branch-fragment>-<hash>`. Their `window.App.sentryDsn` is undefined, so their server errors do not reach Sentry. Use `heroku logs -a <review-app>`.
 
 ## Change guidance
 

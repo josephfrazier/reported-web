@@ -1989,6 +1989,73 @@ describe('Home', () => {
     tree.unmount();
   });
 
+  test('does not remember an address that fell back to the top result', async () => {
+    jest.useFakeTimers();
+
+    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+    const axiosPost = jest.spyOn(axios, 'post').mockResolvedValue({
+      data: {
+        features: [
+          {
+            properties: {
+              housenumber: '123',
+              street: 'Main St',
+              borough: 'Manhattan',
+            },
+          },
+        ],
+        // The city's address directory was down, so this is the top result
+        // rather than the canonical address.
+        fellBackToTopResult: true,
+      },
+    });
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ homeRef });
+    });
+
+    const coordinates = { latitude: 40.7129, longitude: -74.0061 };
+    const searches = () =>
+      axiosPost.mock.calls.filter(([url]) => url === '/api/geosearch');
+
+    renderer.act(() => {
+      homeRef.current.setCoords(coordinates);
+    });
+    await renderer.act(async () => {
+      jest.advanceTimersByTime(500);
+    });
+
+    // The address is shown, but it is not the one the address directory stood
+    // behind, so it is not kept.
+    expect(homeRef.current.state.formatted_address).toBe(
+      '123 Main St, Manhattan',
+    );
+    expect(
+      homeRef.current.geosearchAddressCache.get(coordinates),
+    ).toBeUndefined();
+
+    // The same coordinates again ask again, rather than reusing the fallback.
+    renderer.act(() => {
+      homeRef.current.setCoords(coordinates);
+    });
+    await renderer.act(async () => {
+      jest.advanceTimersByTime(500);
+    });
+
+    expect(searches()).toHaveLength(2);
+
+    jest.useRealTimers();
+    axiosGet.mockRestore();
+    axiosPost.mockRestore();
+    consoleError.mockRestore();
+    tree.unmount();
+  });
+
   test('still submits when geosearch fails', async () => {
     jest.useFakeTimers();
 

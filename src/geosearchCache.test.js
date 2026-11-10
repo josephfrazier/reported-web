@@ -161,6 +161,8 @@ describe('geosearch', () => {
 
     expect(axiosGet).toHaveBeenCalledTimes(1);
     expect(second).toEqual(first);
+    // The page uses this to decide whether the address is safe to remember.
+    expect(first.fellBackToTopResult).toBe(false);
   });
 
   test('keys the selected address after normalizing it', async () => {
@@ -210,8 +212,12 @@ describe('geosearch', () => {
         : Promise.resolve(withBbl),
     );
 
+    const first = await geosearch({ lat: 40.7, long: -73.9 });
     await geosearch({ lat: 40.7, long: -73.9 });
-    await geosearch({ lat: 40.7, long: -73.9 });
+
+    // The response says the answer fell back, so the page can leave it out of
+    // its own memo too.
+    expect(first.fellBackToTopResult).toBe(true);
 
     // The fallback was not kept: the second visit asked geosearch again, and
     // the failed PAD lookup does not hide behind an entry.

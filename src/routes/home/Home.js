@@ -1532,7 +1532,11 @@ class Home extends React.Component {
           // some other location's address and must not be filed under this
           // key. A selected-address result is filed under no key, since the
           // cache serves coordinate-only lookups.
-          if (!address) {
+          //
+          // A fallback says the city's address directory was unavailable, so
+          // the address may change once it answers: show it, but do not keep
+          // it.
+          if (!address && !data.fellBackToTopResult) {
             this.geosearchAddressCache.set({
               latitude,
               longitude,

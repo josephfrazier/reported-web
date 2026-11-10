@@ -636,23 +636,18 @@ function batchViolationIdentity(violation) {
   return `${violation.createDateMs}-${violation.plate}-${violation.photos[0]?.name}`;
 }
 
-// `extractDate` returns `{ millisecondsSinceEpoch, offset }` for a picture but
-// a bare number for a video: `extractLocationDateFromVideo` returns the two
-// together, and `extractDate` hands back only the time, which leaves the
-// single-violation flow's `setCreateDate` destructuring with two undefineds
-// and an Invalid Date. The batch normalises both shapes to the milliseconds it
-// sorts and groups on, keeping the offset for when the violation is loaded.
+// What a photo's date read gave, in the field names the grouping uses. A read
+// that failed gives nothing, so its photo sorts and groups on the file's
+// modification time instead.
 function normalizeExtractedDate(extractedDate) {
-  if (Number.isFinite(extractedDate)) {
-    return { createDateMs: extractedDate };
+  if (!Number.isFinite(extractedDate?.millisecondsSinceEpoch)) {
+    return {};
   }
-  if (Number.isFinite(extractedDate?.millisecondsSinceEpoch)) {
-    return {
-      createDateMs: extractedDate.millisecondsSinceEpoch,
-      createDateOffset: extractedDate.offset,
-    };
-  }
-  return {};
+
+  return {
+    createDateMs: extractedDate.millisecondsSinceEpoch,
+    createDateOffset: extractedDate.offset,
+  };
 }
 
 // What to attach for a violation with more photos than one report can carry:

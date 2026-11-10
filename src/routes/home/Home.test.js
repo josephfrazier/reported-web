@@ -381,6 +381,18 @@ function renderPlateInput() {
   };
 }
 
+// The rendered tree keeps every JSX child as its own entry, so a sentence with
+// interpolations in it is not one string in there: the error message serializes
+// as "Could not look up make/model of ", "ABC123", " in", " ", "ON", ",". Join
+// the text back together before asserting on a sentence, the way a reader sees
+// it.
+function renderedText(node) {
+  if (node == null) return '';
+  if (typeof node === 'string') return node;
+  if (Array.isArray(node)) return node.map(renderedText).join('');
+  return renderedText(node.children);
+}
+
 describe('Home', () => {
   test('renders submission form and Previous Submissions when logged in with photos', () => {
     const initialState = {
@@ -4462,18 +4474,6 @@ describe('NycAddressAutocomplete', () => {
     expect(controlContainer.contains(input)).toBe(false);
   });
 });
-
-// The rendered tree keeps every JSX child as its own entry, so a sentence with
-// interpolations in it is not one string in there: the error message serializes
-// as "Could not look up make/model of ", "ABC123", " in", " ", "ON", ",". Join
-// the text back together before asserting on a sentence, the way a reader sees
-// it.
-function renderedText(node) {
-  if (node == null) return '';
-  if (typeof node === 'string') return node;
-  if (Array.isArray(node)) return node.map(renderedText).join('');
-  return renderedText(node.children);
-}
 
 describe('license state', () => {
   // The form only renders for a logged-in reader with a photo attached.

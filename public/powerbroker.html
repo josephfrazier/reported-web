@@ -144,8 +144,14 @@ function showPhoto(id, art, image, u, v, trigger) {
     previewInfo.append(a); return a;
   };
   add('span', `${when} · ${record.address}${!record.borough || record.borough === 'Other' || record.address.includes(record.borough) ? '' : `, ${record.borough}`}`);
-  for (const sr of record.sr || []) link(`https://portal.311.nyc.gov/sr-details/?srnum=${encodeURIComponent(sr)}`, `NYC 311 request ${sr}`);
-  for (const sr of record.legacy || []) add('span', `NYC 311 request ${sr}`, 'nyc-code');
+  const agency = caseId => {
+    const action = record.srActions?.[caseId];
+    if (action === 'submit 311 illegal parking complaint') return 'NYPD · ';
+    if (action === 'submit 311 complaint') return 'TLC · ';
+    return '';
+  };
+  for (const sr of record.sr || []) link(`https://portal.311.nyc.gov/sr-details/?srnum=${encodeURIComponent(sr)}`, `${agency(sr)}NYC 311 request ${sr}`);
+  for (const sr of record.legacy || []) add('span', `${agency(sr)}NYC 311 request ${sr}`, 'nyc-code');
   for (const r of record.records || []) {
     const closed = r.closed ? ` ${shortDate.format(new Date(r.closed))}` : '';
     add('span', [r.agency, r.type, `${r.status || ''}${r.status === 'Closed' ? closed : ''}`].filter(Boolean).join(' · '), 'nyc-status');

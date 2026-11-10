@@ -541,7 +541,7 @@
           </thead>
           <tbody>
             <tr><td>Entry point</td><td>None — every pick, drop and paste feeds the batch; the batch is the only attachment flow</td></tr>
-            <tr><td>Photo input</td><td>A folder pick, a loose multi-file pick, or a drag-and-drop — all equally supported</td></tr>
+            <tr><td>Photo input</td><td>A folder pick, a loose multi-file pick (zips included), a drag-and-drop, or a paste — all equally supported</td></tr>
             <tr><td>Grouping signals</td><td>EXIF time to cluster, ALPR plate to split — no GPS, see <em>Why distance went</em></td></tr>
             <tr><td>Thresholds</td><td class="num">Δt ≤ 60 s, on time alone — see <em>Why distance went</em></td></tr>
             <tr><td>Plate's role</td><td>May <strong>split</strong> a time cluster</td></tr>
@@ -890,9 +890,11 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
       <h3>Geocode once per violation, not per photo</h3>
       <p>
         An address is a function of coordinates alone. A batch taken at one curb used to cost one
-        identical lookup per photo, and the memo already brings that down to one; grouping first
-        means the form only ever asks for the violation it is showing, and never for the ones it
-        has not reached.
+        identical lookup per photo, and the memo brings that down to one. Publishing asks for each
+        row's place as it publishes the row, one place at a time, so the form opens with its
+        address already in hand; the memo and the in-flight set keep a repeated place from being
+        fetched twice. <code>geocodePlaces</code> warms the memo for every distinct place while the
+        plate reads run.
       </p>
 
       <div class="note">
@@ -965,14 +967,17 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         <code>plate</code>, <code>licenseState</code>, <code>latitude</code>, <code>longitude</code>,
         <code>coordsAreInNyc</code>, <code>formatted_address</code>, <code>CreateDate</code>,
         <code>typeofcomplaint</code>, <code>reportDescription</code>,
-        <code>can_be_shared_publicly</code> — and is already wired into the submit payload. Loading a
-        violation sets them through the existing <code>setLicensePlate</code>,
-        <code>setCreateDate</code> and <code>setCoords</code>.
+        <code>can_be_shared_publicly</code>, <code>withhold_contact_info_from_nypd</code>,
+        <code>receive_nypd_sr_updates_by_email</code>, <code>testify</code> — and is already wired
+        into the submit payload. Loading a violation sets them through the existing
+        <code>setLicensePlate</code>, <code>setCreateDate</code> and <code>setCoords</code>.
       </p>
       <p>
-        Worth knowing: the name reads backwards. This repo's bundled <code>object.omit</code> (v3)
+        Worth knowing while reading the file: this repo's bundled <code>object.omit</code> (v3)
         treats its predicate as a <strong>keep</strong> filter, so despite saying <em>omit</em> the
-        helper returns only those keys.
+        helper returns only those keys. <code>getPerSubmissionState</code> spells its own filter out
+        rather than relying on that; the rest of the file still uses <code>omit</code> where the
+        name fits.
       </p>
       <p>
         <code>typeofcomplaint</code> is never auto-filled from a photo — it stays manual, as does
@@ -987,8 +992,8 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
       <h3>Ways in</h3>
       <p>
         Four inputs feed the same batch, so photos can arrive however they happen to be sitting on
-        disk — in a directory of their own, loose in a camera roll, dragged straight from a file
-        manager, or copied to the clipboard:
+        disk — in a directory of their own, loose in a camera roll, packed in a zip file, dragged
+        straight from a file manager, or copied to the clipboard:
       </p>
       <ul>
         <li>
@@ -1009,13 +1014,18 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         </li>
       </ul>
       <p>
-        The three picks read <code>event.target.files</code> directly rather than going through the
-        existing <code>FileReaderInput</code>. That component is used with <code>as="buffer"</code>,
-        which reads every selected file's contents into memory; across a whole folder that is a
-        great deal of buffering before ALPR has even started. (For the record it <em>would</em>
-        accept
-        <code>webkitdirectory</code> — it spreads unknown props onto the real input — it is the
-        buffering that rules it out.)
+        A zip picked through the loose-file input is opened out into the photos and videos it
+        holds. The app says how many it found, or why it could not read the archive; a zip that
+        holds nothing usable adds nothing to the batch.
+      </p>
+      <p>
+        The two file inputs read <code>event.target.files</code> directly rather than going through
+        the existing <code>FileReaderInput</code>. That component is used with
+        <code>as="buffer"</code>, which reads every selected file's contents into memory; across a
+        whole folder that is a great deal of buffering before ALPR has even started. (For the
+        record it <em>would</em> accept <code>webkitdirectory</code> — it spreads unknown props
+        onto the real input — it is the buffering that rules it out.) The drop and paste routes
+        hand over <code>File</code> objects the same way.
       </p>
       <p>
         Picks accumulate, so a folder and then a few stragglers make up one batch. Selection order
@@ -1038,9 +1048,9 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
       </p>
       <p>
         The bar names the two passes over the files themselves — dates and places, then plates.
-        Grouping happens with the first of them, and the queue appearing is that progress; the
-        geocoding of the batch's places runs quietly beside it. The bar's second pass is the plate
-        labels filling in.
+        Grouping happens with the first of them, and the queue appearing is that progress. The
+        batch's places are geocoded while the plate reads run, and publishing asks for each row's
+        place as it publishes the row. The bar's second pass is the plate labels filling in.
       </p>
 
       <h3>The queue</h3>
@@ -1061,19 +1071,20 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         the regrouping a later reading does would make it again.
       </p>
       <p>
-        Tick two or more rows and <strong>Merge</strong> appears on the queue's heading. It makes
-        one report of them, which the grouping cannot do for itself: it splits on time, and the
-        photo that establishes where a car is can sit minutes before the closeups that read its
-        plate, so the wide shot becomes a violation of its own. Only the user knows the two are one
-        report, and merging takes their word rather than re-running the clusterer, which would
-        split them apart again. The merged report keeps the plate of the group with the most
-        photos, and takes its time and place from all of the photos it now holds.
+        The <strong>Merge</strong> button sits on the queue's heading whenever two or more rows are
+        shown, and is enabled once two of them are ticked. It makes one report of them, which the
+        grouping cannot do for itself: it splits on time, and the photo that establishes where a
+        car is can sit minutes before the closeups that read its plate, so the wide shot becomes a
+        violation of its own. Only the user knows the two are one report, and merging takes their
+        word rather than re-running the clusterer, which would split them apart again. The merged
+        report keeps the plate of the group with the most photos, and takes its time and place from
+        all of the photos it now holds.
       </p>
       <p>
         Opening a row with nothing ticked ticks that row, so putting it together with the row
-        beside it is one tick rather than two. Opening a row while something is already ticked
-        leaves the selection as it is: what the user has ticked is theirs, and loading a row adds
-        nothing to it.
+        beside it is one tick rather than two. While fewer than two rows are ticked, the tick
+        follows the row the form shows: opening another row moves it. Once two or more are ticked —
+        a merge the user is building — opening another row leaves the selection as it is.
       </p>
       <p>
         A row's identity — what a tick names, and what the list's own keys are made of — is its
@@ -1094,11 +1105,12 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
       <h3>Groups over three photos</h3>
       <p>
         The picker shows every photo in the group with checkboxes, the first three pictures and
-        the first three videos selected. It must enforce <strong>3 images <em>and</em> 3
-        videos</strong>, because that is the server's
-        real limit — <code>createSubmission.js</code> takes <code>images.slice(0, 3)</code> and
-        <code>videos.slice(0, 3)</code> and drops the rest <em>without an error</em>. Today the only
-        hint is the button label, and the dropzone enforces nothing at all.
+        the first three videos selected. A fourth picture or video can be ticked so that its
+        thumbnail can be seen, and the warning says to uncheck one to swap it in. Submit stays off
+        until the report is back within <strong>3 images <em>and</em> 3 videos</strong>, which is
+        the server's real limit — <code>createSubmission.js</code> takes
+        <code>images.slice(0, 3)</code> and <code>videos.slice(0, 3)</code> and drops the rest
+        <em>without an error</em>, so the report cannot be filed over the cap.
       </p>
       <p>
         A report takes its time and place from the photos it is holding, so unticking one moves
@@ -1177,8 +1189,10 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         </li>
         <li>
           <b>Silent 3 + 3 truncation</b>
-          Extras past three images and three videos vanish with no error. The picker has to enforce
-          this or photos disappear between review and submission.
+          Extras past three images and three videos vanish in <code>createSubmission.js</code>
+          with no error. The picker warns when a fourth of either kind is ticked, and Submit
+          refuses until the report is back within the caps, so nothing disappears between review
+          and submission.
         </li>
         <li>
           <b>Violations outside NYC</b>
@@ -1201,7 +1215,7 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
     <!-- ============================ COMMITS ============================ -->
     <section id="commits">
       <h2>Implementation</h2>
-      <p>Three commits, in this order — the algorithm is pure and independently reviewable before any UI touches it.</p>
+      <p>The work started with three commits, in this order — the algorithm is pure and independently reviewable before any UI touches it.</p>
       <ol class="sequence">
         <li>
           <strong>The module.</strong> <code>groupAttachmentsByViolation.js</code> and its tests.
@@ -1212,11 +1226,16 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
           with its own test, so repeated lookups stop re-hitting NYC Planning Labs.
         </li>
         <li>
-          <strong>The wiring.</strong> Batch state, the three photo inputs, the early publish and the reads that refine it, the
-          queue, load-next, the picker and auto-advance in <code>Home.js</code>, plus the
-          <code>Home.test.js</code> coverage.
+          <strong>The wiring.</strong> Batch state, the four ways in, the early publish and the
+          reads that refine it, the queue, load-next, the picker and auto-advance in
+          <code>Home.js</code>, plus the <code>Home.test.js</code> coverage.
         </li>
       </ol>
+      <p>
+        The feature grew past that sequence. The batch became the only attachment flow, the
+        single-report path was deleted, and main's server-side ALPR cache arrived in a merge. The
+        grouping module and its tests still stand on their own and are the place to start a review.
+      </p>
       <p>
         Per the repo's conventions: run <code>yarn fix</code> before committing, create new commits
         rather than amending, and use markdown backticks around identifiers in commit messages.
@@ -1233,7 +1252,8 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
       </p>
       <p>
         Regenerate by re-reading that file, <code>src/alpr.js</code>,
-        <code>src/createSubmission.js</code> and <code>src/attachmentStore.js</code>.
+        <code>src/alprCache.js</code>, <code>src/createSubmission.js</code> and
+        <code>src/attachmentStore.js</code>.
       </p>
     </footer>
 

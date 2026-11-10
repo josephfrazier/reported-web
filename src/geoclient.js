@@ -1,6 +1,11 @@
 import axios from 'axios';
 import mem from 'mem';
 
+import {
+  geosearchCacheKey,
+  readCachedGeosearch,
+  writeCachedGeosearch,
+} from './geosearchCache.js';
 import normalizeAddress from './normalizeAddress.js';
 
 const GEOSEARCH_URL = 'https://geosearch.planninglabs.nyc/v2/reverse';
@@ -109,7 +114,7 @@ export async function selectCanonicalFeature(
   );
 }
 
-export async function geosearch({ lat, long, address }) {
+async function fetchGeosearch({ lat, long, address }) {
   const { data } = await axios.get(GEOSEARCH_URL, {
     params: {
       'point.lat': lat,
@@ -121,17 +126,55 @@ export async function geosearch({ lat, long, address }) {
   });
 
   if (!data.features.length) {
-    return data;
+    return { answer: data, fellBackToTopResult: false };
   }
 
+  // The canonical feature can fall back to the top result when the city's
+  // address directory cannot answer. That fallback answers this request but is
+  // not an answer to keep, so the caller is told not to store it.
+  let fellBackToTopResult = false;
   const feature = await selectCanonicalFeature(
     data.features,
-    getPadAddress,
+    async bbl => {
+      try {
+        return await getPadAddress(bbl);
+      } catch (error) {
+        fellBackToTopResult = true;
+        throw error;
+      }
+    },
     address,
   );
 
   return {
-    ...data,
-    features: [feature],
+    answer: {
+      ...data,
+      features: [feature],
+    },
+    fellBackToTopResult,
   };
+}
+
+export async function geosearch({ lat, long, address }) {
+  const cacheKey = geosearchCacheKey({ lat, long, address });
+
+  const cached = await readCachedGeosearch(cacheKey);
+  if (cached) {
+    console.info('/api/geosearch answered from the cache');
+    return cached;
+  }
+
+  const { answer, fellBackToTopResult } = await fetchGeosearch({
+    lat,
+    long,
+    address,
+  });
+
+  // A fallback caused by the address directory being down is asked again next
+  // time; only an answer the directory stood behind is kept.
+  if (!fellBackToTopResult) {
+    await writeCachedGeosearch(cacheKey, answer);
+  }
+
+  return answer;
 }

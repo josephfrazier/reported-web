@@ -112,6 +112,13 @@ class SubmissionDetails extends React.Component {
 
     const hasSrStatus = status !== 0 && (tlcCaseId || nypdCaseId);
 
+    // A submission the backend has taken up is too late to delete, even
+    // before its case number arrives: a task record is what says so.
+    const hasGoneTo311 =
+      (status != null && Number(status) !== 0) ||
+      (tasks || []).length > 0 ||
+      (reqnumber && reqnumber !== 'N/A until submitted to 311');
+
     const srStatus = () => {
       if (!hasSrStatus) {
         return null;
@@ -150,7 +157,7 @@ class SubmissionDetails extends React.Component {
           {licenseState ? ` (${licenseState})` : ''} {typeofcomplaint} near{' '}
           {/* eslint-disable-next-line camelcase */}
           {(loc1_address || '').split(',')[0]} on {humanTimeString}
-          {!hasSrStatus && (
+          {!hasGoneTo311 && (
             <React.Fragment>
               {' '}
               <button

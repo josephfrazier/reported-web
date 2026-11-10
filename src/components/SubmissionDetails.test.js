@@ -164,6 +164,32 @@ describe('SubmissionDetails', () => {
     expect(renderedText(wrapper.toJSON())).not.toContain('reportDescription');
   });
 
+  test('hides the delete button once a task exists, even without a case number', () => {
+    const submission = {
+      reqnumber: 'N/A until submitted to 311',
+      medallionNo: 'medallionNo',
+      state: 'licenseState',
+      typeofcomplaint: 'typeofcomplaint',
+      loc1_address: '82 Reade St, New York, NY 10007, USA',
+      timeofreport: new Date(Date.now()).toISOString(),
+      reportDescription: 'reportDescription',
+      status: 0,
+      tasks: [{ objectId: 'taskId', action: 'submit 311 complaint' }],
+    };
+
+    const wrapper = renderer.create(
+      <App context={{ insertCss: () => {}, fetch: () => {}, pathname: '' }}>
+        <SubmissionDetails
+          submission={submission}
+          onDeleteSubmission={() => {}}
+        />
+      </App>,
+    );
+
+    const summary = wrapper.root.findByType('summary');
+    expect(summary.findAllByType('button')).toHaveLength(0);
+  });
+
   test('renders TLC and NYPD SR numbers when submission has matching tasks', () => {
     const submission = {
       medallionNo: 'medallionNo',

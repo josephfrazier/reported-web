@@ -30,6 +30,10 @@ describe('deleteSubmission', () => {
   let emailOwnedSubmission;
   let pointerAccount;
   let pointerOnlySubmission;
+  let sentSubmission;
+  let reqnumberedSubmission;
+  let taskedSubmission;
+  let pendingTaskSubmission;
 
   beforeAll(async () => {
     // deleteSubmission() fetches and destroys with the master key, because a
@@ -99,6 +103,39 @@ describe('deleteSubmission', () => {
       new Date('2026-09-03T11:00:00.000Z'),
     );
     await pointerOnlySubmission.save();
+
+    // A submission the backend has sent to 311 carries a status, a service
+    // request number, or a task with the request's case id.
+    sentSubmission = new Submission();
+    sentSubmission.set('Username', username);
+    sentSubmission.set('status', 1);
+    await sentSubmission.save();
+
+    reqnumberedSubmission = new Submission();
+    reqnumberedSubmission.set('Username', username);
+    reqnumberedSubmission.set('reqnumber', 'TLC-12345');
+    await reqnumberedSubmission.save();
+
+    taskedSubmission = new Submission();
+    taskedSubmission.set('Username', username);
+    await taskedSubmission.save();
+
+    const Task = Parse.Object.extend('tasks');
+
+    const sentTask = new Task();
+    sentTask.set('submission', taskedSubmission);
+    sentTask.set('case_id', 'TLC-12345');
+    await sentTask.save();
+
+    // A task without a case id is a report the backend has taken up, before
+    // its case id arrives.
+    pendingTaskSubmission = new Submission();
+    pendingTaskSubmission.set('Username', username);
+    await pendingTaskSubmission.save();
+
+    const pendingTask = new Task();
+    pendingTask.set('submission', pendingTaskSubmission);
+    await pendingTask.save();
   });
 
   afterAll(() => stopParseServer());
@@ -200,5 +237,57 @@ describe('deleteSubmission', () => {
     expect(JSON.parse(stringify({ error: nonexistentError }))).toEqual(
       JSON.parse(stringify({ error: someoneElsesError })),
     );
+  });
+
+  test('rejects a submission with a 311 status', async () => {
+    await expect(callDeleteSubmission(sentSubmission.id)).rejects.toMatchObject(
+      {
+        message:
+          'this submission has already been sent to 311, so it cannot be deleted',
+      },
+    );
+
+    const query = new Parse.Query(Submission);
+    const stillThere = await query.get(sentSubmission.id);
+    expect(stillThere.id).toBe(sentSubmission.id);
+  });
+
+  test('rejects a submission with a 311 service request number', async () => {
+    await expect(
+      callDeleteSubmission(reqnumberedSubmission.id),
+    ).rejects.toMatchObject({
+      message:
+        'this submission has already been sent to 311, so it cannot be deleted',
+    });
+
+    const query = new Parse.Query(Submission);
+    const stillThere = await query.get(reqnumberedSubmission.id);
+    expect(stillThere.id).toBe(reqnumberedSubmission.id);
+  });
+
+  test('rejects a submission with a 311 task', async () => {
+    await expect(
+      callDeleteSubmission(taskedSubmission.id),
+    ).rejects.toMatchObject({
+      message:
+        'this submission has already been sent to 311, so it cannot be deleted',
+    });
+
+    const query = new Parse.Query(Submission);
+    const stillThere = await query.get(taskedSubmission.id);
+    expect(stillThere.id).toBe(taskedSubmission.id);
+  });
+
+  test('rejects a submission whose task has no case number yet', async () => {
+    await expect(
+      callDeleteSubmission(pendingTaskSubmission.id),
+    ).rejects.toMatchObject({
+      message:
+        'this submission has already been sent to 311, so it cannot be deleted',
+    });
+
+    const query = new Parse.Query(Submission);
+    const stillThere = await query.get(pendingTaskSubmission.id);
+    expect(stillThere.id).toBe(pendingTaskSubmission.id);
   });
 });

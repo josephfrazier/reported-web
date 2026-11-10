@@ -132,6 +132,9 @@ Never squash the trio together: each step is independently reviewable, and the h
   - `src/geoclient.test.js` depends on Google Geocoding and NYC Geoclient
 - In a restricted sandbox with no outbound access, those tests fail with DNS/network errors or timeouts. Work around this by running the narrowest relevant tests, or at least `yarn test:no-flaky` when you want parity with the main CI workflow.
 - Run tests as `yarn test [path]`, never `npx jest`: the `test` script is `node -r dotenv/config node_modules/.bin/jest`, and that `-r dotenv/config` is the only thing loading `.env`. Under `npx jest` the API-backed suites go out with undefined credentials and fail in a misleading way — it reads like the environment has no credentials rather than like jest was invoked without dotenv.
+- The real-Parse suites (`src/testUtils/realParseServer.js`, `mongodb-memory-server`) run offline in this sandbox: the mongod binary is cached at `~/.cache/mongodb-binaries/mongod-arm64-ubuntu-4.4.14`, so nothing downloads. `parse-server` and `mongodb-memory-server` are devDependencies.
+- A scratch test can drive the real Express app end to end. Set `PARSE_*`, `HEROKU_RELEASE_VERSION`, and `PLATERECOGNIZER_TOKEN` (`_TWO`) before `require('./server.js')`. Replace `app.listen` with one that binds port 0. Then POST with `globalThis.fetch` and `FormData`, with a `cookie: reportedWebSession=<session token>` header and `X-Forwarded-Proto: https`. `jest.mock('./chunk-manifest.json', () => ({}), { virtual: true })` is still needed.
+- jest 30's node environment does provide `fetch`, `FormData`, and `Blob`. The "jest's environment has no fetch of its own" comment in `src/alprCache.test.js` is stale. Stub `globalThis.fetch` and keep the real one in a local to call the app under test.
 
 ## Logging and countable events
 

@@ -549,7 +549,7 @@
             <tr><td>Violation time</td><td>From the <strong>earliest</strong> photo in the group</td></tr>
             <tr><td>Violation location</td><td>From the <strong>latest</strong> photo that has a fix — see <a href="#which-photo-gives-the-place"><em>Which photo gives the place</em></a></td></tr>
             <tr><td>More than 3 photos</td><td>Checkbox picker, the first three pictures and the first three videos pre-selected</td></tr>
-            <tr><td>Reload mid-batch</td><td>The queue is lost — in-memory only; the server's ALPR cache keeps its readings</td></tr>
+            <tr><td>Reload mid-batch</td><td>The queue is lost — in-memory only; the server's ALPR and geosearch caches keep their answers</td></tr>
             <tr><td>Publishing</td><td>All rows at once, after the dates-and-places pass and before the first plate read; reads divide rows as they land</td></tr>
             <tr><td>First violation</td><td>Loaded into the form automatically, with no click</td></tr>
           </tbody>
@@ -847,7 +847,8 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
       <h2>Caching</h2>
       <p>
         ALPR results are cached twice: a <code>WeakMap</code> in the page, and a disk cache on the
-        server. Both answer a repeated photo without another call.
+        server. Geosearch answers have two layers as well: the page's coordinate memo, and a disk
+        cache on the server. Each layer answers a repeated request without another call.
       </p>
 
       <div class="scroll">
@@ -873,8 +874,8 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
             </tr>
             <tr>
               <td>Geosearch, server side</td>
-              <td>Nothing. The endpoint calls through unconditionally</td>
-              <td>Nothing — the client memo is enough</td>
+              <td><code>geosearchCache.js</code>, keyed by the coordinates and the selected address, normalized; on by default, and off when <code>GEOSEARCH_CACHE_DIR</code> is set to nothing</td>
+              <td>Nothing new</td>
             </tr>
           </tbody>
         </table>
@@ -893,8 +894,9 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         identical lookup per photo, and the memo brings that down to one. Publishing asks for each
         row's place as it publishes the row, one place at a time, so the form opens with its
         address already in hand; the memo and the in-flight set keep a repeated place from being
-        fetched twice. <code>geocodePlaces</code> warms the memo for every distinct place while the
-        plate reads run.
+        fetched twice. A reload clears the page's memo, and the server's disk cache answers a
+        place it has seen before without calling geosearch. <code>geocodePlaces</code> warms the
+        memo for every distinct place while the plate reads run.
       </p>
 
       <div class="note">
@@ -1233,8 +1235,9 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
       </ol>
       <p>
         The feature grew past that sequence. The batch became the only attachment flow, the
-        single-report path was deleted, and <a href="https://github.com/josephfrazier/reported-web/tree/main">main</a>'s server-side ALPR cache arrived in a merge. The
-        grouping module and its tests still stand on their own and are the place to start a review.
+        single-report path was deleted, and <a href="https://github.com/josephfrazier/reported-web/tree/main">main</a>'s server-side ALPR and geosearch
+        caches arrived in merges. The grouping module and its tests still stand on their own and
+        are the place to start a review.
       </p>
       <p>
         Per the repo's conventions: run <code>yarn fix</code> before committing, create new commits
@@ -1252,8 +1255,8 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
       </p>
       <p>
         Regenerate by re-reading that file, <code>src/alpr.js</code>,
-        <code>src/alprCache.js</code>, <code>src/createSubmission.js</code> and
-        <code>src/attachmentStore.js</code>.
+        <code>src/alprCache.js</code>, <code>src/geosearchCache.js</code>,
+        <code>src/createSubmission.js</code> and <code>src/attachmentStore.js</code>.
       </p>
     </footer>
 

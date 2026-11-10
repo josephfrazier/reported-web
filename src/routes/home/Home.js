@@ -228,6 +228,19 @@ function startBackgroundUploads(attachmentData) {
   });
 }
 
+// Whether a failed submit failed because an attachment id it carried names a
+// file the server no longer has. The message is the server's own (see
+// `src/getAttachmentData.js`): the store drops an attachment an hour after it
+// was written, and a restart of the server takes the temp directory, and so
+// every attachment in it, with it.
+//
+// The page still holds the bytes, so this is the one failure worth sending
+// again -- with the files rather than the ids.
+const isMissingAttachmentError = error =>
+  (error?.response?.data?.error?.message ?? '').startsWith(
+    'Attachment not found',
+  );
+
 const geolocate = () =>
   promisedLocation().catch(async () => {
     const { data } = await axios.get('https://ipapi.co/json');
@@ -759,19 +772,6 @@ function rowHoldingFile(violations, file) {
       )
     : undefined;
 }
-
-// Whether a failed submit failed because an attachment id it carried names a
-// file the server no longer has. The message is the server's own (see
-// `src/getAttachmentData.js`): the store drops an attachment an hour after it
-// was written, and a restart of the server takes the temp directory, and so
-// every attachment in it, with it.
-//
-// The page still holds the bytes, so this is the one failure worth sending
-// again -- with the files rather than the ids.
-const isMissingAttachmentError = error =>
-  (error?.response?.data?.error?.message ?? '').startsWith(
-    'Attachment not found',
-  );
 
 // What the form says when it holds more attachments of one kind than a
 // submission carries. One copy, so the note above the button and the refusal

@@ -104,6 +104,21 @@ Never squash the trio together: each step is independently reviewable, and the h
 
   `git checkout -b my-branch origin/main` records `branch.my-branch.merge = refs/heads/main`, so the new branch tracks `main` rather than a same-named branch. With `push.default = upstream` (or `tracking`) in the user's global config, which is not visible from the sandbox, `git push origin my-branch` then resolves its destination from that upstream and **tries to push onto `main`** — rejected here with `GH006: Protected branch update failed` because `main` is protected, but it would land on an unprotected branch. `--no-track` leaves the branch with no upstream, so a push defaults to the same name, and the explicit `:refs/heads/<name>` destination overrides `push.default` and records the correct tracking ref. To repair a branch created the old way, point its upstream at itself with `git config branch.<name>.merge refs/heads/<name>` (or `git branch --unset-upstream <name>`).
 
+## Shared checkout and worktrees
+
+- **Other sessions share this checkout.** The tree is a direct-mode mount of the host's working copy. Another session can switch HEAD while you work. Run `git rev-parse --abbrev-ref HEAD` in the same command as `git commit`, not in an earlier call. If a commit lands on the wrong branch, move it with `git branch -f <branch> <commit>` and restore the other branch from its remote ref.
+- **Do not use the stash.** The stash list is shared too. One bare `git stash pop` applied another session's work. Park a file with `cp <file> $CLAUDE_JOB_DIR/tmp/`, then copy it back. If you must pop, read `git stash list` first and name the entry (`stash@{n}`).
+- **Prefer a throwaway worktree.** Run the branch, the edits, the tests, and the commit in a worktree outside the shared checkout:
+
+  ```bash
+  git worktree add --no-track -b <branch> /home/agent/<name> origin/main
+  ln -s <repo>/node_modules <worktree>/node_modules   # and .env
+  # edit, test, commit there
+  git worktree remove --force <worktree>              # branch ref stays in the repo
+  ```
+
+  The shared HEAD does not move, and the other session's dirty files stay untouched. Remove the worktree before the hand-off, so the user can `git checkout <branch>`. Do not borrow a `.claude/worktrees/<name>` checkout that belongs to another task; it blocks that task and the user's own checkout.
+
 ## Validation and CI gotchas
 
 - CI runs Node `26.13.0`; local sandboxes may not. Use `nvm install` and `nvm use` (the checked-in `.nvmrc` points to `26.13.0`) to match it.

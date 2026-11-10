@@ -1529,9 +1529,9 @@ class Home extends React.Component {
   // loaded. The submission is deleted after the media is in hand, so a failed
   // download leaves it.
   //
-  // A submission with no media makes no row: an empty violation has nothing to
-  // review or send. Its details go into the form instead, where the user can
-  // add photos to report them again.
+  // A submission with no media still gets its row. The row records the time
+  // and place the submission was filed with, so the details survive even
+  // though there is no photo to take them from.
   onEditSubmission = async submission => {
     const { objectId } = submission;
 
@@ -1586,34 +1586,6 @@ class Home extends React.Component {
       testify: Boolean(submission.testify),
     };
 
-    if (files.length === 0) {
-      // No media, so no row. The details go into the form, unattached to the
-      // row it showed before, and the user can add photos to report them.
-      this.setState(state => ({
-        ...reportDetails,
-        typeofcomplaint: submission.typeofcomplaint ?? state.typeofcomplaint,
-        currentViolationIndex: -1,
-        attachmentData: [],
-        allPlateData: null,
-        plateDataByAttachmentName: {},
-        plate,
-        licenseState,
-        plateProvenance: PLATE_TYPED,
-        CreateDate: createDateValue({
-          millisecondsSinceEpoch: createDateMs,
-          offset: createDateOffset,
-        }),
-        latitude,
-        longitude,
-        formatted_address: submission.loc1_address || '',
-        addressProvenance: '',
-        coordsAreInNyc: true,
-        vehicleInfoComponent: null,
-        violationSummaryComponent: null,
-      }));
-      return;
-    }
-
     // The files are the submission's own, so each one is a reading of the same
     // report: one time, one place, and the plate it was filed under.
     const photos = files.map(file => ({
@@ -1626,10 +1598,24 @@ class Home extends React.Component {
     }));
 
     // Built and marked the way a row the user made by hand is, so a later
-    // plate read leaves it whole and keeps the plate it was filed under.
+    // plate read leaves it whole and keeps the plate it was filed under. With
+    // no media there is nothing to group, and the row records the report's own
+    // time and place instead.
     const [grouped] = groupAttachmentsByViolation(photos);
     const [violation] = this.withNycFlags([
-      { ...grouped, plate, licenseState, mergedByUser: true },
+      {
+        ...(grouped || {
+          photos: [],
+          createDateMs: Number.isFinite(createDateMs)
+            ? createDateMs
+            : Date.now(),
+          latitude,
+          longitude,
+        }),
+        plate,
+        licenseState,
+        mergedByUser: true,
+      },
     ]);
 
     // The row's place is the submission's, so loading it shows the address
@@ -2334,7 +2320,9 @@ class Home extends React.Component {
   // the field yet, so the check cannot read it from state. The user's own
   // time stays; otherwise the earliest photo's time is the one. A new report
   // with none falls back to now, the way its field does.
-  priorCheckDateFor = (readings, previousPhotos) => {
+  //
+  // A row with no photos records its own time, which `rowDateMs` carries.
+  priorCheckDateFor = (readings, previousPhotos, rowDateMs = undefined) => {
     const changing = previousPhotos !== null && previousPhotos.length > 0;
     const timeIsTheUsers =
       changing && this.state.CreateDate !== this.createDateFor(previousPhotos);
@@ -2346,6 +2334,10 @@ class Home extends React.Component {
     const earliest = earliestTakenPhoto(readings);
     if (earliest) {
       return earliest.createDateMs;
+    }
+
+    if (readings.length === 0 && Number.isFinite(rowDateMs)) {
+      return rowDateMs;
     }
 
     return changing ? this.state.CreateDate : Date.now();
@@ -3049,6 +3041,9 @@ class Home extends React.Component {
   // have already decided on, and no read is allowed to take it apart again.
   // Its photos still take the read, and the row is rebuilt around them.
   //
+  // A row with no photos is a record of its own: there is nothing in it to
+  // regroup, so it is kept as it stands.
+  //
   // The photos come from the rows rather than from `batchPhotos`, which holds
   // the photos of the pass in hand: a second pick replaces it, so regrouping
   // from it would drop every row the earlier picks published.
@@ -3062,8 +3057,14 @@ class Home extends React.Component {
     // Which photos the user's own rows hold, read off the rows as they stand:
     // the reading that is being written back is a photo record of its own, and
     // the rows are what say which photos the batch has.
+    //
+    // An empty row has no photos for the rebuilding below to work with, so it
+    // is carried over as it is rather than merged.
+    const emptyRows = state.batchViolations.filter(
+      violation => violation.photos.length === 0,
+    );
     const userMadeRows = state.batchViolations.filter(
-      violation => violation.mergedByUser,
+      violation => violation.mergedByUser && violation.photos.length > 0,
     );
     const spokenFor = new Set(
       userMadeRows.flatMap(violation =>
@@ -3093,9 +3094,11 @@ class Home extends React.Component {
       groupAttachmentsByViolation([...photosByFile.values()].map(replace)),
     );
 
-    return this.withoutDismissedRows([...userMade, ...grouped]).sort(
-      (a, b) => a.createDateMs - b.createDateMs,
-    );
+    return this.withoutDismissedRows([
+      ...emptyRows,
+      ...userMade,
+      ...grouped,
+    ]).sort((a, b) => a.createDateMs - b.createDateMs);
   };
 
   // A plate read landing on the row that holds its photo, as a `setState`
@@ -3118,12 +3121,13 @@ class Home extends React.Component {
       const batchViolations = this.rowsAfterRead(state, { photo, read });
 
       const [firstAttached] = state.attachmentData;
+      const loaded = state.batchViolations[state.currentViolationIndex];
       const followed =
         rowHoldingFile(batchViolations, firstAttached?.file) ||
-        rowHoldingFile(
-          batchViolations,
-          state.batchViolations[state.currentViolationIndex]?.photos[0]?.file,
-        );
+        rowHoldingFile(batchViolations, loaded?.photos[0]?.file) ||
+        // A row with no photos has no file to follow; the rebuilding above
+        // kept that same record.
+        (loaded && batchViolations.includes(loaded) ? loaded : undefined);
 
       return {
         batchPhotos: state.batchPhotos.map(candidate =>
@@ -3660,15 +3664,41 @@ class Home extends React.Component {
           // it. A value they do not give is one the user has to enter, so the
           // field goes back to its default rather than showing the last
           // report's.
-          if (!earliestTakenPhoto(attached)) {
-            this.setCreateDate({ millisecondsSinceEpoch: Date.now() });
-          }
-          if (!latestLocatedPhoto(attached)) {
-            this.setCoords({
-              latitude: defaultLatitude,
-              longitude: defaultLongitude,
-              addressProvenance: '',
+          //
+          // A row with no photos has no readings to take its time and place
+          // from, so it records the report's own.
+          if (attached.length === 0) {
+            const rowDateMs = Number.isFinite(violation.createDateMs)
+              ? violation.createDateMs
+              : Date.now();
+            this.setCreateDate({
+              millisecondsSinceEpoch: rowDateMs,
+              offset: getNycTimezoneOffset(new Date(rowDateMs)),
             });
+            this.setCoords(
+              hasCoordinates(violation)
+                ? {
+                    latitude: violation.latitude,
+                    longitude: violation.longitude,
+                    addressProvenance: '',
+                  }
+                : {
+                    latitude: defaultLatitude,
+                    longitude: defaultLongitude,
+                    addressProvenance: '',
+                  },
+            );
+          } else {
+            if (!earliestTakenPhoto(attached)) {
+              this.setCreateDate({ millisecondsSinceEpoch: Date.now() });
+            }
+            if (!latestLocatedPhoto(attached)) {
+              this.setCoords({
+                latitude: defaultLatitude,
+                longitude: defaultLongitude,
+                addressProvenance: '',
+              });
+            }
           }
         }
 
@@ -3691,7 +3721,11 @@ class Home extends React.Component {
       provenance: plateIsTheRowsOwn ? PLATE_TYPED : undefined,
       // The form takes the loaded report's time in the callback, so the
       // prior-submission check cannot read the day from the field yet.
-      priorCheckDate: this.priorCheckDateFor(attached, previousPhotos),
+      priorCheckDate: this.priorCheckDateFor(
+        attached,
+        previousPhotos,
+        violation.createDateMs,
+      ),
     });
 
     // A violation's records are readings: they carry the fields the form's own

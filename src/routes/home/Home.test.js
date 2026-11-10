@@ -3189,7 +3189,7 @@ describe('Home', () => {
     tree.unmount();
   });
 
-  test('edits a submission with no media into the form', async () => {
+  test('gives a submission with no media its own row', async () => {
     localStorage.clear();
 
     const initialState = {
@@ -3223,9 +3223,19 @@ describe('Home', () => {
       await homeRef.current.onEditSubmission(submission);
     });
 
-    // No media makes no row; the details go into the form instead.
-    expect(homeRef.current.state.batchViolations).toEqual([]);
-    expect(homeRef.current.state.currentViolationIndex).toBe(-1);
+    // A row with no photos still records the submission's time, place and
+    // plate, and the form shows that row.
+    const { batchViolations, currentViolationIndex } = homeRef.current.state;
+    expect(batchViolations).toHaveLength(1);
+    expect(currentViolationIndex).toBe(0);
+    expect(batchViolations[0]).toMatchObject({
+      photos: [],
+      plate: 'T123456C',
+      licenseState: 'NY',
+      createDateMs: Date.parse('2016-01-01T17:00:00.000Z'),
+      latitude: 40.7,
+      longitude: -73.9,
+    });
     expect(homeRef.current.state.attachmentData).toEqual([]);
     expect(homeRef.current.state.plate).toBe('T123456C');
     expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:00');
@@ -3241,6 +3251,43 @@ describe('Home', () => {
 
     confirm.mockRestore();
     axiosPost.mockRestore();
+    tree.unmount();
+  });
+
+  test('keeps a row with no photos through a regrouping', () => {
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+    };
+
+    const homeRef = React.createRef();
+    const tree = renderHome({ initialState, homeRef });
+
+    const emptyRow = {
+      photos: [],
+      plate: 'T123456C',
+      licenseState: 'NY',
+      createDateMs: Date.parse('2016-01-01T10:00:00.000Z'),
+      latitude: 40.7,
+      longitude: -73.9,
+      mergedByUser: true,
+    };
+    const otherFile = new File(['picture'], 'other.jpg', {
+      type: 'image/jpeg',
+    });
+    const otherPhoto = { file: otherFile, name: otherFile.name };
+
+    const rows = homeRef.current.rowsAfterRead(
+      { batchViolations: [emptyRow] },
+      {
+        photo: otherPhoto,
+        read: { ...otherPhoto, plateRead: 'failed' },
+      },
+    );
+
+    // There is nothing in the row to regroup, so it stands as it was.
+    expect(rows).toEqual([emptyRow]);
+
     tree.unmount();
   });
 
@@ -6563,6 +6610,74 @@ describe('Home', () => {
       ).toEqual([['BBB222', ['b.jpg', 'a.jpg']]]);
       expect(currentViolationIndex).toBe(0);
       expect(attachmentData.map(file => file.name)).toEqual(['b.jpg', 'a.jpg']);
+
+      cleanup();
+    });
+
+    test('keeps the record of an empty row when a photo is dropped on it', async () => {
+      const file = new File(['picture'], 'a.jpg', { type: 'image/jpeg' });
+      const photo = {
+        file,
+        name: file.name,
+        createDateMs: 1704110400000,
+        createDateOffset: 0,
+        latitude: 40.7129,
+        longitude: -74.0061,
+      };
+      const sourceRow = {
+        photos: [photo],
+        plate: 'BBB222',
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs: 1704110400000,
+      };
+      // An edited submission with no media: its record has no photo behind it.
+      const emptyRow = {
+        photos: [],
+        plate: 'AAA111',
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs: 1704110300000,
+        mergedByUser: true,
+      };
+
+      const { homeRef, cleanup } = await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchPhotos: [photo],
+          batchViolations: [sourceRow, emptyRow],
+          currentViolationIndex: 0,
+        });
+      });
+
+      renderer.act(() => {
+        homeRef.current.movePhotoToViolation({
+          photo,
+          violation: homeRef.current.state.batchViolations[1],
+        });
+      });
+
+      const { batchViolations, currentViolationIndex, attachmentData } =
+        homeRef.current.state;
+
+      // The photo joins the empty row, and the time, place and plate it was
+      // made with stay.
+      expect(batchViolations).toHaveLength(1);
+      expect(batchViolations[0]).toMatchObject({
+        plate: 'AAA111',
+        licenseState: 'NY',
+        createDateMs: 1704110300000,
+        latitude: 40.7129,
+        longitude: -74.0061,
+      });
+      expect(batchViolations[0].photos).toEqual([photo]);
+      expect(currentViolationIndex).toBe(0);
+      expect(attachmentData.map(candidate => candidate.name)).toEqual([
+        'a.jpg',
+      ]);
 
       cleanup();
     });

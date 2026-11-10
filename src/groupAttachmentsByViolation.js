@@ -609,9 +609,9 @@ function photosSummary(photos) {
 
   return {
     photos: sorted,
-    createDateMs: effectiveTimeMs(sorted[0]),
-    latitude: located.latitude,
-    longitude: located.longitude,
+    createDateMs: sorted.length ? effectiveTimeMs(sorted[0]) : undefined,
+    latitude: located?.latitude,
+    longitude: located?.longitude,
   };
 }
 
@@ -649,6 +649,23 @@ export function mergeViolations(violations) {
   const [withPlate] = violations
     .filter(violation => violation.plate)
     .sort((a, b) => b.photos.length - a.photos.length);
+
+  // Rows with no photos have no photo to take their time and place from, so
+  // the earliest one keeps the record the merged row reports.
+  if (photos.length === 0) {
+    const [earliest] = [...violations].sort(
+      (a, b) => a.createDateMs - b.createDateMs,
+    );
+
+    return {
+      photos: [],
+      plate: withPlate?.plate || '',
+      licenseState: withPlate?.licenseState || '',
+      createDateMs: earliest?.createDateMs,
+      latitude: earliest?.latitude,
+      longitude: earliest?.longitude,
+    };
+  }
 
   return buildViolation({
     photos,

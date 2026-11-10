@@ -175,6 +175,33 @@ describe('mergeViolations', () => {
     expect(merged.plate).toBe('AAA111');
     expect(merged.photos).toHaveLength(3);
   });
+
+  test('keeps the earliest record when neither violation has photos', () => {
+    const first = {
+      photos: [],
+      plate: 'AAA111',
+      licenseState: 'NY',
+      createDateMs: 1_000_000,
+      latitude: 40.7,
+      longitude: -73.9,
+    };
+    const second = {
+      photos: [],
+      plate: '',
+      licenseState: '',
+      createDateMs: 2_000_000,
+      latitude: 40.8,
+      longitude: -73.8,
+    };
+
+    const merged = mergeViolations([second, first]);
+
+    expect(merged.photos).toEqual([]);
+    expect(merged.plate).toBe('AAA111');
+    expect(merged.createDateMs).toBe(1_000_000);
+    expect(merged.latitude).toBe(40.7);
+    expect(merged.longitude).toBe(-73.9);
+  });
 });
 
 describe('normalizedCenterDistance', () => {

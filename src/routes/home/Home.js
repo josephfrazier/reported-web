@@ -436,6 +436,26 @@ function getLicenseStateFromPlateResult(result) {
   }
 }
 
+const urlRegex = /(https?:\/\/\S+)/;
+
+// Turn bare URLs in a string into clickable React <a> elements.
+// Returns a plain string when there are no URLs, or an array of mixed
+// strings and <a> elements otherwise — both valid as JSX children.
+function linkifyText(text) {
+  if (typeof text !== 'string') return text;
+  const parts = text.split(urlRegex);
+  if (parts.length === 1) return text;
+  return parts.map((part, i) =>
+    i % 2 === 1 ? (
+      <a key={part} href={part} target="_blank" rel="noopener noreferrer">
+        {part}
+      </a>
+    ) : (
+      part
+    ),
+  );
+}
+
 // Uppercase what the user typed into a controlled <input>, without letting the
 // caret jump to the end of the field.
 //
@@ -795,6 +815,12 @@ const SUBMISSION_TOAST_ID = 'submission-thanks';
 // A toast with this id stays one at a time: the warning follows the report on
 // screen, so a new report replaces its words rather than stacking a copy.
 const MISSING_VALUES_TOAST_ID = 'missing-photo-values';
+
+// What a location read that found nothing says. Android strips GPS from media
+// shared through some apps, and issue 751 has the details: the warning links
+// to it, as the single-report flow's warning did.
+const LOCATION_MAYBE_STRIPPED =
+  'location (may have been stripped by Android, see https://github.com/josephfrazier/reported-web/issues/751 for details)';
 
 // Whether the report holds more of one kind of photo than a report can carry.
 //
@@ -3777,7 +3803,7 @@ class Home extends React.Component {
           Number.isFinite(photo?.latitude) && Number.isFinite(photo?.longitude),
       )
     ) {
-      missing.push('location');
+      missing.push(LOCATION_MAYBE_STRIPPED);
     }
 
     const warning =
@@ -3800,7 +3826,9 @@ class Home extends React.Component {
     this.missingValuesWarningIndex = currentViolationIndex;
     toast.dismiss(MISSING_VALUES_TOAST_ID);
     if (warning) {
-      Home.notifyWarning(warning, { toastId: MISSING_VALUES_TOAST_ID });
+      Home.notifyWarning(linkifyText(warning), {
+        toastId: MISSING_VALUES_TOAST_ID,
+      });
     }
   };
 

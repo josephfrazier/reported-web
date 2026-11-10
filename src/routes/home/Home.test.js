@@ -4597,12 +4597,20 @@ describe('Home', () => {
         photo,
       ]);
 
-      expect(toastWarn).toHaveBeenCalledWith(
-        expect.stringContaining(
-          'Could not extract the creation date and location from this photo.',
-        ),
-        expect.anything(),
+      const warning = toastWarn.mock.calls
+        .map(([content]) => content)
+        .find(content => elementText(content).includes('Could not extract'));
+      expect(elementText(warning)).toBe(
+        'Could not extract the creation date and location (may have been stripped by Android, see https://github.com/josephfrazier/reported-web/issues/751 for details) from this photo. Please enter or confirm the missing values manually.',
       );
+      // The Android note keeps the issue link the single-report flow had.
+      expect(
+        warning.some(
+          part =>
+            part?.props?.href ===
+            'https://github.com/josephfrazier/reported-web/issues/751',
+        ),
+      ).toBe(true);
 
       // The fields go back to their defaults rather than to the values of a
       // report the user filed before.
@@ -4654,12 +4662,13 @@ describe('Home', () => {
       expect(homeRef.current.state.longitude).toBe(-74.006);
       expect(homeRef.current.state.formatted_address).toBe('');
 
-      expect(toastWarn).toHaveBeenCalledWith(
-        expect.stringContaining(
-          'Could not extract the creation date and location from this photo.',
+      expect(
+        toastWarn.mock.calls.some(([content]) =>
+          elementText(content).includes(
+            'Could not extract the creation date and location (may have been stripped by Android, see https://github.com/josephfrazier/reported-web/issues/751 for details) from this photo.',
+          ),
         ),
-        expect.anything(),
-      );
+      ).toBe(true);
 
       exifr.gps.mockReset();
       exifr.parse.mockReset();

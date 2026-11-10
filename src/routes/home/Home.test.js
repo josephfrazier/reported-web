@@ -3153,6 +3153,24 @@ describe('Home', () => {
       cleanup();
     });
 
+    // The readings are keyed by the photo itself, so a reported photo left in
+    // the map holds its bytes and its plate readings for the life of the page.
+    test("lets go of a submitted photo's reading", async () => {
+      const photo = new File(['photo'], 'photo.jpg', { type: 'image/jpeg' });
+      const { homeRef, submit, cleanup } = await renderWithFiles({
+        files: [photo],
+      });
+
+      expect(homeRef.current.photoReadings.has(photo)).toBe(true);
+
+      await submit();
+
+      // The report has the photo now, and nothing on the page shows it.
+      expect(homeRef.current.photoReadings.has(photo)).toBe(false);
+
+      cleanup();
+    });
+
     test('submits the pre-uploaded attachment IDs instead of re-sending the files', async () => {
       const photo = new File(['photo'], 'photo.jpg', { type: 'image/jpeg' });
       const { homeRef, axiosPost, submit, cleanup } = await renderWithFiles({

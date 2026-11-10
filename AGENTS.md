@@ -53,7 +53,7 @@
 
 - `Parse.initialize(appId, jsKey, masterKey)` stores the master key but sets `USE_MASTER_KEY` to false. `RESTController` sends `_MasterKey` only when the call's options carry `useMasterKey: true`. A script that only calls `Parse.initialize` sends no master key, even though a comment in the 311 tasks script says it does.
 - Pass `{ useMasterKey: true }` on every `find`, `count`, or `save` call that needs it, or use raw fetch with an `X-Parse-Master-Key` header. A script that reads `submission` needs one of these: the class has a per-owner ACL. The 311 tasks script works without the key only because `tasks` has no ACL.
-- The master key is sent only from `getSubmissions`, `deleteSubmission`, and `/api/submissions-in-polygon`. `src/server.js:92` records that policy. PR #1047 has the full rationale: the ACL owner is not always the requester, and the public map shows other users' submissions by design. Public-read ACLs were rejected because consent does not cover name and phone. Open follow-up: move those three reads to Cloud Code, so the web app needs no master key. No Cloud Code deployment exists in this repo.
+- The master key is sent only from `getSubmissions`, `deleteSubmission`, and `/api/submissions-in-polygon`. A comment above `Parse.initialize` in `src/server.js` records that policy. PR #1047 has the full rationale: the ACL owner is not always the requester, and the public map shows other users' submissions by design. Public-read ACLs were rejected because consent does not cover name and phone. Open follow-up: move those three reads to Cloud Code, so the web app needs no master key. No Cloud Code deployment exists in this repo.
 
 ## Sessions and submissions
 

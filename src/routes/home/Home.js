@@ -580,15 +580,34 @@ const readingFromDate = ({ date, offsetTimeDigitized }) => ({
       : new Date().getTimezoneOffset(),
 });
 
+// The range a video's own timestamp must fall in to be used. An mp4's time
+// comes from its header, and a broken or copied file can say 1904 (the
+// format's epoch) or a time after this report. A video outside the range
+// gives no time, the way a picture with no readable date does.
+const EARLIEST_VIDEO_TIME = Date.UTC(2000, 0, 1);
+
+const videoTimeIsPlausible = millisecondsSinceEpoch =>
+  Number.isFinite(millisecondsSinceEpoch) &&
+  millisecondsSinceEpoch >= EARLIEST_VIDEO_TIME &&
+  millisecondsSinceEpoch <= Date.now();
+
 async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
   try {
     if (isVideo({ ext })) {
+      const [, millisecondsSinceEpoch] = extractLocationDateFromVideo({
+        attachmentArrayBuffer,
+      });
+
+      if (!videoTimeIsPlausible(millisecondsSinceEpoch)) {
+        throw new Error(
+          `video time is not plausible: ${new Date(millisecondsSinceEpoch)}`,
+        );
+      }
+
       // An MP4 records when it was made and no offset, so its time is read
       // the way a picture's is when the picture records none.
       return readingFromDate({
-        date: new Date(
-          extractLocationDateFromVideo({ attachmentArrayBuffer })[1],
-        ),
+        date: new Date(millisecondsSinceEpoch),
       });
     }
     if (!isImage({ ext })) {

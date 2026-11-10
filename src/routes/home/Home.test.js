@@ -1255,10 +1255,11 @@ describe('Home', () => {
   test("takes the form's time from a video's own creation time", async () => {
     // An MP4 records when it was made and no offset, so the video's time is
     // read the way a picture's is when the picture records none: in New
-    // York's, where the report is filed.
+    // York's, where the report is filed. The suite pins now to 2016-11-18,
+    // so a 2016 time is in the past and passes the plausibility check.
     MP4Box.createFile.mockImplementation(() => ({
       appendBuffer() {},
-      getInfo: () => ({ created: new Date(Date.UTC(2024, 0, 1, 12, 0, 10)) }),
+      getInfo: () => ({ created: new Date(Date.UTC(2016, 0, 1, 12, 0, 10)) }),
       moov: {
         udta: {
           '©xyz': { data: Buffer.from('+40.7128-074.0060/') },
@@ -1270,7 +1271,52 @@ describe('Home', () => {
     const { homeRef, cleanup } = await renderAndExtract([video]);
 
     // Noon UTC is 7:00 that morning in New York.
-    expect(homeRef.current.state.CreateDate).toBe('2024-01-01T07:00:10');
+    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T07:00:10');
+
+    MP4Box.createFile.mockReset();
+    cleanup();
+  });
+
+  test('leaves the form time alone for a video stamped with the mp4 epoch', async () => {
+    // A broken or copied file can carry the format's own epoch (1904) in its
+    // header instead of a real time.
+    MP4Box.createFile.mockImplementation(() => ({
+      appendBuffer() {},
+      getInfo: () => ({ created: new Date(Date.UTC(1904, 0, 1)) }),
+      moov: {
+        udta: {
+          '©xyz': { data: Buffer.from('+40.7128-074.0060/') },
+        },
+      },
+    }));
+
+    const video = new File([videoBytes()], 'video.mp4', { type: 'video/mp4' });
+    const { homeRef, cleanup } = await renderAndExtract([video]);
+
+    // The form's time is the suite's pinned now, read in New York time.
+    expect(homeRef.current.state.CreateDate).toBe('2016-11-17T19:00:00');
+
+    MP4Box.createFile.mockReset();
+    cleanup();
+  });
+
+  test('leaves the form time alone for a video stamped in the future', async () => {
+    // The server refuses a report timestamped after now, so a video from the
+    // future must not set it either.
+    MP4Box.createFile.mockImplementation(() => ({
+      appendBuffer() {},
+      getInfo: () => ({ created: new Date(Date.now() + 60 * 60 * 1000) }),
+      moov: {
+        udta: {
+          '©xyz': { data: Buffer.from('+40.7128-074.0060/') },
+        },
+      },
+    }));
+
+    const video = new File([videoBytes()], 'video.mp4', { type: 'video/mp4' });
+    const { homeRef, cleanup } = await renderAndExtract([video]);
+
+    expect(homeRef.current.state.CreateDate).toBe('2016-11-17T19:00:00');
 
     MP4Box.createFile.mockReset();
     cleanup();

@@ -60,6 +60,20 @@
 
   Review app names look like `reported-web-<branch-fragment>-<hash>`. Their `window.App.sentryDsn` is undefined, so their server errors do not reach Sentry. Use `heroku logs -a <review-app>`.
 
+## Sentry
+
+Sentry is the observability home: US region, org `reported`, project `reported-web`, project id `4512188817014784`.
+
+- **Errors and logs.** Both SDKs report uncaught exceptions, unhandled rejections, and console output. The browser sends its envelopes through the app's `/monitoring` tunnel, so content blockers do not drop them.
+- **Logs are the log home.** The server and browser console output lands in Sentry Logs, with 30-day retention on the free plan. This includes the countable lines such as `[home] legacy localStorage state migrated`. The Axiom drain was removed on 2026-10-05. `heroku logs` is the only place the Heroku router lines appear.
+- **Read the logs through the API.** `SENTRY_AUTH_TOKEN` is in `.env`, created read-only on purpose (`event:read`, `org:read`, `project:read`). Query `GET https://us.sentry.io/api/0/organizations/reported/events/?dataset=logs&query=…`. Use `statsPeriod=30d` or `start`/`end` (ISO-8601; a `Z` is accepted here). Use `field=count()` for a count. The issues endpoint takes only `24h` or `14d`, never `30d`.
+- **Link one in the UI.** The page is `/explore/logs/?end=…&logsFields=timestamp&logsFields=message&logsSortBys=-timestamp&project=4512188817014784&query=…&start=…`. Its timestamps are naive UTC: a `Z` or an offset is rejected, and the page falls back to `statsPeriod=30d`. A range older than the retention floor is refused the same way. The page renders the UTC bounds in the viewer's timezone.
+- **App-level errors are logs, not issues.** Nothing calls `captureException` for them, so there is no issue permalink. Cite a logs URL, and put the counts in the commit message: retention removes the link long before the commit.
+- **Source maps.** Release builds upload them with `@sentry/webpack-plugin` (`SENTRY_AUTH_TOKEN` in the Heroku config), and the client bundle uses `hidden-source-map`. One release string goes into both bundles. The build takes it from `SOURCE_VERSION`; `HEROKU_BUILD_COMMIT` names the running release inside a build, which once filed artifacts one commit behind.
+- The DSN lives in the Heroku config and the local `.env`, never the repo. Allowed Domains no longer gates browser traffic because the tunnel carries it.
+- OAuth grants live at `https://<org>.sentry.io/settings/account/authorizations/`, headed "Approved Applications". The user revoked the Sentry MCP app there on 2026-10-05. That page is separate from `SENTRY_AUTH_TOKEN`, which the source map upload needs.
+- **Tracing.** Built on branch `add-sentry-tracing` (browser page loads, trace headers, server spans, one in ten in production). It was not landed as of 2026-10-05.
+
 ## Change guidance
 
 - Prefer small, surgical edits; this repo has several large legacy files and old dependencies.

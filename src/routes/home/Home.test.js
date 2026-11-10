@@ -14,9 +14,13 @@ import { act } from 'react-dom/test-utils';
 import renderer from 'react-test-renderer';
 // jsdom doesn't provide the setImmediate global, so use Node's directly.
 import { setImmediate } from 'timers';
+// jsdom doesn't provide TextDecoder either, which a video's reads use to
+// decode the mp4 `©xyz` box. Node's is the implementation browsers have.
+import { TextDecoder } from 'util';
 import StyleContext from 'isomorphic-style-loader/StyleContext';
 import axios from 'axios';
 import exifr from 'exifr/dist/full.umd.js';
+import MP4Box from 'mp4box';
 import { zipSync } from 'fflate';
 import * as blobUtil from 'blob-util';
 import { toast } from 'react-toastify';
@@ -48,8 +52,34 @@ jest.mock('exifr/dist/full.umd.js', () => ({
   default: { gps: jest.fn(), parse: jest.fn() },
 }));
 
+// mp4box reads a video's creation time and location out of real MP4 boxes,
+// which no test here has. A test that wants a video read gives `createFile`
+// an implementation; every other test leaves it returning nothing, which
+// fails the read exactly as junk bytes do.
+jest.mock('mp4box', () => ({
+  __esModule: true,
+  default: { createFile: jest.fn() },
+}));
+
+// timezone-mock's replacement Date parses only a few date formats, and the
+// New York offset helper builds a `MM/DD/YYYY HH:MM:SS` string. Keep the real
+// Date, so anything the mock does not know falls back to it.
+const RealDate = Date;
+
 require('timezone-mock').register('US/Eastern');
+require('timezone-mock').options({
+  fallbackFn: param => new RealDate(param),
+});
 require('jest-mock-now')();
+
+// timezone-mock's replacement Date leaves `toTimeString` out (the package has
+// a TODO for it), and the New York offset helper reads DST switch times with
+// it. The mock keeps the real Date on `d`.
+global.Date.prototype.toTimeString = function toTimeString() {
+  return this.d.toTimeString();
+};
+
+global.TextDecoder = TextDecoder;
 
 const typeofcomplaintValues = [
   'Blocked the bike lane',
@@ -87,6 +117,19 @@ beforeAll(() => {
 // how a test's exifr stubs tell one photo from another.
 const photoBytes = label =>
   Uint8Array.from([0xff, 0xd8, 0xff, 0xe0, ...Buffer.from(label, 'utf8')]);
+
+// A minimal mp4 `ftyp` box, which is enough for the detector in `Home.js` to
+// call the file a video. What the file's boxes say is the mp4box mock's
+// business.
+const videoBytes = () =>
+  Uint8Array.from(
+    Buffer.concat([
+      Buffer.from([0, 0, 0, 0x18]), // box size
+      Buffer.from('ftypisom'), // ftyp + major brand isom
+      Buffer.from([0, 0, 2, 0]),
+      Buffer.from('isomiso2'),
+    ]),
+  );
 
 function renderHome({ initialState, homeRef, ...props } = {}) {
   let tree;
@@ -1206,6 +1249,30 @@ describe('Home', () => {
 
     expect(homeRef.current.state.CreateDate).toBe('2024-01-01T12:00:10');
 
+    cleanup();
+  });
+
+  test("takes the form's time from a video's own creation time", async () => {
+    // An MP4 records when it was made and no offset, so the video's time is
+    // read the way a picture's is when the picture records none: in New
+    // York's, where the report is filed.
+    MP4Box.createFile.mockImplementation(() => ({
+      appendBuffer() {},
+      getInfo: () => ({ created: new Date(Date.UTC(2024, 0, 1, 12, 0, 10)) }),
+      moov: {
+        udta: {
+          '©xyz': { data: Buffer.from('+40.7128-074.0060/') },
+        },
+      },
+    }));
+
+    const video = new File([videoBytes()], 'video.mp4', { type: 'video/mp4' });
+    const { homeRef, cleanup } = await renderAndExtract([video]);
+
+    // Noon UTC is 7:00 that morning in New York.
+    expect(homeRef.current.state.CreateDate).toBe('2024-01-01T07:00:10');
+
+    MP4Box.createFile.mockReset();
     cleanup();
   });
 

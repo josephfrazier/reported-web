@@ -568,10 +568,28 @@ async function extractLocation({
   }
 }
 
+// The moment a file records, and the offset it is read in. The file's own
+// offset when it records one; New York's otherwise, since a report is filed
+// there; the device's when the file records no time at all.
+const readingFromDate = ({ date, offsetTimeDigitized }) => ({
+  millisecondsSinceEpoch: date.getTime(),
+  offset: offsetTimeDigitized
+    ? parseInt(offsetTimeDigitized, 10) * -60
+    : date
+      ? getNycTimezoneOffset(date)
+      : new Date().getTimezoneOffset(),
+});
+
 async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
   try {
     if (isVideo({ ext })) {
-      return extractLocationDateFromVideo({ attachmentArrayBuffer })[1];
+      // An MP4 records when it was made and no offset, so its time is read
+      // the way a picture's is when the picture records none.
+      return readingFromDate({
+        date: new Date(
+          extractLocationDateFromVideo({ attachmentArrayBuffer })[1],
+        ),
+      });
     }
     if (!isImage({ ext })) {
       throw new Error(`${attachmentFile.name} is not an image/video`);
@@ -584,14 +602,10 @@ async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
 
     console.log({ CreateDate, OffsetTimeDigitized }); // eslint-disable-line no-console
 
-    return {
-      millisecondsSinceEpoch: CreateDate.getTime(),
-      offset: OffsetTimeDigitized
-        ? parseInt(OffsetTimeDigitized, 10) * -60
-        : CreateDate
-          ? getNycTimezoneOffset(CreateDate)
-          : new Date().getTimezoneOffset(),
-    };
+    return readingFromDate({
+      date: CreateDate,
+      offsetTimeDigitized: OffsetTimeDigitized,
+    });
   } catch (err) {
     console.error(err.stack);
 

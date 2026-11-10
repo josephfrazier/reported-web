@@ -4993,6 +4993,89 @@ describe('Home', () => {
       cleanup();
     });
 
+    // A report the user typed a time for keeps it when the row merges with
+    // another: the merge adds photos to the report on screen, it does not
+    // start a new one.
+    test('keeps a time the user set when the loaded row merges', async () => {
+      const first = jpeg({ name: 'first.jpg', size: 4 });
+      const other = jpeg({ name: 'other.jpg', size: 6 });
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, tickMerge, clickButton, cleanup } =
+        await renderBatchWithFiles([first, other]);
+
+      // The loaded report came with 12:00:00Z, which the field reads as 7:00.
+      expect(homeRef.current.state.CreateDate).toBe('2016-01-01T07:00:00');
+
+      // The user sets a time of their own.
+      renderer.act(() => {
+        homeRef.current.handleInputChange({
+          target: {
+            name: 'CreateDate',
+            type: 'datetime-local',
+            value: '2016-01-01T09:00',
+          },
+        });
+      });
+
+      tickMerge('T696817C');
+      tickMerge('LDA8765');
+      clickButton('Merge');
+
+      expect(homeRef.current.state.CreateDate).toBe('2016-01-01T09:00');
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    // A row deleted from the queue takes the report with it: the row that
+    // takes its place is a new report, so a time or place its photos do not
+    // give goes back to the default.
+    test('resets the fields when the deleted row was the loaded one', async () => {
+      const early = jpeg({ name: 'early.jpg', size: 4 });
+      const late = jpeg({ name: 'late.jpg', size: 7 });
+
+      exifr.parse.mockImplementation(async arrayBuffer => {
+        if (arrayBuffer.byteLength !== 4) {
+          return {};
+        }
+        return {
+          CreateDate: new Date(Date.UTC(2016, 0, 1, 12, 0, 10)),
+          OffsetTimeDigitized: '-05:00',
+        };
+      });
+      exifr.gps.mockImplementation(async arrayBuffer =>
+        arrayBuffer.byteLength === 4
+          ? { latitude: 40.7129, longitude: -74.0061 }
+          : {},
+      );
+
+      const { homeRef, clickRowDelete, cleanup } = await renderBatchWithFiles([
+        early,
+        late,
+      ]);
+
+      expect(homeRef.current.state.CreateDate).toBe('2016-01-01T07:00:10');
+      expect(homeRef.current.state.latitude).toBe(40.7129);
+
+      clickRowDelete('T696817C');
+
+      // The row that took its place gives neither.
+      expect(homeRef.current.state.CreateDate).toBe('2016-11-17T19:00:00');
+      expect(homeRef.current.state.latitude).toBe(40.7128);
+      expect(homeRef.current.state.longitude).toBe(-74.006);
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
     // A sample of untouched batches is the denominator: how often the
     // grouping is right without a hand.
     test('samples an untouched batch for grouping data', async () => {

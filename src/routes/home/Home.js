@@ -2985,6 +2985,7 @@ class Home extends React.Component {
       // a reload that reselected the row's defaults would take the new ones.
       this.loadBatchViolation(this.state.currentViolationIndex, {
         attachedFiles: this.state.attachmentData,
+        sameReport: true,
       });
     } else {
       this.applyReadingsToForm();
@@ -3303,7 +3304,10 @@ class Home extends React.Component {
   // `attachedFiles` keeps a selection instead of taking the row's defaults.
   // The form uses it when a row divides under it: the report keeps the photos
   // it had, and any photo the row gained while doing so waits unchecked.
-  loadBatchViolation = (index, { attachedFiles = null } = {}) => {
+  loadBatchViolation = (
+    index,
+    { attachedFiles = null, sameReport = false } = {},
+  ) => {
     const { batchViolations } = this.state;
     const violation = batchViolations[index];
 
@@ -3319,10 +3323,11 @@ class Home extends React.Component {
       return;
     }
 
-    // Opening a different row is a new report. A reload of the row already on
-    // screen is not -- a divide keeps the report the user is editing -- so its
-    // fields keep the values the user gave them.
-    const isNewReport = index !== this.state.currentViolationIndex;
+    // The photos the report held before this call, for the user-value guards
+    // in `applyPhotosToForm`. A new report has none of the user's to keep. A
+    // reload of the report on screen -- a divide, or a merge into it -- keeps
+    // them, so the user's own time and place stay.
+    const previousPhotos = sameReport ? this.state.attachmentData : null;
 
     // The overlays and the plate suggestions come from the same ALPR responses
     // the single-violation flow puts here.
@@ -3388,9 +3393,14 @@ class Home extends React.Component {
         // From the callback rather than after the call, because the plate is
         // worked out from the readings of the photos now attached, and those
         // readings are what this very update is putting into state.
-        this.applyPhotosToForm(attached.map(photo => photo.file));
+        this.applyPhotosToForm(
+          attached.map(photo => photo.file),
+          {
+            previousPhotos,
+          },
+        );
 
-        if (isNewReport) {
+        if (!sameReport) {
           // The report starts from its own photos, not from the one before
           // it. A value they do not give is one the user has to enter, so the
           // field goes back to its default rather than showing the last
@@ -3627,8 +3637,12 @@ class Home extends React.Component {
       () => {
         if (loadedWasMerged) {
           // The form is holding one of the two, so show it the merged report
-          // rather than leaving it on a violation that no longer exists.
-          this.loadBatchViolation(this.state.currentViolationIndex);
+          // rather than leaving it on a violation that no longer exists. It
+          // is the same report the user was editing, so the times and places
+          // they set stay.
+          this.loadBatchViolation(this.state.currentViolationIndex, {
+            sameReport: true,
+          });
         }
 
         this.recordBatchGrouping({ event: 'merge', source, before });

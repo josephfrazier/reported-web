@@ -141,6 +141,8 @@ Write all prose in Simplified Technical English (ASD-STE100). The user asked for
 - Write detailed commit bodies that explain **why** the change matters, how the problem manifests, and how the fix works — not just what changed.
 - Include before/after code blocks (fenced with `\`\`\`js`) when the mechanism isn't obvious from the diff alone.
 - Link to relevant docs (MDN, Node.js, library docs) using markdown reference-style links at the bottom of the message, e.g. `[AbortController]: https://...`.
+- Write every in-text mention that a definition serves as a reference-style link, PR numbers included: `[#928][pr-928]`, with `[pr-928]: https://github.com/josephfrazier/reported-web/pull/928` at the bottom. Never write a bare `#NNN`: GitHub autolinks it to the issue or PR with that number, which is the wrong artifact for a Dependabot alert and a duplicate of a PR link.
+- Bracket a `GHSA-...` or alert number as well: `[GHSA-q2hr-2g5m-vwhr][ghsa-q2hr-2g5m-vwhr]` or `[Dependabot alert #515][alert-515]`. A plain-text mention leaves its definition unused, so no link renders. Check that every label has a definition and every definition is used.
 - For memory, timeout, or leak fixes: describe the closure/retention chain, what held what, and how the fix breaks the chain.
 - Record the dead ends: after stating the fix, list the approaches that were tried and rejected, with the reason each failed, so future developers don't repeat them. This applies to PR bodies too.
 - Hard-wrap commit and PR bodies at ~72 columns. Keep the markdown when wrapping — never leave long unbroken paragraphs, and don't let the wrapping strip backticks or list structure.
@@ -151,7 +153,7 @@ Every added or updated dependency must be linked so the change can be reviewed f
 
 - **Advisory**: `[GHSA-xxxx-xxxx-xxxx]: https://github.com/advisories/GHSA-...`, found via `https://github.com/advisories?query=<pkg>` when npm's advisory page returns 403.
 - **Updated package**: `https://my.diffend.io/npm/<pkg>/<from>/<to>`.
-- **Newly added package**: `https://unpkg.com/<pkg>@<version>/`, since diffend has no single-version syntax.
+- **Newly added package**: `https://unpkg.com/<pkg>@<version>/`, since diffend has no single-version syntax. Check that the link resolves: a `yarn.lock` key can be an npm alias (`@jest/react-is-18@npm:react-is@^18.3.1`), so it has no registry entry and its unpkg URL 404s. Link the real package (`https://unpkg.com/react-is@18.3.1/`) and say it is an alias. `npmjs.com` returns 403 to curl, so check the unpkg URL instead.
 - **npm page**: `https://www.npmjs.com/package/<pkg>?activeTab=versions` for every added or updated package, but not removed ones.
 - **Removed packages**: listed plainly in the body, with no links.
 

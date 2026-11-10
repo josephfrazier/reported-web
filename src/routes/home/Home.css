@@ -222,9 +222,7 @@ input[type='search']::-webkit-search-cancel-button {
   cursor: pointer;
   font-size: 0.9rem;
   font-family: inherit;
-  transition:
-    background 0.15s,
-    border-color 0.15s;
+  transition: background 0.15s, border-color 0.15s;
 }
 
 .status-bar-btn:hover {
@@ -263,9 +261,7 @@ input[type='search']::-webkit-search-cancel-button {
   font-size: 1rem;
   font-family: inherit;
   color: #666;
-  transition:
-    color 0.15s,
-    border-color 0.15s;
+  transition: color 0.15s, border-color 0.15s;
 }
 
 .auth-modal-tab:hover {

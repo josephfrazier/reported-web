@@ -46,6 +46,7 @@
 - Parse/local app flows need `PARSE_APP_ID`, `PARSE_JAVASCRIPT_KEY`, `PARSE_MASTER_KEY`, and `PARSE_SERVER_URL`.
 - Reverse geocoding/location validation uses `GEO_APP_KEY` and `GOOGLE_API_KEY`.
 - ALPR flows/tests use `PLATERECOGNIZER_TOKEN_LIST`, a comma-separated list of tokens. A read tries the token used longest ago first, puts tokens the service rate limited behind the free ones until their wait passes, and drops a token that answers 403 (depleted) for the life of the process.
+- The plate-read disk cache is in `src/alprCache.js`, keyed by the uploaded bytes. `ALPR_CACHE_DIR` selects the directory. It landed on main as PR #1095, and `add-semi-automatic-mode-plan` carries the same commits, so the ALPR files are byte-identical on both branches. Do not extract it again. The live `src/alpr.test.js` snapshots pass only under `yarn test` (dotenv loads the token); a bare `yarn jest src/alpr.test.js` gets 403 `Invalid token`, which looks like a broken cache. Tests get no cache unless they set `ALPR_CACHE_DIR`.
 - `HEROKU_APP_NAME`, `API_SERVER_URL`, `API_CLIENT_URL`, and `TRUST_PROXY` affect deployed/server behavior.
 
 ## Parse

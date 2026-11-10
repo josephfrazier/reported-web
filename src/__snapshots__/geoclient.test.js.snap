@@ -58,6 +58,7 @@ exports[`geosearch returns the right object 1`] = `
       "type": "Feature",
     },
   ],
+  "fellBackToTopResult": false,
   "geocoding": {
     "attribution": "http://geosearch.planninglabs.nyc/attribution",
     "engine": {
@@ -147,6 +148,7 @@ exports[`geosearch returns the right object around 3521 Riverdale Ave, The Bronx
       "type": "Feature",
     },
   ],
+  "fellBackToTopResult": false,
   "geocoding": {
     "attribution": "http://geosearch.planninglabs.nyc/attribution",
     "engine": {
@@ -235,6 +237,7 @@ exports[`geosearch returns the right object around the Empire State Building 1`]
       "type": "Feature",
     },
   ],
+  "fellBackToTopResult": false,
   "geocoding": {
     "attribution": "http://geosearch.planninglabs.nyc/attribution",
     "engine": {
@@ -323,6 +326,7 @@ exports[`geosearch returns the right object for string lat/long 1`] = `
       "type": "Feature",
     },
   ],
+  "fellBackToTopResult": false,
   "geocoding": {
     "attribution": "http://geosearch.planninglabs.nyc/attribution",
     "engine": {

@@ -3450,8 +3450,12 @@ class Home extends React.Component {
                             }),
                             () => {
                               // The report has the photos now: nothing on the
-                              // page shows them, so their bytes can go.
+                              // page shows them, so their bytes can go, and so
+                              // can the readings that described them.
                               submittedPhotos.forEach(releaseBlobUrl);
+                              submittedPhotos.forEach(file =>
+                                this.photoReadings.delete(file),
+                              );
                             },
                           );
                           this.setLicensePlate({

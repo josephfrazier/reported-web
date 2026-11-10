@@ -84,17 +84,16 @@ const setHomeStateCookie = (state, maxAge) => {
   });
 };
 
-const debouncedGeosearch = debounce(
-  async ({ latitude, longitude, address }) => {
-    const { data } = await axios.post('/api/geosearch', {
-      lat: latitude,
-      long: longitude,
-      address,
-    });
-    return data;
-  },
-  500,
-);
+const fetchGeosearchAddress = async ({ latitude, longitude, address }) => {
+  const { data } = await axios.post('/api/geosearch', {
+    lat: latitude,
+    long: longitude,
+    address,
+  });
+  return data;
+};
+
+const debouncedGeosearch = debounce(fetchGeosearchAddress, 500);
 
 const howsmydrivingApiUrl = ({ plate, licenseState }) =>
   `https://api.howsmydrivingny.nyc/api/v1/?plate=${plate}:${licenseState}`;

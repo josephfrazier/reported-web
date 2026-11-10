@@ -4369,6 +4369,66 @@ describe('Home', () => {
       cleanup();
     });
 
+    // The prior-submission check reads the report's day. Loading a row sets
+    // the plate before the form takes the row's time, so the check used the
+    // day of the row before it and missed a report from this row's day.
+    test("checks the opened report's day for a prior submission", async () => {
+      const photos = [
+        jpeg({ name: 'a.jpg', size: 4 }),
+        jpeg({ name: 'b.jpg', size: 7 }),
+      ];
+
+      // Two rows on different days.
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(
+          arrayBuffer.byteLength === 4
+            ? Date.UTC(2016, 0, 1, 12, 0, 0)
+            : Date.UTC(2016, 0, 2, 12, 0, 0),
+        ),
+        OffsetTimeDigitized: '-05:00',
+      }));
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+
+      const { homeRef, clickQueueLoad, toastWarn, cleanup } =
+        await renderBatchWithFiles(photos);
+
+      // The first row loaded is the Jan 1 car. A report for the Jan 2 car is
+      // already on record.
+      renderer.act(() => {
+        homeRef.current.setState({
+          submissions: [
+            {
+              license: 'K73JAU',
+              medallionNo: 'K73JAU',
+              timeofreport: '2016-01-02T17:00:00.000Z',
+            },
+          ],
+        });
+      });
+
+      clickQueueLoad('K73JAU');
+
+      await renderer.act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 600));
+      });
+
+      // The warning is JSX, not a string: read the text out of its children.
+      const warningText = toastWarn.mock.calls
+        .map(([content]) => content)
+        .filter(content => content?.props?.children)
+        .map(content => content.props.children.map(String).join(''))
+        .join('\n');
+
+      expect(warningText).toContain(
+        'You have already submitted 1 report for K73JAU',
+      );
+      expect(warningText).toContain('Jan 02 2016');
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
     // The License/Medallion field is what the report sends, so the row of the
     // violation in the form follows it: a plate typed over a wrong reading is
     // the plate the report will name, and the row says so. The rows that are

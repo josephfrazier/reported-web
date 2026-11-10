@@ -1749,7 +1749,12 @@ class Home extends React.Component {
       );
     });
 
-  setLicensePlate = ({ plate, licenseState, provenance = undefined }) => {
+  setLicensePlate = ({
+    plate,
+    licenseState,
+    provenance = undefined,
+    priorCheckDate,
+  }) => {
     // Both a read that found no state (null) and a caller that left the key
     // off (undefined) leave the current state alone; an empty string is a
     // cleared field and is kept.
@@ -1821,7 +1826,12 @@ class Home extends React.Component {
         (plate ? violationSummaryMessage : null),
     });
 
-    const selectedDate = new Date(this.state.CreateDate);
+    // The report's day, for the prior-submission check. A caller that sets the
+    // plate before the form takes the report's time passes it; otherwise the
+    // field's own value is the one.
+    const selectedDate = priorCheckDate
+      ? new Date(priorCheckDate)
+      : new Date(this.state.CreateDate);
     const selectedDateDay = selectedDate.toDateString();
 
     const priorSubmissions = this.state.submissions.filter(submission => {
@@ -2012,7 +2022,7 @@ class Home extends React.Component {
   // from that picture, so it is kept while that picture is attached and
   // recomputed when it is not. A plate the user typed is theirs and does not
   // move.
-  applyPhotosPlate = photos => {
+  applyPhotosPlate = ({ photos, priorCheckDate }) => {
     const { plateProvenance } = this.state;
 
     if (plateProvenance === PLATE_TYPED) {
@@ -2028,7 +2038,11 @@ class Home extends React.Component {
     const fromPhotos = this.plateFromPhotos(photos);
 
     if (fromPhotos) {
-      this.setLicensePlate({ ...fromPhotos, provenance: undefined });
+      this.setLicensePlate({
+        ...fromPhotos,
+        provenance: undefined,
+        priorCheckDate,
+      });
     } else if (this.state.plate) {
       // Nothing left reads a plate, so the field goes back to empty rather
       // than keeping one from a photo the report no longer holds.
@@ -2036,6 +2050,7 @@ class Home extends React.Component {
         plate: '',
         licenseState: 'NY',
         provenance: undefined,
+        priorCheckDate,
       });
     }
   };
@@ -2053,17 +2068,23 @@ class Home extends React.Component {
   // With nothing attached before, there is nothing of the user's to keep, and
   // the photos say what the time and place are.
   applyPhotosToForm = (photos, { previousPhotos = null } = {}) => {
-    this.applyPhotosPlate(photos);
-
-    if (photos.length === 0) {
-      return;
-    }
-
     const changing = previousPhotos !== null && previousPhotos.length > 0;
     const readings = this.readingsOf(photos);
 
     const timeIsTheUsers =
       changing && this.state.CreateDate !== this.createDateFor(previousPhotos);
+
+    // The plate's prior-submission check reads the report's day, which this
+    // call is setting. The field does not hold it yet, so pass it.
+    this.applyPhotosPlate({
+      photos,
+      priorCheckDate: this.priorCheckDateFor(readings, previousPhotos),
+    });
+
+    if (photos.length === 0) {
+      return;
+    }
+
     if (!timeIsTheUsers) {
       this.applyPhotoTime(readings);
     }
@@ -2090,6 +2111,28 @@ class Home extends React.Component {
         addressProvenance: '',
       });
     }
+  };
+
+  // The day a plate's prior-submission check should use: the report's time
+  // after `applyPhotosToForm` runs. `setState` has not applied that time to
+  // the field yet, so the check cannot read it from state. The user's own
+  // time stays; otherwise the earliest photo's time is the one. A new report
+  // with none falls back to now, the way its field does.
+  priorCheckDateFor = (readings, previousPhotos) => {
+    const changing = previousPhotos !== null && previousPhotos.length > 0;
+    const timeIsTheUsers =
+      changing && this.state.CreateDate !== this.createDateFor(previousPhotos);
+
+    if (timeIsTheUsers) {
+      return this.state.CreateDate;
+    }
+
+    const earliest = earliestTakenPhoto(readings);
+    if (earliest) {
+      return earliest.createDateMs;
+    }
+
+    return changing ? this.state.CreateDate : Date.now();
   };
 
   // Given what the photos read, give the form the earliest one's time.
@@ -3422,6 +3465,9 @@ class Home extends React.Component {
     this.setLicensePlate({
       plate: violation.plate,
       licenseState: violation.licenseState,
+      // The form takes the loaded report's time in the callback, so the
+      // prior-submission check cannot read the day from the field yet.
+      priorCheckDate: this.priorCheckDateFor(attached, previousPhotos),
     });
 
     // A violation's records are readings: they carry the fields the form's own

@@ -50,6 +50,7 @@
 ## Change guidance
 
 - Prefer small, surgical edits; this repo has several large legacy files and old dependencies.
+- **Split a fix that applies to `main` off the feature branch.** Make a new branch from `main`, write the failing test first, then the fix. Land it before the feature. The order matters: a server-side acceptance change is a safe no-op until a client sends the new shape. Do not assume the change is a bug on `main`; ask whether the split is wanted. Create the branch with `git switch -c <name> --no-track origin/main`, and tell the user the landing order.
 - **Never amend commits** unless explicitly asked as a one-off. Always create new commits on top instead.
 - **Auto-commit after changes**: after making a requested change, run `yarn fix`, verify tests pass, then commit immediately. Do not ask "commit?" or "want me to commit?" — just do it.
 - Add or change page routes in `src/routes/` and register them in `src/routes/index.js`.

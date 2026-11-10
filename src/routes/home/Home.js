@@ -1524,9 +1524,14 @@ class Home extends React.Component {
     });
   };
 
-  // Turn a previous submission back into the report in the form: its media,
-  // time, place and report fields replace what is there. The submission is
-  // deleted after the media is in hand, so a failed download leaves it.
+  // Turn a previous submission into a violation of its own: its media, time,
+  // place and report details become a row in the queue, and that row is
+  // loaded. The submission is deleted after the media is in hand, so a failed
+  // download leaves it.
+  //
+  // A submission with no media makes no row: an empty violation has nothing to
+  // review or send. Its details go into the form instead, where the user can
+  // add photos to report them again.
   onEditSubmission = async submission => {
     const { objectId } = submission;
 
@@ -1538,7 +1543,7 @@ class Home extends React.Component {
     }
 
     const confirmationMessage =
-      'Editing this submission deletes it and replaces the current report with its details. Continue?';
+      'Editing this submission deletes it and opens its details to report again. Continue?';
     // eslint-disable-next-line no-alert
     if (!window.confirm(confirmationMessage)) {
       return;
@@ -1566,36 +1571,10 @@ class Home extends React.Component {
     const createDateOffset = getNycTimezoneOffset(new Date(createDateMs));
     const latitude = Number(submission.latitude1 ?? submission.latitude);
     const longitude = Number(submission.longitude1 ?? submission.longitude);
+    const plate = submission.medallionNo || submission.license || '';
+    const licenseState = submission.state || 'NY';
 
-    files.forEach(file => {
-      this.photoReadings.set(file, {
-        ...emptyReading(file),
-        createDateMs,
-        createDateOffset,
-        latitude,
-        longitude,
-      });
-    });
-
-    startBackgroundUploads(files);
-
-    this.setState(state => ({
-      attachmentData: files,
-      allPlateData: null,
-      plateDataByAttachmentName: {},
-      plate: submission.medallionNo || submission.license || '',
-      licenseState: submission.state || 'NY',
-      plateProvenance: PLATE_TYPED,
-      CreateDate: createDateValue({
-        millisecondsSinceEpoch: createDateMs,
-        offset: createDateOffset,
-      }),
-      latitude,
-      longitude,
-      formatted_address: submission.loc1_address || '',
-      addressProvenance: '',
-      coordsAreInNyc: true,
-      typeofcomplaint: submission.typeofcomplaint ?? state.typeofcomplaint,
+    const reportDetails = {
       reportDescription: submission.reportDescription ?? '',
       can_be_shared_publicly: submission.can_be_shared_publicly ?? true,
       withhold_contact_info_from_nypd: Boolean(
@@ -1605,9 +1584,85 @@ class Home extends React.Component {
         submission.receive_nypd_sr_updates_by_email,
       ),
       testify: Boolean(submission.testify),
-      vehicleInfoComponent: null,
-      violationSummaryComponent: null,
+    };
+
+    if (files.length === 0) {
+      // No media, so no row. The details go into the form, unattached to the
+      // row it showed before, and the user can add photos to report them.
+      this.setState(state => ({
+        ...reportDetails,
+        typeofcomplaint: submission.typeofcomplaint ?? state.typeofcomplaint,
+        currentViolationIndex: -1,
+        attachmentData: [],
+        allPlateData: null,
+        plateDataByAttachmentName: {},
+        plate,
+        licenseState,
+        plateProvenance: PLATE_TYPED,
+        CreateDate: createDateValue({
+          millisecondsSinceEpoch: createDateMs,
+          offset: createDateOffset,
+        }),
+        latitude,
+        longitude,
+        formatted_address: submission.loc1_address || '',
+        addressProvenance: '',
+        coordsAreInNyc: true,
+        vehicleInfoComponent: null,
+        violationSummaryComponent: null,
+      }));
+      return;
+    }
+
+    // The files are the submission's own, so each one is a reading of the same
+    // report: one time, one place, and the plate it was filed under.
+    const photos = files.map(file => ({
+      ...emptyReading(file),
+      name: file.name,
+      createDateMs,
+      createDateOffset,
+      latitude,
+      longitude,
     }));
+
+    // Built and marked the way a row the user made by hand is, so a later
+    // plate read leaves it whole and keeps the plate it was filed under.
+    const [grouped] = groupAttachmentsByViolation(photos);
+    const [violation] = this.withNycFlags([
+      { ...grouped, plate, licenseState, mergedByUser: true },
+    ]);
+
+    // The row's place is the submission's, so loading it shows the address
+    // the submission was filed with rather than looking it up again.
+    if (
+      Number.isFinite(latitude) &&
+      Number.isFinite(longitude) &&
+      submission.loc1_address
+    ) {
+      this.geosearchAddressCache.set({
+        latitude,
+        longitude,
+        address: submission.loc1_address,
+      });
+    }
+
+    this.setState(
+      state => ({
+        batchPhotos: [...state.batchPhotos, ...photos],
+        // Rows run oldest first; an edited submission can belong before the
+        // rows the batch already holds.
+        batchViolations: [...state.batchViolations, violation].sort(
+          (a, b) => a.createDateMs - b.createDateMs,
+        ),
+      }),
+      () => {
+        this.loadBatchViolation(this.state.batchViolations.indexOf(violation));
+        this.setState(state => ({
+          ...reportDetails,
+          typeofcomplaint: submission.typeofcomplaint ?? state.typeofcomplaint,
+        }));
+      },
+    );
   };
 
   getPerSubmissionState() {
@@ -3623,9 +3678,17 @@ class Home extends React.Component {
       },
     );
 
+    // A row whose plate no photo reads is one the user gave a plate -- an
+    // edited submission, or a row built by hand. It stays theirs, the way a
+    // typed plate does, rather than being cleared when the photos next change.
+    const plateIsTheRowsOwn =
+      Boolean(violation.plate) &&
+      !violation.photos.some(photo => photo.plateResults);
+
     this.setLicensePlate({
       plate: violation.plate,
       licenseState: violation.licenseState,
+      provenance: plateIsTheRowsOwn ? PLATE_TYPED : undefined,
       // The form takes the loaded report's time in the callback, so the
       // prior-submission check cannot read the day from the field yet.
       priorCheckDate: this.priorCheckDateFor(attached, previousPhotos),

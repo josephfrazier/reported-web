@@ -2967,7 +2967,7 @@ describe('Home', () => {
     tree.unmount();
   });
 
-  test('turns a previous submission back into the form', async () => {
+  test('turns a previous submission into a violation of its own', async () => {
     localStorage.clear();
 
     const initialState = {
@@ -3064,10 +3064,183 @@ describe('Home', () => {
     expect(homeRef.current.state.receive_nypd_sr_updates_by_email).toBe(true);
     expect(homeRef.current.state.testify).toBe(true);
 
+    // The submission became a row of its own, and the form shows that row.
+    expect(homeRef.current.state.batchViolations).toHaveLength(1);
+    expect(homeRef.current.state.currentViolationIndex).toBe(0);
+    expect(homeRef.current.state.batchViolations[0].plate).toBe('T123456C');
+    expect(homeRef.current.state.batchPhotos.map(photo => photo.name)).toEqual([
+      'photoData0.jpg',
+      'videoData0.mp4',
+    ]);
+
     confirm.mockRestore();
     axiosGet.mockRestore();
     axiosPost.mockRestore();
     global.URL.createObjectURL = originalCreateObjectURL;
+    tree.unmount();
+  });
+
+  test('gives an edited submission a row beside the ones the batch holds', async () => {
+    localStorage.clear();
+
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+    };
+
+    const homeRef = React.createRef();
+    const tree = renderHome({ initialState, homeRef });
+
+    const existingFile = new File(['picture'], 'existing.jpg', {
+      type: 'image/jpeg',
+    });
+    const existingPhoto = {
+      file: existingFile,
+      name: existingFile.name,
+      createDateMs: Date.parse('2016-01-01T10:00:00.000Z'),
+      createDateOffset: 0,
+      latitude: 40.7,
+      longitude: -73.9,
+    };
+    const existingRow = {
+      photos: [existingPhoto],
+      plate: 'AAA111',
+      licenseState: 'NY',
+      createDateMs: existingPhoto.createDateMs,
+      latitude: existingPhoto.latitude,
+      longitude: existingPhoto.longitude,
+    };
+
+    const submission = {
+      objectId: 'edited-submission',
+      medallionNo: 'T123456C',
+      state: 'NY',
+      loc1_address: '1 Main St, New York, NY',
+      latitude1: 40.8,
+      longitude1: -73.8,
+      timeofreport: '2016-01-01T17:00:00.000Z',
+      photoData0: {
+        name: 'photoData0.jpg',
+        url: 'https://files.test/photoData0.jpg',
+      },
+    };
+
+    // The attachment grid makes a blob URL for the row the form starts on.
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+    renderer.act(() => {
+      homeRef.current.setState({
+        submissions: [submission],
+        batchPhotos: [existingPhoto],
+        batchViolations: [existingRow],
+        currentViolationIndex: 0,
+      });
+    });
+
+    const confirm = jest.spyOn(window, 'confirm').mockReturnValue(true);
+    const axiosGet = jest.spyOn(axios, 'get').mockImplementation(url => {
+      if (String(url).startsWith('https://files.test/')) {
+        return Promise.resolve({
+          data: new Blob(['media'], { type: 'image/jpeg' }),
+        });
+      }
+      return Promise.resolve({ data: {} });
+    });
+    const axiosPost = jest.spyOn(axios, 'post').mockImplementation(url => {
+      if (url === '/api/uploadAttachment') {
+        return Promise.resolve({ data: { id: 'a'.repeat(64) } });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    await renderer.act(async () => {
+      await homeRef.current.onEditSubmission(submission);
+    });
+    await renderer.act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 50));
+    });
+
+    const { batchViolations, currentViolationIndex, batchPhotos } =
+      homeRef.current.state;
+
+    // The row the batch held is untouched, and the edited submission joins it
+    // in capture order.
+    expect(batchViolations).toHaveLength(2);
+    expect(batchViolations[0]).toMatchObject({
+      plate: 'AAA111',
+      photos: [existingPhoto],
+    });
+    expect(batchViolations[1].plate).toBe('T123456C');
+    expect(batchPhotos).toHaveLength(2);
+
+    // The form shows the edited submission, not the row it held before.
+    expect(currentViolationIndex).toBe(1);
+    expect(homeRef.current.state.plate).toBe('T123456C');
+    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:00');
+    expect(homeRef.current.state.attachmentData.map(file => file.name)).toEqual(
+      ['photoData0.jpg'],
+    );
+
+    confirm.mockRestore();
+    axiosGet.mockRestore();
+    axiosPost.mockRestore();
+    global.URL.createObjectURL = originalCreateObjectURL;
+    tree.unmount();
+  });
+
+  test('edits a submission with no media into the form', async () => {
+    localStorage.clear();
+
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+    };
+
+    const homeRef = React.createRef();
+    const tree = renderHome({ initialState, homeRef });
+
+    const submission = {
+      objectId: 'no-media-submission',
+      medallionNo: 'T123456C',
+      state: 'NY',
+      typeofcomplaint: 'Ran a red light or stop sign',
+      reportDescription: 'the report',
+      loc1_address: '1 Main St, New York, NY',
+      latitude1: 40.7,
+      longitude1: -73.9,
+      timeofreport: '2016-01-01T17:00:00.000Z',
+    };
+
+    renderer.act(() => {
+      homeRef.current.setState({ submissions: [submission] });
+    });
+
+    const confirm = jest.spyOn(window, 'confirm').mockReturnValue(true);
+    const axiosPost = jest.spyOn(axios, 'post').mockResolvedValue({ data: {} });
+
+    await renderer.act(async () => {
+      await homeRef.current.onEditSubmission(submission);
+    });
+
+    // No media makes no row; the details go into the form instead.
+    expect(homeRef.current.state.batchViolations).toEqual([]);
+    expect(homeRef.current.state.currentViolationIndex).toBe(-1);
+    expect(homeRef.current.state.attachmentData).toEqual([]);
+    expect(homeRef.current.state.plate).toBe('T123456C');
+    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:00');
+    expect(homeRef.current.state.latitude).toBe(40.7);
+    expect(homeRef.current.state.longitude).toBe(-73.9);
+    expect(homeRef.current.state.formatted_address).toBe(
+      '1 Main St, New York, NY',
+    );
+    expect(homeRef.current.state.typeofcomplaint).toBe(
+      'Ran a red light or stop sign',
+    );
+    expect(homeRef.current.state.reportDescription).toBe('the report');
+
+    confirm.mockRestore();
+    axiosPost.mockRestore();
     tree.unmount();
   });
 

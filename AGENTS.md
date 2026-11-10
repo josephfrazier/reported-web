@@ -157,9 +157,9 @@ Every added or updated dependency must be linked so the change can be reviewed f
 
 In the commit body keep the dependency-changes bullet list, with each package name linking to its diff/unpkg URL and the link definitions collected at the bottom.
 
-## Git Identity
+## Git identity
 
-Git config is not set in this environment. Use env vars when committing:
+Git config is set in this environment to `Joseph Frazier <1212jtraceur@gmail.com>`, so a commit needs no environment variables. Verify it with `git config user.email` before you rely on it. If the identity is missing, set it for that commit only:
 ```bash
 GIT_COMMITTER_NAME="Joseph Frazier" GIT_COMMITTER_EMAIL="1212jtraceur@gmail.com" git commit --author="Joseph Frazier <1212jtraceur@gmail.com>" -m "message"
 ```

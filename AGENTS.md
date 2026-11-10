@@ -174,6 +174,7 @@ Never squash the trio together: each step is independently reviewable, and the h
 - The real-Parse suites (`src/testUtils/realParseServer.js`, `mongodb-memory-server`) run offline in this sandbox: the mongod binary is cached at `~/.cache/mongodb-binaries/mongod-arm64-ubuntu-4.4.14`, so nothing downloads. `parse-server` and `mongodb-memory-server` are devDependencies.
 - A scratch test can drive the real Express app end to end. Set `PARSE_*`, `HEROKU_RELEASE_VERSION`, and `PLATERECOGNIZER_TOKEN` (`_TWO`) before `require('./server.js')`. Replace `app.listen` with one that binds port 0. Then POST with `globalThis.fetch` and `FormData`, with a `cookie: reportedWebSession=<session token>` header and `X-Forwarded-Proto: https`. `jest.mock('./chunk-manifest.json', () => ({}), { virtual: true })` is still needed.
 - jest 30's node environment does provide `fetch`, `FormData`, and `Blob`. The "jest's environment has no fetch of its own" comment in `src/alprCache.test.js` is stale. Stub `globalThis.fetch` and keep the real one in a local to call the app under test.
+- `video-extensions@2.0.0` is pure ESM. Under a bare `npx jest` it throws `Must use import to load ES Module`. The `yarn test` script runs `node --experimental-vm-modules node_modules/.bin/jest` (since `cf6b573e`), so it loads the package fine. Node 24 supports `require(esm)`, but jest's sync-ESM path needs `vm.SourceTextModule.prototype.hasAsyncGraph`, which only exists with the flag. Run jest through `yarn test` before you blame an ESM-only dependency.
 
 ## Logging and countable events
 

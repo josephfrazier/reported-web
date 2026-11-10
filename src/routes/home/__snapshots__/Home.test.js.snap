@@ -165,7 +165,7 @@ exports[`Home hides form fields when logged in with no photos uploaded 1`] = `
               <p
                 className="batch-hint"
               >
-                Some photos, a folder, or a zip file: we split the photos into violations and open them one at a time.
+                Photos and videos, a folder, or a zip file: we split them into violations and open them one at a time.
               </p>
               <p
                 className="upload-hint"

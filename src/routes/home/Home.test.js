@@ -4071,7 +4071,7 @@ describe('Home', () => {
       const { tree, cleanup } = await renderBatchWithFiles([]);
 
       expect(renderedText(tree.toJSON())).toContain(
-        'Some photos, a folder, or a zip file: we split the photos into violations and open them one at a time.',
+        'Photos and videos, a folder, or a zip file: we split them into violations and open them one at a time.',
       );
 
       cleanup();
@@ -4090,7 +4090,7 @@ describe('Home', () => {
 
       // The photos are the point: the line is not needed once they are in.
       expect(renderedText(tree.toJSON())).not.toContain(
-        'Some photos, a folder, or a zip file',
+        'Photos and videos, a folder, or a zip file',
       );
 
       exifr.gps.mockReset();

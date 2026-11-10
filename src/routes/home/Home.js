@@ -6072,8 +6072,8 @@ class Home extends React.Component {
                       {this.state.batchPhotos.length === 0 &&
                         this.state.attachmentData.length === 0 && (
                           <p className={homeStyles['batch-hint']}>
-                            Some photos, a folder, or a zip file: we split the
-                            photos into violations and open them one at a time.
+                            Photos and videos, a folder, or a zip file: we split
+                            them into violations and open them one at a time.
                           </p>
                         )}
 

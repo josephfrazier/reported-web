@@ -1208,7 +1208,11 @@ describe('Home', () => {
     exifr.parse.mockImplementation(async buffer => {
       const which = Buffer.from(buffer).toString('utf8');
       return {
-        CreateDate: new Date(which.includes('older') ? 1000 : 3000),
+        CreateDate: new Date(
+          which.includes('older')
+            ? Date.UTC(2016, 0, 1, 12, 0, 1)
+            : Date.UTC(2016, 0, 1, 12, 0, 3),
+        ),
         OffsetTimeDigitized: '+00:00',
       };
     });
@@ -1238,8 +1242,8 @@ describe('Home', () => {
       return {
         CreateDate: new Date(
           which.includes('earlier')
-            ? Date.UTC(2024, 0, 1, 12, 0, 10)
-            : Date.UTC(2024, 0, 1, 12, 0, 40),
+            ? Date.UTC(2016, 0, 1, 12, 0, 10)
+            : Date.UTC(2016, 0, 1, 12, 0, 40),
         ),
         OffsetTimeDigitized: '+00:00',
       };
@@ -1247,7 +1251,7 @@ describe('Home', () => {
 
     const { homeRef, cleanup } = await renderAndExtract([earlier, later]);
 
-    expect(homeRef.current.state.CreateDate).toBe('2024-01-01T12:00:10');
+    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:10');
 
     cleanup();
   });
@@ -1322,6 +1326,41 @@ describe('Home', () => {
     cleanup();
   });
 
+  test('leaves the form time alone for a picture stamped with an implausible time', async () => {
+    // EXIF can carry an epoch date or one from a camera whose clock was reset.
+    exifr.parse.mockImplementation(async () => ({
+      CreateDate: new Date(Date.UTC(1970, 0, 1)),
+      OffsetTimeDigitized: '+00:00',
+    }));
+
+    const photo = new File([photoBytes('old')], 'old.jpg', {
+      type: 'image/jpeg',
+    });
+    const { homeRef, cleanup } = await renderAndExtract([photo]);
+
+    expect(homeRef.current.state.CreateDate).toBe('2016-11-17T19:00:00');
+
+    cleanup();
+  });
+
+  test('leaves the form time alone for a picture stamped in the future', async () => {
+    // The server refuses a report timestamped after now, so a picture from a
+    // camera whose clock is ahead must not set it either.
+    exifr.parse.mockImplementation(async () => ({
+      CreateDate: new Date(Date.now() + 60 * 60 * 1000),
+      OffsetTimeDigitized: '+00:00',
+    }));
+
+    const photo = new File([photoBytes('future')], 'future.jpg', {
+      type: 'image/jpeg',
+    });
+    const { homeRef, cleanup } = await renderAndExtract([photo]);
+
+    expect(homeRef.current.state.CreateDate).toBe('2016-11-17T19:00:00');
+
+    cleanup();
+  });
+
   // Three photos, each taken ten seconds and a little way from the last, so a
   // submission's time and place land on different photos: the earliest for the
   // time, the last one with coordinates for the place.
@@ -1346,7 +1385,7 @@ describe('Home', () => {
       const which = Buffer.from(buffer).toString('utf8');
       const name = Object.keys(seconds).find(each => which.includes(each));
       return {
-        CreateDate: new Date(Date.UTC(2024, 0, 1, 12, 0, seconds[name])),
+        CreateDate: new Date(Date.UTC(2016, 0, 1, 12, 0, seconds[name])),
         OffsetTimeDigitized: '+00:00',
       };
     });
@@ -1367,18 +1406,18 @@ describe('Home', () => {
 
     // The submission is as old as its earliest photo, and sits where the last
     // photo that knows where it was was taken.
-    expect(homeRef.current.state.CreateDate).toBe('2024-01-01T12:00:10');
+    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:10');
     expect(homeRef.current.state.latitude).toBe(40.74);
 
     // Drop the earliest: the time moves onto the one that is left, and the
     // place was already the last photo's.
     await dropPhoto(homeRef, settle, 'early.jpg');
-    expect(homeRef.current.state.CreateDate).toBe('2024-01-01T12:00:20');
+    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:20');
     expect(homeRef.current.state.latitude).toBe(40.74);
 
     // Drop the last: now the place has to move too.
     await dropPhoto(homeRef, settle, 'late.jpg');
-    expect(homeRef.current.state.CreateDate).toBe('2024-01-01T12:00:20');
+    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:20');
     expect(homeRef.current.state.latitude).toBe(40.72);
 
     cleanup();
@@ -1404,7 +1443,7 @@ describe('Home', () => {
     expect(homeRef.current.state.latitude).toBe(40.9);
     expect(homeRef.current.state.longitude).toBe(-73.9);
     // The time was still the photos', so it followed them.
-    expect(homeRef.current.state.CreateDate).toBe('2024-01-01T12:00:20');
+    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:20');
 
     cleanup();
   });
@@ -1483,13 +1522,13 @@ describe('Home', () => {
     const { homeRef, settle, cleanup } =
       await renderAndExtract(threePhotosApart());
 
-    expect(homeRef.current.state.CreateDate).toBe('2024-01-01T12:00:10');
+    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:10');
     expect(homeRef.current.state.latitude).toBe(40.74);
 
     // The submission is as old as its earliest photo, so the time moves with
     // it; the undo has to put both the file and the form back.
     await dropPhoto(homeRef, settle, 'early.jpg');
-    expect(homeRef.current.state.CreateDate).toBe('2024-01-01T12:00:20');
+    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:20');
 
     const undo = findToastButton(toastInfo.mock.calls[0][0], 'Undo');
     expect(undo).not.toBeNull();
@@ -1498,7 +1537,7 @@ describe('Home', () => {
     expect(homeRef.current.state.attachmentData.map(file => file.name)).toEqual(
       ['early.jpg', 'middle.jpg', 'late.jpg'],
     );
-    expect(homeRef.current.state.CreateDate).toBe('2024-01-01T12:00:10');
+    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:10');
     expect(homeRef.current.state.latitude).toBe(40.74);
 
     toastInfo.mockRestore();
@@ -1511,7 +1550,7 @@ describe('Home', () => {
     const { homeRef, settle, cleanup } = await renderAndExtract([only]);
 
     expect(homeRef.current.state.latitude).toBe(40.7);
-    expect(homeRef.current.state.CreateDate).toBe('2024-01-01T12:00:10');
+    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:10');
 
     await dropPhoto(homeRef, settle, 'early.jpg');
 
@@ -1527,7 +1566,7 @@ describe('Home', () => {
       ['early.jpg'],
     );
     expect(homeRef.current.state.latitude).toBe(40.7);
-    expect(homeRef.current.state.CreateDate).toBe('2024-01-01T12:00:10');
+    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:10');
 
     toastInfo.mockRestore();
     cleanup();
@@ -3703,7 +3742,7 @@ describe('Home', () => {
 
     exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
     exifr.parse.mockImplementation(async () => ({
-      CreateDate: new Date(Date.UTC(2024, 0, 1, 12, 0, 0)),
+      CreateDate: new Date(Date.UTC(2016, 0, 1, 12, 0, 0)),
       OffsetTimeDigitized: '+00:00',
     }));
 
@@ -3766,7 +3805,7 @@ describe('Home', () => {
 
     exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
     exifr.parse.mockImplementation(async () => ({
-      CreateDate: new Date(Date.UTC(2024, 0, 1, 12, 0, 0)),
+      CreateDate: new Date(Date.UTC(2016, 0, 1, 12, 0, 0)),
       OffsetTimeDigitized: '+00:00',
     }));
 
@@ -3831,7 +3870,7 @@ describe('Home', () => {
 
     exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
     exifr.parse.mockImplementation(async () => ({
-      CreateDate: new Date(Date.UTC(2024, 0, 1, 12, 0, 0)),
+      CreateDate: new Date(Date.UTC(2016, 0, 1, 12, 0, 0)),
       OffsetTimeDigitized: '+00:00',
     }));
 

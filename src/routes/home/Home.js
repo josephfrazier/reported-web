@@ -568,46 +568,48 @@ async function extractLocation({
   }
 }
 
+// The range a file's own timestamp must fall in to be used. An mp4's time
+// comes from its header, and a broken or copied file can say 1904 (the
+// format's epoch) or a time after this report. An EXIF date can be old, or
+// from a camera clock that is ahead. A file outside the range gives no time,
+// the way one with no readable date does.
+const EARLIEST_PHOTO_TIME = Date.UTC(2000, 0, 1);
+
+const photoTimeIsPlausible = millisecondsSinceEpoch =>
+  Number.isFinite(millisecondsSinceEpoch) &&
+  millisecondsSinceEpoch >= EARLIEST_PHOTO_TIME &&
+  millisecondsSinceEpoch <= Date.now();
+
 // The moment a file records, and the offset it is read in. The file's own
 // offset when it records one; New York's otherwise, since a report is filed
-// there; the device's when the file records no time at all.
-const readingFromDate = ({ date, offsetTimeDigitized }) => ({
-  millisecondsSinceEpoch: date.getTime(),
-  offset: offsetTimeDigitized
-    ? parseInt(offsetTimeDigitized, 10) * -60
-    : date
-      ? getNycTimezoneOffset(date)
-      : new Date().getTimezoneOffset(),
-});
+// there. A time outside the plausible range is not a time this report should
+// carry, so it throws, the same as a file with no readable date.
+const readingFromDate = ({ date, offsetTimeDigitized }) => {
+  const millisecondsSinceEpoch = date.getTime();
 
-// The range a video's own timestamp must fall in to be used. An mp4's time
-// comes from its header, and a broken or copied file can say 1904 (the
-// format's epoch) or a time after this report. A video outside the range
-// gives no time, the way a picture with no readable date does.
-const EARLIEST_VIDEO_TIME = Date.UTC(2000, 0, 1);
+  if (!photoTimeIsPlausible(millisecondsSinceEpoch)) {
+    throw new Error(
+      `photo time is not plausible: ${new Date(millisecondsSinceEpoch)}`,
+    );
+  }
 
-const videoTimeIsPlausible = millisecondsSinceEpoch =>
-  Number.isFinite(millisecondsSinceEpoch) &&
-  millisecondsSinceEpoch >= EARLIEST_VIDEO_TIME &&
-  millisecondsSinceEpoch <= Date.now();
+  return {
+    millisecondsSinceEpoch,
+    offset: offsetTimeDigitized
+      ? parseInt(offsetTimeDigitized, 10) * -60
+      : getNycTimezoneOffset(date),
+  };
+};
 
 async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
   try {
     if (isVideo({ ext })) {
-      const [, millisecondsSinceEpoch] = extractLocationDateFromVideo({
-        attachmentArrayBuffer,
-      });
-
-      if (!videoTimeIsPlausible(millisecondsSinceEpoch)) {
-        throw new Error(
-          `video time is not plausible: ${new Date(millisecondsSinceEpoch)}`,
-        );
-      }
-
       // An MP4 records when it was made and no offset, so its time is read
       // the way a picture's is when the picture records none.
       return readingFromDate({
-        date: new Date(millisecondsSinceEpoch),
+        date: new Date(
+          extractLocationDateFromVideo({ attachmentArrayBuffer })[1],
+        ),
       });
     }
     if (!isImage({ ext })) {

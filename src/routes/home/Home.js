@@ -2012,7 +2012,6 @@ class Home extends React.Component {
     }
   };
 
-  // adapted from https://github.com/ngokevin/react-file-reader-input/tree/f970257f271b8c3bba9d529ffdbfa4f4731e0799#usage
   // A picked folder: every picture and video inside it becomes an attachment.
   //
   // A folder is what a camera roll is, and it holds things that are not
@@ -2052,9 +2051,21 @@ class Home extends React.Component {
     return this.handleAttachmentData({ attachmentData: files });
   };
 
-  handleAttachmentInput = async (_, results) => {
-    const picked = results.map(([, attachmentFile]) => attachmentFile);
-    return this.handleAttachmentFiles(picked);
+  // The files or zip the picker handed over. The input is a plain one: the
+  // files' contents are read where they are needed (a zip's entries, a
+  // photo's metadata), so reading the whole pick into memory first would only
+  // hold the bytes twice.
+  handleAttachmentFileInput = event => {
+    const files = [...event.target.files];
+    // Clear the input, so that picking the same file again still fires a
+    // change event.
+    event.target.value = ''; // eslint-disable-line no-param-reassign
+
+    if (files.length === 0) {
+      return undefined;
+    }
+
+    return this.handleAttachmentFiles(files);
   };
 
   // What each of a set of photos read.
@@ -6155,12 +6166,10 @@ class Home extends React.Component {
                   >
                     <fieldset disabled={this.state.isSubmitting}>
                       <React.Fragment>
-                        {/* Both inputs read `event.target.files` directly rather
-                        than going through FileReaderInput: that component is
-                        used with `as="buffer"`, which reads every selected
-                        file's contents into memory, and across a forty-photo
-                        folder that is a great deal of buffering before ALPR
-                        has even started. */}
+                        {/* Both inputs read `event.target.files` directly,
+                        rather than reading every selected file's contents into
+                        memory first: across a forty-photo folder that is a
+                        great deal of buffering before ALPR has even started. */}
                         <button
                           type="button"
                           style={{ float: 'left', margin: '1px' }}

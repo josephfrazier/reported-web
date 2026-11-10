@@ -5737,7 +5737,10 @@ describe('Home', () => {
       // Both rows remain; the photo changed rows.
       expect(move.rowsAfter).toHaveLength(2);
       expect(
-        move.rowsAfter.map(row => [row.plate, row.photos]),
+        move.rowsAfter.map(violationRow => [
+          violationRow.plate,
+          violationRow.photos,
+        ]),
       ).toEqual([
         ['AAA111', ['a.jpg']],
         ['BBB222', ['c.jpg', 'b.jpg']],
@@ -7562,7 +7565,9 @@ describe('Home', () => {
     });
 
     await renderer.act(async () => {
-      await homeRef.current.handleAttachmentInput(null, [[null, zip]]);
+      await homeRef.current.handleAttachmentFileInput({
+        target: { files: [zip], value: '' },
+      });
     });
     // The extraction pass runs from a setState callback through jsdom's
     // FileReader, so it needs real time rather than a microtask.

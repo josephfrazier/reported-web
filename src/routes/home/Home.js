@@ -258,13 +258,6 @@ const createDateValue = ({ millisecondsSinceEpoch, offset }) => {
   );
 };
 
-// The offset a photo's moment should be read in: the one its date read gave,
-// or this device's when it gave none.
-const photoOffset = ({ createDateOffset }) =>
-  Number.isFinite(createDateOffset)
-    ? createDateOffset
-    : new Date().getTimezoneOffset();
-
 // What the form records as the origin of a location the photos gave it. The
 // map and the address field write their own words in its place, which is how a
 // place the user set is told from one the photos did -- and the place follows
@@ -285,7 +278,7 @@ const PLATE_TYPED = 'typed';
 // A reading's moment, as `setCreateDate` and `createDateValue` take it.
 const momentOf = ({ createDateMs, createDateOffset }) => ({
   millisecondsSinceEpoch: createDateMs,
-  offset: photoOffset({ createDateOffset }),
+  offset: createDateOffset,
 });
 
 async function blobToBuffer({ attachmentFile }) {

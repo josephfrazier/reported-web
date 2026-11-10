@@ -4906,6 +4906,7 @@ describe('Home', () => {
         file: new File(['picture'], name, { type: 'image/jpeg' }),
         name,
         createDateMs,
+        createDateOffset: 0,
       });
       const farPhoto = photoAt('far.jpg', farAt);
       const nearPhoto = photoAt('near.jpg', nearAt);
@@ -5260,7 +5261,12 @@ describe('Home', () => {
         const file = new File(['picture'], `${name}.jpg`, {
           type: 'image/jpeg',
         });
-        return { file, name: file.name, createDateMs: 1704110400000 };
+        return {
+          file,
+          name: file.name,
+          createDateMs: 1704110400000,
+          createDateOffset: 0,
+        };
       });
       const row = (photoList, plate, createDateMs) => ({
         photos: photoList,
@@ -5516,7 +5522,12 @@ describe('Home', () => {
         const file = new File(['picture'], `${name}.jpg`, {
           type: 'image/jpeg',
         });
-        return { file, name: file.name, createDateMs: 1704110400000 };
+        return {
+          file,
+          name: file.name,
+          createDateMs: 1704110400000,
+          createDateOffset: 0,
+        };
       });
       const row = (photo, plate, createDateMs) => ({
         photos: [photo],
@@ -5599,6 +5610,7 @@ describe('Home', () => {
         file: frame,
         name: frame.name,
         createDateMs: 1704110400000,
+        createDateOffset: 0,
       };
       const row = plate => ({
         photos: [photo],
@@ -5607,6 +5619,7 @@ describe('Home', () => {
         latitude: 40.7129,
         longitude: -74.0061,
         createDateMs: 1704110400000,
+        createDateOffset: 0,
       });
 
       const { homeRef, tickMerge, clickButton, cleanup } =
@@ -5644,7 +5657,12 @@ describe('Home', () => {
         const file = new File(['picture'], `${name}.jpg`, {
           type: 'image/jpeg',
         });
-        return { file, name: file.name, createDateMs: 1704110400000 };
+        return {
+          file,
+          name: file.name,
+          createDateMs: 1704110400000,
+          createDateOffset: 0,
+        };
       });
       const row = (photoList, plate, createDateMs) => ({
         photos: photoList,
@@ -5733,7 +5751,12 @@ describe('Home', () => {
         const file = new File(['picture'], `${name}.jpg`, {
           type: 'image/jpeg',
         });
-        return { file, name: file.name, createDateMs: 1704110400000 };
+        return {
+          file,
+          name: file.name,
+          createDateMs: 1704110400000,
+          createDateOffset: 0,
+        };
       });
       const row = (photoList, plate, createDateMs) => ({
         photos: photoList,
@@ -5817,7 +5840,12 @@ describe('Home', () => {
         const file = new File(['picture'], `${name}.jpg`, {
           type: 'image/jpeg',
         });
-        return { file, name: file.name, createDateMs: 1704110400000 };
+        return {
+          file,
+          name: file.name,
+          createDateMs: 1704110400000,
+          createDateOffset: 0,
+        };
       });
       const row = {
         photos,
@@ -5826,6 +5854,7 @@ describe('Home', () => {
         latitude: 40.7129,
         longitude: -74.0061,
         createDateMs: 1704110400000,
+        createDateOffset: 0,
       };
 
       const { homeRef, tree, cleanup } = await renderBatchWithFiles([]);
@@ -5888,6 +5917,7 @@ describe('Home', () => {
           file,
           name: file.name,
           createDateMs: 1704110400000,
+          createDateOffset: 0,
           latitude: 40.7129,
           longitude: -74.0061,
         };
@@ -6006,7 +6036,12 @@ describe('Home', () => {
         const file = new File(['picture'], `${name}.jpg`, {
           type: 'image/jpeg',
         });
-        return { file, name: file.name, createDateMs: 1704110400000 };
+        return {
+          file,
+          name: file.name,
+          createDateMs: 1704110400000,
+          createDateOffset: 0,
+        };
       });
       const row = (photoList, plate, createDateMs) => ({
         photos: photoList,
@@ -6081,7 +6116,12 @@ describe('Home', () => {
         const file = new File(['picture'], `${name}.jpg`, {
           type: 'image/jpeg',
         });
-        return { file, name: file.name, createDateMs: 1704110400000 };
+        return {
+          file,
+          name: file.name,
+          createDateMs: 1704110400000,
+          createDateOffset: 0,
+        };
       });
       const row = {
         photos,
@@ -6090,6 +6130,7 @@ describe('Home', () => {
         latitude: 40.7129,
         longitude: -74.0061,
         createDateMs: 1704110400000,
+        createDateOffset: 0,
       };
 
       const { homeRef, tree, clickQueueLoad, cleanup } =
@@ -6135,7 +6176,12 @@ describe('Home', () => {
         const file = new File(['picture'], `${name}.jpg`, {
           type: 'image/jpeg',
         });
-        return { file, name: file.name, createDateMs: 1704110400000 };
+        return {
+          file,
+          name: file.name,
+          createDateMs: 1704110400000,
+          createDateOffset: 0,
+        };
       });
       const row = (photoList, plate, createDateMs) => ({
         photos: photoList,
@@ -6189,7 +6235,12 @@ describe('Home', () => {
         const file = new File(['picture'], `${name}.jpg`, {
           type: 'image/jpeg',
         });
-        return { file, name: file.name, createDateMs: 1704110400000 };
+        return {
+          file,
+          name: file.name,
+          createDateMs: 1704110400000,
+          createDateOffset: 0,
+        };
       });
       const violation = (photo, plate, createDateMs) => ({
         photos: [photo],
@@ -6238,6 +6289,7 @@ describe('Home', () => {
         latitude: 40.7129,
         longitude: -74.0061,
         createDateMs: 1704110400000,
+        createDateOffset: 0,
       };
 
       const rendered = await renderBatchWithFiles([]);
@@ -6274,6 +6326,7 @@ describe('Home', () => {
           name: file.name,
           plateRead: 'read',
           createDateMs: 1704110400000 + index * 1000,
+          createDateOffset: 0,
           latitude: 40.7129,
           longitude: -74.0061,
         };
@@ -6403,6 +6456,7 @@ describe('Home', () => {
           // read is a violation the queue can open on.
           plateRead: 'read',
           createDateMs: 1704110400000 + index * 1000,
+          createDateOffset: 0,
           latitude: 40.7129,
           longitude: -74.0061,
         };
@@ -6626,6 +6680,7 @@ describe('Home', () => {
           file,
           name: file.name,
           createDateMs: 1704110400000 + index * 1000,
+          createDateOffset: 0,
           latitude: 40.7129,
           longitude: -74.0061,
         };
@@ -6658,6 +6713,7 @@ describe('Home', () => {
         file: new File(['picture'], `${name}.jpg`, { type: 'image/jpeg' }),
         name: `${name}.jpg`,
         createDateMs: 1704110400000 + index * 1000,
+        createDateOffset: 0,
         latitude: 40.7129,
         longitude: -74.0061,
       }));
@@ -6696,7 +6752,12 @@ describe('Home', () => {
         const file = new File(['picture'], `${name}.jpg`, {
           type: 'image/jpeg',
         });
-        return { file, name: file.name, createDateMs: 1704110400000 };
+        return {
+          file,
+          name: file.name,
+          createDateMs: 1704110400000,
+          createDateOffset: 0,
+        };
       });
       const row = (photoList, plate) => ({
         photos: photoList,
@@ -6705,6 +6766,7 @@ describe('Home', () => {
         latitude: 40.7129,
         longitude: -74.0061,
         createDateMs: 1704110400000,
+        createDateOffset: 0,
       });
 
       const { homeRef, tree, toastInfo, cleanup } = await renderBatchWithFiles(
@@ -6762,6 +6824,7 @@ describe('Home', () => {
           file,
           name: file.name,
           createDateMs: 1704110400000 + index * 1000,
+          createDateOffset: 0,
           latitude: 40.7129,
           longitude: -74.0061,
         };
@@ -6811,6 +6874,7 @@ describe('Home', () => {
           file,
           name: file.name,
           createDateMs: 1704110400000 + index * 1000,
+          createDateOffset: 0,
           latitude: 40.7129,
           longitude: -74.0061,
         };
@@ -6860,6 +6924,7 @@ describe('Home', () => {
           file,
           name: file.name,
           createDateMs: 1704110400000 + index * 1000,
+          createDateOffset: 0,
           // The place `oneRowOf` has already had looked up.
           latitude: 40.7129,
           longitude: -74.0061,
@@ -6915,6 +6980,7 @@ describe('Home', () => {
         file: new File(['picture'], name, { type: 'image/jpeg' }),
         name,
         createDateMs: 1704110400000,
+        createDateOffset: 0,
         latitude: 40.7129,
         longitude: -74.0061,
       });
@@ -6927,6 +6993,7 @@ describe('Home', () => {
         latitude: 40.7129,
         longitude: -74.0061,
         createDateMs: 1704110400000,
+        createDateOffset: 0,
       });
 
       const rendered = await renderBatchWithFiles([]);
@@ -7076,6 +7143,7 @@ describe('Home', () => {
           file,
           name: file.name,
           createDateMs: 1704110400000 + index * 1000,
+          createDateOffset: 0,
           latitude: 40.7129,
           longitude: -74.0061,
         };
@@ -7087,6 +7155,7 @@ describe('Home', () => {
         latitude: 40.7129,
         longitude: -74.0061,
         createDateMs: 1704110400000,
+        createDateOffset: 0,
       };
 
       const { homeRef, clickQueueLoad, submit, cleanup } =
@@ -7336,6 +7405,7 @@ describe('Home', () => {
             file,
             name,
             createDateMs: 1704110400000 + index * 1000,
+            createDateOffset: 0,
             latitude: 40.7129,
             longitude: -74.0061,
           };
@@ -7347,6 +7417,7 @@ describe('Home', () => {
           latitude: 40.7129,
           longitude: -74.0061,
           createDateMs: 1704110400000,
+          createDateOffset: 0,
         };
         const kept = names.filter(name => name !== deleted);
 
@@ -7683,6 +7754,7 @@ describe('Home', () => {
         file,
         name: file.name,
         createDateMs: 1704110400000,
+        createDateOffset: 0,
         latitude: 40.7129,
         longitude: -74.0061,
       }));
@@ -7693,6 +7765,7 @@ describe('Home', () => {
         latitude: 40.7129,
         longitude: -74.0061,
         createDateMs: 1704110400000,
+        createDateOffset: 0,
       };
 
       const {

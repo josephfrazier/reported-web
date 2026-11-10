@@ -773,8 +773,8 @@ class Home extends React.Component {
     });
   }
 
-  static notifyInfo(notificationContent) {
-    return toast.info(notificationContent);
+  static notifyInfo(notificationContent, options) {
+    return toast.info(notificationContent, options);
   }
 
   static notifyWarning(notificationContent, options) {
@@ -1846,10 +1846,90 @@ class Home extends React.Component {
     });
   };
 
+  // Everything the removal below changes, kept so its toast can put it back.
+  photoRemovalSnapshot = name => {
+    const {
+      attachmentData,
+      plate,
+      licenseState,
+      allPlateData,
+      plateDataByAttachmentName,
+      vehicleInfoComponent,
+      violationSummaryComponent,
+      CreateDate,
+      latitude,
+      longitude,
+      addressProvenance,
+      plateProvenance,
+    } = this.state;
+    const file = attachmentData.find(candidate => candidate.name === name);
+
+    return {
+      attachmentData,
+      plate,
+      licenseState,
+      allPlateData,
+      plateDataByAttachmentName,
+      vehicleInfoComponent,
+      violationSummaryComponent,
+      CreateDate,
+      latitude,
+      longitude,
+      formatted_address: this.state.formatted_address,
+      addressProvenance,
+      plateProvenance,
+      file,
+      reading: file ? this.photoReadings.get(file) : undefined,
+    };
+  };
+
+  restorePhotoRemoval = snapshot => {
+    // The reading goes back with the photo: what it said is what the form
+    // draws the overlays and the plate suggestions from.
+    if (snapshot.file && snapshot.reading) {
+      this.photoReadings.set(snapshot.file, snapshot.reading);
+    }
+
+    this.setState({
+      attachmentData: snapshot.attachmentData,
+      plate: snapshot.plate,
+      licenseState: snapshot.licenseState,
+      allPlateData: snapshot.allPlateData,
+      plateDataByAttachmentName: snapshot.plateDataByAttachmentName,
+      vehicleInfoComponent: snapshot.vehicleInfoComponent,
+      violationSummaryComponent: snapshot.violationSummaryComponent,
+      CreateDate: snapshot.CreateDate,
+      latitude: snapshot.latitude,
+      longitude: snapshot.longitude,
+      formatted_address: snapshot.formatted_address,
+      addressProvenance: snapshot.addressProvenance,
+      plateProvenance: snapshot.plateProvenance,
+    });
+  };
+
+  // A removal can be taken back: the toast holds the form as it was, rather
+  // than a confirm dialog before every delete.
+  notifyPhotoRemoved = snapshot => {
+    Home.notifyInfo(
+      <React.Fragment>
+        <p>Photo removed.</p>
+        <button
+          type="button"
+          onClick={() => this.restorePhotoRemoval(snapshot)}
+        >
+          Undo
+        </button>
+      </React.Fragment>,
+      // Long enough to notice the mistake and reach the button.
+      { autoClose: 8000 },
+    );
+  };
+
   // Take one photo out of the submission, from the X on its thumbnail. What
   // the submission's time and place are is asked again once it is gone: they
   // came from the photos, and the photos have changed.
   removeAttachment = name => {
+    const snapshot = this.photoRemovalSnapshot(name);
     const previousPhotos = this.state.attachmentData;
 
     this.setState(
@@ -1903,6 +1983,8 @@ class Home extends React.Component {
           });
       },
     );
+
+    this.notifyPhotoRemoved(snapshot);
   };
 
   handleAttachmentData = async ({ attachmentData }) => {

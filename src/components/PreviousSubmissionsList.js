@@ -27,6 +27,7 @@ class PreviousSubmissionsList extends React.Component {
     return (
       this.props.submissions !== nextProps.submissions ||
       this.props.onDeleteSubmission !== nextProps.onDeleteSubmission ||
+      this.props.onEditSubmission !== nextProps.onEditSubmission ||
       this.props.isLoading !== nextProps.isLoading ||
       this.props.hasLoadedPreviousSubmissions !==
         nextProps.hasLoadedPreviousSubmissions ||
@@ -38,6 +39,7 @@ class PreviousSubmissionsList extends React.Component {
     const {
       submissions,
       onDeleteSubmission,
+      onEditSubmission,
       isLoading,
       hasLoadedPreviousSubmissions,
     } = this.props;
@@ -72,6 +74,7 @@ class PreviousSubmissionsList extends React.Component {
               <SubmissionDetails
                 submission={submission}
                 onDeleteSubmission={onDeleteSubmission}
+                onEditSubmission={onEditSubmission}
               />
             </li>
           ))}
@@ -90,6 +93,7 @@ PreviousSubmissionsList.propTypes = {
     }),
   ).isRequired,
   onDeleteSubmission: PropTypes.func.isRequired,
+  onEditSubmission: PropTypes.func.isRequired,
 };
 
 export default PreviousSubmissionsList;

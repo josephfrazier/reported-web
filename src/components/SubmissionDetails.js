@@ -18,6 +18,7 @@ class SubmissionDetails extends React.Component {
     return (
       this.props.submission !== nextProps.submission ||
       this.props.onDeleteSubmission !== nextProps.onDeleteSubmission ||
+      this.props.onEditSubmission !== nextProps.onEditSubmission ||
       this.state.isDetailsOpen !== nextState.isDetailsOpen
     );
   }
@@ -162,6 +163,23 @@ class SubmissionDetails extends React.Component {
               {' '}
               <button
                 type="button"
+                title="Edit Submission"
+                style={{
+                  margin: '1px',
+                  background: 'white',
+                }}
+                onClick={evt => {
+                  // Do not let the click also toggle the <details> open.
+                  evt.preventDefault();
+                  this.props.onEditSubmission(this.props.submission);
+                }}
+              >
+                <span role="img" aria-label="Edit Submission">
+                  ✏️
+                </span>
+              </button>
+              <button
+                type="button"
                 title="Delete Submission"
                 style={{
                   margin: '1px',
@@ -224,6 +242,7 @@ class SubmissionDetails extends React.Component {
 SubmissionDetails.propTypes = {
   isDetailsOpen: PropTypes.bool,
   onDeleteSubmission: PropTypes.func.isRequired,
+  onEditSubmission: PropTypes.func.isRequired,
   submission: PropTypes.shape({
     medallionNo: PropTypes.string,
     license: PropTypes.string,

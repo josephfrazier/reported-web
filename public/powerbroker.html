@@ -93,6 +93,23 @@ let selection = null;
 let photoTicket = 0;
 const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
 
+// The submissions map starts with a polygon. A circle of about one Manhattan
+// street block shows the nearby reports. At 100 m, the densest circle around a
+// collage point returns about 8,500 reports, below the map's 10,000 cap.
+const NEARBY_RADIUS_METERS = 100;
+const NEARBY_VERTEX_COUNT = 32;
+function nearbyReportsUrl(lat, lng) {
+  const latRadians = (lat * Math.PI) / 180;
+  const dLat = NEARBY_RADIUS_METERS / 111320;
+  const dLng = NEARBY_RADIUS_METERS / (111320 * Math.cos(latRadians));
+  const vertices = [];
+  for (let i = 0; i < NEARBY_VERTEX_COUNT; i += 1) {
+    const angle = (2 * Math.PI * i) / NEARBY_VERTEX_COUNT;
+    vertices.push(`${(lat + dLat * Math.sin(angle)).toFixed(6)},${(lng + dLng * Math.cos(angle)).toFixed(6)}`);
+  }
+  return `/submissions-map?polygon=${encodeURIComponent(vertices.join(';'))}`;
+}
+
 function closePreview(restoreFocus = false) {
   const trigger = selection?.trigger;
   selection = null;
@@ -161,6 +178,7 @@ function showPhoto(id, art, image, u, v, trigger) {
   }
   if (!record.sr && !record.legacy && !record.records && !record.unchecked) add('span', 'No public NYC 311 record could be matched to this report.', 'nyc-outcome');
   link(map, 'View location on map');
+  link(nearbyReportsUrl(record.lat, record.lng), 'View nearby reports');
   photoLink.href = record.photo;
   photo.alt = `Source photograph, ${when}, ${record.address}`;
   const ticket = ++photoTicket;

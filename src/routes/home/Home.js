@@ -728,6 +728,11 @@ const UNKNOWN_PLATE = 'UNKNOWN';
 // last thanks is still on screen, and a second copy of it says nothing new.
 const SUBMISSION_TOAST_ID = 'submission-thanks';
 
+// The id of the toast that lists what the loaded report's photos did not give.
+// A toast with this id stays one at a time: the warning follows the report on
+// screen, so a new report replaces its words rather than stacking a copy.
+const MISSING_VALUES_TOAST_ID = 'missing-photo-values';
+
 // Whether the report holds more of one kind of photo than a report can carry.
 //
 // A report takes three pictures and three videos, which is what
@@ -1281,6 +1286,10 @@ class Home extends React.Component {
     // it is attached. The form's time and place are worked out from these
     // again whenever the photos change -- see applyPhotosToForm.
     this.photoReadings = new Map();
+    // The report the missing-values warning last described, and what it said,
+    // so a re-render of the same report does not show the toast again.
+    this.missingValuesWarning = null;
+    this.missingValuesWarningIndex = -1;
     // The photo a drag is carrying. A drag's dataTransfer cannot hold a File,
     // so the page keeps the photo itself for the drop.
     this.draggedPhoto = null;
@@ -1421,6 +1430,10 @@ class Home extends React.Component {
       requestAnimationFrame(() => {
         if (ref.current) ref.current.focus();
       });
+    }
+
+    if (prevState.attachmentData !== this.state.attachmentData) {
+      this.warnAboutMissingPhotoValues();
     }
   }
 
@@ -3306,6 +3319,11 @@ class Home extends React.Component {
       return;
     }
 
+    // Opening a different row is a new report. A reload of the row already on
+    // screen is not -- a divide keeps the report the user is editing -- so its
+    // fields keep the values the user gave them.
+    const isNewReport = index !== this.state.currentViolationIndex;
+
     // The overlays and the plate suggestions come from the same ALPR responses
     // the single-violation flow puts here.
     const plateDataByAttachmentName = plateDataByAttachmentNameFor(
@@ -3372,6 +3390,23 @@ class Home extends React.Component {
         // readings are what this very update is putting into state.
         this.applyPhotosToForm(attached.map(photo => photo.file));
 
+        if (isNewReport) {
+          // The report starts from its own photos, not from the one before
+          // it. A value they do not give is one the user has to enter, so the
+          // field goes back to its default rather than showing the last
+          // report's.
+          if (!earliestTakenPhoto(attached)) {
+            this.setCreateDate({ millisecondsSinceEpoch: Date.now() });
+          }
+          if (!latestLocatedPhoto(attached)) {
+            this.setCoords({
+              latitude: defaultLatitude,
+              longitude: defaultLongitude,
+              addressProvenance: '',
+            });
+          }
+        }
+
         if (this.state.batchProgress === null) {
           this.plateReread = this.rereadFailedPlates({ violation });
         }
@@ -3387,6 +3422,68 @@ class Home extends React.Component {
     // reads do, so what follows works from either without knowing which flow
     // it is in.
     attached.forEach(photo => this.photoReadings.set(photo.file, photo));
+  };
+
+  // Say what the loaded report's photos did not give. Its time and place come
+  // from them, so a missing one is a field the user has to fill in. The
+  // warning follows the report on screen: a new report replaces its words,
+  // and the same report does not repeat them.
+  warnAboutMissingPhotoValues = () => {
+    const {
+      attachmentData,
+      batchViolations,
+      currentViolationIndex,
+      isLocationLocked,
+    } = this.state;
+
+    const photosByFile = new Map();
+    batchViolations.forEach(violation => {
+      violation.photos.forEach(photo => {
+        if (!photosByFile.has(photo.file)) {
+          photosByFile.set(photo.file, photo);
+        }
+      });
+    });
+
+    const photos = attachmentData.map(file => photosByFile.get(file));
+    const missing = [];
+    if (!photos.some(photo => Number.isFinite(photo?.createDateMs))) {
+      missing.push('creation date');
+    }
+    // A locked place is one the user chose to keep, so its photos need no
+    // place of their own for the field to be right.
+    if (
+      !isLocationLocked &&
+      !photos.some(
+        photo =>
+          Number.isFinite(photo?.latitude) && Number.isFinite(photo?.longitude),
+      )
+    ) {
+      missing.push('location');
+    }
+
+    const warning =
+      currentViolationIndex >= 0 &&
+      attachmentData.length > 0 &&
+      missing.length > 0
+        ? `Could not extract the ${missing.join(' and ')} from ${
+            attachmentData.length === 1 ? 'this photo' : 'these photos'
+          }. Please enter or confirm the missing values manually.`
+        : null;
+
+    if (
+      currentViolationIndex === this.missingValuesWarningIndex &&
+      warning === this.missingValuesWarning
+    ) {
+      return;
+    }
+
+    this.missingValuesWarning = warning;
+    this.missingValuesWarningIndex = currentViolationIndex;
+    toast.dismiss(MISSING_VALUES_TOAST_ID);
+    if (warning) {
+      Home.notifyWarning(warning, { toastId: MISSING_VALUES_TOAST_ID });
+    }
   };
 
   // A violation whose photos could not be read gets its second chance here.

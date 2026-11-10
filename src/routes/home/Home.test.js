@@ -4243,6 +4243,113 @@ describe('Home', () => {
       cleanup();
     });
 
+    test('warns and resets when the opened report gives no date or place', async () => {
+      const photo = jpeg({ name: 'a.jpg', size: 4 });
+
+      // Nothing in the picture says when or where it was taken.
+      exifr.gps.mockResolvedValue({});
+      exifr.parse.mockResolvedValue({});
+
+      const { homeRef, toastWarn, cleanup } = await renderBatchWithFiles([
+        photo,
+      ]);
+
+      expect(toastWarn).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'Could not extract the creation date and location from this photo.',
+        ),
+        expect.anything(),
+      );
+
+      // The fields go back to their defaults rather than to the values of a
+      // report the user filed before.
+      expect(homeRef.current.state.CreateDate).toBe('2016-11-17T19:00:00');
+      expect(homeRef.current.state.latitude).toBe(40.7128);
+      expect(homeRef.current.state.longitude).toBe(-74.006);
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    test('resets the time and place on a report whose photos give none', async () => {
+      const photos = [
+        jpeg({ name: 'early.jpg', size: 4 }),
+        jpeg({ name: 'late.jpg', size: 7 }),
+      ];
+
+      // Only the earlier photo says when and where it was taken. The other
+      // groups on its file's time, so it is a second report with neither.
+      exifr.parse.mockImplementation(async arrayBuffer => {
+        if (arrayBuffer.byteLength !== 4) {
+          return {};
+        }
+        return {
+          CreateDate: new Date(Date.UTC(2016, 0, 1, 12, 0, 10)),
+          OffsetTimeDigitized: '-05:00',
+        };
+      });
+      exifr.gps.mockImplementation(async arrayBuffer =>
+        arrayBuffer.byteLength === 4
+          ? { latitude: 40.7129, longitude: -74.0061 }
+          : {},
+      );
+
+      const { homeRef, clickQueueLoad, toastWarn, cleanup } =
+        await renderBatchWithFiles(photos);
+
+      // The first report takes its time and place from its photo.
+      expect(homeRef.current.state.CreateDate).toBe('2016-01-01T07:00:10');
+      expect(homeRef.current.state.latitude).toBe(40.7129);
+
+      clickQueueLoad('K73JAU');
+
+      // The second report's photo gives neither, so the fields reset rather
+      // than keeping the first report's.
+      expect(homeRef.current.state.CreateDate).toBe('2016-11-17T19:00:00');
+      expect(homeRef.current.state.latitude).toBe(40.7128);
+      expect(homeRef.current.state.longitude).toBe(-74.006);
+      expect(homeRef.current.state.formatted_address).toBe('');
+
+      expect(toastWarn).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'Could not extract the creation date and location from this photo.',
+        ),
+        expect.anything(),
+      );
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    test('keeps quiet when the photos give a time and a place', async () => {
+      const photo = jpeg({ name: 'a.jpg', size: 4 });
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockResolvedValue({
+        CreateDate: new Date(Date.UTC(2016, 0, 1, 12, 0, 10)),
+        OffsetTimeDigitized: '-05:00',
+      });
+
+      const { homeRef, toastWarn, cleanup } = await renderBatchWithFiles([
+        photo,
+      ]);
+
+      expect(
+        toastWarn.mock.calls.some(
+          ([content]) =>
+            typeof content === 'string' &&
+            content.includes('Could not extract'),
+        ),
+      ).toBe(false);
+      expect(homeRef.current.state.CreateDate).toBe('2016-01-01T07:00:10');
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
     // The License/Medallion field is what the report sends, so the row of the
     // violation in the form follows it: a plate typed over a wrong reading is
     // the plate the report will name, and the row says so. The rows that are
@@ -7473,6 +7580,9 @@ describe('Home', () => {
       const photos = [...pictures, ...videos].map(file => ({
         file,
         name: file.name,
+        createDateMs: 1704110400000,
+        latitude: 40.7129,
+        longitude: -74.0061,
       }));
       const violation = {
         photos,

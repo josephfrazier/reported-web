@@ -547,7 +547,7 @@
             <tr><td>Plate's role</td><td>May <strong>split</strong> a time cluster</td></tr>
             <tr><td>OCR variants</td><td>Folded via ALPR <code>candidates</code> sets</td></tr>
             <tr><td>Violation time</td><td>From the <strong>earliest</strong> photo in the group</td></tr>
-            <tr><td>Violation location</td><td>From the <strong>latest</strong> photo that has a fix — see <em>Which photo gives the place</em></td></tr>
+            <tr><td>Violation location</td><td>From the <strong>latest</strong> photo that has a fix — see <a href="#which-photo-gives-the-place"><em>Which photo gives the place</em></a></td></tr>
             <tr><td>More than 3 photos</td><td>Checkbox picker, the first three pictures and the first three videos pre-selected</td></tr>
             <tr><td>Reload mid-batch</td><td>The queue is lost — in-memory only; the server's ALPR cache keeps its readings</td></tr>
             <tr><td>Publishing</td><td>All rows at once, after the dates-and-places pass and before the first plate read; reads divide rows as they land</td></tr>
@@ -570,7 +570,7 @@
             <tr><td>ALPR concurrency</td><td>Capped at 3 in flight</td></tr>
             <tr><td>Queue controls</td><td>Load any group, delete it, or tick two and merge them</td></tr>
             <tr><td>Input</td><td>Every pick, drop and paste feeds the batch; there is no single-violation flow</td></tr>
-            <tr><td>Order photos are read in</td><td>EXIF capture time; file last-modified only when a photo has none — see <em>Dates first, then plates</em></td></tr>
+            <tr><td>Order photos are read in</td><td>EXIF capture time; file last-modified only when a photo has none — see <a href="#dates-first-then-plates"><em>Dates first, then plates</em></a></td></tr>
             <tr><td>Submitted photos</td><td>Only the photos that were submitted leave the batch; a group's leftovers appear again at once as a group of their own</td></tr>
           </tbody>
         </table>
@@ -645,7 +645,7 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         <span class="mono">60 s</span> splits 2. The largest real gap was 180&nbsp;s.
       </p>
 
-      <h3>Which photo gives the place</h3>
+      <h3 id="which-photo-gives-the-place">Which photo gives the place</h3>
       <p>
         A report needs one time and one place, and they come from opposite ends of the group.
       </p>
@@ -797,7 +797,7 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         </p>
       </div>
 
-      <h3>When the rows appear, and what changes them</h3>
+      <h3 id="when-the-rows-appear">When the rows appear, and what changes them</h3>
       <p>
         The dates and places pass is local and it covers the whole batch, so once it is done the
         rows are already decided: the plate only ever splits a time-cluster, never merges two, so
@@ -826,7 +826,7 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         was the end of the whole pass, so the queue appeared only after the last plate was read.
       </p>
 
-      <h3>Dates first, then plates</h3>
+      <h3 id="dates-first-then-plates">Dates first, then plates</h3>
       <p>
         The batch reads each photo twice. The first pass takes the date and the place out of the
         file's own metadata: local work, no requests, so it is quick. The second reads plates, and
@@ -1056,7 +1056,7 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
       <h3>The queue</h3>
       <p>
         The rows appear as soon as the batch's dates and places are in — before a single plate is
-        read (see <em>When the rows appear</em>) — so reporting can start while the rest of the
+        read (see <a href="#when-the-rows-appear"><em>When the rows appear</em></a>) — so reporting can start while the rest of the
         photos are still being read. Each row shows its time, its plate or whether it is still
         being read, its photo count and flags, and clicking a
         row's own text opens that violation; <strong>Delete</strong> drops a row, and a row's

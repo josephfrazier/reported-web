@@ -14,9 +14,13 @@ import { act } from 'react-dom/test-utils';
 import renderer from 'react-test-renderer';
 // jsdom doesn't provide the setImmediate global, so use Node's directly.
 import { setImmediate } from 'timers';
+// jsdom doesn't provide TextDecoder either, which a video's reads use to
+// decode the mp4 `©xyz` box. Node's is the implementation browsers have.
+import { TextDecoder } from 'util';
 import StyleContext from 'isomorphic-style-loader/StyleContext';
 import axios from 'axios';
 import exifr from 'exifr/dist/full.umd.js';
+import MP4Box from 'mp4box';
 import { zipSync } from 'fflate';
 import * as blobUtil from 'blob-util';
 import { toast } from 'react-toastify';
@@ -48,8 +52,34 @@ jest.mock('exifr/dist/full.umd.js', () => ({
   default: { gps: jest.fn(), parse: jest.fn() },
 }));
 
+// mp4box reads a video's creation time and location out of real MP4 boxes,
+// which no test here has. A test that wants a video read gives `createFile`
+// an implementation; every other test leaves it returning nothing, which
+// fails the read exactly as junk bytes do.
+jest.mock('mp4box', () => ({
+  __esModule: true,
+  default: { createFile: jest.fn() },
+}));
+
+// timezone-mock's replacement Date parses only a few date formats, and the
+// New York offset helper builds a `MM/DD/YYYY HH:MM:SS` string. Keep the real
+// Date, so anything the mock does not know falls back to it.
+const RealDate = Date;
+
 require('timezone-mock').register('US/Eastern');
+require('timezone-mock').options({
+  fallbackFn: param => new RealDate(param),
+});
 require('jest-mock-now')();
+
+// timezone-mock's replacement Date leaves `toTimeString` out (the package has
+// a TODO for it), and the New York offset helper reads DST switch times with
+// it. The mock keeps the real Date on `d`.
+global.Date.prototype.toTimeString = function toTimeString() {
+  return this.d.toTimeString();
+};
+
+global.TextDecoder = TextDecoder;
 
 const typeofcomplaintValues = [
   'Blocked the bike lane',
@@ -87,6 +117,19 @@ beforeAll(() => {
 // how a test's exifr stubs tell one photo from another.
 const photoBytes = label =>
   Uint8Array.from([0xff, 0xd8, 0xff, 0xe0, ...Buffer.from(label, 'utf8')]);
+
+// A minimal mp4 `ftyp` box, which is enough for the detector in `Home.js` to
+// call the file a video. What the file's boxes say is the mp4box mock's
+// business.
+const videoBytes = () =>
+  Uint8Array.from(
+    Buffer.concat([
+      Buffer.from([0, 0, 0, 0x18]), // box size
+      Buffer.from('ftypisom'), // ftyp + major brand isom
+      Buffer.from([0, 0, 2, 0]),
+      Buffer.from('isomiso2'),
+    ]),
+  );
 
 function renderHome({ initialState, homeRef, ...props } = {}) {
   let tree;
@@ -1165,7 +1208,11 @@ describe('Home', () => {
     exifr.parse.mockImplementation(async buffer => {
       const which = Buffer.from(buffer).toString('utf8');
       return {
-        CreateDate: new Date(which.includes('older') ? 1000 : 3000),
+        CreateDate: new Date(
+          which.includes('older')
+            ? Date.UTC(2016, 0, 1, 12, 0, 1)
+            : Date.UTC(2016, 0, 1, 12, 0, 3),
+        ),
         OffsetTimeDigitized: '+00:00',
       };
     });
@@ -1195,8 +1242,8 @@ describe('Home', () => {
       return {
         CreateDate: new Date(
           which.includes('earlier')
-            ? Date.UTC(2024, 0, 1, 12, 0, 10)
-            : Date.UTC(2024, 0, 1, 12, 0, 40),
+            ? Date.UTC(2016, 0, 1, 12, 0, 10)
+            : Date.UTC(2016, 0, 1, 12, 0, 40),
         ),
         OffsetTimeDigitized: '+00:00',
       };
@@ -1204,7 +1251,112 @@ describe('Home', () => {
 
     const { homeRef, cleanup } = await renderAndExtract([earlier, later]);
 
-    expect(homeRef.current.state.CreateDate).toBe('2024-01-01T12:00:10');
+    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:10');
+
+    cleanup();
+  });
+
+  test("takes the form's time from a video's own creation time", async () => {
+    // An MP4 records when it was made and no offset, so the video's time is
+    // read the way a picture's is when the picture records none: in New
+    // York's, where the report is filed. The suite pins now to 2016-11-18,
+    // so a 2016 time is in the past and passes the plausibility check.
+    MP4Box.createFile.mockImplementation(() => ({
+      appendBuffer() {},
+      getInfo: () => ({ created: new Date(Date.UTC(2016, 0, 1, 12, 0, 10)) }),
+      moov: {
+        udta: {
+          '©xyz': { data: Buffer.from('+40.7128-074.0060/') },
+        },
+      },
+    }));
+
+    const video = new File([videoBytes()], 'video.mp4', { type: 'video/mp4' });
+    const { homeRef, cleanup } = await renderAndExtract([video]);
+
+    // Noon UTC is 7:00 that morning in New York.
+    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T07:00:10');
+
+    MP4Box.createFile.mockReset();
+    cleanup();
+  });
+
+  test('leaves the form time alone for a video stamped with the mp4 epoch', async () => {
+    // A broken or copied file can carry the format's own epoch (1904) in its
+    // header instead of a real time.
+    MP4Box.createFile.mockImplementation(() => ({
+      appendBuffer() {},
+      getInfo: () => ({ created: new Date(Date.UTC(1904, 0, 1)) }),
+      moov: {
+        udta: {
+          '©xyz': { data: Buffer.from('+40.7128-074.0060/') },
+        },
+      },
+    }));
+
+    const video = new File([videoBytes()], 'video.mp4', { type: 'video/mp4' });
+    const { homeRef, cleanup } = await renderAndExtract([video]);
+
+    // The form's time is the suite's pinned now, read in New York time.
+    expect(homeRef.current.state.CreateDate).toBe('2016-11-17T19:00:00');
+
+    MP4Box.createFile.mockReset();
+    cleanup();
+  });
+
+  test('leaves the form time alone for a video stamped in the future', async () => {
+    // The server refuses a report timestamped after now, so a video from the
+    // future must not set it either.
+    MP4Box.createFile.mockImplementation(() => ({
+      appendBuffer() {},
+      getInfo: () => ({ created: new Date(Date.now() + 60 * 60 * 1000) }),
+      moov: {
+        udta: {
+          '©xyz': { data: Buffer.from('+40.7128-074.0060/') },
+        },
+      },
+    }));
+
+    const video = new File([videoBytes()], 'video.mp4', { type: 'video/mp4' });
+    const { homeRef, cleanup } = await renderAndExtract([video]);
+
+    expect(homeRef.current.state.CreateDate).toBe('2016-11-17T19:00:00');
+
+    MP4Box.createFile.mockReset();
+    cleanup();
+  });
+
+  test('leaves the form time alone for a picture stamped with an implausible time', async () => {
+    // EXIF can carry an epoch date or one from a camera whose clock was reset.
+    exifr.parse.mockImplementation(async () => ({
+      CreateDate: new Date(Date.UTC(1970, 0, 1)),
+      OffsetTimeDigitized: '+00:00',
+    }));
+
+    const photo = new File([photoBytes('old')], 'old.jpg', {
+      type: 'image/jpeg',
+    });
+    const { homeRef, cleanup } = await renderAndExtract([photo]);
+
+    expect(homeRef.current.state.CreateDate).toBe('2016-11-17T19:00:00');
+
+    cleanup();
+  });
+
+  test('leaves the form time alone for a picture stamped in the future', async () => {
+    // The server refuses a report timestamped after now, so a picture from a
+    // camera whose clock is ahead must not set it either.
+    exifr.parse.mockImplementation(async () => ({
+      CreateDate: new Date(Date.now() + 60 * 60 * 1000),
+      OffsetTimeDigitized: '+00:00',
+    }));
+
+    const photo = new File([photoBytes('future')], 'future.jpg', {
+      type: 'image/jpeg',
+    });
+    const { homeRef, cleanup } = await renderAndExtract([photo]);
+
+    expect(homeRef.current.state.CreateDate).toBe('2016-11-17T19:00:00');
 
     cleanup();
   });
@@ -1233,7 +1385,7 @@ describe('Home', () => {
       const which = Buffer.from(buffer).toString('utf8');
       const name = Object.keys(seconds).find(each => which.includes(each));
       return {
-        CreateDate: new Date(Date.UTC(2024, 0, 1, 12, 0, seconds[name])),
+        CreateDate: new Date(Date.UTC(2016, 0, 1, 12, 0, seconds[name])),
         OffsetTimeDigitized: '+00:00',
       };
     });
@@ -1254,18 +1406,18 @@ describe('Home', () => {
 
     // The submission is as old as its earliest photo, and sits where the last
     // photo that knows where it was was taken.
-    expect(homeRef.current.state.CreateDate).toBe('2024-01-01T12:00:10');
+    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:10');
     expect(homeRef.current.state.latitude).toBe(40.74);
 
     // Drop the earliest: the time moves onto the one that is left, and the
     // place was already the last photo's.
     await dropPhoto(homeRef, settle, 'early.jpg');
-    expect(homeRef.current.state.CreateDate).toBe('2024-01-01T12:00:20');
+    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:20');
     expect(homeRef.current.state.latitude).toBe(40.74);
 
     // Drop the last: now the place has to move too.
     await dropPhoto(homeRef, settle, 'late.jpg');
-    expect(homeRef.current.state.CreateDate).toBe('2024-01-01T12:00:20');
+    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:20');
     expect(homeRef.current.state.latitude).toBe(40.72);
 
     cleanup();
@@ -1291,7 +1443,7 @@ describe('Home', () => {
     expect(homeRef.current.state.latitude).toBe(40.9);
     expect(homeRef.current.state.longitude).toBe(-73.9);
     // The time was still the photos', so it followed them.
-    expect(homeRef.current.state.CreateDate).toBe('2024-01-01T12:00:20');
+    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:20');
 
     cleanup();
   });
@@ -1370,13 +1522,13 @@ describe('Home', () => {
     const { homeRef, settle, cleanup } =
       await renderAndExtract(threePhotosApart());
 
-    expect(homeRef.current.state.CreateDate).toBe('2024-01-01T12:00:10');
+    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:10');
     expect(homeRef.current.state.latitude).toBe(40.74);
 
     // The submission is as old as its earliest photo, so the time moves with
     // it; the undo has to put both the file and the form back.
     await dropPhoto(homeRef, settle, 'early.jpg');
-    expect(homeRef.current.state.CreateDate).toBe('2024-01-01T12:00:20');
+    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:20');
 
     const undo = findToastButton(toastInfo.mock.calls[0][0], 'Undo');
     expect(undo).not.toBeNull();
@@ -1385,7 +1537,7 @@ describe('Home', () => {
     expect(homeRef.current.state.attachmentData.map(file => file.name)).toEqual(
       ['early.jpg', 'middle.jpg', 'late.jpg'],
     );
-    expect(homeRef.current.state.CreateDate).toBe('2024-01-01T12:00:10');
+    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:10');
     expect(homeRef.current.state.latitude).toBe(40.74);
 
     toastInfo.mockRestore();
@@ -1398,7 +1550,7 @@ describe('Home', () => {
     const { homeRef, settle, cleanup } = await renderAndExtract([only]);
 
     expect(homeRef.current.state.latitude).toBe(40.7);
-    expect(homeRef.current.state.CreateDate).toBe('2024-01-01T12:00:10');
+    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:10');
 
     await dropPhoto(homeRef, settle, 'early.jpg');
 
@@ -1414,7 +1566,7 @@ describe('Home', () => {
       ['early.jpg'],
     );
     expect(homeRef.current.state.latitude).toBe(40.7);
-    expect(homeRef.current.state.CreateDate).toBe('2024-01-01T12:00:10');
+    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:10');
 
     toastInfo.mockRestore();
     cleanup();
@@ -3590,7 +3742,7 @@ describe('Home', () => {
 
     exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
     exifr.parse.mockImplementation(async () => ({
-      CreateDate: new Date(Date.UTC(2024, 0, 1, 12, 0, 0)),
+      CreateDate: new Date(Date.UTC(2016, 0, 1, 12, 0, 0)),
       OffsetTimeDigitized: '+00:00',
     }));
 
@@ -3653,7 +3805,7 @@ describe('Home', () => {
 
     exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
     exifr.parse.mockImplementation(async () => ({
-      CreateDate: new Date(Date.UTC(2024, 0, 1, 12, 0, 0)),
+      CreateDate: new Date(Date.UTC(2016, 0, 1, 12, 0, 0)),
       OffsetTimeDigitized: '+00:00',
     }));
 
@@ -3718,7 +3870,7 @@ describe('Home', () => {
 
     exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
     exifr.parse.mockImplementation(async () => ({
-      CreateDate: new Date(Date.UTC(2024, 0, 1, 12, 0, 0)),
+      CreateDate: new Date(Date.UTC(2016, 0, 1, 12, 0, 0)),
       OffsetTimeDigitized: '+00:00',
     }));
 

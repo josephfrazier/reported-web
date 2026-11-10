@@ -93,6 +93,7 @@ Never squash the trio together: each step is independently reviewable, and the h
 ## Git push
 
 - **Do not try to `git push` to GitHub from the sandbox** — authentication is not configured and attempts will fail with "Invalid username or token." Instead, commit changes here and ask the user to push from their host.
+- **Do not rewrite commits that exist on origin.** A rebase of a pushed branch needs a force-push, and the user does not want that. When a local branch has commits that are not on origin's head, reset to `origin/<branch>` and cherry-pick the local commits on top of it. Resolve the conflicts there. Check `git merge-base --is-ancestor origin/<branch> HEAD` before the hand-off. A local commit that is not pushed yet can still be amended or rebased.
 - **Create working branches with `--no-track`, and push them with an explicit destination:**
 
   ```bash

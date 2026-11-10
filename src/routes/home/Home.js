@@ -582,8 +582,9 @@ const photoTimeIsPlausible = millisecondsSinceEpoch =>
 
 // The moment a file records, and the offset it is read in. The file's own
 // offset when it records one; New York's otherwise, since a report is filed
-// there. A time outside the plausible range is not a time this report should
-// carry, so it throws, the same as a file with no readable date.
+// there. An offset that does not parse counts as none. A time outside the
+// plausible range is not a time this report should carry, so it throws, the
+// same as a file with no readable date.
 const readingFromDate = ({ date, offsetTimeDigitized }) => {
   const millisecondsSinceEpoch = date.getTime();
 
@@ -593,10 +594,12 @@ const readingFromDate = ({ date, offsetTimeDigitized }) => {
     );
   }
 
+  const parsedOffset = parseInt(offsetTimeDigitized, 10) * -60;
+
   return {
     millisecondsSinceEpoch,
-    offset: offsetTimeDigitized
-      ? parseInt(offsetTimeDigitized, 10) * -60
+    offset: Number.isFinite(parsedOffset)
+      ? parsedOffset
       : getNycTimezoneOffset(date),
   };
 };

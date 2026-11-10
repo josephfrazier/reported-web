@@ -25,6 +25,44 @@ const submissionNotFoundOrNotYoursError = () => {
   return error;
 };
 
+// What a submission's `reqnumber` says until the backend sends it to 311.
+const PENDING_REQNUMBER = 'N/A until submitted to 311';
+
+// A submission the backend has taken up is not the user's to remove: the
+// service request is real, and deleting the record here only loses its links.
+// A task record says so, even before its case number arrives. The delete
+// control is hidden in that case, but a page can sit open while the backend
+// takes the report, so the check runs here as well.
+const hasGoneTo311 = async submission => {
+  const status = submission.get('status');
+  if (status != null && Number(status) !== 0) {
+    return true;
+  }
+
+  const reqnumber = submission.get('reqnumber');
+  if (reqnumber && reqnumber !== PENDING_REQNUMBER) {
+    return true;
+  }
+
+  const Task = Parse.Object.extend('tasks');
+  const taskQuery = new Parse.Query(Task);
+  taskQuery.equalTo('submission', submission);
+  const task = await taskQuery.first();
+  return Boolean(task);
+};
+
+const submissionAlreadySentError = () => {
+  const error = new Error(
+    'this submission has already been sent to 311, so it cannot be deleted',
+  );
+  // Same reason as above: the message has to survive the round-trip.
+  Object.defineProperty(error, 'message', {
+    enumerable: true,
+    value: error.message,
+  });
+  return error;
+};
+
 const deleteSubmission = ({ req, authenticate }) => {
   const { objectId } = req.body;
   return authenticate().then(({ user }) => {
@@ -44,7 +82,7 @@ const deleteSubmission = ({ req, authenticate }) => {
 
         throw error;
       })
-      .then(submission => {
+      .then(async submission => {
         // Verify that the logged-in user actually made this submission before
         // deleting it. Getting the submission by id directly avoids loading
         // every submission the user has ever made, like getSubmissions() did.
@@ -62,6 +100,10 @@ const deleteSubmission = ({ req, authenticate }) => {
         const madeByThisUser = ownedByPointer || matchesIdentifier;
         if (!madeByThisUser) {
           throw submissionNotFoundOrNotYoursError();
+        }
+
+        if (await hasGoneTo311(submission)) {
+          throw submissionAlreadySentError();
         }
 
         return submission

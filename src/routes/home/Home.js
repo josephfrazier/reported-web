@@ -607,6 +607,40 @@ function tooManyAttachments(attachmentData) {
   return pictures > 3 || attachmentData.length - pictures > 3;
 }
 
+// The trash that deletes a photo. It sits in the corner of the photo's tile.
+//
+// The caller positions it and says what it deletes. The label is on the button
+// rather than on the glyph, so that the button is the thing with a name and a
+// screen reader does not announce the emoji as well.
+const TrashButton = ({ label, onClick, style }) => (
+  <button
+    type="button"
+    aria-label={label}
+    style={{
+      padding: 0,
+      // Ubuntu Chrome shows the glyph black without this.
+      color: 'red',
+      background: 'white',
+      ...style,
+    }}
+    onClick={onClick}
+  >
+    <span aria-hidden="true">🗑️</span>
+  </button>
+);
+
+TrashButton.propTypes = {
+  label: PropTypes.string.isRequired,
+  onClick: PropTypes.func.isRequired,
+  style: PropTypes.objectOf(
+    PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  ),
+};
+
+TrashButton.defaultProps = {
+  style: undefined,
+};
+
 class Home extends React.Component {
   static getVehicleMakeLogoUrl({ vehicleMake }) {
     if (vehicleMake.toLowerCase() === 'nissan') {
@@ -3616,26 +3650,16 @@ class Home extends React.Component {
                                     })}
                                   </div>
 
-                                  <button
-                                    type="button"
+                                  <TrashButton
+                                    label={`Delete ${name}`}
                                     style={{
                                       position: 'absolute',
                                       top: 0,
                                       right: 0,
-                                      padding: 0,
                                       margin: '1px',
-                                      color: 'red', // Ubuntu Chrome shows black otherwise
-                                      background: 'white',
                                     }}
                                     onClick={() => this.removeAttachment(name)}
-                                  >
-                                    <span
-                                      role="img"
-                                      aria-label="Delete photo/video"
-                                    >
-                                      ❌
-                                    </span>
-                                  </button>
+                                  />
                                 </div>
                               );
                             })}

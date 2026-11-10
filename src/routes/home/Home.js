@@ -40,7 +40,6 @@ import Modal from 'react-modal';
 import Dropzone from '@josephfrazier/react-dropzone';
 import { ToastContainer, toast } from 'react-toastify';
 import toastifyStyles from 'react-toastify/dist/ReactToastify.css';
-import { zip } from 'zip-array';
 import PolygonLookup from 'polygon-lookup';
 import CircularProgress from '@mui/material/CircularProgress';
 
@@ -63,7 +62,7 @@ import groupAttachmentsByViolation, {
 } from '../../groupAttachmentsByViolation.js';
 import { captureBatchGroupingEvent } from '../../batchGroupingEvents.js';
 import { isImage, isVideo } from '../../isImage.js';
-import { expandZipFiles } from '../../zipAttachments.js';
+import { expandZipFiles, isZip } from '../../zipAttachments.js';
 import latestLocatedPhoto, {
   effectiveTimeMs,
   hasCoordinates,
@@ -284,14 +283,6 @@ const PLATE_TYPED = 'typed';
 // What one of a photo's reads left behind: when it was taken and where, in the
 // field names the grouping uses. A value the read did not answer with stays
 // NaN, and is passed over by whichever rule is looking.
-const emptyReading = file => ({
-  file,
-  createDateMs: NaN,
-  createDateOffset: NaN,
-  latitude: NaN,
-  longitude: NaN,
-});
-
 // A reading's moment, as `setCreateDate` and `createDateValue` take it.
 const momentOf = ({ createDateMs, createDateOffset }) => ({
   millisecondsSinceEpoch: createDateMs,
@@ -371,26 +362,6 @@ function getLicenseStateFromPlateResult(result) {
   } catch {
     return null;
   }
-}
-
-const urlRegex = /(https?:\/\/\S+)/;
-
-// Turn bare URLs in a string into clickable React <a> elements.
-// Returns a plain string when there are no URLs, or an array of mixed
-// strings and <a> elements otherwise — both valid as JSX children.
-function linkifyText(text) {
-  if (typeof text !== 'string') return text;
-  const parts = text.split(urlRegex);
-  if (parts.length === 1) return text;
-  return parts.map((part, i) =>
-    i % 2 === 1 ? (
-      <a key={part} href={part} target="_blank" rel="noopener noreferrer">
-        {part}
-      </a>
-    ) : (
-      part
-    ),
-  );
 }
 
 // Uppercase what the user typed into a controlled <input>, without letting the
@@ -484,59 +455,6 @@ async function fetchPlateResults({ attachmentFile, attachmentBuffer, ext }) {
 
   attachmentPlateCache.set(attachmentFile, data);
   return data;
-}
-
-async function extractPlate({
-  attachmentFile,
-  attachmentBuffer,
-  ext,
-  isAlprEnabled,
-}) {
-  try {
-    console.time(`extractPlate(${attachmentFile.name})`); // eslint-disable-line no-console
-
-    if (isAlprEnabled === false) {
-      console.info('ALPR is disabled, skipping');
-      // Nothing was read, so leave the state field as the person left it:
-      // null keeps it, where '' would clear it.
-      return { plate: '', licenseState: null };
-    }
-
-    const data = await fetchPlateResults({
-      attachmentFile,
-      attachmentBuffer,
-      ext,
-    });
-    const { results } = data;
-
-    if (!results || results.length === 0) {
-      throw new Error('No license plate detected');
-    }
-
-    // Choose first result with T######C plate if it exists, see https://github.com/josephfrazier/reported-web/issues/584
-    let result = results.filter(r =>
-      r.plate?.toUpperCase().match(/^T\d\d\d\d\d\dC$/),
-    )[0];
-    if (!result) {
-      result = results[0];
-    }
-
-    try {
-      result.licenseState = result.region.code.split('-')[1].toUpperCase();
-    } catch {
-      result.licenseState = null;
-    }
-    result.plate = result.plate?.toUpperCase();
-    result.allPlateData = data;
-
-    return result;
-  } catch (err) {
-    console.error(err.stack);
-
-    throw 'license plate'; // eslint-disable-line no-throw-literal
-  } finally {
-    console.timeEnd(`extractPlate(${attachmentFile.name})`); // eslint-disable-line no-console
-  }
 }
 
 async function extractLocation({
@@ -1344,7 +1262,6 @@ class Home extends React.Component {
     // The state field is below the plate field when the two wrap, so a scroll
     // that aims at the bottom of the pair aims at this one.
     this.licenseStateRef = React.createRef();
-    this.folderInputRef = React.createRef();
     this.plateLabelRef = React.createRef();
     this.loginEmailRef = React.createRef();
     this.signupEmailRef = React.createRef();
@@ -2009,62 +1926,6 @@ class Home extends React.Component {
     }
   };
 
-  // A picked folder: every picture and video inside it becomes an attachment.
-  //
-  // A folder is what a camera roll is, and it holds things that are not
-  // attachments -- a stray text file, the `.DS_Store` macOS leaves in every
-  // directory -- so the pick is filtered rather than handed on whole.
-  handleFolderInput = async event => {
-    const files = [...event.target.files];
-    // Clear the input, so that picking the same folder again still fires a
-    // change event.
-    event.target.value = ''; // eslint-disable-line no-param-reassign
-
-    const attachments = files.filter(file => {
-      const ext = fileExtension(file.name);
-      return isImage({ ext }) || isVideo({ ext });
-    });
-
-    if (attachments.length === 0) {
-      Home.notifyWarning('That folder held no pictures or videos.');
-      return undefined;
-    }
-
-    return this.handleAttachmentData({ attachmentData: attachments });
-  };
-
-  // The files a picker hands over, with any zip opened out into the
-  // attachments it holds. A zip is a way of picking a batch, so it takes no
-  // place of its own in the attachment list; what it held is reported either
-  // way.
-  handleAttachmentFiles = async picked => {
-    const { files, zips } = await expandZipFiles(picked);
-    zips.forEach(archive => Home.reportZip(archive));
-
-    if (files.length === 0) {
-      return undefined;
-    }
-
-    return this.handleAttachmentData({ attachmentData: files });
-  };
-
-  // The files or zip the picker handed over. The input is a plain one: the
-  // files' contents are read where they are needed (a zip's entries, a
-  // photo's metadata), so reading the whole pick into memory first would only
-  // hold the bytes twice.
-  handleAttachmentFileInput = event => {
-    const files = [...event.target.files];
-    // Clear the input, so that picking the same file again still fires a
-    // change event.
-    event.target.value = ''; // eslint-disable-line no-param-reassign
-
-    if (files.length === 0) {
-      return undefined;
-    }
-
-    return this.handleAttachmentFiles(files);
-  };
-
   // What each of a set of photos read.
   readingsOf = photos =>
     photos.map(file => this.photoReadings.get(file)).filter(Boolean);
@@ -2084,7 +1945,7 @@ class Home extends React.Component {
   // loses a photo's entry when that photo goes, so a plate cannot outlive the
   // picture it was read from by being looked up here.
   //
-  // The result the reading named is chosen the way `extractPlate` chose it: a
+  // The result the reading named is chosen the same way the reading was: a
   // medallion's T######C plate if the read offered one, and its first result
   // otherwise, so the field a recompute lands on is the field the reading
   // would have filled.
@@ -2643,150 +2504,24 @@ class Home extends React.Component {
     this.notifyBatchUndo({ message: 'Photo removed.', snapshot });
   };
 
-  handleAttachmentData = async ({ attachmentData }) => {
-    // The photos already attached, so that the time and place the user set by
-    // hand can be told from the ones the photos gave. `concat` leaves this
-    // array alone, so it stays the set as it was before the call.
-    const previousPhotos = this.state.attachmentData;
-
-    this.setState(
-      state => ({
-        attachmentData: state.attachmentData.concat(attachmentData),
-      }),
-      async () => {
-        startBackgroundUploads(attachmentData);
-
-        const listsOfExtractions = await Promise.all(
-          this.state.attachmentData.map(async (attachmentFile, index) => {
-            if (attachmentFile.size > 20 * 1000 * 1000) {
-              // just under 20MB, should match fileSize in server.js
-              Home.notifyWarning(
-                <React.Fragment>
-                  <p>
-                    File #{index + 1} is too big, over 20MB, please remove it
-                    and select a smaller one
-                  </p>
-                </React.Fragment>,
-              );
-            }
-
-            const { attachmentBuffer, attachmentArrayBuffer } =
-              await blobToBuffer({
-                attachmentFile,
-              });
-
-            const { name: ext } = (await detectFromBuffer(
-              attachmentBuffer,
-            )) || { name: 'jpg' };
-
-            this.setState({ isAlprLoading: true });
-
-            // What this photo's reads will say, filled in by the two below as
-            // they answer. Kept rather than collected for one pass: the form
-            // reads them again every time the photos change.
-            const reading = emptyReading(attachmentFile);
-            this.photoReadings.set(attachmentFile, reading);
-
-            const datePromise = extractDate({
-              attachmentFile,
-              attachmentArrayBuffer,
-              ext,
-            });
-
-            return Promise.allSettled([
-              extractPlate({
-                attachmentFile,
-                attachmentBuffer,
-                ext,
-                isAlprEnabled: this.state.isAlprEnabled,
-              })
-                .then(result => {
-                  if (
-                    this.state.plate === '' &&
-                    document.activeElement !== this.plateRef.current
-                  ) {
-                    this.setLicensePlate(result);
-                  }
-                  this.setState(state => ({
-                    allPlateData: result.allPlateData,
-                    plateDataByAttachmentName: result.allPlateData
-                      ? {
-                          ...state.plateDataByAttachmentName,
-                          [attachmentFile.name]: result.allPlateData,
-                        }
-                      : state.plateDataByAttachmentName,
-                  }));
-                })
-                .finally(() => {
-                  this.setState({ isAlprLoading: false });
-                }),
-              // Recorded rather than applied: the time is the earliest
-              // photo's, which is not known until every photo has been read.
-              datePromise.then(date => {
-                reading.createDateMs = date.millisecondsSinceEpoch;
-                reading.createDateOffset = date.offset;
-              }),
-              extractLocation({
-                attachmentFile,
-                attachmentArrayBuffer,
-                ext,
-                isReverseGeocodingEnabled: this.state.isReverseGeocodingEnabled,
-              }).then(({ latitude, longitude }) => {
-                if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
-                  throw 'location (may have been stripped by Android, see https://github.com/josephfrazier/reported-web/issues/751 for details)'; // eslint-disable-line no-throw-literal
-                }
-
-                // Recorded rather than applied: which photo's place wins is
-                // not known until every photo has been read, and applying
-                // each one as it arrived left that to whichever read
-                // happened to finish last.
-                reading.latitude = latitude;
-                reading.longitude = longitude;
-              }),
-            ]);
-          }),
-        );
-
-        // Every photo has now been read, so the form takes its time and its
-        // place from the set as a whole, rather than from each photo in turn.
-        this.applyPhotosToForm(this.state.attachmentData, {
-          previousPhotos,
-        });
-
-        if (listsOfExtractions.length === 0) {
-          return;
-        }
-
-        const groupedByExtractionType = zip(...listsOfExtractions);
-        const rejected = groupedByExtractionType
-          .filter(results => results.every(r => r.status === 'rejected'))
-          .map(extractions => extractions[0]);
-
-        if (rejected.length === 0) {
-          return;
-        }
-
-        const missingValuesString = rejected.map(v => v.reason).join(', ');
-        const hasMultipleAttachments = this.state.attachmentData.length > 1;
-        const fileCopy = hasMultipleAttachments ? 'the files.' : 'the file.';
-
-        Home.notifyWarning(
-          <React.Fragment>
-            <p>
-              Could not extract the {linkifyText(missingValuesString)} from{' '}
-              {fileCopy} Please enter/confirm any missing values manually.
-            </p>
-          </React.Fragment>,
-        );
-      },
-    );
-  };
-
+  // A picked folder or a set of files: every picture, video and zip goes to
+  // the batch. A folder is what a camera roll is, and it holds things that are
+  // not attachments -- a stray text file, the `.DS_Store` macOS leaves in every
+  // directory -- so the pick is filtered rather than handed on whole.
   handleBatchFileInput = event => {
-    const attachmentData = [...event.target.files];
+    const attachmentData = [...event.target.files].filter(file => {
+      const ext = fileExtension(file.name);
+      return isImage({ ext }) || isVideo({ ext }) || isZip(file);
+    });
     // Clear the input, so that picking the same file again still fires a
     // change event.
     event.target.value = ''; // eslint-disable-line no-param-reassign
+
+    if (attachmentData.length === 0) {
+      Home.notifyWarning('That folder held no pictures or videos.');
+      return;
+    }
+
     this.addFilesToBatch(attachmentData);
   };
 
@@ -2830,9 +2565,9 @@ class Home extends React.Component {
   // never settle on its own -- settling needs a later photo to pass it, and
   // there is none -- so the final pass publishes everything that is left.
   //
-  // Deliberately not handleAttachmentData: that re-extracts the *entire*
-  // attachment array on every add, which pointed at a whole folder means
-  // re-walking every photo each time the array grows.
+  // Only the new files are read on an add, not the whole batch: re-walking
+  // every photo each time the array grows would re-read a whole folder on
+  // every pick.
   processBatchFiles = async attachmentData => {
     const newPhotos = attachmentData.map(attachmentFile => ({
       file: attachmentFile,
@@ -3441,10 +3176,10 @@ class Home extends React.Component {
     };
   };
 
-  // The full ALPR response, not extractPlate's collapsed single plate: the
-  // grouping needs every `results[]` entry and the `candidates` that fold OCR
-  // variants together, and extractPlate discards exactly those (it prefers the
-  // medallion, which is a tie-break here rather than a filter).
+  // The full ALPR response, not a single collapsed plate: the grouping needs
+  // every `results[]` entry and the `candidates` that fold OCR variants
+  // together. Collapsing to one plate discards exactly those, and prefers the
+  // medallion, which is a tie-break here rather than a filter.
   batchPlateResults = async ({ attachmentFile, attachmentBuffer, ext }) => {
     if (this.state.isAlprEnabled === false) {
       console.info('ALPR is disabled, skipping');

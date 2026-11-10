@@ -157,7 +157,7 @@ async function renderAndExtract(files) {
     });
 
   await renderer.act(async () => {
-    await homeRef.current.handleAttachmentData({ attachmentData: files });
+    await homeRef.current.addFilesToBatch(files);
   });
   await settle();
 
@@ -237,7 +237,7 @@ async function renderWithPlateReads(files, { platesBySize = {} } = {}) {
     });
 
   await renderer.act(async () => {
-    await homeRef.current.handleAttachmentData({ attachmentData: files });
+    await homeRef.current.addFilesToBatch(files);
   });
   await settle();
 
@@ -1463,6 +1463,15 @@ describe('Home', () => {
       },
     );
 
+    // The two plates are two violations in the batch. Open the second one:
+    // its photo is the one its overlay is drawn on.
+    renderer.act(() => {
+      const index = homeRef.current.state.batchViolations.findIndex(
+        violation => violation.plate === '8YJ1234',
+      );
+      homeRef.current.selectBatchViolation(index);
+    });
+
     // A plate picked off a picture: what the provenance is there to remember.
     renderer.act(() => {
       tree.root
@@ -1505,9 +1514,9 @@ describe('Home', () => {
   });
 
   test('drops a plate picked off a photo that is then dropped', async () => {
-    // Two cars in one report: one photo read the taxi's medallion, the other
-    // read the car behind it, and the user picks the second plate off the
-    // picture it was read from.
+    // Two cars read from the same moment: each is its own violation in the
+    // batch, and the user picks the second plate off the picture it was read
+    // from.
     const taxi = labelledPhoto('taxi');
     const behind = labelledPhoto('behind');
 
@@ -1520,6 +1529,13 @@ describe('Home', () => {
         },
       },
     );
+
+    renderer.act(() => {
+      const index = homeRef.current.state.batchViolations.findIndex(
+        violation => violation.plate === '8YJ1234',
+      );
+      homeRef.current.selectBatchViolation(index);
+    });
 
     renderer.act(() => {
       tree.root
@@ -3038,14 +3054,26 @@ describe('Home', () => {
         });
       });
 
-      // Add the files through the same path the file <input> uses, so the
-      // background uploads start exactly as they do in the browser.
+      // Add the files through the batch, the way the picker does. The row
+      // uploads its photos when it opens, which is where these tests'
+      // background uploads come from.
       await renderer.act(async () => {
-        await homeRef.current.handleAttachmentData({ attachmentData: files });
+        await homeRef.current.addFilesToBatch(files);
         // Let the extraction pipeline settle so it doesn't touch state after
         // the tree is unmounted.
         await new Promise(resolve => setImmediate(resolve));
         await new Promise(resolve => setImmediate(resolve));
+      });
+
+      // The test photos carry no GPS data, so opening the row puts the form
+      // back on the default place. These tests need a place the submit guard
+      // accepts.
+      renderer.act(() => {
+        homeRef.current.setState({
+          latitude: 40.7129,
+          longitude: -74.0061,
+          coordsAreInNyc: true,
+        });
       });
 
       return {
@@ -3368,32 +3396,6 @@ describe('Home', () => {
 
     // The 3-a-report cap: the photos over it are in the grid, so the sentence
     // that explains the held Submit sits there as well.
-    test('says where the extra photos are why Submit is held', async () => {
-      const message =
-        'A report can include at most 3 pictures and 3 videos. Remove the extra ones to submit it.';
-      const pictures = count =>
-        Array.from(
-          { length: count },
-          (_, index) =>
-            new File([`photo${index}`], `photo${index}.jpg`, {
-              type: 'image/jpeg',
-            }),
-        );
-
-      const tooMany = await renderWithFiles({ files: pictures(4) });
-      const sentences = node =>
-        node.children.length === 1 && node.children[0] === message;
-
-      // One beside the photos, one beside Submit.
-      expect(tooMany.tree.root.findAll(sentences)).toHaveLength(2);
-      expect(tooMany.submitButton().props.disabled).toBe(true);
-      tooMany.cleanup();
-
-      const withinCap = await renderWithFiles({ files: pictures(3) });
-      expect(withinCap.tree.root.findAll(sentences)).toHaveLength(0);
-      withinCap.cleanup();
-    });
-
     test('caches the new submission so it survives into the next page load', async () => {
       localStorage.clear();
       const photo = new File(['photo'], 'photo.jpg', { type: 'image/jpeg' });
@@ -3442,44 +3444,6 @@ describe('Home', () => {
       await submit();
 
       expect(readCachedSubmissions()).toBeNull();
-
-      cleanup();
-    });
-
-    test('holds Submit while there are more than 3 pictures or 3 videos', async () => {
-      const pictures = ['p1', 'p2', 'p3', 'p4'].map(
-        name => new File(['picture'], `${name}.jpg`, { type: 'image/jpeg' }),
-      );
-
-      const { homeRef, submit, submitButton, toastError, cleanup } =
-        await renderWithFiles({ files: pictures });
-
-      // All four are attached: nothing here drops one, which is the point.
-      expect(homeRef.current.state.attachmentData).toHaveLength(4);
-
-      // The location is set rather than looked up, so that the refusal this
-      // test is about is the one that comes back.
-      renderer.act(() => {
-        homeRef.current.setState({ latitude: 40.7129, longitude: -74.0061 });
-      });
-
-      expect(submitButton().props.disabled).toBe(true);
-
-      // `createSubmission.js` keeps only the first three of each kind, so
-      // without this the fourth would vanish between the form and the report.
-      await submit();
-      expect(toastError.mock.calls[0][0]).toBe(
-        'A report can include at most 3 pictures and 3 videos. Remove the extra ones to submit it.',
-      );
-
-      // Three is a report, and Submit comes back.
-      renderer.act(() => {
-        const [first] = homeRef.current.state.attachmentData;
-        homeRef.current.setState(state => ({
-          attachmentData: state.attachmentData.filter(file => file !== first),
-        }));
-      });
-      expect(submitButton().props.disabled).toBe(false);
 
       cleanup();
     });
@@ -7351,6 +7315,7 @@ describe('Home', () => {
 
       const {
         homeRef,
+        tree,
         toastWarn,
         toastError,
         submit,
@@ -7406,6 +7371,13 @@ describe('Home', () => {
         'A report can include at most 3 pictures. Uncheck one to swap it in.',
       );
       expect(submitButton().props.disabled).toBe(true);
+
+      // The reason is where the extra photos are as well as beside Submit.
+      const message =
+        'A report can include at most 3 pictures and 3 videos. Remove the extra ones to submit it.';
+      const sentences = node =>
+        node.children.length === 1 && node.children[0] === message;
+      expect(tree.root.findAll(sentences)).toHaveLength(2);
 
       // Unticking a picture frees its slot, and Submit comes back.
       toggleAttachment('p1.jpg', false);
@@ -7486,7 +7458,7 @@ describe('Home', () => {
     });
 
     await renderer.act(async () => {
-      await homeRef.current.handleFolderInput({
+      await homeRef.current.handleBatchFileInput({
         target: { files: folder, value: '' },
       });
     });
@@ -7549,7 +7521,7 @@ describe('Home', () => {
     });
 
     await renderer.act(async () => {
-      await homeRef.current.handleAttachmentFileInput({
+      await homeRef.current.handleBatchFileInput({
         target: { files: [zip], value: '' },
       });
     });

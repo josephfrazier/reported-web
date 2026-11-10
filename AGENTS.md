@@ -52,6 +52,12 @@
 - `Parse.initialize(appId, jsKey, masterKey)` stores the master key but sets `USE_MASTER_KEY` to false. `RESTController` sends `_MasterKey` only when the call's options carry `useMasterKey: true`. A script that only calls `Parse.initialize` sends no master key, even though a comment in the 311 tasks script says it does.
 - Pass `{ useMasterKey: true }` on every `find`, `count`, or `save` call that needs it, or use raw fetch with an `X-Parse-Master-Key` header. A script that reads `submission` needs one of these: the class has a per-owner ACL. The 311 tasks script works without the key only because `tasks` has no ACL.
 
+## Sessions and submissions
+
+- The app sets the HttpOnly Parse session cookie `reportedWebSession` in `src/session.js`. That work replaced stored passwords and is live.
+- **Back4App sessions expire a year out.** The value is in `_Session.expiresAt` (confirmed 2026-10-02), and Parse Server 2.8.4 never extends it on use. A browser therefore needs a real login about once a year. The client's 401 handler covers it. `expireInactiveSessions: false` in Back4App's Server Settings → Custom Parse Options would make sessions never expire.
+- **`/submissions` costs about 0.37 ms per returned row.** The whole history is the cost: the heaviest known account (4,966 submissions) takes about 1.9 s. Pagination, not query narrowing, is the lever if this matters.
+
 ## Heroku deployment
 
 - **Keep the `runtime-dyno-metadata` lab.** `version_number` on each Parse submission is `Number(HEROKU_RELEASE_VERSION.slice(1))` (`src/server.js`). The Back4App column is typed Number, so a commit hash cannot replace it. The user looks up the commit for a release with `heroku releases`. Do not propose removing the lab.

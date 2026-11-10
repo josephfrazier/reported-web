@@ -1,0 +1,1142 @@
+/* The Situated Image base stylesheet, vendored for /powerbroker. */
+
+/*
+ * The Situated Image — base stylesheet.
+ * The :root block below defines the site's styling via CSS custom
+ * properties; everything else consumes those variables.
+ */
+
+/* Optician Sans — a typeface built from historical eye-chart optotypes.
+ * SIL Open Font License. Used as a fixed design constant for titles. */
+@font-face {
+  font-family: "Optician Sans";
+  src: url("/powerbroker-assets/fonts/Optician-Sans.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* Title face is constant; --display-serif is the fallback if the
+   * optotype webfont fails to load. */
+  --title-face: "Optician Sans", var(--display-serif);
+  --body-serif: "Source Serif 4", "Source Serif Pro", Georgia, serif;
+  --display-serif: "Playfair Display", "Source Serif 4", Georgia, serif;
+  --color-ink: #ecede9;
+  --color-paper: #20201e;  /* matches the cowboy reveal JPEGs' flat margin: JPEG's
+                              YCbCr round-trip can't hold #20211e's green (33→32), so
+                              the page is set to the value the frames actually render. */
+  --color-accent: #93a8b5;
+  --body-size: 17px;
+  --body-leading: 1.6;
+  --column-max: 36rem;
+  --section-gap: clamp(96px, 14vw, 220px);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  scroll-behavior: smooth;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--body-serif);
+  font-size: var(--body-size);
+  line-height: var(--body-leading);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3 {
+  font-family: var(--title-face);
+  font-weight: 400;
+  letter-spacing: 0.005em;
+}
+
+a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--color-accent);
+  text-underline-offset: 0.18em;
+  text-decoration-thickness: 0.5px;
+}
+
+a:hover { text-decoration-color: var(--color-ink); }
+
+p { margin: 0 0 1.1em; }
+
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0);
+  white-space: nowrap; border: 0;
+}
+
+/* ── Hero ──────────────────────────────────────────────────────────── */
+
+.hero {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  min-height: 560px;
+  overflow: hidden;
+  background: #0a0a0a;
+}
+
+.hero-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  padding: clamp(28px, 7vh, 84px) clamp(20px, 5vw, 56px) 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  text-align: center;
+  pointer-events: none;
+}
+
+.seek-shop-link:focus-visible { outline: 2px solid currentColor; outline-offset: 5px; }
+
+.hero-title {
+  margin: 0;
+  color: #fafafa;
+  font-family: var(--title-face);
+  font-size: clamp(42px, 12vw, 144px);
+  font-weight: 400;
+  line-height: 0.98;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  /* White ink through difference blend: reads white over dark areas of the
+   * video and inverts to dark over light areas — never a flat overlay. */
+  mix-blend-mode: difference;
+}
+
+/* Scroll cue pinned to the bottom of the hero. */
+.scroll-hint {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(18px, 3vh, 36px);
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  transform: translateX(-50%);
+  pointer-events: auto;
+  text-decoration: none;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.55));
+  animation: scroll-bounce 2.1s ease-in-out infinite;
+}
+
+.scroll-hint-arrow {
+  display: block;
+  width: 15px;
+  height: 15px;
+  border-right: 2px solid #fafafa;
+  border-bottom: 2px solid #fafafa;
+  transform: rotate(45deg);
+}
+
+@keyframes scroll-bounce {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50%      { transform: translateX(-50%) translateY(8px); }
+}
+
+/* ── Sections ──────────────────────────────────────────────────────── */
+
+section {
+  padding: var(--section-gap) clamp(20px, 5vw, 48px);
+  max-width: 100%;
+}
+
+.statement,
+.bio {
+  max-width: var(--column-max);
+  margin: 0 auto;
+}
+
+.statement p {
+  font-size: 1.05em;
+  line-height: calc(var(--body-leading) + 0.05);
+}
+
+.statement-heading {
+  font-family: var(--title-face);
+  text-align: center;
+  font-size: 2em;
+  letter-spacing: 0.02em;
+  margin-bottom: 1em;
+}
+
+.statement-lede {
+  font-size: 1.32em;
+  line-height: 1.4;
+  margin-bottom: 1.3em;
+}
+
+.statement-title {
+  font-family: var(--display-serif);
+  font-style: italic;
+  text-align: center;
+  font-size: 1.25em;
+  margin: 2.5em 0;
+}
+
+.section-header {
+  font-size: 2em;
+  text-align: center;
+  margin: 0 0 calc(var(--section-gap) / 2);
+  letter-spacing: 0.04em;
+}
+
+/* ── Featured (now in the gallery) ─────────────────────────────────── */
+
+.featured {
+  max-width: 1100px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.featured-kicker {
+  font-family: var(--title-face);
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  font-size: 0.8em;
+  color: var(--color-accent);
+  margin: 0 0 0.7em;
+}
+
+.featured-title {
+  margin-bottom: 0.7em;
+}
+
+.featured-lede {
+  max-width: var(--column-max);
+  margin: 0 auto calc(var(--section-gap) * 0.4);
+  font-size: 1.18em;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--color-ink) 82%, var(--color-paper));
+}
+
+.featured-piece {
+  margin: 0 0 calc(var(--section-gap) * 0.45);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.2em;
+}
+
+.blur-stage {
+  line-height: 0;
+  max-width: 100%;
+}
+
+/* Placeholder defocus: a CSS gaussian driven by the slider (--fblur px).
+ * This is scaffolding — the real reveal uses a pre-rendered optical-PSF
+ * frame stack, not this filter. */
+.blur-target {
+  max-width: 100%;
+  max-height: 82vh;
+  width: auto;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+  border-radius: 2px;
+  filter: blur(calc(var(--fblur, 0) * 1px));
+}
+
+/* The gallery photo has no baked invisible border (unlike the cowboy frame),
+ * so cancel .lens-control's negative pull-up — otherwise the slider rides up
+ * onto the image. Compound selector so it also beats the desktop media query. */
+.lens-control.blur-control {
+  max-width: var(--column-max);
+  margin-top: 0.4em;
+}
+
+.featured-caption {
+  max-width: var(--column-max);
+  margin: 1.8em auto 0;
+  text-align: center;
+}
+
+.featured-caption .work-title {
+  margin-bottom: 0.7em;
+}
+
+.featured-caption .work-desc {
+  text-align: left;
+  margin-bottom: 1.5em;
+}
+
+.featured-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 0.5em 1.6em;
+  margin: 0 0 1.4em;
+  text-align: left;
+  font-size: 0.88em;
+}
+
+.featured-meta > div {
+  display: flex;
+  gap: 0.6em;
+  align-items: baseline;
+}
+
+.featured-meta dt {
+  margin: 0;
+  flex: 0 0 auto;
+  min-width: 4.2em;
+  font-family: var(--title-face);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.82em;
+  color: color-mix(in srgb, var(--color-ink) 50%, var(--color-paper));
+}
+
+.featured-meta dd { margin: 0; }
+
+.featured-visit {
+  margin: 0;
+  font-family: var(--title-face);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.82em;
+}
+
+/* Secondary gallery media: the looping focus-pull clip + a supporting shot. */
+.featured-media {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(14px, 3vw, 32px);
+  align-items: start;
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.featured-clip {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9em;
+}
+
+.featured-clip video,
+.featured-clip img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 2px;
+}
+
+@media (max-width: 640px) {
+  .featured-media { grid-template-columns: 1fr; gap: 2.2em; }
+}
+
+/* ── Works ─────────────────────────────────────────────────────────── */
+
+.works {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.work {
+  margin: 0 0 calc(var(--section-gap) * 0.9);
+}
+
+.work:last-child { margin-bottom: 0; }
+
+.work-image {
+  width: 100%;
+  display: block;
+  margin-bottom: 1.4em;
+  text-align: center;
+}
+
+/* Show the whole artwork — never crop. Tall pieces are capped to the
+ * viewport height and centered. */
+/* Discourage saving the artwork: no drag-to-save ghost, no selection, and no
+ * blue tap/selection highlight when the interactive images are clicked. */
+img {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.work-image img {
+  max-width: 100%;
+  max-height: 88vh;
+  width: auto;
+  height: auto;
+  margin: 0 auto;
+  display: block;
+}
+
+.placeholder {
+  background:
+    linear-gradient(135deg, rgba(0,0,0,0.04), rgba(0,0,0,0.02)),
+    var(--color-paper);
+  border: 1px solid rgba(0,0,0,0.08);
+  display: grid;
+  place-items: center;
+  color: rgba(0,0,0,0.35);
+  font-style: italic;
+  font-size: 0.95em;
+}
+
+.placeholder-label {
+  letter-spacing: 0.08em;
+  text-transform: lowercase;
+}
+
+.work figcaption {
+  max-width: var(--column-max);
+  margin: 0 auto;
+  text-align: center;
+}
+
+.work-title {
+  font-family: var(--title-face);
+  font-style: normal;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 1.05em;
+  margin: 0 0 0.5em;
+}
+
+.work-desc {
+  font-size: 0.95em;
+  text-align: left;
+  margin: 0 0 1.3em;
+}
+
+.work-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(8px, 1.5vw, 16px);
+  margin: 0 0 0.7em;
+  align-items: start; /* don't let grid stretch the squares vertically */
+}
+
+.work-details img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Two zoomed details share the top row as true squares. */
+.work-details .detail-sq {
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+}
+
+/* The trial-frame photo spans the full width below, in its natural ratio. */
+.work-details .detail-wide {
+  grid-column: 1 / -1;
+}
+
+/* Snellen-style green bar dividing works — echoes the reference bars on a
+ * standard eye chart. */
+.snellen-bar {
+  border: none;
+  height: 6px;
+  width: min(420px, 65vw);
+  margin: 0 auto;
+  background: #4a7c59;
+  border-radius: 1px;
+}
+
+.snellen-bar.is-red {
+  background: #8c3a3a;
+}
+
+.snellen-bar.is-inset {
+  margin-top: calc(var(--section-gap) * 0.4);
+  margin-bottom: calc(var(--section-gap) * 0.4);
+}
+
+.work-detail-cap {
+  margin: 0;
+  font-size: 0.78em;
+  font-style: italic;
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--color-ink) 55%, var(--color-paper));
+}
+
+/* "Learn more" call-to-action, in the title face to echo the work titles. */
+.work-more {
+  display: inline-block;
+  margin-top: 0.9em;
+  font-family: var(--title-face);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.82em;
+  text-decoration: none;
+  border-bottom: 1px solid var(--color-accent);
+  padding-bottom: 0.2em;
+}
+
+.work-more:hover { border-color: var(--color-ink); }
+
+/* ── Bio ───────────────────────────────────────────────────────────── */
+
+.bio-quote {
+  margin: 0;
+  padding: 0;
+  border: none;
+  text-align: center;
+}
+
+.bio-quote p {
+  font-family: var(--display-serif);
+  font-style: italic;
+  font-size: clamp(1.15em, 2.4vw, 1.55em);
+  line-height: 1.55;
+  margin: 0 0 1.4em;
+}
+
+.bio-sig {
+  font-family: var(--display-serif);
+  font-style: italic;
+  font-size: 1.1em;
+  letter-spacing: 0.03em;
+  color: color-mix(in srgb, var(--color-ink) 70%, var(--color-paper));
+}
+
+.bio-dash {
+  margin-right: 0.15em;
+}
+
+/* ── Footer ────────────────────────────────────────────────────────── */
+
+.footer {
+  padding: clamp(80px, 12vw, 160px) 24px 60px;
+  text-align: center;
+  font-size: 0.82em;
+  color: color-mix(in srgb, var(--color-ink) 55%, var(--color-paper));
+}
+
+.footer a {
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.footer-links a {
+  color: color-mix(in srgb, var(--color-ink) 90%, var(--color-paper));
+}
+
+.footer a:hover { color: var(--color-ink); }
+
+.footer-links {
+  font-family: var(--title-face);
+  font-size: 1.05em;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin: 0 0 2em;
+}
+
+.footer-links .sep {
+  margin: 0 0.6em;
+  opacity: 0.35;
+}
+
+.footer-links .icon {
+  display: inline-block;
+  width: 1.1em;
+  height: 1.1em;
+  vertical-align: -0.15em;
+  /* Recolor the SVG to match the link color. An <img> SVG can't inherit
+   * currentColor, so we mask the icon and paint it with background-color. */
+  background-color: currentColor;
+  -webkit-mask: var(--icon-src) no-repeat center / contain;
+  mask: var(--icon-src) no-repeat center / contain;
+}
+
+.mailing-list {
+  display: flex;
+  justify-content: center;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-ink) 25%, var(--color-paper));
+  max-width: 18rem;
+  margin: 0 auto 2.5em;
+  transition: border-color 0.2s;
+}
+
+.mailing-list:focus-within {
+  border-color: var(--color-accent);
+}
+
+.mailing-list input {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  padding: 0.5em 0;
+  outline: none;
+}
+
+.mailing-list input::placeholder {
+  color: color-mix(in srgb, var(--color-ink) 35%, var(--color-paper));
+  font-style: italic;
+  letter-spacing: 0.02em;
+}
+
+.mailing-list button {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: color-mix(in srgb, var(--color-ink) 40%, var(--color-paper));
+  padding: 0.5em 0.4em;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.mailing-list button:hover { color: var(--color-ink); }
+
+.footer-copy {
+  margin: 0;
+}
+
+/* ── Interactive optics ────────────────────────────────────────────── */
+
+/* Phoropter focus-pull: a button scrubs the clip between its two planes of
+ * focus, playing the frames in between. No blur filter — the footage
+ * carries its own focus. */
+.interlude {
+  display: flex;
+  justify-content: center;
+}
+
+.focuspull {
+  margin: 0;
+  width: min(420px, 90vw);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.1em;
+  text-align: center;
+}
+
+.focuspull-video {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 2px;
+  border: 5px solid #c2c3c2;
+}
+
+.focuspull-toggle {
+  --pull: 0;            /* 0 = far, 1 = near; driven from the video's currentTime */
+  --track-w: 64px;
+  --knob: 22px;
+  --pad: 3px;
+  border: 0;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7em;
+  cursor: pointer;
+  padding: 0.4em 0;
+  font-family: var(--title-face);
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.8em;
+}
+
+.focuspull-label {
+  color: var(--color-ink);
+  margin-right: 0.3em;
+}
+
+.focuspull-side {
+  color: color-mix(in srgb, var(--color-ink) 45%, var(--color-paper));
+  transition: color 0.25s, opacity 0.25s;
+}
+/* The side nearest the current plane of focus lights up as the knob arrives. */
+.focuspull-side.is-far  { opacity: calc(1 - var(--pull) * 0.65); color: color-mix(in srgb, var(--color-ink) calc((100 - var(--pull) * 55) * 1%), var(--color-paper)); }
+.focuspull-side.is-near { opacity: calc(0.35 + var(--pull) * 0.65); color: color-mix(in srgb, var(--color-ink) calc((45 + var(--pull) * 55) * 1%), var(--color-paper)); }
+
+.focuspull-track {
+  position: relative;
+  width: var(--track-w);
+  height: calc(var(--knob) + var(--pad) * 2);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-ink) 12%, var(--color-paper));
+  border: 1px solid var(--color-accent);
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.focuspull-knob {
+  position: absolute;
+  top: var(--pad);
+  left: var(--pad);
+  width: var(--knob);
+  height: var(--knob);
+  border-radius: 50%;
+  background: var(--color-accent);
+  /* near sits on the LEFT, far on the right: knob rests left at near (--pull 1),
+   * slides right toward far as --pull -> 0. */
+  transform: translateX(calc((1 - var(--pull)) * (var(--track-w) - var(--knob) - var(--pad) * 2)));
+}
+
+.focuspull-toggle:hover .focuspull-track { border-color: var(--color-ink); }
+.focuspull-toggle:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 4px; border-radius: 4px; }
+.focuspull-toggle[disabled] { cursor: progress; }
+
+.lens-cap {
+  margin: 0;
+  font-style: italic;
+  font-size: 0.85em;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--color-ink) 62%, var(--color-paper));
+}
+
+/* Self-portrait reveal: a slider swaps between pre-rendered frames blurred
+ * with the artwork's true optical PSF (soft pupil), not a CSS gaussian.
+ * The wrapper shrink-wraps the frame and is centred by the parent's
+ * text-align; sizing comes from the shared `.work-image img` rules. */
+.lens-reveal {
+  position: relative;
+  z-index: 0;
+  isolation: isolate;
+  display: inline-block;
+  /* Cap the shrink-to-fit width: an inline-block sizes to its content's
+   * intrinsic width (here a 1024px frame) and the child img's max-width:100%
+   * is ignored during that intrinsic sizing — so without this the frame blows
+   * past the viewport on phones and forces horizontal overflow. */
+  max-width: 100%;
+  line-height: 0;
+}
+
+/* The self-focus frames carry ~7% paper-colored padding per side (invisible
+ * against the page). It shrinks the apparent portrait and opens a gap above
+ * the slider, so render the frame a touch larger to undo the padding. The
+ * extra size is just the invisible margin, so the portrait itself grows. */
+.lens-reveal .reveal-frame { max-height: 94vh; }
+
+/* Defocus stack: every frame is a preloaded layer; the slider reveals one by
+ * fading in its opacity rather than swapping the <img> src — so the element is
+ * never momentarily empty (no black blink). The base .reveal-frame stays put
+ * underneath, so an undecoded layer falls back to frame 0, never to background. */
+.lens-reveal .reveal-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.lens-reveal .reveal-layer.is-active { opacity: 1; }
+
+.lens-control {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.6em;
+  padding: 0 1em;
+  /* The frame has a baked, paper-colored border that's invisible against the
+   * page, so the image element extends well below the visible artwork. Pull
+   * the control up into that dead band with a negative margin so it sits close
+   * to the picture, not marooned halfway to the title below.
+   * We need position relative so the control renders *on top* of the image's
+   * invisible border, otherwise the image's stacking context hides it. */
+  margin: -1.4em auto 0;
+  position: relative;
+  z-index: 1;
+}
+
+/* On wider screens the image is height-capped (94vh) and larger, so the invisible
+ * band is a larger absolute cushion — pull the control up harder to close the gap. */
+@media (min-width: 641px) {
+  .lens-control { margin-top: -2.2em; }
+}
+
+.lens-side {
+  font-family: var(--title-face);
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.8em;
+  color: color-mix(in srgb, var(--color-ink) 45%, var(--color-paper));
+  transition: color 0.25s, opacity 0.25s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.lens-side.is-sharp { opacity: calc(1 - var(--blur, 0) * 0.55); }
+.lens-side.is-blur  { opacity: calc(0.45 + var(--blur, 0) * 0.55); }
+
+.lens-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1;
+  min-width: 60px;
+  max-width: 280px;
+  height: 2px;
+  background: color-mix(in srgb, var(--color-ink) 32%, var(--color-paper));
+  outline: none;
+  cursor: pointer;
+  /* Don't let dragging the slider scroll the page on touch devices. */
+  touch-action: none;
+}
+
+.lens-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  border: 2px solid var(--color-paper);
+  cursor: pointer;
+}
+
+.lens-slider::-moz-range-thumb {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  border: 2px solid var(--color-paper);
+  cursor: pointer;
+}
+
+.lens-hint {
+  flex-basis: 100%;
+  font-size: 0.78em;
+  font-style: italic;
+  letter-spacing: 0.02em;
+  text-align: center;
+  color: color-mix(in srgb, var(--color-ink) 55%, var(--color-paper));
+}
+
+/* ── Seek page (/seek) ─────────────────────────────────────────────── */
+
+/* The seek hero is a still render shown at its natural ratio (the artworks
+ * along the top of the picture matter), not a viewport-filling crop. */
+/* .hero.seek-hero so this also outranks the small-screen `.hero` height
+ * override, which appears later in the file. */
+.hero.seek-hero {
+  height: auto;
+  min-height: 0;
+  padding: 0; /* the generic section padding would inset the full-bleed still */
+}
+
+.seek-hero > img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 100vh;
+  object-fit: cover;
+}
+
+.seek-hero .hero-title {
+  font-size: clamp(58px, 14.4vw, 176px);
+}
+
+/* A slow drift so the difference-blended title catches the eye when it sits
+ * over midtones. X on the h1, Y on the inner span, with co-prime periods
+ * (27s/37s) so the combined path wanders for ~17min before repeating.
+ * Transform-only, so it stays on the compositor — no layout/paint, cheap on
+ * mobile. Amplitude in em so it scales with the title. */
+.seek-hero .hero-title {
+  animation: seek-drift-x 27s ease-in-out infinite;
+}
+
+.seek-hero .hero-title .drift {
+  display: inline-block;
+  animation: seek-drift-y 37s ease-in-out infinite;
+}
+
+@keyframes seek-drift-x {
+  0%   { transform: translateX(0); }
+  17%  { transform: translateX(0.08em); }
+  31%  { transform: translateX(-0.04em); }
+  52%  { transform: translateX(0.06em); }
+  71%  { transform: translateX(-0.09em); }
+  86%  { transform: translateX(0.03em); }
+  100% { transform: translateX(0); }
+}
+
+@keyframes seek-drift-y {
+  0%   { transform: translateY(0); }
+  14%  { transform: translateY(-0.06em); }
+  36%  { transform: translateY(0.05em); }
+  53%  { transform: translateY(-0.03em); }
+  74%  { transform: translateY(0.08em); }
+  89%  { transform: translateY(-0.05em); }
+  100% { transform: translateY(0); }
+}
+
+/* Discreet way home, riding the hero like the title does. */
+.seek-home {
+  position: absolute;
+  top: clamp(14px, 2.5vw, 28px);
+  left: clamp(16px, 3vw, 32px);
+  font-family: var(--title-face);
+  font-size: 0.72em;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: #fafafa;
+  mix-blend-mode: difference;
+}
+
+.seek-shop-link {
+  position: absolute; z-index: 2; top: clamp(14px, 2.5vw, 28px); right: clamp(16px, 3vw, 32px);
+  color: #fafafa; font: 0.72em var(--title-face); letter-spacing: .16em; text-transform: uppercase;
+  text-decoration: none; mix-blend-mode: difference;
+}
+
+/* A single photo interlude (the kid at the lens). */
+.seek-peek {
+  margin: 0;
+  width: min(420px, 90vw);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.1em;
+  text-align: center;
+}
+
+.seek-peek img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 2px;
+}
+
+/* Sharp→blurry defocus toggle: the switch walks a stack of frames pre-blurred
+ * with the piece's true optics (hard pillbox; scripts/render_seek_focus.py).
+ * No CSS blur — same layer mechanics as the self-portrait's .reveal-layer:
+ * the sharp base frame stays put underneath and each blur step is a preloaded
+ * layer revealed by opacity, so nothing ever blanks or half-paints. */
+.flip-stack {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  line-height: 0;
+  cursor: pointer;
+}
+
+.flip-stack .flip-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.flip-stack .flip-layer.is-active { opacity: 1; }
+
+.flip-control {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 0.5em;
+}
+
+.flip-control .lens-hint { flex-basis: auto; }
+
+/* ── Small screens ─────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  :root { --section-gap: clamp(72px, 18vw, 140px); }
+  .hero { height: 88vh; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .hero-video { display: none; }
+  .hero { background: #111; }
+  .scroll-hint { animation: none; }
+  .seek-hero .hero-title,
+  .seek-hero .hero-title .drift { animation: none; }
+}
+
+
+/* street-collages.css */
+
+.collage-header {max-width:960px;margin:0 auto;padding:32px 24px}
+.collage-gallery {padding:30px clamp(20px,5vw,48px) 70px}
+.collage-gallery h1 {margin-bottom:32px}
+.collage-gallery > .work-desc {max-width:var(--column-max);margin-left:auto;margin-right:auto}
+.collage-gallery .work {margin-top:72px}
+.report-art {position:relative;overflow:hidden;margin-bottom:12px}
+.report-art > img {display:block;width:100%;height:auto;transform-origin:0 0}
+.art-surface {position:absolute;inset:0;width:100%;height:100%;border:0;padding:0;background:transparent;cursor:crosshair;touch-action:none}
+.report-art[data-zoomed="true"] .art-surface {cursor:grab}
+.report-art.is-dragging .art-surface {cursor:grabbing}
+.art-surface:focus-visible {outline:3px solid #d7f970;outline-offset:-3px}
+.zoom-controls {display:flex;align-items:center;justify-content:center;gap:10px;margin:12px 0 28px;font:14px system-ui,sans-serif}
+.zoom-controls button {font:inherit;color:inherit;background:transparent;border:1px solid currentColor;border-radius:24px;min-width:40px;min-height:40px;padding:6px 12px;cursor:pointer}
+.zoom-controls button:disabled {opacity:.35;cursor:default}
+.zoom-controls output {min-width:48px;text-align:center;font-variant-numeric:tabular-nums}
+.report-status {min-height:1.5em;font-size:.9rem}
+.photo-connector {position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:1000;display:none;overflow:visible}
+.photo-connector line {stroke:#d7f970;stroke-width:2;filter:drop-shadow(0 1px 2px #000)}
+.photo-connector circle {stroke:#0d1b2a;stroke-width:2;fill:#d7f970}
+.report-preview {position:fixed;inset:auto;margin:0;padding:0;width:min(320px,calc(100vw - 24px));max-width:none;border:1px solid #41536a;border-radius:14px;background:#0d1b2a;color:#f5f7fa;box-shadow:0 8px 40px #0008;z-index:1001;overflow:hidden;font:14px/1.4 system-ui,sans-serif}
+.preview-heading {display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px 8px 14px}
+.preview-heading h2 {font:600 13px/1.4 system-ui,sans-serif;margin:0}
+.preview-close {background:transparent;border:0;color:inherit;font:26px/1 system-ui;cursor:pointer;min-width:36px;min-height:36px;border-radius:50%}
+.preview-link {display:block;text-decoration:none;color:#d7f970}
+.preview-media {position:relative;display:grid;place-items:center;height:min(220px,32vh);background:#07111c}
+.preview-photo {display:block;width:100%;height:100%;object-fit:contain;min-height:0}
+.preview-photo:not([src]) {visibility:hidden}
+.preview-loading {position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center;color:#dbe5f0;pointer-events:none}
+.preview-loading[hidden] {display:none}
+.preview-caption {display:flex;justify-content:space-between;padding:12px 14px}
+.preview-close:focus-visible,.preview-link:focus-visible,.zoom-controls button:focus-visible {outline:3px solid #d7f970;outline-offset:-3px}
+
+.report-art[data-source-preview="false"] .art-surface {cursor:default}
+.report-art[data-source-preview="false"][data-zoomed="true"] .art-surface {cursor:grab}
+
+.preview-loading.is-loading {display:flex;flex-direction:column;justify-content:center;align-items:center;gap:18px;perspective:240px}
+.preview-loading.is-loading::before {content:"";display:block;width:32px;height:44px;border:2px solid #d7f970;border-radius:5px;background:linear-gradient(135deg,#d7f97033,#d7f97008);box-shadow:0 3px 12px #0005;animation:source-card-spin 1.1s linear infinite}
+.preview-loading.is-loading[hidden] {display:none}
+@keyframes source-card-spin {from {transform:rotateY(0deg) rotateZ(-10deg)} to {transform:rotateY(360deg) rotateZ(-10deg)}}
+@media (prefers-reduced-motion:reduce) {.preview-loading.is-loading::before {animation:none}}
+
+.postcard-date {font-size:.9rem;opacity:.8}
+.postcard-context {max-width:var(--column-max);margin:18px auto 24px;text-align:left;font-size:.9rem;line-height:1.6}
+.postcard-context summary {cursor:pointer;width:fit-content;text-decoration:underline;text-underline-offset:3px}
+.postcard-context p {margin:12px 0}
+.postcard-context a {color:inherit;text-underline-offset:3px}
+.postcard-context summary:focus-visible {outline:2px solid #d7f970;outline-offset:4px}
+
+
+/* picasso-in-the-house.css */
+
+.picasso-gallery .report-art {max-width:800px;margin-left:auto;margin-right:auto}
+.source-painting {display:block;width:100%;height:100%;min-height:0}
+.source-outline,.source-outline-halo {fill:none;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.source-outline {stroke:#d7f970;stroke-width:2}
+.source-outline-halo {stroke:#102030;stroke-width:4;opacity:.8}
+.source-caption {display:block;padding:8px 14px 0;font-size:12px;color:#dbe5f0}
+.preview-heading h2 {display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.picasso-gallery~.report-preview .preview-media {height:min(300px,38vh)}
+
+
+/* portrait-collages.css */
+
+.picasso-gallery .work-title {text-align:center;margin-bottom:24px}
+.picasso-gallery .work-detail-cap {max-width:38rem;margin-left:auto;margin-right:auto}
+/* Dalí mushroom card: MyCompendium specimen card (mycompendium.org/specimen.css), single-column layout. */
+.mushroom-preview {--specimen-tint:#ece9df;--specimen-accent:#716853;position:fixed;inset:auto;margin:0;padding:0;width:min(348px,calc(100vw - 24px));max-width:none;max-height:calc(100dvh - 24px);overflow:auto;border:1px solid #ffffff99;border-radius:18px;background:#faf8f2;color:#292e27;box-shadow:0 32px 120px #18221c55;z-index:1001;font:13px/1.4 system-ui,sans-serif}
+.mushroom-heading {display:flex;align-items:center;gap:10px;margin:0 20px;padding:15px 0;border-bottom:1px solid #303b2926}
+.mushroom-masthead {font:9px/1.4 system-ui,sans-serif;letter-spacing:.18em;text-transform:uppercase}
+.mushroom-color {display:flex;align-items:center;gap:7px;margin-left:auto;font:9px/1.4 system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase}
+.mushroom-color::before {content:'';width:8px;height:8px;border-radius:50%;background:var(--specimen-accent)}
+.mushroom-color:empty {display:none}
+.mushroom-close {display:grid;place-items:center;flex-shrink:0;width:34px;height:34px;padding:0;border:1px solid #303b2930;border-radius:50%;background:transparent;font:23px/1 Georgia,serif;color:#41483c;cursor:pointer}
+.mushroom-close:hover {background:#e5e7dd}
+.mushroom-body {display:grid;grid-template-columns:1fr;gap:23px;padding:24px 24px 20px}
+.mushroom-figure {margin:0;min-width:0}
+.mushroom-photo-wrap {position:relative;width:100%;max-width:300px;height:min(300px,32dvh);margin:auto;overflow:hidden;border:3px solid var(--specimen-accent);border-radius:180px 180px 10px 10px;background:var(--specimen-tint);isolation:isolate}
+.mushroom-photo {position:absolute;display:block;max-width:none;max-height:none}
+.mushroom-photo .mushroom-dim {fill:#000;fill-opacity:.1;stroke:none}
+.mushroom-photo .mushroom-outline {fill:none;stroke:#74934d;stroke-width:1.5;vector-effect:non-scaling-stroke;stroke-linejoin:round}
+.mushroom-figure figcaption {margin-top:13px;text-align:center;font:10px/1.5 system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#717367}
+.mushroom-loading {position:absolute;inset:0;display:grid;place-items:center;margin:0;padding:16px;text-align:center;font:13px system-ui}
+.mushroom-loading[hidden] {display:none}
+.mushroom-details {align-self:center;min-width:0;padding:0}
+.mushroom-eyebrow {margin:0 0 10px;font:10px/1.4 system-ui,sans-serif;letter-spacing:.18em;text-transform:uppercase;color:#656b5d}
+.mushroom-details h2 {margin:0 0 20px;font:italic 36px/1.08 'Iowan Old Style','Palatino Linotype',Palatino,Georgia,serif;font-weight:400;letter-spacing:-.035em;overflow-wrap:anywhere;text-wrap:balance}
+.mushroom-details dl {margin:0;border-top:1px solid #303b2926;font:13px/1.4 system-ui,sans-serif}
+.mushroom-row {display:grid;grid-template-columns:62px minmax(0,1fr);gap:10px;padding:10px 0;border-bottom:1px solid #303b291a}
+.mushroom-row dt {font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#727668;padding-top:3px}
+.mushroom-row dd {margin:0;overflow-wrap:anywhere}
+.mushroom-footer {margin:0 24px;padding:17px 0 22px;border-top:1px solid #303b2926}
+.mushroom-credit {font:11px/1.6 system-ui,sans-serif;color:#686e61;margin:0 0 18px;overflow-wrap:anywhere}
+.mushroom-full {display:inline-block;font:12px/1.4 system-ui,sans-serif;color:#303d30;text-decoration:none;border-bottom:1px solid #89917e;padding:5px 0}
+.mushroom-full:hover {border-color:#303d30}
+.mushroom-preview :is(button,a):focus-visible {outline:2px solid var(--specimen-accent);outline-offset:4px}
+.nyc-preview .preview-info {display:grid;gap:4px;margin:0;padding:0 14px 12px;color:#dbe5f0;font-size:13px}
+.nyc-preview .preview-info a {color:#d7f970}
+.einstein-preview .preview-info {margin:0;padding:0 14px 12px;color:#dbe5f0;font-size:12px;overflow-wrap:anywhere}
+.einstein-preview .preview-info a {color:#d7f970}
+.nyc-preview {max-height:calc(100dvh - 24px);overflow:auto}
+.nyc-preview .nyc-status {color:#f5f7fa;margin-top:4px}
+.nyc-preview .nyc-outcome {font-size:12px;color:#aebccc}
+.nyc-preview .nyc-code {color:#f5f7fa}
+
+
+/* mobile-collage-viewer.css */
+
+.mobile-art-extras, .collage-mobile-help, .source-expand {display:none}
+.collage-explorer {border:0;padding:0;margin:0;max-width:none;max-height:none;width:100%;height:100%;height:100dvh;inset:0;background:#101315;color:#f6f3ec;overflow:hidden}
+.collage-explorer[open] {display:flex;flex-direction:column}
+.collage-explorer::backdrop {background:#101315}
+.explorer-heading {display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px max(12px,env(safe-area-inset-right)) 8px max(16px,env(safe-area-inset-left));padding-top:max(8px,env(safe-area-inset-top));flex:none}
+.explorer-heading h2 {font:16px/1.2 system-ui,sans-serif;margin:0;min-width:0}
+.collage-explorer button {font:14px/1.2 system-ui,sans-serif;cursor:pointer}
+.explorer-close, .explorer-tools button {min-width:44px;min-height:44px;padding:10px 14px;border:1px solid #ffffff70;border-radius:24px;color:inherit;background:transparent;flex-shrink:0}
+.collage-explorer button:focus-visible, .explorer-stage:focus-visible {outline:3px solid #d7f970;outline-offset:-3px}
+.explorer-stage {position:relative;flex:1;min-height:0;overflow:hidden;touch-action:none;overscroll-behavior:contain}
+.explorer-stage .report-art {position:absolute;inset:0;width:100%;height:100%;max-width:none;margin:0}
+.explorer-stage .report-art > img {position:absolute;top:0;left:0;max-width:none;max-height:none;transform-origin:0 0;will-change:transform}
+.explorer-stage .art-surface {display:none}
+#explorer-help {font:11px/1.4 system-ui,sans-serif;text-align:center;margin:8px 12px 0;color:#c6c9c8;flex:none}
+.explorer-tools {display:flex;align-items:center;justify-content:center;gap:10px;padding:8px max(12px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));flex:none}
+.explorer-tools output {font:13px system-ui,sans-serif;min-width:42px;text-align:center}
+.explorer-tools button:disabled {opacity:.35}
+body.explorer-open {position:fixed;top:var(--explorer-scroll);left:0;right:0;overflow:hidden}
+@media (max-width:700px), (pointer:coarse) and (max-width:1100px) {
+  .collage-gallery {padding:12px 0 70px}
+  .collage-gallery h1 {margin-bottom:24px}
+  .collage-gallery .work {margin-top:40px}
+  .collage-gallery > h1, .collage-gallery > .work-desc, .collage-gallery .work > h2, .collage-gallery .work > figcaption {padding-left:20px;padding-right:20px}
+  .collage-gallery .report-art {max-width:none;margin-bottom:0;touch-action:pan-y pinch-zoom}
+  .collage-gallery .report-art > img {transform:none!important}
+  .collage-gallery .art-surface, .collage-gallery .zoom-controls, .collage-desktop-help {display:none}
+  .collage-mobile-help {display:inline}
+  .mobile-art-extras {display:block;margin:0 0 24px}
+  .mobile-explore {display:block;margin:14px auto 20px;border:1px solid currentColor;border-radius:24px;min-height:44px;padding:10px 20px;background:transparent;color:inherit;font:14px system-ui,sans-serif;cursor:pointer}
+  .collage-detail {position:relative;display:block;width:100%;aspect-ratio:1.9;border:0;padding:0;overflow:hidden;background:#171b1d;cursor:pointer}
+  .collage-detail img {position:absolute;left:50%;top:50%;max-width:none;height:auto;pointer-events:none}
+  .collage-detail span {position:absolute;bottom:12px;left:50%;transform:translateX(-50%);white-space:nowrap;padding:8px 14px;border-radius:22px;background:#101315e6;color:#fff;font:12px system-ui,sans-serif;pointer-events:none}
+  .mobile-art-extras button:focus-visible {outline:3px solid #779338;outline-offset:-3px}
+  .photo-connector {display:none!important}
+  .collage-explorer :is(.report-preview,.mushroom-preview) {position:fixed;left:0!important;right:0!important;top:auto!important;bottom:0!important;box-sizing:border-box;width:100%;max-width:none;max-height:65dvh;margin:0;padding-bottom:env(safe-area-inset-bottom);border-radius:18px 18px 0 0;overflow:auto;overscroll-behavior:contain;box-shadow:0 -8px 32px #0005}
+  .collage-explorer :is(.preview-heading,.mushroom-heading) {position:sticky;top:0;z-index:2;gap:8px;margin:0;padding:6px 12px;background:inherit;min-height:44px}
+  .collage-explorer :is(.report-preview,.mushroom-preview):not([data-expanded="true"]) :is(.preview-heading,.mushroom-heading) {border-radius:18px 18px 0 0}
+  .source-expand {display:block;margin-left:auto;white-space:nowrap;min-height:44px;border:0;padding:6px 8px;background:transparent;color:inherit;font:12px system-ui,sans-serif}
+  .collage-explorer :is(.preview-close,.mushroom-close) {width:44px;height:44px;min-width:44px;min-height:44px}
+  /* Keep the bottom controls small; the source photograph rises above them. */
+  .collage-explorer :is(.report-preview,.mushroom-preview):not([data-expanded="true"]) {overflow:visible}
+  .collage-explorer .report-preview:not([data-expanded="true"]) .preview-link {display:block;padding:0 12px 10px}
+  .collage-explorer .report-preview:not([data-expanded="true"]) .preview-media {position:absolute;bottom:calc(100% + 10px);left:12px;right:12px;height:min(50dvh,420px,calc(100dvh - 210px));background:transparent;filter:drop-shadow(0 4px 12px #0009)}
+  .collage-explorer .report-preview:not([data-expanded="true"]) :is(.source-caption,.preview-info) {display:none}
+  .collage-explorer .report-preview:not([data-expanded="true"]) .preview-caption {align-items:center;gap:12px;padding:8px;font-size:13px}
+  .collage-explorer .preview-loading {padding:6px;font-size:11px}
+  .collage-explorer .preview-loading.is-loading::before {display:none}
+  .collage-explorer .mushroom-preview:not([data-expanded="true"]) .mushroom-body {display:block;padding:0 16px 12px}
+  .collage-explorer .mushroom-preview:not([data-expanded="true"]) .mushroom-figure {position:absolute;bottom:calc(100% + 10px);left:12px;right:12px}
+  .collage-explorer .mushroom-preview:not([data-expanded="true"]) .mushroom-photo-wrap {max-width:360px;height:min(50dvh,420px,calc(100dvh - 210px));border-width:2px;box-shadow:0 4px 18px #0007}
+  .collage-explorer .mushroom-preview:not([data-expanded="true"]) :is(.mushroom-figure figcaption,.mushroom-eyebrow,.mushroom-details dl,.mushroom-footer) {display:none}
+  .collage-explorer .mushroom-preview:not([data-expanded="true"]) .mushroom-details h2 {font-size:22px;margin:0}
+  .collage-explorer .mushroom-color {display:none}
+  .collage-explorer .mushroom-preview:not([data-expanded="true"]) .mushroom-loading {font-size:13px;line-height:1.4;padding:16px;overflow-wrap:anywhere}
+  .collage-explorer .preview-heading h2 {min-width:0;flex:1}
+}
+@media (max-height:500px) {
+  .explorer-heading {padding-top:4px;padding-bottom:4px}
+  .explorer-heading h2 {font-size:14px}
+  #explorer-help {display:none}
+  .explorer-tools {padding-top:4px;padding-bottom:max(4px,env(safe-area-inset-bottom))}
+}

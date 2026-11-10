@@ -110,6 +110,7 @@ const run = async () => {
     const home = await request(`${BASE_URL}/`);
     const favicon = await request(`${BASE_URL}/favicon.ico`);
     const submissionsMap = await request(`${BASE_URL}/submissions-map`);
+    const powerBroker = await request(`${BASE_URL}/powerbroker`);
     const installHookMap = await request(`${BASE_URL}/installHook.js.map`);
     const unknownPath = await request(`${BASE_URL}/this-page-does-not-exist`);
 
@@ -147,6 +148,13 @@ const run = async () => {
           submissionsMap.status === 200 &&
           submissionsMap.body.includes('id="tab-paste"'),
         detail: `status ${submissionsMap.status}, body starts: ${submissionsMap.body.slice(0, 80)}`,
+      },
+      {
+        name: 'GET /powerbroker serves the collage page',
+        ok:
+          powerBroker.status === 200 &&
+          powerBroker.body.includes('data-art="nyc-power-broker"'),
+        detail: `status ${powerBroker.status}, body starts: ${powerBroker.body.slice(0, 80)}`,
       },
       {
         // Firefox fetches this after the React DevTools extension injects

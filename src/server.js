@@ -587,6 +587,12 @@ app.get('/submissions-map', async (req, res) => {
   res.sendFile(path.resolve(__dirname, 'public', 'submissions-map.html'));
 });
 
+// The collage gallery is a static page. It has no session state, so it needs
+// no route action and no prerender.
+app.get('/powerbroker', (req, res) => {
+  res.sendFile(path.resolve(__dirname, 'public', 'powerbroker.html'));
+});
+
 const POLYGON_FIELDS = [
   'location',
   'timeofreport',

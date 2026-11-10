@@ -1266,6 +1266,25 @@ describe('Home', () => {
     cleanup();
   });
 
+  test("reads a malformed EXIF offset in New York's", async () => {
+    // A camera can write an offset that is not a number. It counts as none,
+    // so the time is read in New York's, the way a picture with no offset is.
+    exifr.parse.mockImplementation(async () => ({
+      CreateDate: new Date(Date.UTC(2016, 0, 1, 12, 0, 10)),
+      OffsetTimeDigitized: 'not-a-number',
+    }));
+
+    const photo = new File([photoBytes('bad-offset')], 'bad-offset.jpg', {
+      type: 'image/jpeg',
+    });
+    const { homeRef, cleanup } = await renderAndExtract([photo]);
+
+    // Noon UTC is 7:00 that morning in New York.
+    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T07:00:10');
+
+    cleanup();
+  });
+
   test("takes the form's time from a video's own creation time", async () => {
     // An MP4 records when it was made and no offset, so the video's time is
     // read the way a picture's is when the picture records none: in New

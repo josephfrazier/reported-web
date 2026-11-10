@@ -522,7 +522,7 @@
     <dl class="meta">
       <div><dt>Status</dt><dd>built</dd></div>
       <div><dt>Written</dt><dd>2026-09-23</dd></div>
-      <div><dt>Revised</dt><dd>2026-10-14</dd></div>
+      <div><dt>Revised</dt><dd>2026-11-10</dd></div>
       <div><dt>Base</dt><dd>ba141241</dd></div>
     </dl>
 
@@ -540,7 +540,7 @@
             <tr><th>Decision</th><th>Choice</th></tr>
           </thead>
           <tbody>
-            <tr><td>Entry point</td><td>Toggle in Preferences, persisted alongside <code>isReverseGeocodingEnabled</code></td></tr>
+            <tr><td>Entry point</td><td>None — every pick, drop and paste feeds the batch; the batch is the only attachment flow</td></tr>
             <tr><td>Photo input</td><td>A folder pick, a loose multi-file pick, or a drag-and-drop — all equally supported</td></tr>
             <tr><td>Grouping signals</td><td>EXIF time to cluster, ALPR plate to split — no GPS, see <em>Why distance went</em></td></tr>
             <tr><td>Thresholds</td><td class="num">Δt ≤ 60 s, on time alone — see <em>Why distance went</em></td></tr>
@@ -549,8 +549,8 @@
             <tr><td>Violation time</td><td>From the <strong>earliest</strong> photo in the group</td></tr>
             <tr><td>Violation location</td><td>From the <strong>latest</strong> photo that has a fix — see <em>Which photo gives the place</em></td></tr>
             <tr><td>More than 3 photos</td><td>Checkbox picker, the first three pictures and the first three videos pre-selected</td></tr>
-            <tr><td>Reload mid-batch</td><td>Everything is lost — in-memory only</td></tr>
-            <tr><td>Publishing</td><td>Progressively, as each violation settles — not when the batch ends</td></tr>
+            <tr><td>Reload mid-batch</td><td>The queue is lost — in-memory only; the server's ALPR cache keeps its readings</td></tr>
+            <tr><td>Publishing</td><td>All rows at once, after the dates-and-places pass and before the first plate read; reads divide rows as they land</td></tr>
             <tr><td>First violation</td><td>Loaded into the form automatically, with no click</td></tr>
           </tbody>
         </table>
@@ -569,7 +569,7 @@
             <tr><td>After Submit</td><td>Auto-advances to the next violation</td></tr>
             <tr><td>ALPR concurrency</td><td>Capped at 3 in flight</td></tr>
             <tr><td>Queue controls</td><td>Load any group, delete it, or tick two and merge them</td></tr>
-            <tr><td>Input while the mode is on</td><td>Every pick and drop feeds the batch; the single-violation flow is the toggle-off behaviour</td></tr>
+            <tr><td>Input</td><td>Every pick, drop and paste feeds the batch; there is no single-violation flow</td></tr>
             <tr><td>Order photos are read in</td><td>EXIF capture time; file last-modified only when a photo has none — see <em>Dates first, then plates</em></td></tr>
             <tr><td>Submitted photos</td><td>Only the photos that were submitted leave the batch; a group's leftovers appear again at once as a group of their own</td></tr>
           </tbody>
@@ -846,8 +846,8 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
     <section id="caching">
       <h2>Caching</h2>
       <p>
-        The assumption that ALPR results are already cached is <strong>half right</strong>, and the
-        half that is wrong is the half that matters.
+        ALPR results are cached twice: a <code>WeakMap</code> in the page, and a disk cache on the
+        server. Both answer a repeated photo without another call.
       </p>
 
       <div class="scroll">
@@ -867,19 +867,24 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
               <td>Nothing new — the batch geocodes each violation through the same memo</td>
             </tr>
             <tr>
-              <td>Server side</td>
-              <td>Nothing. Both endpoints call through unconditionally</td>
-              <td>Nothing — but see the note on content hashes</td>
+              <td>ALPR, server side</td>
+              <td><code>alprCache.js</code>, keyed by the SHA-256 of the uploaded bytes; on by default, and off when <code>ALPR_CACHE_DIR</code> is set to nothing</td>
+              <td>Nothing new</td>
+            </tr>
+            <tr>
+              <td>Geosearch, server side</td>
+              <td>Nothing. The endpoint calls through unconditionally</td>
+              <td>Nothing — the client memo is enough</td>
             </tr>
           </tbody>
         </table>
       </div>
 
       <p>
-        Because the ALPR cache keys on object identity rather than content, it only helps while the
-        same <code>File</code> objects are alive. A batch queue holds them for its whole run, which
-        is why no new ALPR caching is required — but a page reload loses everything, matching the
-        decision above.
+        The page's cache keys on object identity rather than content, so it only helps while the
+        same <code>File</code> objects are alive. A batch queue holds them for its whole run. A page
+        reload loses the queue, but the server's disk cache still answers the same bytes without
+        another call while it is enabled.
       </p>
 
       <h3>Geocode once per violation, not per photo</h3>
@@ -891,12 +896,13 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
       </p>
 
       <div class="note">
-        <span class="note__label">A ready-made key, if results ever need to persist</span>
+        <span class="note__label">The hash is the key</span>
         <p>
-          Every upload already gets a SHA-256 of its bytes (<code>attachmentId</code>), and identical
-          uploads share a temp file. Nothing consults that hash for results today — the bytes go to
-          Plate Recognizer again even when the hash matches. If reload-survival is ever revisited,
-          that hash is the key to build on.
+          Every upload gets a SHA-256 of its bytes (<code>attachmentId</code>), and identical
+          uploads share a temp file. The ALPR disk cache uses the same trick:
+          <code>alprCacheKey</code> hashes the bytes the request carries, so a repeated photo is
+          answered without calling Plate Recognizer. The cache is on by default outside tests;
+          <code>ALPR_CACHE_DIR</code> moves it, and an empty value turns it off.
         </p>
       </div>
     </section>
@@ -930,7 +936,6 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
             <tr><th>Key</th><th>Holds</th></tr>
           </thead>
           <tbody>
-            <tr><td><code>isSemiAutomaticMode</code></td><td>Persisted preference, next to <code>isReverseGeocodingEnabled</code></td></tr>
             <tr><td><code>batchPhotos</code></td><td>One record per photo, with its extraction results</td></tr>
             <tr><td><code>batchViolations</code></td><td>Grouped output, in earliest-first order</td></tr>
             <tr><td><code>batchProgress</code></td><td><code>{ stage, completed, total }</code></td></tr>
@@ -940,29 +945,19 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         </table>
       </div>
 
-      <div class="note note--warn">
-        <span class="note__label">Do not reuse <code>handleAttachmentData</code></span>
-        <p>
-          It re-runs extraction over the <em>entire</em> attachment array on every add. Pointed
-          at a batch, that re-walks every photo each time a violation is loaded. The batch needs
-          its own one-shot pass.
-        </p>
-      </div>
-
-      <h3>Two existing functions to get right</h3>
+      <h3>The function to get right</h3>
       <ul>
         <li>
           <strong><code>fetchPlateResults</code></strong> — the batch must use this, because it
           returns the <em>full</em> response including every <code>results[]</code> entry and is the
           function the <code>WeakMap</code> already wraps.
         </li>
-        <li>
-          <strong><code>extractPlate</code></strong> — deliberately <em>not</em> used by the batch.
-          It collapses each photo to a single plate and prefers the medallion pattern, which
-          discards exactly the multi-plate data the grouping needs. The single-violation flow keeps
-          its current behaviour.
-        </li>
       </ul>
+      <p>
+        The deleted single-report path had an <code>extractPlate</code> that collapsed each photo to
+        one plate and preferred the medallion pattern. That discards the multi-plate data the
+        grouping needs, and the path that used it is gone.
+      </p>
 
       <h3>Submitting a violation</h3>
       <p>
@@ -1028,12 +1023,11 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
       </p>
 
       <div class="note">
-        <span class="note__label">What the toggle changes</span>
+        <span class="note__label">One flow</span>
         <p>
-          With the mode on, every one of these routes feeds the batch, a paste included. The
-          single-violation flow is what the toggle-off state gives you. Because a folder pick, a
-          loose multi-select, a drop and a paste all take the same path, there is never a question
-          of which flow a given pick lands in.
+          Every one of these routes feeds the batch, a paste included. There is no toggle and no
+          single-violation flow: a folder pick, a loose multi-select, a drop and a paste all take
+          the same path, so there is never a question of which flow a given pick lands in.
         </p>
       </div>
 
@@ -1232,9 +1226,10 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
     <footer>
       <p>
         Written 2026-09-23 against <span class="mono">ba141241</span>, revised 2026-09-28 to match
-        what was actually built. Line references are to <code>src/routes/home/Home.js</code> unless
-        another path is given, and are anchors from that commit rather than current ones — the file
-        has moved on since, so check them against the code rather than trusting them.
+        what was actually built, and again on 2026-11-10 to match the code as it now stands. Line
+        references are to <code>src/routes/home/Home.js</code> unless another path is given, and are
+        anchors from that commit rather than current ones — the file has moved on since, so check
+        them against the code rather than trusting them.
       </p>
       <p>
         Regenerate by re-reading that file, <code>src/alpr.js</code>,

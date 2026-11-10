@@ -258,9 +258,8 @@ const createDateValue = ({ millisecondsSinceEpoch, offset }) => {
   );
 };
 
-// The offset a photo's moment should be read in: the one the camera recorded,
-// or this device's when it recorded none. Videos carry none; see
-// normalizeExtractedDate.
+// The offset a photo's moment should be read in: the one its date read gave,
+// or this device's when it gave none.
 const photoOffset = ({ createDateOffset }) =>
   Number.isFinite(createDateOffset)
     ? createDateOffset

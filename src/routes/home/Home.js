@@ -1252,9 +1252,6 @@ class Home extends React.Component {
       isLocationLocked: false,
       isPreviousSubmissionsOpen: false,
       hasSeenWithholdNotice: false,
-      // Whether the note about adding a whole folder has been seen or
-      // dismissed. It lives in the cookie with the rest.
-      hasSeenBatchNotice: false,
       loginSuccessful: false,
     };
 
@@ -2803,14 +2800,6 @@ class Home extends React.Component {
       return this.batchQueue;
     }
 
-    // Files arriving is the tip doing its job: nothing needs to say again
-    // that a whole folder can go in.
-    if (!this.state.hasSeenBatchNotice) {
-      this.setState({ hasSeenBatchNotice: true }, () =>
-        debouncedSavePersistentStateToCookie(this),
-      );
-    }
-
     // Chain the passes: two quick picks must not both regroup against the same
     // starting list of photos. Nothing else writes batchPhotos, so each pass
     // sees the one before it. A zip is opened out first, so what the pass sees
@@ -4318,12 +4307,6 @@ class Home extends React.Component {
     }
   };
 
-  dismissBatchNotice = () => {
-    this.setState({ hasSeenBatchNotice: true }, () =>
-      debouncedSavePersistentStateToCookie(this),
-    );
-  };
-
   dismissWithholdNotice = () => {
     this.setState({ hasSeenWithholdNotice: true }, () =>
       debouncedSavePersistentStateToCookie(this),
@@ -4567,7 +4550,6 @@ class Home extends React.Component {
         withhold_contact_info_from_nypd: false,
         receive_nypd_sr_updates_by_email: false,
         hasSeenWithholdNotice: false,
-        hasSeenBatchNotice: false,
         submissions: [],
         isEditProfileOpen: false,
         isPreferencesOpen: false,
@@ -6209,52 +6191,16 @@ class Home extends React.Component {
 
                       <div style={{ clear: 'both' }} />
 
-                      {/* One-time note about the whole batch: the picker
-                          takes a folder or a zip file, and the queue walks
-                          through what it finds. It shows only while nothing
-                          has been added, so it never sits over a form in
-                          progress. */}
+                      {/* What the picker takes, and what the queue does with
+                          it. One line, shown only while nothing has been
+                          added, so it never sits over a form in progress. */}
                       {this.state.batchPhotos.length === 0 &&
-                        this.state.attachmentData.length === 0 &&
-                        (this.state.hasSeenBatchNotice ? (
+                        this.state.attachmentData.length === 0 && (
                           <p className={homeStyles['batch-hint']}>
                             One photo, a folder, or a zip file: we split the
                             photos into violations and open them one at a time.
                           </p>
-                        ) : (
-                          <div
-                            role="status"
-                            className={homeStyles['batch-notice-banner']}
-                          >
-                            <span>
-                              <span role="img" aria-label="photos">
-                                📂
-                              </span>{' '}
-                              You can add a whole folder of photos and videos,
-                              or a zip file. We find each violation and open
-                              them one at a time.
-                            </span>
-                            <span className={homeStyles['user-actions']}>
-                              <button
-                                type="button"
-                                className={homeStyles['status-bar-btn-primary']}
-                                onClick={() => {
-                                  this.dismissBatchNotice();
-                                  this.batchFolderInputRef.current?.click();
-                                }}
-                              >
-                                Add a folder
-                              </button>
-                              <button
-                                type="button"
-                                className={homeStyles['status-bar-btn']}
-                                onClick={this.dismissBatchNotice}
-                              >
-                                Got it
-                              </button>
-                            </span>
-                          </div>
-                        ))}
+                        )}
 
                       {this.renderBatchStatus()}
 

@@ -180,14 +180,8 @@ input[type='search']::-webkit-search-cancel-button {
   border: 1px solid #b6d4fe;
 }
 
-/* The one-time note about adding a whole folder: the picker takes one, and
-   the queue walks through what it finds. It borrows the withhold notice's
-   shape, because the two are the same kind of thing. */
-.batch-notice-banner {
-  composes: withhold-notice-banner;
-}
-
-/* What stays once the note is gone: the same thing in one line. */
+/* What the picker takes, and what the queue does with it: one line, shown
+   while nothing has been added. */
 .batch-hint {
   margin: 0.5rem 0 0;
   color: #595959;

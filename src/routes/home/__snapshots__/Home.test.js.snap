@@ -162,39 +162,11 @@ exports[`Home hides form fields when logged in with no photos uploaded 1`] = `
                   }
                 }
               />
-              <div
-                className="batch-notice-banner"
-                role="status"
+              <p
+                className="batch-hint"
               >
-                <span>
-                  <span
-                    aria-label="photos"
-                    role="img"
-                  >
-                    📂
-                  </span>
-                   
-                  You can add a whole folder of photos and videos, or a zip file. We find each violation and open them one at a time.
-                </span>
-                <span
-                  className="user-actions"
-                >
-                  <button
-                    className="status-bar-btn-primary"
-                    onClick={[Function]}
-                    type="button"
-                  >
-                    Add a folder
-                  </button>
-                  <button
-                    className="status-bar-btn"
-                    onClick={[Function]}
-                    type="button"
-                  >
-                    Got it
-                  </button>
-                </span>
-              </div>
+                One photo, a folder, or a zip file: we split the photos into violations and open them one at a time.
+              </p>
               <p
                 className="upload-hint"
               >

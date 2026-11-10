@@ -3911,35 +3911,20 @@ describe('Home', () => {
       };
     }
 
-    // The picker takes a whole folder or a zip file, and the queue walks
-    // through what it finds. A one-time note says so where the choice is made,
-    // and a one-line version stays once the note is gone.
-    test('says once that a whole folder of photos can go in', async () => {
-      const { homeRef, tree, cleanup } = await renderBatchWithFiles([]);
+    // The line under the Add buttons says what the picker takes and what the
+    // queue does with it. It needs no dismissal: it goes away with the first
+    // files and comes back when the form is empty again.
+    test('says under the buttons what a folder of photos will do', async () => {
+      const { tree, cleanup } = await renderBatchWithFiles([]);
 
       expect(renderedText(tree.toJSON())).toContain(
-        'You can add a whole folder of photos and videos, or a zip file',
+        'One photo, a folder, or a zip file: we split the photos into violations and open them one at a time.',
       );
-
-      renderer.act(() => {
-        homeRef.current.dismissBatchNotice();
-      });
-
-      const text = renderedText(tree.toJSON());
-      expect(text).not.toContain('You can add a whole folder');
-      expect(text).toContain('One photo, a folder, or a zip file');
-      expect(homeRef.current.state.hasSeenBatchNotice).toBe(true);
-
-      // Logging out clears it, so the next account gets the note.
-      renderer.act(() => {
-        homeRef.current.handleLogOut();
-      });
-      expect(homeRef.current.state.hasSeenBatchNotice).toBe(false);
 
       cleanup();
     });
 
-    test('drops the note once photos arrive', async () => {
+    test('drops the line once photos arrive', async () => {
       const photo = jpeg({ name: 'a.jpg', size: 4 });
 
       exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
@@ -3948,12 +3933,11 @@ describe('Home', () => {
         OffsetTimeDigitized: '-05:00',
       }));
 
-      const { homeRef, tree, cleanup } = await renderBatchWithFiles([photo]);
+      const { tree, cleanup } = await renderBatchWithFiles([photo]);
 
-      // The photos are the point: the note is not needed once they are in.
-      expect(homeRef.current.state.hasSeenBatchNotice).toBe(true);
+      // The photos are the point: the line is not needed once they are in.
       expect(renderedText(tree.toJSON())).not.toContain(
-        'You can add a whole folder',
+        'One photo, a folder, or a zip file',
       );
 
       exifr.gps.mockReset();

@@ -491,10 +491,49 @@ async function extractLocation({
   }
 }
 
+// The range a file's own timestamp must fall in to be used. An mp4's time
+// comes from its header, and a broken or copied file can say 1904 (the
+// format's epoch) or a time after this report. An EXIF date can be old, or
+// from a camera clock that is ahead. A file outside the range gives no time,
+// the way one with no readable date does.
+const EARLIEST_PHOTO_TIME = Date.UTC(2000, 0, 1);
+
+const photoTimeIsPlausible = millisecondsSinceEpoch =>
+  Number.isFinite(millisecondsSinceEpoch) &&
+  millisecondsSinceEpoch >= EARLIEST_PHOTO_TIME &&
+  millisecondsSinceEpoch <= Date.now();
+
+// The moment a file records, and the offset it is read in. The file's own
+// offset when it records one; New York's otherwise, since a report is filed
+// there. A time outside the plausible range is not a time this report should
+// carry, so it throws, the same as a file with no readable date.
+const readingFromDate = ({ date, offsetTimeDigitized }) => {
+  const millisecondsSinceEpoch = date.getTime();
+
+  if (!photoTimeIsPlausible(millisecondsSinceEpoch)) {
+    throw new Error(
+      `photo time is not plausible: ${new Date(millisecondsSinceEpoch)}`,
+    );
+  }
+
+  return {
+    millisecondsSinceEpoch,
+    offset: offsetTimeDigitized
+      ? parseInt(offsetTimeDigitized, 10) * -60
+      : getNycTimezoneOffset(date),
+  };
+};
+
 async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
   try {
     if (isVideo({ ext })) {
-      return extractLocationDateFromVideo({ attachmentArrayBuffer })[1];
+      // An MP4 records when it was made and no offset, so its time is read
+      // the way a picture's is when the picture records none.
+      return readingFromDate({
+        date: new Date(
+          extractLocationDateFromVideo({ attachmentArrayBuffer })[1],
+        ),
+      });
     }
     if (!isImage({ ext })) {
       throw new Error(`${attachmentFile.name} is not an image/video`);
@@ -507,14 +546,10 @@ async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
 
     console.log({ CreateDate, OffsetTimeDigitized }); // eslint-disable-line no-console
 
-    return {
-      millisecondsSinceEpoch: CreateDate.getTime(),
-      offset: OffsetTimeDigitized
-        ? parseInt(OffsetTimeDigitized, 10) * -60
-        : CreateDate
-          ? getNycTimezoneOffset(CreateDate)
-          : new Date().getTimezoneOffset(),
-    };
+    return readingFromDate({
+      date: CreateDate,
+      offsetTimeDigitized: OffsetTimeDigitized,
+    });
   } catch (err) {
     console.error(err.stack);
 

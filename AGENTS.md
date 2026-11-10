@@ -47,6 +47,11 @@
 - ALPR flows/tests use `PLATERECOGNIZER_TOKEN_LIST`, a comma-separated list of tokens. A read tries the token used longest ago first, puts tokens the service rate limited behind the free ones until their wait passes, and drops a token that answers 403 (depleted) for the life of the process.
 - `HEROKU_APP_NAME`, `API_SERVER_URL`, `API_CLIENT_URL`, and `TRUST_PROXY` affect deployed/server behavior.
 
+## Parse
+
+- `Parse.initialize(appId, jsKey, masterKey)` stores the master key but sets `USE_MASTER_KEY` to false. `RESTController` sends `_MasterKey` only when the call's options carry `useMasterKey: true`. A script that only calls `Parse.initialize` sends no master key, even though a comment in the 311 tasks script says it does.
+- Pass `{ useMasterKey: true }` on every `find`, `count`, or `save` call that needs it, or use raw fetch with an `X-Parse-Master-Key` header. A script that reads `submission` needs one of these: the class has a per-owner ACL. The 311 tasks script works without the key only because `tasks` has no ACL.
+
 ## Heroku deployment
 
 - **Keep the `runtime-dyno-metadata` lab.** `version_number` on each Parse submission is `Number(HEROKU_RELEASE_VERSION.slice(1))` (`src/server.js`). The Back4App column is typed Number, so a commit hash cannot replace it. The user looks up the commit for a release with `heroku releases`. Do not propose removing the lab.

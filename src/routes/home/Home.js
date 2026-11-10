@@ -194,6 +194,32 @@ const inMemoryAttachment = async ({ attachmentFile }) => {
   return new File([bytes], attachmentFile.name, { type: attachmentFile.type });
 };
 
+// Start (or reuse) each file's background upload to /api/uploadAttachment, so
+// that submitting sends attachment IDs instead of re-sending the bytes.
+function startBackgroundUploads(attachmentData) {
+  attachmentData.forEach(attachmentFile => {
+    if (!fileUploadPromises.has(attachmentFile)) {
+      const uploadPromise = (async () => {
+        // No credentials: the route authenticates with the session cookie the
+        // browser sends.
+        const formData = new FormData();
+        formData.append(
+          'attachmentData',
+          await inMemoryAttachment({ attachmentFile }),
+        );
+        const { data } = await axios.post('/api/uploadAttachment', formData);
+        return data.id;
+      })();
+      // The submit handler awaits this promise (catching failures so it can
+      // fall back to sending the files directly), so it can sit unhandled
+      // until then. Attach a no-op catch so the test runner and the browser
+      // console don't flag the rejection in the meantime.
+      uploadPromise.catch(() => {});
+      fileUploadPromises.set(attachmentFile, uploadPromise);
+    }
+  });
+}
+
 // Whether a failed submit failed because an attachment id it carried names a
 // file the server no longer has. The message is the server's own (see
 // `src/getAttachmentData.js`): the store drops an attachment an hour after it
@@ -2032,32 +2058,7 @@ class Home extends React.Component {
         attachmentData: state.attachmentData.concat(attachmentData),
       }),
       async () => {
-        // Start background upload for each newly added file
-        attachmentData.forEach(attachmentFile => {
-          if (!fileUploadPromises.has(attachmentFile)) {
-            const uploadPromise = (async () => {
-              // No credentials: the route authenticates with the session
-              // cookie the browser sends.
-              const formData = new FormData();
-              formData.append(
-                'attachmentData',
-                await inMemoryAttachment({ attachmentFile }),
-              );
-              const { data } = await axios.post(
-                '/api/uploadAttachment',
-                formData,
-              );
-              return data.id;
-            })();
-            // The submit handler awaits this promise (catching failures so
-            // it can fall back to sending the files directly), so it can sit
-            // unhandled until then. Attach a no-op catch so the test runner
-            // and the browser console don't flag the rejection in the
-            // meantime.
-            uploadPromise.catch(() => {});
-            fileUploadPromises.set(attachmentFile, uploadPromise);
-          }
-        });
+        startBackgroundUploads(attachmentData);
 
         const listsOfExtractions = await Promise.all(
           this.state.attachmentData.map(async (attachmentFile, index) => {

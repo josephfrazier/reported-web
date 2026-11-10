@@ -123,13 +123,15 @@ Never squash the trio together: each step is independently reviewable, and the h
 
 ## Writing style
 
-Write all prose in Simplified Technical English (ASD-STE100). The user asked for this style as the default for all prose.
+Write all prose in Simplified Technical English (ASD-STE100). The user asked for this style as the default for all prose, including commit messages and pull request descriptions.
 
-- Keep each sentence at or below 20 words.
+- Keep each sentence at or below 20 words. Put one idea in each sentence.
 - Use active voice.
 - Use simple tenses only. Do not use `-ing` verbs or the present perfect.
+- Use simple words. Do not use idioms, metaphors, slang, or contractions.
+- Write the articles (a, an, the). Keep noun groups at or below three words.
 - Put one instruction in each sentence.
-- Use a vertical list for two or more items.
+- Use a vertical list for two or more items or parallel facts. Do not use dashes to join clauses.
 - Keep each paragraph at or below 6 sentences.
 - Keep code identifiers, file paths, command names, and the git trailer unchanged. STE permits technical names.
 

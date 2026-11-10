@@ -259,6 +259,20 @@ async function renderWithPlateReads(files, { platesBySize = {} } = {}) {
 const labelledPhoto = label =>
   new File([photoBytes(label)], `${label}.jpg`, { type: 'image/jpeg' });
 
+// A button inside a toast's content, which is an element tree rather than
+// rendered markup.
+const findToastButton = (element, text) => {
+  if (!element || typeof element !== 'object') {
+    return null;
+  }
+  if (element.type === 'button' && element.props?.children === text) {
+    return element;
+  }
+  const children = element.props?.children;
+  const list = Array.isArray(children) ? children : [children];
+  return list.map(child => findToastButton(child, text)).find(Boolean) || null;
+};
+
 // Stand-in for a text <input> DOM node: reading/writing `value` works, and
 // writing it moves the caret to the end of the field, just like the real thing.
 function createFakeInput({ value, caret }) {
@@ -1347,6 +1361,63 @@ describe('Home', () => {
 
     global.URL.createObjectURL = originalCreateObjectURL;
     global.URL.revokeObjectURL = originalRevokeObjectURL;
+  });
+
+  // The X on a photo takes it out of the report, and the toast holds the whole
+  // form -- attachments, time and place -- for a few seconds.
+  test('takes back a deleted photo', async () => {
+    const toastInfo = jest.spyOn(toast, 'info').mockImplementation(() => null);
+    const { homeRef, settle, cleanup } =
+      await renderAndExtract(threePhotosApart());
+
+    expect(homeRef.current.state.CreateDate).toBe('2024-01-01T12:00:10');
+    expect(homeRef.current.state.latitude).toBe(40.74);
+
+    // The submission is as old as its earliest photo, so the time moves with
+    // it; the undo has to put both the file and the form back.
+    await dropPhoto(homeRef, settle, 'early.jpg');
+    expect(homeRef.current.state.CreateDate).toBe('2024-01-01T12:00:20');
+
+    const undo = findToastButton(toastInfo.mock.calls[0][0], 'Undo');
+    expect(undo).not.toBeNull();
+    renderer.act(() => undo.props.onClick());
+
+    expect(homeRef.current.state.attachmentData.map(file => file.name)).toEqual(
+      ['early.jpg', 'middle.jpg', 'late.jpg'],
+    );
+    expect(homeRef.current.state.CreateDate).toBe('2024-01-01T12:00:10');
+    expect(homeRef.current.state.latitude).toBe(40.74);
+
+    toastInfo.mockRestore();
+    cleanup();
+  });
+
+  test('takes back the last photo, and the form it reset', async () => {
+    const toastInfo = jest.spyOn(toast, 'info').mockImplementation(() => null);
+    const [only] = threePhotosApart();
+    const { homeRef, settle, cleanup } = await renderAndExtract([only]);
+
+    expect(homeRef.current.state.latitude).toBe(40.7);
+    expect(homeRef.current.state.CreateDate).toBe('2024-01-01T12:00:10');
+
+    await dropPhoto(homeRef, settle, 'early.jpg');
+
+    // Nothing is left to take a time or a place from, so the form resets.
+    expect(homeRef.current.state.attachmentData).toEqual([]);
+    expect(homeRef.current.state.plate).toBe('');
+
+    const undo = findToastButton(toastInfo.mock.calls[0][0], 'Undo');
+    expect(undo).not.toBeNull();
+    renderer.act(() => undo.props.onClick());
+
+    expect(homeRef.current.state.attachmentData.map(file => file.name)).toEqual(
+      ['early.jpg'],
+    );
+    expect(homeRef.current.state.latitude).toBe(40.7);
+    expect(homeRef.current.state.CreateDate).toBe('2024-01-01T12:00:10');
+
+    toastInfo.mockRestore();
+    cleanup();
   });
 
   test('takes the plate with the photo that read it', async () => {

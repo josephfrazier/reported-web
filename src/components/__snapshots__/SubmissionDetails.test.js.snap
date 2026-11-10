@@ -329,6 +329,24 @@ exports[`SubmissionDetails renders delete button correctly 1`] = `
       style={
         {
           "background": "white",
+          "margin": "1px",
+        }
+      }
+      title="Edit Submission"
+      type="button"
+    >
+      <span
+        aria-label="Edit Submission"
+        role="img"
+      >
+        ✏️
+      </span>
+    </button>
+    <button
+      onClick={[Function]}
+      style={
+        {
+          "background": "white",
           "color": "red",
           "margin": "1px",
         }

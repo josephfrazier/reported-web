@@ -2967,6 +2967,110 @@ describe('Home', () => {
     tree.unmount();
   });
 
+  test('turns a previous submission back into the form', async () => {
+    localStorage.clear();
+
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+    };
+
+    const homeRef = React.createRef();
+    const tree = renderHome({ initialState, homeRef });
+
+    const submission = {
+      objectId: 'edited-submission',
+      medallionNo: 'T123456C',
+      license: 'T123456C',
+      state: 'NY',
+      typeofcomplaint: 'Ran a red light or stop sign',
+      reportDescription: 'the report',
+      loc1_address: '1 Main St, New York, NY',
+      latitude1: 40.7,
+      longitude1: -73.9,
+      timeofreport: '2016-01-01T17:00:00.000Z',
+      can_be_shared_publicly: false,
+      withhold_contact_info_from_nypd: true,
+      receive_nypd_sr_updates_by_email: true,
+      testify: true,
+      photoData0: {
+        name: 'photoData0.jpg',
+        url: 'https://files.test/photoData0.jpg',
+      },
+      videoData0: 'https://files.test/videoData0.mp4',
+    };
+
+    renderer.act(() => {
+      homeRef.current.setState({
+        submissions: [submission, { objectId: 'kept-submission' }],
+      });
+    });
+
+    const confirm = jest.spyOn(window, 'confirm').mockReturnValue(true);
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+    const axiosGet = jest.spyOn(axios, 'get').mockImplementation(url => {
+      if (String(url).startsWith('https://files.test/')) {
+        return Promise.resolve({
+          data: new Blob(['media'], { type: 'image/jpeg' }),
+        });
+      }
+      return Promise.resolve({ data: {} });
+    });
+    const axiosPost = jest.spyOn(axios, 'post').mockImplementation(url => {
+      if (url === '/api/uploadAttachment') {
+        return Promise.resolve({ data: { id: 'a'.repeat(64) } });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    await renderer.act(async () => {
+      await homeRef.current.onEditSubmission(submission);
+    });
+    // The background uploads started by the edit read the files through
+    // jsdom's FileReader, so let them finish before the stubs go away.
+    await renderer.act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 50));
+    });
+
+    expect(
+      axiosPost.mock.calls.some(
+        ([url, body]) =>
+          url === '/api/deleteSubmission' &&
+          body.objectId === 'edited-submission',
+      ),
+    ).toBe(true);
+    expect(homeRef.current.state.submissions).toEqual([
+      { objectId: 'kept-submission' },
+    ]);
+
+    expect(homeRef.current.state.attachmentData.map(file => file.name)).toEqual(
+      ['photoData0.jpg', 'videoData0.mp4'],
+    );
+    expect(homeRef.current.state.plate).toBe('T123456C');
+    expect(homeRef.current.state.licenseState).toBe('NY');
+    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:00');
+    expect(homeRef.current.state.latitude).toBe(40.7);
+    expect(homeRef.current.state.longitude).toBe(-73.9);
+    expect(homeRef.current.state.formatted_address).toBe(
+      '1 Main St, New York, NY',
+    );
+    expect(homeRef.current.state.typeofcomplaint).toBe(
+      'Ran a red light or stop sign',
+    );
+    expect(homeRef.current.state.reportDescription).toBe('the report');
+    expect(homeRef.current.state.can_be_shared_publicly).toBe(false);
+    expect(homeRef.current.state.withhold_contact_info_from_nypd).toBe(true);
+    expect(homeRef.current.state.receive_nypd_sr_updates_by_email).toBe(true);
+    expect(homeRef.current.state.testify).toBe(true);
+
+    confirm.mockRestore();
+    axiosGet.mockRestore();
+    axiosPost.mockRestore();
+    global.URL.createObjectURL = originalCreateObjectURL;
+    tree.unmount();
+  });
+
   test('keeps the caret in place when typing a letter into the middle of the plate', () => {
     const { homeRef, plateInput, cleanup } = renderPlateInput();
 

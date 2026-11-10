@@ -17,6 +17,7 @@ describe('PreviousSubmissionsList', () => {
       },
     ],
     onDeleteSubmission: () => {},
+    onEditSubmission: () => {},
   };
 
   const wrap = children => (

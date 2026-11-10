@@ -8,7 +8,7 @@
  * takes its time from its earliest photo and its location from the last one
  * that has coordinates.
  *
- * Four passes, in this order (see docs/plans/semi-automatic-mode.html):
+ * Five passes, in this order (see docs/plans/semi-automatic-mode.html):
  *
  *   1. Sort by capture time, so everything downstream can assume chronological
  *      order.
@@ -40,6 +40,14 @@
  *   4. Adopt the photos ALPR read nothing in into whichever sub-cluster is
  *      nearest in capture time, so a blurry shot still rides along with its
  *      violation.
+ *   5. Split on the report's cap. A report carries three pictures and three
+ *      videos at most, so a violation over either count becomes consecutive
+ *      groups, in capture order, that fit. This is the rule for a block the
+ *      other passes cannot divide: a dark street with cars parked along it
+ *      can give one stale fix and no plate reads, and the block is several
+ *      reports even though nothing in the data separates them. A row the user
+ *      merged by hand is not split here: that is a report they have already
+ *      decided on.
  *
  * The caller's photo records are used as they are, never copied, so object
  * identity survives: `violation.photos[i].file` is still the same `File` the
@@ -51,12 +59,20 @@
  *         latitude, longitude, createDateMs }]
  */
 
+import fileExtension from 'file-extension';
+
+import { isImage, isVideo } from './isImage.js';
 import latestLocatedPhoto, {
   compareByCaptureTime,
   effectiveTimeMs,
 } from './latestLocatedPhoto.js';
 
 const TIME_THRESHOLD_MS = 60000;
+
+// A report carries three pictures and three videos at most: `createSubmission`
+// keeps exactly that many of each and drops the rest without an error. A
+// violation over either count is split into consecutive groups that fit.
+const REPORT_LIMITS = { picture: 3, video: 3 };
 
 // The medallion plate pattern, kept as a tie-break rather than a filter: only
 // the clean read of an OCR variant set matches it, so using it to pick a plate
@@ -626,6 +642,77 @@ function buildViolation({ photos, plate, licenseState }) {
   };
 }
 
+// Which of the report's two kinds a photo is, or null for a file that is
+// neither: the batch takes pictures, videos and zips, and a zip is opened out
+// before grouping.
+const reportKindOf = photo => {
+  const ext = fileExtension(photo.name);
+  if (isImage({ ext })) {
+    return 'picture';
+  }
+  if (isVideo({ ext })) {
+    return 'video';
+  }
+  return null;
+};
+
+// One violation, split into as many as the report's caps require. The photos
+// keep their capture order, so the earlier group is the earlier part of the
+// block.
+function splitAtReportLimits(violation) {
+  const counts = { picture: 0, video: 0 };
+  violation.photos.forEach(photo => {
+    const kind = reportKindOf(photo);
+    if (kind) {
+      counts[kind] += 1;
+    }
+  });
+
+  if (
+    counts.picture <= REPORT_LIMITS.picture &&
+    counts.video <= REPORT_LIMITS.video
+  ) {
+    return [violation];
+  }
+
+  const groups = [];
+  let current = [];
+  const currentCounts = { picture: 0, video: 0 };
+
+  const flush = () => {
+    if (current.length === 0) {
+      return;
+    }
+    groups.push(current);
+    current = [];
+    currentCounts.picture = 0;
+    currentCounts.video = 0;
+  };
+
+  violation.photos.forEach(photo => {
+    const kind = reportKindOf(photo);
+    if (kind && currentCounts[kind] === REPORT_LIMITS[kind]) {
+      flush();
+    }
+    current.push(photo);
+    if (kind) {
+      currentCounts[kind] += 1;
+    }
+  });
+  flush();
+
+  // The plate is the violation's own, not voted again for each group: these
+  // are parts of one report, and the photos that read the plate can all sit in
+  // one of them.
+  return groups.map(photos =>
+    buildViolation({
+      photos,
+      plate: violation.plate,
+      licenseState: violation.licenseState,
+    }),
+  );
+}
+
 // Combine violations the user says are one report.
 //
 // The grouping splits on time, and a photo taken to establish where a car is
@@ -697,5 +784,7 @@ export default function groupAttachmentsByViolation(photos) {
   // Earliest-first, so the queue walks the batch in the order it was shot.
   // Array.prototype.sort is stable, so violations sharing a timestamp keep the
   // order their clusters were built in.
-  return violations.sort((a, b) => a.createDateMs - b.createDateMs);
+  return violations
+    .flatMap(splitAtReportLimits)
+    .sort((a, b) => a.createDateMs - b.createDateMs);
 }

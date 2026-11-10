@@ -991,3 +991,138 @@ describe('groupAttachmentsByViolation', () => {
     expect(photos).toEqual([first, second]);
   });
 });
+
+describe('the report cap', () => {
+  const photoAt = (name, secondsFromStart) =>
+    buildPhoto({
+      name,
+      createDateMs: 1_000_000 + secondsFromStart * 1000,
+    });
+
+  test('splits a block that no read divided into groups of three', () => {
+    // The dark-block case: one block, one stale fix, no plate reads, six
+    // pictures. The time window keeps them together, so the cap is what makes
+    // the block several reports.
+    const photos = ['a', 'b', 'c', 'd', 'e', 'f'].map((letter, index) =>
+      photoAt(`${letter}.jpg`, index),
+    );
+
+    const violations = groupAttachmentsByViolation(photos);
+
+    expect(
+      violations.map(violation => violation.photos.map(photo => photo.name)),
+    ).toEqual([
+      ['a.jpg', 'b.jpg', 'c.jpg'],
+      ['d.jpg', 'e.jpg', 'f.jpg'],
+    ]);
+    expect(violations.map(violation => violation.plate)).toEqual(['', '']);
+  });
+
+  test('splits the remainder into a group of its own', () => {
+    const photos = ['a', 'b', 'c', 'd'].map((letter, index) =>
+      photoAt(`${letter}.jpg`, index),
+    );
+
+    const violations = groupAttachmentsByViolation(photos);
+
+    expect(
+      violations.map(violation => violation.photos.map(photo => photo.name)),
+    ).toEqual([['a.jpg', 'b.jpg', 'c.jpg'], ['d.jpg']]);
+  });
+
+  test('keeps three pictures and three videos in one report', () => {
+    const photos = [
+      ...['a', 'b', 'c'].map((letter, index) =>
+        photoAt(`${letter}.jpg`, index),
+      ),
+      ...['d', 'e', 'f'].map((letter, index) =>
+        photoAt(`${letter}.mp4`, index + 3),
+      ),
+    ];
+
+    const violations = groupAttachmentsByViolation(photos);
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0].photos.map(photo => photo.name)).toEqual([
+      'a.jpg',
+      'b.jpg',
+      'c.jpg',
+      'd.mp4',
+      'e.mp4',
+      'f.mp4',
+    ]);
+  });
+
+  test('counts each kind against its own limit', () => {
+    const photos = [
+      ...['a', 'b', 'c', 'd'].map((letter, index) =>
+        photoAt(`${letter}.jpg`, index),
+      ),
+      ...['e', 'f', 'g', 'h'].map((letter, index) =>
+        photoAt(`${letter}.mp4`, index + 4),
+      ),
+    ];
+
+    const violations = groupAttachmentsByViolation(photos);
+
+    // Three pictures fill the first report. The fourth rides with three videos
+    // in the second, and the last video is left for a third.
+    expect(
+      violations.map(violation => violation.photos.map(photo => photo.name)),
+    ).toEqual([
+      ['a.jpg', 'b.jpg', 'c.jpg'],
+      ['d.jpg', 'e.mp4', 'f.mp4', 'g.mp4'],
+      ['h.mp4'],
+    ]);
+  });
+
+  test('keeps the plate on every group, and gives each its own time and place', () => {
+    const start = 1_000_000;
+    const photos = [0, 1, 2, 3, 4, 5].map(index =>
+      buildPhoto({
+        name: `p${index}.jpg`,
+        createDateMs: start + index * 1000,
+        latitude: latitudeMetersNorthOf(index),
+        longitude: BASE_LONGITUDE,
+        plateResults:
+          index === 0
+            ? alprResponse({
+                results: [alprResult({ plate: 'aaa111', box: CENTRED_BOX })],
+              })
+            : undefined,
+      }),
+    );
+
+    const violations = groupAttachmentsByViolation(photos);
+
+    expect(violations.map(violation => violation.plate)).toEqual([
+      'AAA111',
+      'AAA111',
+    ]);
+    // The first group starts when its first photo was taken and takes the last
+    // fix it holds; the second starts at the fourth photo.
+    expect(violations[0].createDateMs).toBe(start);
+    expect(violations[0].latitude).toBe(latitudeMetersNorthOf(2));
+    expect(violations[1].createDateMs).toBe(start + 3000);
+    expect(violations[1].latitude).toBe(latitudeMetersNorthOf(5));
+  });
+
+  test('does not split a row the user merged', () => {
+    const left = ['a', 'b', 'c'].map((letter, index) =>
+      photoAt(`${letter}.jpg`, index),
+    );
+    const right = ['d', 'e', 'f'].map((letter, index) =>
+      photoAt(`${letter}.jpg`, index + 60),
+    );
+    const [first] = groupAttachmentsByViolation(left);
+    const [second] = groupAttachmentsByViolation(right);
+    expect(first.photos).toHaveLength(3);
+    expect(second.photos).toHaveLength(3);
+
+    const merged = mergeViolations([first, second]);
+
+    // A hand merge is the user's report, even when it holds more than one
+    // report's worth of photos; the picker and Submit handle that.
+    expect(merged.photos).toHaveLength(6);
+  });
+});

@@ -548,7 +548,7 @@
             <tr><td>OCR variants</td><td>Folded via ALPR <code>candidates</code> sets</td></tr>
             <tr><td>Violation time</td><td>From the <strong>earliest</strong> photo in the group</td></tr>
             <tr><td>Violation location</td><td>From the <strong>latest</strong> photo that has a fix — see <a href="#which-photo-gives-the-place"><em>Which photo gives the place</em></a></td></tr>
-            <tr><td>More than 3 photos</td><td>Checkbox picker, the first three pictures and the first three videos pre-selected</td></tr>
+            <tr><td>More than 3 photos</td><td>Split into reports within 3 pictures and 3 videos; a hand-merged row keeps the checkbox picker</td></tr>
             <tr><td>Reload mid-batch</td><td>The queue is lost — in-memory only; the server's ALPR and geosearch caches keep their answers</td></tr>
             <tr><td>Publishing</td><td>All rows at once, after the dates-and-places pass and before the first plate read; reads divide rows as they land</td></tr>
             <tr><td>First violation</td><td>Loaded into the form automatically, with no click</td></tr>
@@ -590,7 +590,7 @@
         plateResults, uploadWidth, uploadHeight }]
 out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</code></pre>
 
-      <h3>The four passes</h3>
+      <h3 id="the-five-passes">The five passes</h3>
       <ol class="sequence">
         <li>
           <strong>Sort</strong> photos by capture time, so everything downstream can assume
@@ -613,7 +613,15 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         <li>
           <strong>Adopt orphans.</strong> Photos with no plate read at all join whichever
           sub-cluster is nearest in capture time, so a blurry shot still rides along with its
-          violation. Finally, sort the violations earliest-first.
+          violation.
+        </li>
+        <li>
+          <strong>Split on the report's cap.</strong> A report carries three pictures and three
+          videos at most, so a violation over either count becomes consecutive groups, in capture
+          order, that fit. It is the rule for a block that nothing else divides: a dark street with
+          cars parked along it can give one stale fix and no plate reads, and the block is several
+          reports even though the data cannot separate them. A row the user merged by hand is not
+          split. Finally, sort the violations earliest-first.
         </li>
       </ol>
 
@@ -801,9 +809,9 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
       <p>
         The dates and places pass is local and it covers the whole batch, so once it is done the
         rows are already decided: the plate only ever splits a time-cluster, never merges two, so
-        with nothing read yet the grouping is exactly the time-clusters. The queue is published
-        there and then — a second or so after the folder is picked, whatever the batch size and
-        whatever the rate limit is doing.
+        with nothing read yet the grouping is the time-clusters, each split to the report's cap.
+        The queue is published there and then — a second or so after the folder is picked,
+        whatever the batch size and whatever the rate limit is doing.
       </p>
       <p>
         The plate reads fill the rows in behind it. Each read replaces its photo's record, the row
@@ -1108,13 +1116,16 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
 
       <h3>Groups over three photos</h3>
       <p>
-        The picker shows every photo in the group with checkboxes, the first three pictures and
-        the first three videos selected. A fourth picture or video can be ticked so that its
-        thumbnail can be seen, and the warning says to uncheck one to swap it in. Submit stays off
-        until the report is back within <strong>3 images <em>and</em> 3 videos</strong>, which is
-        the server's real limit — <code>createSubmission.js</code> takes
-        <code>images.slice(0, 3)</code> and <code>videos.slice(0, 3)</code> and drops the rest
-        <em>without an error</em>, so the report cannot be filed over the cap.
+        The grouping splits a violation that is over the report's cap before it reaches the queue
+        (see <a href="#the-five-passes"><em>The five passes</em></a>), so an ordinary row already
+        fits. A row the user merged by hand can hold more: the picker shows every photo in it with
+        checkboxes, the first three pictures and the first three videos selected. A fourth picture
+        or video can be ticked so that its thumbnail can be seen, and the warning says to uncheck
+        one to swap it in. Submit stays off until the report is back within
+        <strong>3 images <em>and</em> 3 videos</strong>, which is the server's real limit —
+        <code>createSubmission.js</code> takes <code>images.slice(0, 3)</code> and
+        <code>videos.slice(0, 3)</code> and drops the rest <em>without an error</em>, so the
+        report cannot be filed over the cap.
       </p>
       <p>
         A report takes its time and place from the photos it is holding, so unticking one moves
@@ -1134,7 +1145,8 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
       <ul>
         <li>
           <code>groupAttachmentsByViolation.test.js</code> — variant folding, plate-driven
-          splitting, the 60-second window, and each fallback (no GPS, no time, no plate).
+          splitting, the 60-second window, each fallback (no GPS, no time, no plate), and the
+          report cap, including a row the user merged.
         </li>
         <li>
           <code>Home.test.js</code> — driving the rendered batch UI to assert that violations are

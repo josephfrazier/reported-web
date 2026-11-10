@@ -5369,9 +5369,9 @@ describe('Home', () => {
       });
 
       // One publish, of the whole batch, with every row in it and no plate read
-      // yet: the four photos are one time-cluster, because the plate that
-      // divides them has not been read.
-      expect(passes).toEqual([{ reads: 0, violations: 1 }]);
+      // yet. The four photos are one time-cluster, and with no plate to divide
+      // them the report cap splits it into three and one.
+      expect(passes).toEqual([{ reads: 0, violations: 2 }]);
 
       // And it is still the grouping that decides, once the plates are in: the
       // row divided as they arrived, so the queue ends up with one row per car.

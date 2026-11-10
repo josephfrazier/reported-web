@@ -126,12 +126,16 @@ async function fetchGeosearch({ lat, long, address }) {
   });
 
   if (!data.features.length) {
-    return { answer: data, fellBackToTopResult: false };
+    return {
+      answer: { ...data, fellBackToTopResult: false },
+      fellBackToTopResult: false,
+    };
   }
 
   // The canonical feature can fall back to the top result when the city's
   // address directory cannot answer. That fallback answers this request but is
-  // not an answer to keep, so the caller is told not to store it.
+  // not an answer to keep, so the caller is told not to store it, and the
+  // response says so to the page.
   let fellBackToTopResult = false;
   const feature = await selectCanonicalFeature(
     data.features,
@@ -150,6 +154,7 @@ async function fetchGeosearch({ lat, long, address }) {
     answer: {
       ...data,
       features: [feature],
+      fellBackToTopResult,
     },
     fellBackToTopResult,
   };

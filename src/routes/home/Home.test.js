@@ -4174,6 +4174,10 @@ describe('Home', () => {
         // only the batch's calls, and not the later ones, is what makes a
         // second chance testable.
         failAlprCalls = [],
+        // Answers every geosearch request the way the server does when the
+        // city's address directory was down: with the top result and a flag
+        // saying it fell back.
+        geosearchFellBack = false,
       } = {},
     ) {
       const initialState = {
@@ -4231,6 +4235,7 @@ describe('Home', () => {
                     },
                   },
                 ],
+                fellBackToTopResult: geosearchFellBack,
               },
             });
           }
@@ -4602,6 +4607,37 @@ describe('Home', () => {
 
       exifr.gps.mockReset();
       exifr.parse.mockReset();
+      cleanup();
+    });
+
+    test('does not keep an address that a fallback geosearch gave', async () => {
+      const { homeRef, geosearchCalls, cleanup } = await renderBatchWithFiles(
+        [],
+        { geosearchFellBack: true },
+      );
+
+      const violation = {
+        latitude: 40.7129,
+        longitude: -74.0061,
+        coordsAreInNyc: true,
+      };
+
+      await renderer.act(async () => {
+        await homeRef.current.geocodeBatchViolation(violation);
+      });
+
+      // The fallback answered the lookup, but it is not the address the
+      // directory stood behind, so the memo does not keep it.
+      expect(
+        homeRef.current.geosearchAddressCache.get(violation),
+      ).toBeUndefined();
+
+      // A second row at the same place asks again rather than reusing it.
+      await renderer.act(async () => {
+        await homeRef.current.geocodeBatchViolation(violation);
+      });
+      expect(geosearchCalls()).toHaveLength(2);
+
       cleanup();
     });
 

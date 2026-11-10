@@ -3578,11 +3578,15 @@ class Home extends React.Component {
       // file the other's address under their own coordinates.
       const data = await fetchGeosearchAddress({ latitude, longitude });
       const { properties } = data.features[0];
-      this.geosearchAddressCache.set({
-        latitude,
-        longitude,
-        address: formatGeosearchAddress(properties),
-      });
+      // A fallback says the city's address directory was unavailable, so the
+      // address may change once it answers: show it, but do not keep it.
+      if (!data.fellBackToTopResult) {
+        this.geosearchAddressCache.set({
+          latitude,
+          longitude,
+          address: formatGeosearchAddress(properties),
+        });
+      }
     } catch (err) {
       // Leave the memo empty rather than caching the failure: setCoords asks
       // again when the user loads this violation, and geosearch being down

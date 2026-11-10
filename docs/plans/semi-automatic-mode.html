@@ -864,8 +864,8 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
             </tr>
             <tr>
               <td>Reverse geocode</td>
-              <td>A memo keyed on the coordinates (<code>geosearchAddressCache.js</code>), which <code>setCoords</code> reads before asking</td>
-              <td>Nothing new — the batch geocodes each violation through the same memo</td>
+              <td>A memo keyed on the coordinates (<code>geosearchAddressCache.js</code>), which <code>setCoords</code> reads before asking. A fallback is shown but not kept</td>
+              <td>Nothing new — the batch geocodes each violation through the same memo, and does not keep a fallback either</td>
             </tr>
             <tr>
               <td>ALPR, server side</td>
@@ -895,8 +895,10 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         row's place as it publishes the row, one place at a time, so the form opens with its
         address already in hand; the memo and the in-flight set keep a repeated place from being
         fetched twice. A reload clears the page's memo, and the server's disk cache answers a
-        place it has seen before without calling geosearch. <code>geocodePlaces</code> warms the
-        memo for every distinct place while the plate reads run.
+        place it has seen before without calling geosearch. An answer that fell back to the top
+        result because the address directory was down is shown but not kept, in the page's memo or
+        on disk. <code>geocodePlaces</code> warms the memo for every distinct place while the plate
+        reads run.
       </p>
 
       <div class="note">

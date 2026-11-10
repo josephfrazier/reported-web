@@ -31,6 +31,7 @@
 ## Common commands
 
 - Lint: `yarn lint`
+- `yarn lint` runs eslint and stylelint. It does not run prettier, and prettier is not the standard for CSS here: a `prettier --write` run can move a `stylelint-disable-line` comment off its selector line, where it disables nothing. After you touch a `.css` file, run `yarn lint`, not just eslint and prettier. `yarn fix` is `eslint --fix` plus `stylelint --fix`.
 - Build: `yarn build`
 - Full test suite: `yarn test`
 - Non-ALPR tests (matches the main CI test workflow): `yarn test:no-flaky`

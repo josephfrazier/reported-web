@@ -1951,6 +1951,14 @@ class Home extends React.Component {
       );
     });
 
+  // Put the caret in the License/Medallion field. A ref rather than a query:
+  // the field is the one the form renders, and there is only ever one. A
+  // caller that has already scrolled the field into view asks for
+  // `preventScroll`, so the focus does not drag the page somewhere else.
+  focusPlateField = ({ preventScroll = false } = {}) => {
+    this.plateRef.current?.focus?.({ preventScroll });
+  };
+
   setLicensePlate = ({
     plate,
     licenseState,
@@ -4342,14 +4350,6 @@ class Home extends React.Component {
         this.focusPlateField({ preventScroll: true }),
       );
     }
-  };
-
-  // Put the caret in the License/Medallion field. A ref rather than a query:
-  // the field is the one the form renders, and there is only ever one. A
-  // caller that has already scrolled the field into view asks for
-  // `preventScroll`, so the focus does not drag the page somewhere else.
-  focusPlateField = ({ preventScroll = false } = {}) => {
-    this.plateRef.current?.focus?.({ preventScroll });
   };
 
   // Bring the License/Medallion fields to the bottom of the page. Loading a

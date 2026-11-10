@@ -542,8 +542,8 @@
           <tbody>
             <tr><td>Entry point</td><td>None — every pick, drop and paste feeds the batch; the batch is the only attachment flow</td></tr>
             <tr><td>Photo input</td><td>A folder pick, a loose multi-file pick (zips included), a drag-and-drop, or a paste — all equally supported</td></tr>
-            <tr><td>Grouping signals</td><td>EXIF time to cluster, ALPR plate to split — no GPS, see <em>Why distance went</em></td></tr>
-            <tr><td>Thresholds</td><td class="num">Δt ≤ 60 s, on time alone — see <em>Why distance went</em></td></tr>
+            <tr><td>Grouping signals</td><td>EXIF time to cluster, ALPR plate to split — no GPS, see <a href="#why-distance-went"><em>Why distance went</em></a></td></tr>
+            <tr><td>Thresholds</td><td class="num">Δt ≤ 60 s, on time alone — see <a href="#why-distance-went"><em>Why distance went</em></a></td></tr>
             <tr><td>Plate's role</td><td>May <strong>split</strong> a time cluster</td></tr>
             <tr><td>OCR variants</td><td>Folded via ALPR <code>candidates</code> sets</td></tr>
             <tr><td>Violation time</td><td>From the <strong>earliest</strong> photo in the group</td></tr>
@@ -598,7 +598,7 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         </li>
         <li>
           <strong>Cluster by time.</strong> Union two photos when
-          <span class="mono">Δt ≤ 60 s</span>. Place plays no part; see <em>Why distance went</em>.
+          <span class="mono">Δt ≤ 60 s</span>. Place plays no part; see <a href="#why-distance-went"><em>Why distance went</em></a>.
           Connected components become candidate violations.
         </li>
         <li>
@@ -617,7 +617,7 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         </li>
       </ol>
 
-      <h3>Why distance went</h3>
+      <h3 id="why-distance-went">Why distance went</h3>
       <p>
         Distance was the second half of the rule until it was measured against the reports
         themselves. Two numbers came out of that, and neither supports it.

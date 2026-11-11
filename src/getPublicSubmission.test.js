@@ -8,7 +8,9 @@
 
 import Parse from 'parse/node';
 
-import getPublicSubmission from './getPublicSubmission.js';
+import getPublicSubmission, {
+  caseIdsForSubmissions,
+} from './getPublicSubmission.js';
 import startRealParseServer from './testUtils/realParseServer.js';
 
 jest.setTimeout(30000);
@@ -86,6 +88,10 @@ describe('getPublicSubmission', () => {
       submission: noLocationSubmission,
       caseId: '311-88888',
     });
+    await saveTask({
+      submission: noLocationSubmission,
+      caseId: '311-88889',
+    });
   });
 
   afterAll(() => stopParseServer());
@@ -160,5 +166,23 @@ describe('getPublicSubmission', () => {
     await expect(
       getPublicSubmission({ caseId: '311-00000' }),
     ).resolves.toBeNull();
+  });
+
+  test('groups case ids for several submissions', async () => {
+    const caseIds = await caseIdsForSubmissions([
+      publicSubmission,
+      privateSubmission,
+      noLocationSubmission,
+    ]);
+
+    expect(caseIds.get(publicSubmission.id)).toEqual(new Set(['311-12345']));
+    expect(caseIds.get(privateSubmission.id)).toEqual(new Set(['311-99999']));
+    expect(caseIds.get(noLocationSubmission.id)).toEqual(
+      new Set(['311-88888', '311-88889']),
+    );
+  });
+
+  test('returns an empty map for no submissions', async () => {
+    await expect(caseIdsForSubmissions([])).resolves.toEqual(new Map());
   });
 });

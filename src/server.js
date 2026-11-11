@@ -27,6 +27,7 @@ import getVehicleType from './getVehicleType.js';
 import srlookup from './srlookup.js';
 import getSubmissionsWithTasks from './getSubmissionsWithTasks.js';
 import getPublicSubmission, {
+  caseIdsForSubmissions,
   PUBLIC_SUBMISSION_FIELDS,
   publicSubmissionJson,
 } from './getPublicSubmission.js';
@@ -649,8 +650,12 @@ app.get('/api/submissions-in-polygon', (req, res) => {
     // creation time instead would expose every field the reporters did not
     // agree to share (name, phone, and so on), so the master key stays.
     .find({ useMasterKey: true })
-    .then(parseResults => {
-      const results = parseResults.map(publicSubmissionJson);
+    .then(async parseResults => {
+      const caseIds = await caseIdsForSubmissions(parseResults);
+      const results = parseResults.map(submission => ({
+        ...publicSubmissionJson(submission),
+        case_ids: [...(caseIds.get(submission.id) || [])],
+      }));
 
       res.json({
         results,

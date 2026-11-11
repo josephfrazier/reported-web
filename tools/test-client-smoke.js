@@ -281,6 +281,137 @@ const run = async () => {
       },
     ]);
 
+    // ── Submissions map: linked report ──
+    // A link names a submission objectId or a task case id. The page asks
+    // /api/submission for that report and pins it; intercept the lookup so
+    // the check runs without a Parse server.
+    const linkedSubmission = {
+      objectId: 'linked_1',
+      location: {
+        __type: 'GeoPoint',
+        latitude: 40.686,
+        longitude: -73.979,
+      },
+      typeofcomplaint: 'Blocked the crosswalk',
+      license: 'T794438C',
+      state: 'NY',
+      loc1_address: '64 Flatbush Ave, Brooklyn',
+      timeofreport: { __type: 'Date', iso: '2023-04-28T17:04:00.000Z' },
+      reqnumber: '311-12345',
+      photoData0: null,
+      photoData1: null,
+      photoData2: null,
+    };
+    const linkedContext = await browser.newContext();
+    let linkedApiUrl = null;
+    await linkedContext.route(/\/api\/submission(\?|$)/, route => {
+      linkedApiUrl = new URL(route.request().url());
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ submission: linkedSubmission }),
+      });
+    });
+    const linkedPage = await linkedContext.newPage();
+    const linkedErrors = [];
+    attachErrorListeners(linkedPage, linkedErrors);
+
+    await linkedPage.goto(`${BASE_URL}/submissions-map?case_id=311-12345`, {
+      waitUntil: 'load',
+    });
+    await linkedPage.waitForSelector('#popup.visible.pinned');
+    const caseIdLookup = linkedApiUrl?.searchParams.get('case_id');
+    const caseIdUrl = new URL(linkedPage.url());
+    const linkedCount = await linkedPage.locator('#count-badge').textContent();
+    const linkedMode = await linkedPage.locator('#mode-label').textContent();
+    const linkedPopupText = await linkedPage.locator('#popup').textContent();
+
+    await linkedPage.goto(
+      `${BASE_URL}/submissions-map?submission=${linkedSubmission.objectId}`,
+      { waitUntil: 'load' },
+    );
+    await linkedPage.waitForSelector('#popup.visible.pinned');
+    const objectIdLookup = linkedApiUrl?.searchParams.get('objectId');
+    const submissionUrl = new URL(linkedPage.url());
+
+    failures += runChecks([
+      {
+        name: 'submissions map: a case_id link looks up that case id',
+        ok:
+          caseIdLookup === '311-12345' &&
+          caseIdUrl.searchParams.get('case_id') === '311-12345',
+        detail: JSON.stringify({
+          caseIdLookup,
+          url: caseIdUrl.toString(),
+        }),
+      },
+      {
+        name: 'submissions map: a linked report opens pinned',
+        ok:
+          linkedCount === '1 report' &&
+          linkedMode === 'Linked report' &&
+          linkedPopupText.includes('Blocked the crosswalk'),
+        detail: JSON.stringify({ linkedCount, linkedMode, linkedPopupText }),
+      },
+      {
+        name: 'submissions map: a submission link looks up that objectId',
+        ok:
+          objectIdLookup === linkedSubmission.objectId &&
+          submissionUrl.searchParams.get('submission') ===
+            linkedSubmission.objectId,
+        detail: JSON.stringify({
+          objectIdLookup,
+          url: submissionUrl.toString(),
+        }),
+      },
+      {
+        name: 'submissions map: no page or console errors (linked report)',
+        ok: linkedErrors.length === 0,
+        detail: linkedErrors.join('\n'),
+      },
+    ]);
+
+    // A private or missing submission answers 404, so the page stays on the
+    // selection screen and says that the report is not available.
+    const hiddenContext = await browser.newContext();
+    await hiddenContext.route(/\/api\/submission(\?|$)/, route => {
+      route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'Submission not found.' }),
+      });
+    });
+    const hiddenPage = await hiddenContext.newPage();
+    const hiddenErrors = [];
+    attachErrorListeners(hiddenPage, hiddenErrors);
+
+    await hiddenPage.goto(`${BASE_URL}/submissions-map?submission=private_1`, {
+      waitUntil: 'load',
+    });
+    await hiddenPage.waitForSelector('#error-msg', { state: 'visible' });
+    const hiddenErrorText = await hiddenPage
+      .locator('#error-msg')
+      .textContent();
+    const hiddenMapVisible = await hiddenPage
+      .locator('#map-screen')
+      .isVisible()
+      .catch(() => false);
+
+    failures += runChecks([
+      {
+        name: 'submissions map: a non-public submission shows an error',
+        ok:
+          hiddenErrorText.includes('not available on the public map') &&
+          !hiddenMapVisible,
+        detail: JSON.stringify({ hiddenErrorText, hiddenMapVisible }),
+      },
+      {
+        name: 'submissions map: no page or console errors (non-public)',
+        ok: hiddenErrors.length === 0,
+        detail: hiddenErrors.join('\n'),
+      },
+    ]);
+
     // ── Submissions map: logged out ──
     const loggedOutContext = await browser.newContext();
     const loggedOutPage = await loggedOutContext.newPage();

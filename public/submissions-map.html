@@ -279,6 +279,7 @@
     z-index: 9999;
     pointer-events: none;
     width: 300px;
+    max-width: calc(100vw - 32px);
     background: var(--surface);
     border: 1px solid var(--border2);
     border-radius: 4px;
@@ -584,6 +585,13 @@ function makeIcon(color) {
   return L.divIcon({ html: svg, className: '', iconSize: [14,14], iconAnchor: [7,7] });
 }
 
+// The linked report gets a larger marker with a halo, so it stands out from
+// the nearby reports a polygon link shows around it.
+function makeTargetIcon(color) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="26" height="26"><circle cx="13" cy="13" r="11" fill="${color}" fill-opacity="0.25"/><circle cx="13" cy="13" r="5.5" fill="${color}" stroke="#ffffff" stroke-width="2.5"/></svg>`;
+  return L.divIcon({ html: svg, className: '', iconSize: [26,26], iconAnchor: [13,13] });
+}
+
 function formatDate(iso) {
   if (!iso) return null;
   try {
@@ -623,9 +631,14 @@ let markerLayer = null;
 let allSubmissions = [];
 let currentPolygonStr = null;
 let loadedPolygonStr = null;
+// The submission a link names, as { param, value }. `submission` holds an
+// objectId and `case_id` holds a task's case id (an SR number).
+let currentTarget = null;
+let loadedTargetKey = null;
+let targetSubmission = null;
 let photosOnly = false;
 let isMapScreenVisible = false;
-let currentMode = null; // null | 'paste' | 'polygon' | 'my'
+let currentMode = null; // null | 'paste' | 'polygon' | 'my' | 'submission'
 
 const popup     = document.getElementById('popup');
 const popupComp = document.getElementById('popup-complaint');
@@ -648,15 +661,51 @@ legendToggleEl.addEventListener('click', () => {
 
 let hideTimer = null;
 let pinned    = false;
+let popupLatLng = null;
+let popupWidth = 300;
+let popupHeight = 320;
 
+// Measure the popup after its content changes; positionPopup uses these to
+// clamp the popup without reading layout on every map move.
+function measurePopup() {
+  popupWidth = popup.offsetWidth;
+  popupHeight = popup.offsetHeight;
+}
+
+// Keep the popup inside the viewport after choosing a side. A marker near
+// an edge can leave too little room for the preferred side.
 function positionPopup(clientX, clientY) {
-  const margin = 16, pw = 300, ph = 320;
+  const margin = 16;
+  const pw = popupWidth;
+  const ph = popupHeight;
+  const maxX = Math.max(margin, window.innerWidth - pw - margin);
+  const maxY = Math.max(margin, window.innerHeight - ph - margin);
   let x = clientX + 16, y = clientY - 24;
-  if (x + pw > window.innerWidth  - margin) x = clientX - pw - 14;
-  if (y + ph > window.innerHeight - margin) y = window.innerHeight - ph - margin;
-  if (y < margin) y = margin;
+  if (x + pw > window.innerWidth - margin) x = clientX - pw - 14;
+  x = Math.min(Math.max(x, margin), maxX);
+  y = Math.min(Math.max(y, margin), maxY);
   popup.style.left = x + 'px';
   popup.style.top  = y + 'px';
+}
+
+function positionPopupForLatLng(latlng) {
+  if (!map || !latlng) return;
+  const point = map.latLngToContainerPoint(latlng);
+  const rect = map.getContainer().getBoundingClientRect();
+  positionPopup(rect.left + point.x, rect.top + point.y);
+}
+
+// The popup is fixed to the viewport, so follow the marker's projected point
+// when the map pans or zooms.
+let popupFrame = 0;
+function repositionPopup() {
+  if (popupFrame) return;
+  popupFrame = requestAnimationFrame(() => {
+    popupFrame = 0;
+    if (popup.classList.contains('visible') && popupLatLng) {
+      positionPopupForLatLng(popupLatLng);
+    }
+  });
 }
 
 function populatePopup(s) {
@@ -671,7 +720,12 @@ function populatePopup(s) {
   if (s.loc1_address) rows.push(`<span class="val">${s.loc1_address}</span>`);
   const d = formatDate(s.timeofreport?.iso);
   if (d) rows.push(d);
-  if (s.reqnumber) rows.push(`req ${reqNumberHtml(s.reqnumber)}`);
+  const caseIds = Array.isArray(s.case_ids) ? s.case_ids.filter(Boolean) : [];
+  if (caseIds.length > 0) {
+    rows.push(`case ${caseIds.map(reqNumberHtml).join(', ')}`);
+  } else if (s.reqnumber && s.reqnumber !== 'N/A until submitted to 311') {
+    rows.push(`req ${reqNumberHtml(s.reqnumber)}`);
+  }
   popupMeta.innerHTML = rows.join('<br>');
 
   if (photos.length > 0) {
@@ -680,24 +734,22 @@ function populatePopup(s) {
   } else {
     popupPics.innerHTML = `<div class="popup-no-photo">no photos attached</div>`;
   }
+  measurePopup();
 }
 
 function unpinPopup() {
   pinned = false;
+  popupLatLng = null;
   popup.classList.remove('pinned', 'visible');
 }
 
 closeBtn.addEventListener('click', unpinPopup);
 
-// Click anywhere on the map (not a marker) closes a pinned popup
-document.getElementById('map').addEventListener('click', () => {
-  if (pinned) unpinPopup();
-});
-
 function showPopup(e, s) {
   if (pinned) return; // don't disturb a pinned popup on hover
   clearTimeout(hideTimer);
   populatePopup(s);
+  popupLatLng = e.latlng || null;
   positionPopup(e.originalEvent.clientX, e.originalEvent.clientY);
   popup.classList.remove('pinned');
   popup.classList.add('visible');
@@ -705,16 +757,43 @@ function showPopup(e, s) {
 
 function hidePopup() {
   if (pinned) return;
-  hideTimer = setTimeout(() => popup.classList.remove('visible'), 90);
+  hideTimer = setTimeout(() => {
+    popup.classList.remove('visible');
+    popupLatLng = null;
+  }, 90);
 }
 
-function pinPopup(e, s) {
+function pinPopupAt({ clientX, clientY, latlng = null }, s) {
   clearTimeout(hideTimer);
   pinned = true;
   populatePopup(s);
-  positionPopup(e.originalEvent.clientX, e.originalEvent.clientY);
+  popupLatLng = latlng;
+  if (latlng) {
+    positionPopupForLatLng(latlng);
+  } else {
+    positionPopup(clientX, clientY);
+  }
   popup.classList.add('visible', 'pinned');
+}
+
+function pinPopup(e, s) {
+  pinPopupAt(
+    {
+      clientX: e.originalEvent.clientX,
+      clientY: e.originalEvent.clientY,
+      latlng: e.latlng,
+    },
+    s,
+  );
   L.DomEvent.stopPropagation(e); // prevent map click from immediately closing it
+}
+
+function pinPopupForSubmission(s) {
+  if (!map) return;
+  const lat = s.location?.latitude;
+  const lng = s.location?.longitude;
+  if (lat == null || lng == null) return;
+  pinPopupAt({ latlng: L.latLng(lat, lng) }, s);
 }
 
 function hasPhotoWithUrl(submission) {
@@ -723,7 +802,11 @@ function hasPhotoWithUrl(submission) {
 
 function filteredSubmissions() {
   if (!photosOnly) return allSubmissions;
-  return allSubmissions.filter(hasPhotoWithUrl);
+  // The linked report stays visible even when it has no photo; the link asked
+  // for that report, not for a photo.
+  return allSubmissions.filter(
+    s => hasPhotoWithUrl(s) || s.objectId === targetSubmission?.objectId,
+  );
 }
 
 function polygonToString(vertices) {
@@ -732,9 +815,43 @@ function polygonToString(vertices) {
     .join(';');
 }
 
+function targetFromParams(params) {
+  // `submission` is the documented name; `objectId` is accepted as an alias
+  // because it matches the Parse field.
+  const submission = params.get('submission') || params.get('objectId');
+  if (submission) return { param: 'submission', value: submission };
+  const caseId = params.get('case_id');
+  if (caseId) return { param: 'case_id', value: caseId };
+  return null;
+}
+
+function targetKeyFor(target) {
+  return target ? `${target.param}:${target.value}` : null;
+}
+
+function targetApiUrl(target) {
+  const param = target.param === 'submission' ? 'objectId' : 'case_id';
+  return `/api/submission?${param}=${encodeURIComponent(target.value)}`;
+}
+
+function mergeTarget(results, target) {
+  if (!target) return results;
+  if (results.some(result => result.objectId === target.objectId)) {
+    return results;
+  }
+  return [...results, target];
+}
+
+function clearTarget() {
+  currentTarget = null;
+  loadedTargetKey = null;
+  targetSubmission = null;
+}
+
 function updateUrlFromState(shouldPushToHistory = true) {
   const params = new URLSearchParams();
   if (currentPolygonStr) params.set('polygon', currentPolygonStr);
+  if (currentTarget) params.set(currentTarget.param, currentTarget.value);
   if (currentMode === 'my') params.set('mySubmissions', '1');
   if (photosOnly) params.set('photosOnly', '1');
   const nextUrl = params.toString() ? `?${params}` : window.location.pathname;
@@ -742,15 +859,21 @@ function updateUrlFromState(shouldPushToHistory = true) {
   else history.replaceState(null, '', nextUrl);
 }
 
-function renderMap(submissions) {
+function renderMap(submissions, target) {
   document.getElementById('paste-screen').style.display = 'none';
   const mapScreen = document.getElementById('map-screen');
   mapScreen.style.display = 'flex';
   isMapScreenVisible = true;
   document.getElementById('count-badge').textContent = `${submissions.length} report${submissions.length !== 1 ? 's' : ''}`;
-  modeLabelEl.textContent = currentMode === 'polygon'
-    ? 'Drawn area'
-    : currentMode === 'my' ? 'My submissions' : '';
+  if (currentMode === 'polygon') {
+    modeLabelEl.textContent = 'Drawn area';
+  } else if (currentMode === 'my') {
+    modeLabelEl.textContent = 'My submissions';
+  } else if (currentMode === 'submission') {
+    modeLabelEl.textContent = 'Linked report';
+  } else {
+    modeLabelEl.textContent = '';
+  }
 
   if (!map) {
     map = L.map('map', { zoomControl: true });
@@ -759,6 +882,16 @@ function renderMap(submissions) {
       maxZoom: 19,
     }).addTo(map);
     markerLayer = L.layerGroup().addTo(map);
+    // Use the map's click event, not a DOM listener: Leaflet suppresses it
+    // after a drag, so panning keeps the pinned popup open.
+    map.on('click', () => {
+      if (pinned) unpinPopup();
+    });
+    map.on('move zoom resize', repositionPopup);
+    window.addEventListener('resize', () => {
+      measurePopup();
+      repositionPopup();
+    });
   } else {
     markerLayer.clearLayers();
   }
@@ -771,7 +904,12 @@ function renderMap(submissions) {
     if (lat == null || lng == null) return;
     bounds.push([lat, lng]);
 
-    const marker = L.marker([lat, lng], { icon: makeIcon(colorFor(s.typeofcomplaint)) });
+    const color = colorFor(s.typeofcomplaint);
+    const marker = L.marker([lat, lng], {
+      icon: target && s.objectId === target.objectId
+        ? makeTargetIcon(color)
+        : makeIcon(color),
+    });
     marker.on('mouseover', e => showPopup(e, s));
     marker.on('mousemove', e => { if (!pinned) positionPopup(e.originalEvent.clientX, e.originalEvent.clientY); });
     marker.on('mouseout', hidePopup);
@@ -779,17 +917,27 @@ function renderMap(submissions) {
     markerLayer.addLayer(marker);
   });
 
-  if (bounds.length > 0) map.fitBounds(bounds, { padding: [40, 40] });
-  setTimeout(() => map.invalidateSize(), 60);
+  const targetLat = target?.location?.latitude;
+  const targetLng = target?.location?.longitude;
+  if (targetLat != null && targetLng != null) {
+    map.setView([targetLat, targetLng], 17);
+  } else if (bounds.length > 0) {
+    map.fitBounds(bounds, { padding: [40, 40] });
+  }
+  setTimeout(() => {
+    map.invalidateSize();
+    if (target) pinPopupForSubmission(target);
+  }, 60);
 }
 
-function loadMap(submissions) {
+function loadMap(submissions, target = null) {
   allSubmissions = submissions;
-  renderMap(filteredSubmissions());
+  targetSubmission = target;
+  renderMap(filteredSubmissions(), target);
 }
 
 function applyPhotoFilter() {
-  renderMap(filteredSubmissions());
+  renderMap(filteredSubmissions(), targetSubmission);
 }
 
 photosOnlyCheckbox.addEventListener('change', () => {
@@ -811,6 +959,7 @@ document.getElementById('load-btn').addEventListener('click', () => {
     currentMode = 'paste';
     currentPolygonStr = null;
     loadedPolygonStr = null;
+    clearTarget();
     updateUrlFromState(true);
     loadMap(data);
   } catch(e) {
@@ -831,6 +980,7 @@ document.getElementById('reset-btn').addEventListener('click', () => {
   currentMode = null;
   currentPolygonStr = null;
   loadedPolygonStr = null;
+  clearTarget();
   photosOnly = false;
   photosOnlyCheckbox.checked = false;
   mySubmissionsStatusEl.textContent = '';
@@ -901,6 +1051,7 @@ function initDrawMap() {
         : polygonLatLngs;
     currentMode = 'polygon';
     currentPolygonStr = polygonToString(vertices);
+    clearTarget();
     updateUrlFromState(true);
     await fetchAndLoadPolygon(vertices);
   });
@@ -908,11 +1059,68 @@ function initDrawMap() {
   setTimeout(() => drawMap.invalidateSize(), 60);
 }
 
+async function fetchTargetIfNeeded() {
+  if (!currentTarget) return { target: null };
+  const key = targetKeyFor(currentTarget);
+  if (key === loadedTargetKey) {
+    return targetSubmission
+      ? { target: targetSubmission }
+      : { target: null, notFound: true };
+  }
+
+  try {
+    const resp = await fetch(targetApiUrl(currentTarget));
+    if (resp.status === 404) {
+      loadedTargetKey = key;
+      targetSubmission = null;
+      return { target: null, notFound: true };
+    }
+    if (!resp.ok) {
+      const body = await resp.json().catch(() => ({}));
+      throw new Error(body.error || `Unexpected server error (HTTP ${resp.status}). Please try again.`);
+    }
+    const data = await resp.json();
+    targetSubmission = data.submission || null;
+    loadedTargetKey = key;
+    return targetSubmission
+      ? { target: targetSubmission }
+      : { target: null, notFound: true };
+  } catch (e) {
+    return { target: null, error: e.message };
+  }
+}
+
+function showTargetLoadError({ notFound, error }) {
+  document.getElementById('map-screen').style.display = 'none';
+  document.getElementById('paste-screen').style.display = 'flex';
+  isMapScreenVisible = false;
+  document.getElementById('tab-paste').click();
+  const errEl = document.getElementById('error-msg');
+  if (notFound) {
+    errEl.textContent = currentTarget && currentTarget.param === 'case_id'
+      ? `No publicly shareable report matches the case ID ${currentTarget.value}.`
+      : 'That submission is not available on the public map.';
+  } else {
+    errEl.textContent = `Could not load that submission. ${error || 'Please try again.'}`;
+  }
+  errEl.style.display = 'block';
+}
+
+async function fetchTargetAndLoad() {
+  const result = await fetchTargetIfNeeded();
+  if (!result.target) {
+    showTargetLoadError(result);
+    return;
+  }
+  loadMap([result.target], result.target);
+}
+
 async function fetchAndLoadPolygon(vertices) {
   const statusEl = document.getElementById('draw-status');
   statusEl.textContent = 'Loading submissions\u2026';
 
   const polygonStr = polygonToString(vertices);
+  const targetPromise = fetchTargetIfNeeded();
 
   try {
     const resp = await fetch(
@@ -923,8 +1131,18 @@ async function fetchAndLoadPolygon(vertices) {
       throw new Error(body.error || `Unexpected server error (HTTP ${resp.status}). Please try again.`);
     }
     const data = await resp.json();
-    if (!data.results || data.results.length === 0) {
+    const targetResult = await targetPromise;
+
+    if (currentTarget && targetResult.notFound) {
+      window.alert('That submission is not available on the public map. Showing nearby reports instead.');
+    } else if (currentTarget && targetResult.error) {
+      window.alert(`Could not load the linked submission. ${targetResult.error}`);
+    }
+
+    const submissions = mergeTarget(data.results || [], targetResult.target);
+    if (submissions.length === 0) {
       allSubmissions = [];
+      targetSubmission = null;
       loadedPolygonStr = currentPolygonStr;
       statusEl.textContent = 'No public submissions found inside this polygon. Try a larger area.';
       return;
@@ -934,7 +1152,7 @@ async function fetchAndLoadPolygon(vertices) {
       window.alert(`Results are capped at ${data.results.length.toLocaleString()} submissions. Draw a smaller polygon to see all reports in an area.`);
     }
     loadedPolygonStr = currentPolygonStr;
-    loadMap(data.results);
+    loadMap(submissions, targetResult.target);
   } catch (e) {
     statusEl.textContent = 'Select the polygon tool and draw a shape on the map.';
     const isNetworkError = e instanceof TypeError;
@@ -1023,6 +1241,7 @@ mySubmissionsLoadBtn.addEventListener('click', () => {
     showMySubmissionsLoginPrompt();
     return;
   }
+  clearTarget();
   currentMode = 'my';
   updateUrlFromState(true); // push ?mySubmissions=1 (user-action sites push, like the polygon draw handler)
   loadMySubmissions();
@@ -1038,38 +1257,54 @@ function clearUrlParams() {
 function applyUrlState() {
   const params = new URLSearchParams(window.location.search);
   const polygonStr = params.get('polygon');
+  const target = targetFromParams(params);
   photosOnly = params.get('photosOnly') === '1';
   photosOnlyCheckbox.checked = photosOnly;
 
-  if (polygonStr) {
-    const shouldFetchNewPolygonData = polygonStr !== loadedPolygonStr;
-    currentMode = 'polygon';
+  if (polygonStr || target) {
+    const shouldFetchNewPolygonData =
+      Boolean(polygonStr) && polygonStr !== loadedPolygonStr;
+    const shouldFetchNewTarget = targetKeyFor(target) !== loadedTargetKey;
+
+    currentMode = polygonStr ? 'polygon' : 'submission';
     currentPolygonStr = polygonStr;
-    document.getElementById('map-screen').style.display = 'none';
-    document.getElementById('paste-screen').style.display = 'flex';
-    isMapScreenVisible = false;
+    currentTarget = target;
 
-    document.getElementById('tab-draw').click();
+    if (polygonStr) {
+      document.getElementById('map-screen').style.display = 'none';
+      document.getElementById('paste-screen').style.display = 'flex';
+      isMapScreenVisible = false;
 
-    const vertices = polygonStr.split(';').map(pair => {
-      const [lat, lng] = pair.split(',');
-      return [parseFloat(lat), parseFloat(lng)];
-    });
+      document.getElementById('tab-draw').click();
 
-    drawnItems.clearLayers();
-    const polygon = L.polygon(vertices, { color: '#d4ff4e', weight: 2, fillOpacity: 0.08 });
-    drawnItems.addLayer(polygon);
-    drawMap.fitBounds(polygon.getBounds(), { padding: [20, 20] });
+      const vertices = polygonStr.split(';').map(pair => {
+        const [lat, lng] = pair.split(',');
+        return [parseFloat(lat), parseFloat(lng)];
+      });
 
-    if (shouldFetchNewPolygonData) {
-      const latLngs = vertices.map(v => L.latLng(v[0], v[1]));
-      fetchAndLoadPolygon(latLngs);
+      drawnItems.clearLayers();
+      const polygon = L.polygon(vertices, { color: '#d4ff4e', weight: 2, fillOpacity: 0.08 });
+      drawnItems.addLayer(polygon);
+      drawMap.fitBounds(polygon.getBounds(), { padding: [20, 20] });
+
+      if (shouldFetchNewPolygonData || shouldFetchNewTarget) {
+        const latLngs = vertices.map(v => L.latLng(v[0], v[1]));
+        fetchAndLoadPolygon(latLngs);
+      } else {
+        applyPhotoFilter();
+      }
+    } else if (shouldFetchNewTarget) {
+      fetchTargetAndLoad();
     } else {
       applyPhotoFilter();
     }
-  } else if (params.get('mySubmissions') === '1') {
+    return;
+  }
+
+  if (params.get('mySubmissions') === '1') {
     currentPolygonStr = null;
     loadedPolygonStr = null;
+    clearTarget();
     // Keep the current map visible when only the photosOnly URL param changes
     // (mirrors the keep-visible logic below for manually loaded data).
     if (currentMode === 'my' && allSubmissions.length > 0 && isMapScreenVisible) {
@@ -1083,14 +1318,17 @@ function applyUrlState() {
     document.getElementById('tab-my-submissions').click();
     loadMySubmissions(); // restore paths never pushState
   } else {
+    // Keep the current map visible when only the photosOnly URL param changes
+    // for manually loaded data. A linked report keeps its own state above.
+    const keepMapForPhotoFilter =
+      loadedPolygonStr === null &&
+      currentMode !== 'submission' &&
+      allSubmissions.length > 0 &&
+      isMapScreenVisible;
     currentPolygonStr = null;
     currentMode = null;
-    // Keep the current map visible when only the photosOnly URL param changes for manually loaded data.
-    if (
-      loadedPolygonStr === null &&
-      allSubmissions.length > 0 &&
-      isMapScreenVisible
-    ) {
+    clearTarget();
+    if (keepMapForPhotoFilter) {
       applyPhotoFilter();
       return;
     }
@@ -1106,11 +1344,16 @@ function applyUrlState() {
 
 window.addEventListener('popstate', applyUrlState);
 
-// On load: apply the URL state (handles direct links with polygon params)
+// On load: apply the URL state (handles direct links with polygon, submission,
+// or case_id params)
 const urlParams = new URLSearchParams(window.location.search);
 const hasPolygonParam = urlParams.has('polygon');
 const hasMySubmissionsParam = urlParams.has('mySubmissions');
-if (!hasPolygonParam && !hasMySubmissionsParam) {
+const hasTargetParam =
+  urlParams.has('submission') ||
+  urlParams.has('objectId') ||
+  urlParams.has('case_id');
+if (!hasPolygonParam && !hasMySubmissionsParam && !hasTargetParam) {
   const tabDraw = document.getElementById('tab-draw');
   if (tabDraw) tabDraw.click();
 }

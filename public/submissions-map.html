@@ -683,7 +683,12 @@ function populatePopup(s) {
   if (s.loc1_address) rows.push(`<span class="val">${s.loc1_address}</span>`);
   const d = formatDate(s.timeofreport?.iso);
   if (d) rows.push(d);
-  if (s.reqnumber) rows.push(`req ${reqNumberHtml(s.reqnumber)}`);
+  const caseIds = Array.isArray(s.case_ids) ? s.case_ids.filter(Boolean) : [];
+  if (caseIds.length > 0) {
+    rows.push(`case ${caseIds.map(reqNumberHtml).join(', ')}`);
+  } else if (s.reqnumber && s.reqnumber !== 'N/A until submitted to 311') {
+    rows.push(`req ${reqNumberHtml(s.reqnumber)}`);
+  }
   popupMeta.innerHTML = rows.join('<br>');
 
   if (photos.length > 0) {

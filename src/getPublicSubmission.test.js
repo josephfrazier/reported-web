@@ -103,6 +103,7 @@ describe('getPublicSubmission', () => {
       loc1_address: '64 Flatbush Ave, Brooklyn',
       reqnumber: '311-12345',
       can_be_shared_publicly: true,
+      case_ids: ['311-12345'],
     });
     expect(result.location).toMatchObject({
       latitude: 40.686,

@@ -26,6 +26,10 @@ import { geosearch } from './geoclient.js';
 import getVehicleType from './getVehicleType.js';
 import srlookup from './srlookup.js';
 import getSubmissionsWithTasks from './getSubmissionsWithTasks.js';
+import getPublicSubmission, {
+  PUBLIC_SUBMISSION_FIELDS,
+  publicSubmissionJson,
+} from './getPublicSubmission.js';
 import deleteSubmission from './deleteSubmission.js';
 import createSubmission from './createSubmission.js';
 import uploadAttachment from './uploadAttachment.js';
@@ -122,8 +126,8 @@ const {
 // Requests carry the master key only where a call site opts in with
 // { useMasterKey: true }: the reads that must bypass ACLs, which are
 // submissions belonging to another Parse user with the same email, and the
-// public map's query. Every other request runs as the logged-in user, via an
-// explicit sessionToken, or with no credential at all.
+// public map's queries. Every other request runs as the logged-in user, via
+// an explicit sessionToken, or with no credential at all.
 Parse.initialize(PARSE_APP_ID, PARSE_JAVASCRIPT_KEY, PARSE_MASTER_KEY);
 Parse.serverURL = PARSE_SERVER_URL;
 
@@ -593,20 +597,6 @@ app.get('/powerbroker', (req, res) => {
   res.sendFile(path.resolve(__dirname, 'public', 'powerbroker.html'));
 });
 
-const POLYGON_FIELDS = [
-  'location',
-  'timeofreport',
-  'license',
-  'state',
-  'typeofcomplaint',
-  'loc1_address',
-  'reqnumber',
-  'photoData0',
-  'photoData1',
-  'photoData2',
-  'can_be_shared_publicly',
-];
-
 const POLYGON_RESULT_LIMIT = 10000;
 
 app.get('/api/submissions-in-polygon', (req, res) => {
@@ -656,7 +646,7 @@ app.get('/api/submissions-in-polygon', (req, res) => {
   query.equalTo('can_be_shared_publicly', true);
   query.notEqualTo('license', 'TEST');
   query.limit(POLYGON_RESULT_LIMIT);
-  query.select(POLYGON_FIELDS);
+  query.select(PUBLIC_SUBMISSION_FIELDS);
 
   query
     // The submissions this returns belong to other users by design (that is
@@ -666,17 +656,47 @@ app.get('/api/submissions-in-polygon', (req, res) => {
     // agree to share (name, phone, and so on), so the master key stays.
     .find({ useMasterKey: true })
     .then(parseResults => {
-      const results = parseResults.map(obj => {
-        const json = obj.toJSON();
-        return Object.fromEntries(
-          POLYGON_FIELDS.map(k => [k, json[k] ?? null]),
-        );
-      });
+      const results = parseResults.map(publicSubmissionJson);
 
       res.json({
         results,
         capped: parseResults.length >= POLYGON_RESULT_LIMIT,
       });
+    })
+    .catch(handlePromiseRejection(res));
+});
+
+app.get('/api/submission', (req, res) => {
+  const { objectId } = req.query;
+  const caseId = req.query.case_id;
+
+  const hasObjectId = typeof objectId === 'string' && objectId.trim() !== '';
+  const hasCaseId = typeof caseId === 'string' && caseId.trim() !== '';
+  if (hasObjectId === hasCaseId) {
+    res.status(400).json({
+      error: 'Provide exactly one of "objectId" or "case_id".',
+    });
+    return;
+  }
+
+  const identifier = hasObjectId ? objectId.trim() : caseId.trim();
+  if (identifier.length > 100) {
+    res.status(400).json({ error: 'The identifier is too long.' });
+    return;
+  }
+
+  getPublicSubmission({
+    objectId: hasObjectId ? identifier : undefined,
+    caseId: hasCaseId ? identifier : undefined,
+  })
+    .then(submission => {
+      if (!submission) {
+        // A private, test, or missing submission all look the same here, so
+        // the route cannot confirm that a private submission exists.
+        res.status(404).json({ error: 'Submission not found.' });
+        return;
+      }
+      res.json({ submission });
     })
     .catch(handlePromiseRejection(res));
 });

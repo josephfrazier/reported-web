@@ -56,6 +56,18 @@ const findByCaseId = async caseId => {
   return findByObjectId(submission.id);
 };
 
+const caseIdsFor = async submission => {
+  const Task = Parse.Object.extend('tasks');
+  const query = new Parse.Query(Task);
+  query.equalTo('submission', submission);
+  query.select('case_id');
+  query.ascending('createdAt');
+  query.limit(1000);
+  // Task records carry no ACL, so this read needs no master key.
+  const tasks = await query.find();
+  return [...new Set(tasks.map(task => task.get('case_id')).filter(Boolean))];
+};
+
 const isPublicOnMap = object =>
   object.get('can_be_shared_publicly') === true &&
   object.get('license') !== 'TEST' &&
@@ -71,5 +83,7 @@ export default async function getPublicSubmission({ objectId, caseId }) {
   if (!submission || !isPublicOnMap(submission)) {
     return null;
   }
-  return publicSubmissionJson(submission);
+  const json = publicSubmissionJson(submission);
+  json.case_ids = await caseIdsFor(submission);
+  return json;
 }

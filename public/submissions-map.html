@@ -279,6 +279,7 @@
     z-index: 9999;
     pointer-events: none;
     width: 300px;
+    max-width: calc(100vw - 32px);
     background: var(--surface);
     border: 1px solid var(--border2);
     border-radius: 4px;
@@ -660,15 +661,51 @@ legendToggleEl.addEventListener('click', () => {
 
 let hideTimer = null;
 let pinned    = false;
+let popupLatLng = null;
+let popupWidth = 300;
+let popupHeight = 320;
 
+// Measure the popup after its content changes; positionPopup uses these to
+// clamp the popup without reading layout on every map move.
+function measurePopup() {
+  popupWidth = popup.offsetWidth;
+  popupHeight = popup.offsetHeight;
+}
+
+// Keep the popup inside the viewport after choosing a side. A marker near
+// an edge can leave too little room for the preferred side.
 function positionPopup(clientX, clientY) {
-  const margin = 16, pw = 300, ph = 320;
+  const margin = 16;
+  const pw = popupWidth;
+  const ph = popupHeight;
+  const maxX = Math.max(margin, window.innerWidth - pw - margin);
+  const maxY = Math.max(margin, window.innerHeight - ph - margin);
   let x = clientX + 16, y = clientY - 24;
-  if (x + pw > window.innerWidth  - margin) x = clientX - pw - 14;
-  if (y + ph > window.innerHeight - margin) y = window.innerHeight - ph - margin;
-  if (y < margin) y = margin;
+  if (x + pw > window.innerWidth - margin) x = clientX - pw - 14;
+  x = Math.min(Math.max(x, margin), maxX);
+  y = Math.min(Math.max(y, margin), maxY);
   popup.style.left = x + 'px';
   popup.style.top  = y + 'px';
+}
+
+function positionPopupForLatLng(latlng) {
+  if (!map || !latlng) return;
+  const point = map.latLngToContainerPoint(latlng);
+  const rect = map.getContainer().getBoundingClientRect();
+  positionPopup(rect.left + point.x, rect.top + point.y);
+}
+
+// The popup is fixed to the viewport, so follow the marker's projected point
+// when the map pans or zooms.
+let popupFrame = 0;
+function repositionPopup() {
+  if (popupFrame) return;
+  popupFrame = requestAnimationFrame(() => {
+    popupFrame = 0;
+    if (popup.classList.contains('visible') && popupLatLng) {
+      positionPopupForLatLng(popupLatLng);
+    }
+  });
 }
 
 function populatePopup(s) {
@@ -697,24 +734,22 @@ function populatePopup(s) {
   } else {
     popupPics.innerHTML = `<div class="popup-no-photo">no photos attached</div>`;
   }
+  measurePopup();
 }
 
 function unpinPopup() {
   pinned = false;
+  popupLatLng = null;
   popup.classList.remove('pinned', 'visible');
 }
 
 closeBtn.addEventListener('click', unpinPopup);
 
-// Click anywhere on the map (not a marker) closes a pinned popup
-document.getElementById('map').addEventListener('click', () => {
-  if (pinned) unpinPopup();
-});
-
 function showPopup(e, s) {
   if (pinned) return; // don't disturb a pinned popup on hover
   clearTimeout(hideTimer);
   populatePopup(s);
+  popupLatLng = e.latlng || null;
   positionPopup(e.originalEvent.clientX, e.originalEvent.clientY);
   popup.classList.remove('pinned');
   popup.classList.add('visible');
@@ -722,19 +757,34 @@ function showPopup(e, s) {
 
 function hidePopup() {
   if (pinned) return;
-  hideTimer = setTimeout(() => popup.classList.remove('visible'), 90);
+  hideTimer = setTimeout(() => {
+    popup.classList.remove('visible');
+    popupLatLng = null;
+  }, 90);
 }
 
-function pinPopupAt(clientX, clientY, s) {
+function pinPopupAt({ clientX, clientY, latlng = null }, s) {
   clearTimeout(hideTimer);
   pinned = true;
   populatePopup(s);
-  positionPopup(clientX, clientY);
+  popupLatLng = latlng;
+  if (latlng) {
+    positionPopupForLatLng(latlng);
+  } else {
+    positionPopup(clientX, clientY);
+  }
   popup.classList.add('visible', 'pinned');
 }
 
 function pinPopup(e, s) {
-  pinPopupAt(e.originalEvent.clientX, e.originalEvent.clientY, s);
+  pinPopupAt(
+    {
+      clientX: e.originalEvent.clientX,
+      clientY: e.originalEvent.clientY,
+      latlng: e.latlng,
+    },
+    s,
+  );
   L.DomEvent.stopPropagation(e); // prevent map click from immediately closing it
 }
 
@@ -743,9 +793,7 @@ function pinPopupForSubmission(s) {
   const lat = s.location?.latitude;
   const lng = s.location?.longitude;
   if (lat == null || lng == null) return;
-  const point = map.latLngToContainerPoint([lat, lng]);
-  const rect = map.getContainer().getBoundingClientRect();
-  pinPopupAt(rect.left + point.x, rect.top + point.y, s);
+  pinPopupAt({ latlng: L.latLng(lat, lng) }, s);
 }
 
 function hasPhotoWithUrl(submission) {
@@ -834,6 +882,16 @@ function renderMap(submissions, target) {
       maxZoom: 19,
     }).addTo(map);
     markerLayer = L.layerGroup().addTo(map);
+    // Use the map's click event, not a DOM listener: Leaflet suppresses it
+    // after a drag, so panning keeps the pinned popup open.
+    map.on('click', () => {
+      if (pinned) unpinPopup();
+    });
+    map.on('move zoom resize', repositionPopup);
+    window.addEventListener('resize', () => {
+      measurePopup();
+      repositionPopup();
+    });
   } else {
     markerLayer.clearLayers();
   }

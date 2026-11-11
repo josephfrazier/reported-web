@@ -60,45 +60,46 @@ const TASK_SUBMISSION_CHUNK = 5000;
 const TASK_RESULT_LIMIT = 10000;
 
 // Group task case IDs by submission id. One query over every polygon result
-// can exceed the task query's 10,000-row limit, so query in submission
-// chunks and page within a chunk when it still hits the limit.
+// can exceed the task query's 10,000-row limit, so query in chunks and split
+// a chunk in half when it still hits the limit.
 export const caseIdsForSubmissions = async submissions => {
   const Task = Parse.Object.extend('tasks');
   const caseIds = new Map();
+
+  async function collect(chunk) {
+    const query = new Parse.Query(Task);
+    query.containedIn('submission', chunk);
+    query.select('submission', 'case_id');
+    query.limit(TASK_RESULT_LIMIT);
+    // Task records carry no ACL, so this read needs no master key.
+    const tasks = await query.find();
+
+    if (tasks.length === TASK_RESULT_LIMIT && chunk.length > 1) {
+      const middle = Math.floor(chunk.length / 2);
+      await collect(chunk.slice(0, middle));
+      await collect(chunk.slice(middle));
+      return;
+    }
+
+    for (const task of tasks) {
+      const submissionId = task.get('submission')?.id;
+      const caseId = task.get('case_id');
+      if (submissionId && caseId) {
+        if (!caseIds.has(submissionId)) {
+          caseIds.set(submissionId, new Set());
+        }
+        caseIds.get(submissionId).add(caseId);
+      }
+    }
+  }
 
   for (
     let start = 0;
     start < submissions.length;
     start += TASK_SUBMISSION_CHUNK
   ) {
-    const chunk = submissions.slice(start, start + TASK_SUBMISSION_CHUNK);
-    let skip = 0;
-    for (;;) {
-      const query = new Parse.Query(Task);
-      query.containedIn('submission', chunk);
-      query.select('submission', 'case_id');
-      query.limit(TASK_RESULT_LIMIT);
-      query.skip(skip);
-      // Task records carry no ACL, so this read needs no master key.
-      // eslint-disable-next-line no-await-in-loop -- each page starts at the previous page's skip.
-      const tasks = await query.find();
-
-      for (const task of tasks) {
-        const submissionId = task.get('submission')?.id;
-        const caseId = task.get('case_id');
-        if (submissionId && caseId) {
-          if (!caseIds.has(submissionId)) {
-            caseIds.set(submissionId, new Set());
-          }
-          caseIds.get(submissionId).add(caseId);
-        }
-      }
-
-      if (tasks.length < TASK_RESULT_LIMIT) {
-        break;
-      }
-      skip += tasks.length;
-    }
+    // eslint-disable-next-line no-await-in-loop -- each chunk is its own task query.
+    await collect(submissions.slice(start, start + TASK_SUBMISSION_CHUNK));
   }
 
   return caseIds;

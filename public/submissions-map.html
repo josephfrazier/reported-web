@@ -599,6 +599,33 @@ function formatDate(iso) {
   } catch(e) { return iso; }
 }
 
+// The API answers its own 4xx errors with `{ error: 'a message' }`, but a
+// thrown server error reaches the browser as `{ error: { message, ... } }`
+// (handlePromiseRejection). Read either shape, so an object is never
+// rendered as "[object Object]".
+function errorMessageFromBody(body) {
+  const error = body && body.error;
+  if (typeof error === 'string' && error) return error;
+  if (error && typeof error.message === 'string' && error.message) {
+    return error.message;
+  }
+  return null;
+}
+
+// A 5xx body carries server detail (one outage answered "unauthorized"),
+// which tells a visitor nothing they can act on, so they get one plain
+// sentence instead. The body still goes to the console for debugging.
+function responseErrorMessage(resp, body) {
+  if (resp.status >= 500) {
+    console.error('Submission request failed', resp.status, body);
+    return 'The submissions service is temporarily unavailable. Please try again in a moment.';
+  }
+  return (
+    errorMessageFromBody(body) ||
+    `Unexpected server error (HTTP ${resp.status}). Please try again.`
+  );
+}
+
 // The reqnumber field holds one Service Request number, or several
 // separated by commas (`311-12345,311-67890`). Only a 311- number has a
 // page on the 311 portal. Link those, and keep any other text as it is.
@@ -1077,7 +1104,7 @@ async function fetchTargetIfNeeded() {
     }
     if (!resp.ok) {
       const body = await resp.json().catch(() => ({}));
-      throw new Error(body.error || `Unexpected server error (HTTP ${resp.status}). Please try again.`);
+      throw new Error(responseErrorMessage(resp, body));
     }
     const data = await resp.json();
     targetSubmission = data.submission || null;
@@ -1128,7 +1155,7 @@ async function fetchAndLoadPolygon(vertices) {
     );
     if (!resp.ok) {
       const body = await resp.json().catch(() => ({}));
-      throw new Error(body.error || `Unexpected server error (HTTP ${resp.status}). Please try again.`);
+      throw new Error(responseErrorMessage(resp, body));
     }
     const data = await resp.json();
     const targetResult = await targetPromise;
@@ -1154,11 +1181,14 @@ async function fetchAndLoadPolygon(vertices) {
     loadedPolygonStr = currentPolygonStr;
     loadMap(submissions, targetResult.target);
   } catch (e) {
-    statusEl.textContent = 'Select the polygon tool and draw a shape on the map.';
+    // Keep the reason on the draw tab after the alert is dismissed: it is
+    // the only explanation left there.
     const isNetworkError = e instanceof TypeError;
-    window.alert(isNetworkError
+    const message = isNetworkError
       ? 'Network error: could not reach the server. Please check your connection and try again.'
-      : `Error: ${e.message}`);
+      : e.message;
+    statusEl.textContent = message;
+    window.alert(isNetworkError ? message : `Error: ${message}`);
   }
 }
 
@@ -1210,7 +1240,7 @@ async function loadMySubmissions() {
     }
     if (!resp.ok) {
       const body = await resp.json().catch(() => ({}));
-      throw new Error(body.error || `Unexpected server error (HTTP ${resp.status}). Please try again.`);
+      throw new Error(responseErrorMessage(resp, body));
     }
     const data = await resp.json();
     const submissions = Array.isArray(data.submissions) ? data.submissions : [];

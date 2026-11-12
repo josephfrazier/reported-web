@@ -620,8 +620,9 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
           videos at most, so a violation over either count becomes consecutive groups, in capture
           order, that fit. It is the rule for a block that nothing else divides: a dark street with
           cars parked along it can give one stale fix and no plate reads, and the block is several
-          reports even though the data cannot separate them. A row the user merged by hand is not
-          split. Finally, sort the violations earliest-first.
+          reports even though the data cannot separate them. Each group is grouped by its own
+          photos, so the plate a violation read stays with the group that holds that photo. A row
+          the user merged by hand is not split. Finally, sort the violations earliest-first.
         </li>
       </ol>
 

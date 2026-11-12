@@ -1076,7 +1076,7 @@ describe('the report cap', () => {
     ]);
   });
 
-  test('keeps the plate on every group, and gives each its own time and place', () => {
+  test('gives the plate to the group that holds the photo that read it', () => {
     const start = 1_000_000;
     const photos = [0, 1, 2, 3, 4, 5].map(index =>
       buildPhoto({
@@ -1085,7 +1085,7 @@ describe('the report cap', () => {
         latitude: latitudeMetersNorthOf(index),
         longitude: BASE_LONGITUDE,
         plateResults:
-          index === 0
+          index === 3
             ? alprResponse({
                 results: [alprResult({ plate: 'aaa111', box: CENTRED_BOX })],
               })
@@ -1095,8 +1095,10 @@ describe('the report cap', () => {
 
     const violations = groupAttachmentsByViolation(photos);
 
+    // The read sits in the second group, so the first says nothing: the label
+    // is not copied across the split.
     expect(violations.map(violation => violation.plate)).toEqual([
-      'AAA111',
+      '',
       'AAA111',
     ]);
     // The first group starts when its first photo was taken and takes the last
@@ -1105,6 +1107,7 @@ describe('the report cap', () => {
     expect(violations[0].latitude).toBe(latitudeMetersNorthOf(2));
     expect(violations[1].createDateMs).toBe(start + 3000);
     expect(violations[1].latitude).toBe(latitudeMetersNorthOf(5));
+    expect(violations[1].photos[0].name).toBe('p3.jpg');
   });
 
   test('does not split a row the user merged', () => {

@@ -45,9 +45,10 @@
  *      groups, in capture order, that fit. This is the rule for a block the
  *      other passes cannot divide: a dark street with cars parked along it
  *      can give one stale fix and no plate reads, and the block is several
- *      reports even though nothing in the data separates them. A row the user
- *      merged by hand is not split here: that is a report they have already
- *      decided on.
+ *      reports even though nothing in the data separates them. Each group is
+ *      grouped by its own photos, so the plate a violation read stays with the
+ *      group that holds that photo. A row the user merged by hand is not split
+ *      here: that is a report they have already decided on.
  *
  * The caller's photo records are used as they are, never copied, so object
  * identity survives: `violation.photos[i].file` is still the same `File` the
@@ -642,6 +643,22 @@ function buildViolation({ photos, plate, licenseState }) {
   };
 }
 
+// The violations one cluster holds, by the plate: a cluster nothing read stays
+// one violation, and otherwise the plate vote splits it and the photos no read
+// claimed adopt the nearest group. Used for a whole time-cluster, and again for
+// each group the report cap splits off, so a split group carries the plate its
+// own photos read rather than one from a photo in another group.
+function violationsInCluster(cluster) {
+  const { groups, orphans } = splitCluster(cluster);
+
+  if (groups.length === 0) {
+    return [buildViolation({ photos: cluster, plate: '', licenseState: '' })];
+  }
+
+  adoptOrphans({ orphans, groups });
+  return groups.map(group => buildViolation(group));
+}
+
 // Which of the report's two kinds a photo is, or null for a file that is
 // neither: the batch takes pictures, videos and zips, and a zip is opened out
 // before grouping.
@@ -658,7 +675,9 @@ const reportKindOf = photo => {
 
 // One violation, split into as many as the report's caps require. The photos
 // keep their capture order, so the earlier group is the earlier part of the
-// block.
+// block. Each group is then grouped as its own cluster, so it carries the
+// plate its own photos read, and a group that still holds two plates divides
+// again.
 function splitAtReportLimits(violation) {
   const counts = { picture: 0, video: 0 };
   violation.photos.forEach(photo => {
@@ -701,16 +720,7 @@ function splitAtReportLimits(violation) {
   });
   flush();
 
-  // The plate is the violation's own, not voted again for each group: these
-  // are parts of one report, and the photos that read the plate can all sit in
-  // one of them.
-  return groups.map(photos =>
-    buildViolation({
-      photos,
-      plate: violation.plate,
-      licenseState: violation.licenseState,
-    }),
-  );
+  return groups.flatMap(photos => violationsInCluster(photos));
 }
 
 // Combine violations the user says are one report.
@@ -766,19 +776,7 @@ export default function groupAttachmentsByViolation(photos) {
   const violations = [];
 
   clusterByTime(sorted).forEach(cluster => {
-    const { groups, orphans } = splitCluster(cluster);
-
-    if (groups.length === 0) {
-      // Nothing in the cluster was read at all. Keep it as one violation
-      // rather than dropping the photos; the queue flags it for manual entry.
-      violations.push(
-        buildViolation({ photos: cluster, plate: '', licenseState: '' }),
-      );
-      return;
-    }
-
-    adoptOrphans({ orphans, groups });
-    groups.forEach(group => violations.push(buildViolation(group)));
+    violations.push(...violationsInCluster(cluster));
   });
 
   // Earliest-first, so the queue walks the batch in the order it was shot.

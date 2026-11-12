@@ -35,8 +35,16 @@ describe('requestLogging', () => {
     sentryLog.mockRestore();
   });
 
-  test('logs method, path, status and duration when the response finishes', () => {
-    const req = { method: 'POST', path: '/api/submit' };
+  test('logs method, path, status, duration and client details on finish', () => {
+    const req = {
+      method: 'POST',
+      path: '/api/submit',
+      headers: {
+        'user-agent': 'Mozilla/5.0 (Macintosh) Chrome/130.0.0.0',
+        referer: 'https://example.com/some/page?utm_source=test',
+        cookie: 'other=value',
+      },
+    };
     const res = fakeResponse({ statusCode: 202 });
 
     requestLogging(req, res, () => {});
@@ -54,11 +62,116 @@ describe('requestLogging', () => {
       status: 202,
       durationMs: expect.any(Number),
       aborted: false,
+      bot: false,
+      userAgent: 'Mozilla/5.0 (Macintosh) Chrome/130.0.0.0',
+      refererHost: 'example.com',
+      hasSession: false,
     });
   });
 
+  test('marks an automated client and a present session cookie', () => {
+    const req = {
+      method: 'GET',
+      path: '/',
+      headers: {
+        'user-agent': 'Googlebot/2.1 (+http://www.google.com/bot.html)',
+        referer: 'https://news.ycombinator.com/item?id=1',
+        cookie: 'reportedWebSession=some-token',
+      },
+    };
+    const res = fakeResponse();
+
+    requestLogging(req, res, () => {});
+    res.emit('finish');
+
+    expect(debug).toHaveBeenCalledWith(
+      expect.stringMatching(/^\[http\] GET \/ 200 \d+ms bot$/),
+    );
+    expect(sentryLog).toHaveBeenCalledWith(
+      'http_request',
+      expect.objectContaining({
+        bot: true,
+        userAgent: 'Googlebot/2.1 (+http://www.google.com/bot.html)',
+        refererHost: 'news.ycombinator.com',
+        hasSession: true,
+      }),
+    );
+  });
+
+  test('keeps the submissions-map polygon and drops other query strings', () => {
+    const polygon =
+      '40.700000,-74.000000;40.710000,-74.010000;40.720000,-74.020000';
+    const req = {
+      method: 'GET',
+      path: '/api/submissions-in-polygon',
+      query: { polygon },
+      headers: { 'user-agent': 'Mozilla/5.0' },
+    };
+    const res = fakeResponse();
+
+    requestLogging(req, res, () => {});
+    res.emit('finish');
+
+    expect(sentryLog).toHaveBeenCalledWith(
+      'http_request',
+      expect.objectContaining({
+        path: '/api/submissions-in-polygon',
+        searchPolygon: polygon,
+      }),
+    );
+
+    const pageReq = {
+      method: 'GET',
+      path: '/submissions-map/',
+      query: { polygon, case_id: '311-22918579' },
+      headers: {},
+    };
+    const pageRes = fakeResponse();
+
+    requestLogging(pageReq, pageRes, () => {});
+    pageRes.emit('finish');
+
+    expect(sentryLog).toHaveBeenCalledWith(
+      'http_request',
+      expect.objectContaining({
+        path: '/submissions-map/',
+        searchPolygon: polygon,
+      }),
+    );
+  });
+
+  test('caps a long submissions-map polygon', () => {
+    const req = {
+      method: 'GET',
+      path: '/api/submissions-in-polygon',
+      query: { polygon: '1,2;'.repeat(2000) },
+      headers: {},
+    };
+    const res = fakeResponse();
+
+    requestLogging(req, res, () => {});
+    res.emit('finish');
+
+    expect(sentryLog.mock.calls[0][1].searchPolygon).toHaveLength(4096);
+  });
+
+  test('does not log a query string from another path', () => {
+    const req = {
+      method: 'GET',
+      path: '/api/geosearch',
+      query: { polygon: 'not-a-search' },
+      headers: {},
+    };
+    const res = fakeResponse();
+
+    requestLogging(req, res, () => {});
+    res.emit('finish');
+
+    expect(sentryLog.mock.calls[0][1]).not.toHaveProperty('searchPolygon');
+  });
+
   test('logs a client disconnect once, marked as aborted', () => {
-    const req = { method: 'GET', path: '/slow' };
+    const req = { method: 'GET', path: '/slow', headers: {} };
     const res = fakeResponse({ writableFinished: false });
 
     requestLogging(req, res, () => {});
@@ -66,16 +179,22 @@ describe('requestLogging', () => {
 
     expect(debug).toHaveBeenCalledTimes(1);
     expect(debug).toHaveBeenCalledWith(
-      expect.stringMatching(/^\[http\] GET \/slow 200 \d+ms aborted$/),
+      expect.stringMatching(/^\[http\] GET \/slow 200 \d+ms aborted bot$/),
     );
     expect(sentryLog).toHaveBeenCalledWith(
       'http_request',
-      expect.objectContaining({ path: '/slow', aborted: true }),
+      expect.objectContaining({
+        path: '/slow',
+        aborted: true,
+        bot: true,
+        userAgent: '',
+        refererHost: 'direct',
+      }),
     );
   });
 
   test('does not log twice when close follows finish', () => {
-    const req = { method: 'GET', path: '/' };
+    const req = { method: 'GET', path: '/', headers: {} };
     const res = fakeResponse();
 
     requestLogging(req, res, () => {});
@@ -86,29 +205,29 @@ describe('requestLogging', () => {
     expect(sentryLog).toHaveBeenCalledTimes(1);
   });
 
-  test('logs one line for a real request, without its query string', async () => {
+  test('reads the polygon from a real Express request', async () => {
     const app = express();
     app.use(requestLogging);
-    app.get('/reports/:id', (req, res) => res.status(201).json({ ok: true }));
+    app.get('/api/submissions-in-polygon', (req, res) =>
+      res.json({ ok: true }),
+    );
 
     const server = await listen(app);
     try {
       const { port } = server.address();
+      const polygon = '40.1,-73.1;40.2,-73.2;40.3,-73.3';
       const response = await fetch(
-        `http://127.0.0.1:${port}/reports/42?utm_source=test`,
+        `http://127.0.0.1:${port}/api/submissions-in-polygon?polygon=${encodeURIComponent(
+          polygon,
+        )}`,
       );
       await response.json();
 
-      expect(debug).toHaveBeenCalledTimes(1);
-      expect(debug).toHaveBeenCalledWith(
-        expect.stringMatching(/^\[http\] GET \/reports\/42 201 \d+ms$/),
-      );
       expect(sentryLog).toHaveBeenCalledWith(
         'http_request',
         expect.objectContaining({
-          method: 'GET',
-          path: '/reports/42',
-          status: 201,
+          path: '/api/submissions-in-polygon',
+          searchPolygon: polygon,
         }),
       );
     } finally {

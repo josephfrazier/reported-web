@@ -65,6 +65,7 @@ import config from './config.js';
 import readLicenseViaALPR from './alpr.js';
 import getReviewAppSource from './getReviewAppSource.js';
 import { relayEnvelope } from './sentryTunnel.js';
+import requestLogging from './requestLogging.js';
 
 // `process.env.BUILD_COMMIT` is not a config var: the build replaces it with
 // the commit it compiled (see tools/webpack.config.js), so a deployed app
@@ -177,6 +178,12 @@ if (!global.navigator.userAgent) {
 }
 
 const app = express();
+
+// Mount this before anything that can answer a request, so redirects, static
+// files and API responses are all counted. Each request adds a compact line to
+// the Heroku log and an `event:http_request` entry to Sentry Logs.
+app.use(requestLogging);
+
 app.use(compression());
 app.use(forceSsl);
 

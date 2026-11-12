@@ -24,28 +24,49 @@ const refererHost = value => {
   }
 };
 
-// The submissions map has no text search: its search is the polygon drawn on
-// the map. The polygon travels in the `polygon` query parameter of both the
-// page URL and its API request, so keep it for both paths. The searched area
-// can be replayed from /submissions-map?polygon=..., while every other
-// endpoint's query string stays out of the log so tokens and personal values
-// never reach it.
+// The submissions map's search is either a polygon drawn on the map or a
+// linked report: `polygon`, `submission`/`objectId` and `case_id` travel in
+// the page URL and the map's two API requests. Keep those, so a search can be
+// replayed from /submissions-map?..., while every other endpoint's query
+// string stays out of the log so tokens and personal values never reach it.
+// `objectId` is the API's name for the page's `submission`.
 const SEARCH_QUERY_PATHS = new Set([
   '/submissions-map',
   '/api/submissions-in-polygon',
+  '/api/submission',
 ]);
 const MAX_LOGGED_SEARCH_LENGTH = 4096;
+const MAX_LOGGED_ID_LENGTH = 200;
 
-const searchPolygon = req => {
+const stringParam = (value, maxLength) =>
+  typeof value === 'string' && value !== ''
+    ? value.slice(0, maxLength)
+    : undefined;
+
+const searchQuery = req => {
   // Express matches these routes with or without a trailing slash.
   const path = req.path.replace(/\/+$/, '') || '/';
   if (!SEARCH_QUERY_PATHS.has(path)) {
-    return undefined;
+    return {};
   }
-  const { polygon } = req.query;
-  return typeof polygon === 'string'
-    ? polygon.slice(0, MAX_LOGGED_SEARCH_LENGTH)
-    : undefined;
+
+  const { query } = req;
+  const fields = {};
+  const polygon = stringParam(query.polygon, MAX_LOGGED_SEARCH_LENGTH);
+  if (polygon !== undefined) {
+    fields.searchPolygon = polygon;
+  }
+  const caseId = stringParam(query.case_id, MAX_LOGGED_ID_LENGTH);
+  if (caseId !== undefined) {
+    fields.searchCaseId = caseId;
+  }
+  const submission =
+    stringParam(query.submission, MAX_LOGGED_ID_LENGTH) ??
+    stringParam(query.objectId, MAX_LOGGED_ID_LENGTH);
+  if (submission !== undefined) {
+    fields.searchSubmission = submission;
+  }
+  return fields;
 };
 
 // Logs one line per HTTP request, so traffic can be counted after the fact.
@@ -60,11 +81,14 @@ const searchPolygon = req => {
 // client actually got and the time the request took. A client that disconnects
 // before the response finishes also ends it, and is logged once with
 // `aborted: true`. Query strings are left out apart from the submissions-map
-// polygon: they fragment `path` and can carry values that are not ours to log.
+// search fields: they fragment `path` and can carry values that are not ours
+// to log.
 //
-// `bot`, `userAgent`, `refererHost` and `hasSession` describe who made the
-// request without recording the client's IP address or any cookie value.
-// `hasSession` only says a session cookie was present, not that it is valid.
+// `bot`, `userAgent`, `refererHost`, `hasSession` and `ip` describe who made
+// the request. `ip` is Express's `req.ip`, which the trusted proxy setting in
+// src/config.js resolves from X-Forwarded-For in production. Cookie values are
+// never logged; `hasSession` only says a session cookie was present, not that
+// it is valid.
 const requestLogging = (req, res, next) => {
   const startedAt = process.hrtime.bigint();
   let logged = false;
@@ -75,7 +99,6 @@ const requestLogging = (req, res, next) => {
     }
     logged = true;
     const userAgent = req.headers['user-agent'] || '';
-    const polygon = searchPolygon(req);
     const fields = {
       event: 'http_request',
       method: req.method,
@@ -87,7 +110,8 @@ const requestLogging = (req, res, next) => {
       userAgent: userAgent.slice(0, 300),
       refererHost: refererHost(req.headers.referer),
       hasSession: Boolean(readSessionToken(req)),
-      ...(polygon === undefined ? {} : { searchPolygon: polygon }),
+      ip: req.ip,
+      ...searchQuery(req),
     };
 
     // eslint-disable-next-line no-console

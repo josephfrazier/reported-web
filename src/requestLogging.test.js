@@ -39,6 +39,7 @@ describe('requestLogging', () => {
     const req = {
       method: 'POST',
       path: '/api/submit',
+      ip: '203.0.113.7',
       headers: {
         'user-agent': 'Mozilla/5.0 (Macintosh) Chrome/130.0.0.0',
         referer: 'https://example.com/some/page?utm_source=test',
@@ -66,6 +67,7 @@ describe('requestLogging', () => {
       userAgent: 'Mozilla/5.0 (Macintosh) Chrome/130.0.0.0',
       refererHost: 'example.com',
       hasSession: false,
+      ip: '203.0.113.7',
     });
   });
 
@@ -123,6 +125,7 @@ describe('requestLogging', () => {
     const pageReq = {
       method: 'GET',
       path: '/submissions-map/',
+      ip: '198.51.100.9',
       query: { polygon, case_id: '311-22918579' },
       headers: {},
     };
@@ -136,6 +139,70 @@ describe('requestLogging', () => {
       expect.objectContaining({
         path: '/submissions-map/',
         searchPolygon: polygon,
+        searchCaseId: '311-22918579',
+      }),
+    );
+  });
+
+  test('keeps linked-report params on the page and its API', () => {
+    const pageReq = {
+      method: 'GET',
+      path: '/submissions-map',
+      ip: '198.51.100.9',
+      query: { submission: 'abc123', case_id: '311-22918579' },
+      headers: {},
+    };
+    const pageRes = fakeResponse();
+
+    requestLogging(pageReq, pageRes, () => {});
+    pageRes.emit('finish');
+
+    expect(sentryLog).toHaveBeenCalledWith(
+      'http_request',
+      expect.objectContaining({
+        path: '/submissions-map',
+        searchSubmission: 'abc123',
+        searchCaseId: '311-22918579',
+      }),
+    );
+
+    const submissionApiReq = {
+      method: 'GET',
+      path: '/api/submission',
+      ip: '198.51.100.9',
+      query: { objectId: 'abc123' },
+      headers: {},
+    };
+    const submissionApiRes = fakeResponse();
+
+    requestLogging(submissionApiReq, submissionApiRes, () => {});
+    submissionApiRes.emit('finish');
+
+    expect(sentryLog).toHaveBeenCalledWith(
+      'http_request',
+      expect.objectContaining({
+        path: '/api/submission',
+        searchSubmission: 'abc123',
+      }),
+    );
+
+    const caseApiReq = {
+      method: 'GET',
+      path: '/api/submission',
+      ip: '198.51.100.9',
+      query: { case_id: '311-22918579' },
+      headers: {},
+    };
+    const caseApiRes = fakeResponse();
+
+    requestLogging(caseApiReq, caseApiRes, () => {});
+    caseApiRes.emit('finish');
+
+    expect(sentryLog).toHaveBeenCalledWith(
+      'http_request',
+      expect.objectContaining({
+        path: '/api/submission',
+        searchCaseId: '311-22918579',
       }),
     );
   });
@@ -228,6 +295,7 @@ describe('requestLogging', () => {
         expect.objectContaining({
           path: '/api/submissions-in-polygon',
           searchPolygon: polygon,
+          ip: expect.any(String),
         }),
       );
     } finally {

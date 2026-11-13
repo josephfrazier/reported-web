@@ -630,7 +630,7 @@ exports[`Home renders Edit Profile UI 1`] = `
                   type="checkbox"
                 />
                  
-                I'm willing to testify at a hearing, which can be done by phone.
+                I'm willing to testify at a hearing, which can be done by phone. This is required if you want cabbies to get fined for their violations.
               </label>
               <label
                 htmlFor="can_be_shared_publicly"
@@ -1409,7 +1409,7 @@ exports[`Home renders Sign Up modal UI 1`] = `
                 type="checkbox"
               />
                
-              I'm willing to testify at a hearing, which can be done by phone.
+              I'm willing to testify at a hearing, which can be done by phone. This is required if you want cabbies to get fined for their violations.
             </label>
             <button
               className="auth-submit-btn"
@@ -4651,7 +4651,7 @@ exports[`Home shows the email-updates checkbox only while withholding, and sets 
                   type="checkbox"
                 />
                  
-                I'm willing to testify at a hearing, which can be done by phone.
+                I'm willing to testify at a hearing, which can be done by phone. This is required if you want cabbies to get fined for their violations.
               </label>
               <label
                 htmlFor="can_be_shared_publicly"

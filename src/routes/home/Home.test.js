@@ -7375,10 +7375,10 @@ describe('Home', () => {
       cleanup();
     });
 
-    // The picker is the report's own selection, and a violation with more than
-    // three photos is one whose picker exists: unticking every photo leaves the
-    // violation where it is, with nothing attached, so that any of them can be
-    // ticked again. None of its photos have been removed.
+    // The picker is the report's own selection, and every photo of the loaded
+    // violation carries a box: unticking every photo leaves the violation where
+    // it is, with nothing attached, so that any of them can be ticked again.
+    // None of its photos have been removed.
     test('keeps the violation when the picker unticks every photo', async () => {
       const photos = ['p1', 'p2', 'p3', 'p4'].map((name, index) => {
         const file = new File(['picture'], `${name}.jpg`, {
@@ -7396,7 +7396,7 @@ describe('Home', () => {
 
       const { homeRef, tree, cleanup } = await oneRowOf(photos);
 
-      // The picker only appears for a violation with more than three photos.
+      // Every photo of the loaded violation carries a box, whatever the count.
       const pickerBox = name =>
         tree.root.findByProps({
           id: `batch-photo-${photos.findIndex(p => p.name === name)}`,
@@ -7421,6 +7421,49 @@ describe('Home', () => {
       expect(
         homeRef.current.state.attachmentData.map(file => file.name),
       ).toEqual(['p4.jpg']);
+
+      cleanup();
+    });
+
+    // The boxes are not only for a group the report's caps cannot hold: a
+    // small group needs them too, to leave a photo out of the report without
+    // deleting it from the batch.
+    test('keeps a box on every photo of a small violation', async () => {
+      const photos = ['p1', 'p2'].map((name, index) => {
+        const file = new File(['picture'], `${name}.jpg`, {
+          type: 'image/jpeg',
+        });
+        return {
+          file,
+          name: file.name,
+          createDateMs: 1704110400000 + index * 1000,
+          createDateOffset: 0,
+          latitude: 40.7129,
+          longitude: -74.0061,
+        };
+      });
+
+      const { homeRef, tree, cleanup } = await oneRowOf(photos);
+
+      const boxes = tree.root.findAll(
+        node =>
+          typeof node.props?.id === 'string' &&
+          node.props.id.startsWith('batch-photo-'),
+      );
+      expect(boxes.map(box => box.props.id)).toEqual([
+        'batch-photo-0',
+        'batch-photo-1',
+      ]);
+      expect(boxes.map(box => box.props.checked)).toEqual([true, true]);
+
+      renderer.act(() => {
+        boxes[0].props.onChange({ target: { checked: false } });
+      });
+      expect(
+        homeRef.current.state.attachmentData.map(file => file.name),
+      ).toEqual(['p2.jpg']);
+      // It is only out of the report; the batch still holds it.
+      expect(homeRef.current.state.batchPhotos).toHaveLength(2);
 
       cleanup();
     });

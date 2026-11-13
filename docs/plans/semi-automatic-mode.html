@@ -1119,10 +1119,11 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
       <p>
         The grouping splits a violation that is over the report's cap before it reaches the queue
         (see <a href="#the-five-passes"><em>The five passes</em></a>), so an ordinary row already
-        fits. A row the user merged by hand can hold more: the picker shows every photo in it with
-        checkboxes, the first three pictures and the first three videos selected. A fourth picture
-        or video can be ticked so that its thumbnail can be seen, and the warning says to uncheck
-        one to swap it in. Submit stays off until the report is back within
+        fits. Every loaded row's photos carry a checkbox, whatever the count, so a photo can be
+        left out of the report without leaving the batch; the first three pictures and the first
+        three videos are ticked. A row the user merged by hand can hold more: a fourth picture or
+        video can be ticked so that its thumbnail can be seen, and the warning says to uncheck one
+        to swap it in. Submit stays off until the report is back within
         <strong>3 images <em>and</em> 3 videos</strong>, which is the server's real limit —
         <code>createSubmission.js</code> takes <code>images.slice(0, 3)</code> and
         <code>videos.slice(0, 3)</code> and drops the rest <em>without an error</em>, so the
@@ -1130,9 +1131,9 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
       </p>
       <p>
         A report takes its time and place from the photos it is holding, so unticking one moves
-        both onto the photos that are left. The X on a thumbnail does the same, which matters
-        because a group of three or fewer has no picker at all. Either is left alone once the user
-        has set it by hand — a time typed into the field, or a place the pin was dragged to.
+        both onto the photos that are left. The X on a thumbnail deletes the photo from the batch
+        instead, and moves them the same way. Either is left alone once the user has set it by
+        hand — a time typed into the field, or a place the pin was dragged to.
       </p>
     </section>
 

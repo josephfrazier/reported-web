@@ -88,8 +88,7 @@
     "universal-router": "^6.0.0",
     "video-extensions": "^2.0.0",
     "whatwg-fetch": "^3.6.20",
-    "wreq-js": "^3.2.0",
-    "zip-array": "^1.0.1"
+    "wreq-js": "^3.2.0"
   },
   "devDependencies": {
     "@babel/core": "^7.29.7",

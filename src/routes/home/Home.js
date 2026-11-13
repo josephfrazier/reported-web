@@ -1369,6 +1369,12 @@ class Home extends React.Component {
     // a row whose photo another row still holds has none to take, so it is
     // remembered here instead. See `withoutDismissedRows`.
     this.dismissedRows = new Set();
+    // A submitted row whose report left photos behind is remembered by the
+    // photos it took, not by its identity: the photos it left can form a row
+    // with the same identity (same first photo, same plate). A row made only
+    // of photos the report took is the row that already went.
+    this.submittedRows = new Set();
+    this.submittedPhotos = new Set();
     this.batchFolderInputRef = React.createRef();
     this.batchPhotosInputRef = React.createRef();
     // What each attached photo's reads said, keyed by the file, for as long as
@@ -3993,15 +3999,32 @@ class Home extends React.Component {
     );
   };
 
-  // The rows the user has not deleted. A row is kept out of the queue by
-  // remembering it rather than by its photos: one frame can read as two cars,
-  // and each of those rows holds that frame, so deleting one of them has no
-  // photo to take with it -- and the regrouping a later reading does would
-  // otherwise put the row straight back.
+  // The rows the user has not deleted, and the rows built only from photos a
+  // report already took. A row is kept out of the queue by remembering it
+  // rather than by its photos: one frame can read as two cars, and each of
+  // those rows holds that frame, so deleting one of them has no photo to take
+  // with it -- and the regrouping a later reading does would otherwise put the
+  // row straight back.
+  //
+  // A submitted row is different: the photos it did not take stay behind and
+  // can form a row with its identity, so only a row made entirely of the
+  // photos it took is the row that already went.
   withoutDismissedRows = violations =>
-    violations.filter(
-      violation => !this.dismissedRows.has(batchViolationIdentity(violation)),
-    );
+    violations.filter(violation => {
+      const identity = batchViolationIdentity(violation);
+
+      if (this.dismissedRows.has(identity)) {
+        return false;
+      }
+
+      if (!this.submittedRows.has(identity)) {
+        return true;
+      }
+
+      return !violation.photos.every(photo =>
+        this.submittedPhotos.has(photo.file),
+      );
+    });
 
   // Drop a group from the batch. The row is remembered as deleted, and its
   // photos go with it -- regrouping the batch (the next pick does) must not
@@ -4303,8 +4326,9 @@ class Home extends React.Component {
     // such. Taking it out of the queue is not enough on its own: regrouping
     // works from the photos the rows hold, and a photo of this row's can still
     // be in another row -- one frame, several cars -- so the row would be built
-    // again and a reported violation would be back in the queue. See
-    // `withoutDismissedRows`.
+    // again and a reported violation would be back in the queue. A report that
+    // left photos behind is remembered by the photos it took, since those are
+    // what tell it from the row it leaves. See `withoutDismissedRows`.
     const reported = batchViolations[currentViolationIndex];
 
     // What the report leaves behind: the photos of its row that it does not
@@ -4329,7 +4353,14 @@ class Home extends React.Component {
     const knownRows = new Set(remainingViolations.map(batchViolationIdentity));
 
     if (reported) {
-      this.dismissedRows.add(batchViolationIdentity(reported));
+      if (leftBehind.length === 0) {
+        this.dismissedRows.add(batchViolationIdentity(reported));
+      } else {
+        // What it left behind can be a row with this row's own identity, so
+        // dismiss the report by the photos it took rather than by its name.
+        this.submittedRows.add(batchViolationIdentity(reported));
+        submittedFiles.forEach(file => this.submittedPhotos.add(file));
+      }
     }
 
     // The report carries these photos now, and the queue no longer shows

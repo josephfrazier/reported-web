@@ -7812,6 +7812,103 @@ describe('Home', () => {
       cleanup();
     });
 
+    // The report does not have to take the photos its row starts with. What it
+    // leaves behind can look like the row it came from -- same first photo,
+    // same plate -- so the submitted row must not take it out of the queue
+    // with it.
+    test('gives up photos the report did not take, even when they start the row', async () => {
+      const photos = ['p1', 'p2', 'p3', 'p4'].map((name, index) => {
+        const file = new File(['picture'], `${name}.jpg`, {
+          type: 'image/jpeg',
+        });
+        return {
+          file,
+          name: file.name,
+          createDateMs: 1704110400000 + index * 1000,
+          createDateOffset: 0,
+          latitude: 40.7129,
+          longitude: -74.0061,
+          // p1 reads the row's plate, so a group left behind that still holds
+          // it votes the same plate and has the same identity.
+          plateResults:
+            index === 0
+              ? {
+                  uploadWidth: 1000,
+                  uploadHeight: 1000,
+                  results: [
+                    {
+                      plate: 'T696817C',
+                      candidates: [{ plate: 'T696817C', score: 1 }],
+                      box: { xmin: 490, ymin: 490, xmax: 510, ymax: 510 },
+                      region: { code: 'us-ny', score: 1 },
+                      score: 1,
+                    },
+                  ],
+                }
+              : undefined,
+        };
+      });
+      const violation = {
+        photos,
+        plate: 'T696817C',
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs: 1704110400000,
+        createDateOffset: 0,
+      };
+
+      const { homeRef, clickQueueLoad, toggleAttachment, submit, cleanup } =
+        await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        homeRef.current.geosearchAddressCache.set({
+          latitude: 40.7129,
+          longitude: -74.0061,
+          address: '123 Main St, Manhattan',
+        });
+        homeRef.current.setState({
+          batchPhotos: photos,
+          batchViolations: [violation],
+        });
+      });
+      clickQueueLoad('T696817C');
+
+      // The first three pictures are attached; untick the one the row is
+      // named after, leaving p2 and p3 in the report.
+      toggleAttachment('p1.jpg', false);
+      expect(
+        homeRef.current.state.attachmentData.map(file => file.name),
+      ).toEqual(['p2.jpg', 'p3.jpg']);
+
+      await submit();
+
+      // The regroup happens off the submit's own path, so let it land.
+      await renderer.act(async () => {
+        for (let i = 0; i < 3; i += 1) {
+          // eslint-disable-next-line no-await-in-loop -- one round per pending promise chain.
+          await new Promise(resolve => setImmediate(resolve));
+        }
+      });
+
+      const { batchPhotos, batchViolations } = homeRef.current.state;
+
+      // p1 and p4 were not in the report, so they stay in the batch and get a
+      // row of their own, even though that row starts with p1 and so shares
+      // the submitted row's identity.
+      expect(batchPhotos.map(photo => photo.name)).toEqual([
+        'p1.jpg',
+        'p4.jpg',
+      ]);
+      expect(batchViolations).toHaveLength(1);
+      expect(batchViolations[0].photos.map(photo => photo.name)).toEqual([
+        'p1.jpg',
+        'p4.jpg',
+      ]);
+
+      cleanup();
+    });
+
     // A violation's time and place come from its earliest photo, so which
     // photos the report holds decides both. These two tests are the pair: the
     // form follows the photos until the user sets either by hand.

@@ -706,8 +706,8 @@ input[type='search']::-webkit-search-cancel-button {
   z-index: 1;
   top: 6px;
   left: 6px;
-  width: 22px;
-  height: 22px;
+  width: 44px;
+  height: 44px;
   margin: 0;
   accent-color: #1a73e8;
   cursor: pointer;
@@ -743,11 +743,11 @@ input[type='search']::-webkit-search-cancel-button {
 .batch-photo-actions summary {
   display: block;
   width: max-content;
-  padding: 0 6px;
+  padding: 0 12px;
   list-style: none;
   background: rgb(255 255 255 / 85%);
   border-radius: 2px;
-  font-size: 1rem;
+  font-size: 2rem;
   line-height: 1.2;
   cursor: pointer;
 }

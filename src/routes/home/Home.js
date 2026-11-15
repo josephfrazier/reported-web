@@ -5044,6 +5044,7 @@ class Home extends React.Component {
                     top: 0,
                     right: 0,
                     margin: '1px',
+                    fontSize: '2em',
                   }}
                   onClick={() => this.deletePhoto(photo)}
                 />

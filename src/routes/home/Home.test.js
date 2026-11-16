@@ -5152,6 +5152,50 @@ describe('Home', () => {
       cleanup();
     });
 
+    test('follows the report when rows at the top share its first photo', async () => {
+      const { homeRef, cleanup } = await renderBatchWithFiles([]);
+
+      const photo = name => ({
+        file: new File(['picture'], name, { type: 'image/jpeg' }),
+        name,
+      });
+      const shared = photo('frame.jpg');
+      const mine = photo('mine.jpg');
+      const other = photo('other.jpg');
+      const row = (photos, plate) => ({
+        photos,
+        plate,
+        licenseState: 'NY',
+        createDateMs: 1704110400000,
+        latitude: 40.7129,
+        longitude: -74.0061,
+      });
+      const first = row([shared, other], 'AAA111');
+      const second = row([shared, mine], 'BBB222');
+
+      // The frame is the first photo of both rows, so following the first row
+      // holding it lands on the wrong one. The form was on the second row, and
+      // only that row holds the rest of its report.
+      const rowsAfterRead = jest
+        .spyOn(homeRef.current, 'rowsAfterRead')
+        .mockReturnValue([first, second]);
+
+      const next = homeRef.current.applyPlateRead({
+        photo: mine,
+        read: mine,
+      })({
+        batchViolations: [first, second],
+        currentViolationIndex: 1,
+        attachmentData: [shared.file, mine.file],
+        batchPhotos: [],
+      });
+
+      expect(next.currentViolationIndex).toBe(1);
+
+      rowsAfterRead.mockRestore();
+      cleanup();
+    });
+
     test('shows the address of the violation that was clicked, not the last one', async () => {
       const photos = [
         jpeg({ name: 'near.jpg', size: 4 }),

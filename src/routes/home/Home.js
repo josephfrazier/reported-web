@@ -3156,17 +3156,39 @@ class Home extends React.Component {
   // leave a whole batch of different cars as one row, which is what the plate
   // is read for in the first place.
   //
-  // The form follows the row that holds the photos it has attached -- the
-  // report it was already making -- wherever the regrouping put it.
+  // The form follows the row that holds the most of the photos it had -- the
+  // report it was already making -- wherever the regrouping put it. A shared
+  // frame can be the first photo of several rows, so the first row holding it
+  // is not necessarily the one the form was on.
   applyPlateRead =
     ({ photo, read }) =>
     state => {
       const batchViolations = this.rowsAfterRead(state, { photo, read });
 
-      const [firstAttached] = state.attachmentData;
       const loaded = state.batchViolations[state.currentViolationIndex];
+
+      // A shared frame is the first photo of every row read from it, so the
+      // row the form is on is not the first row holding the file it opened
+      // with. Count the loaded row's photos each rebuilt row holds, then the
+      // form's own attachments, and follow the row those point at.
+      const loadedFiles = new Set(
+        (loaded?.photos || []).map(candidate => candidate.file),
+      );
+      const attachedFiles = new Set(state.attachmentData);
       const followed =
-        rowHoldingFile(batchViolations, firstAttached?.file) ||
+        batchViolations
+          .map(row => ({
+            row,
+            report: row.photos.filter(candidate =>
+              loadedFiles.has(candidate.file),
+            ).length,
+            attached: row.photos.filter(candidate =>
+              attachedFiles.has(candidate.file),
+            ).length,
+          }))
+          .filter(({ report, attached }) => report > 0 || attached > 0)
+          .sort((a, b) => b.report - a.report || b.attached - a.attached)[0]
+          ?.row ||
         rowHoldingFile(batchViolations, loaded?.photos[0]?.file) ||
         // A row with no photos has no file to follow; the rebuilding above
         // kept that same record.

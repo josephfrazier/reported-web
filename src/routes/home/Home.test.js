@@ -3527,6 +3527,118 @@ describe('Home', () => {
       cleanup();
     });
 
+    // Waits out the extraction pass -- real FileReader I/O through the
+    // stubs above -- so a test can see the time a photo gave the form.
+    const settleExtractions = () =>
+      renderer.act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 700));
+      });
+
+    // The report just filed keeps its time; the next report has none of its
+    // own until its photos give one, so it starts at now -- the time a
+    // reloaded page shows. The form used to keep the filed report's time,
+    // and a photo that read no time of its own then left it there.
+    test('starts the next report at now, not at the filed report’s time', async () => {
+      const photo = new File([photoBytes('taken')], 'taken.jpg', {
+        type: 'image/jpeg',
+      });
+      exifr.parse.mockImplementation(async () => ({
+        CreateDate: new Date(Date.UTC(2016, 0, 1, 12, 0, 10)),
+        OffsetTimeDigitized: '+00:00',
+      }));
+
+      const { homeRef, submit, cleanup } = await renderWithFiles({
+        files: [photo],
+      });
+      await settleExtractions();
+
+      // The photo gave the form its time, and the report filed with it.
+      expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:10');
+
+      await submit();
+
+      // The suite pins now to 2016-11-18 00:00 UTC, which is 19:00 the
+      // evening before in New York.
+      expect(homeRef.current.state.CreateDate).toBe('2016-11-17T19:00:00');
+
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    // A photo exported without EXIF has no time to give, so the form keeps
+    // the time it has -- which, after a submission, has to be now rather
+    // than the time of the report just filed.
+    test('keeps now when the next report’s photo has no time to give', async () => {
+      const dated = new File([photoBytes('dated')], 'dated.jpg', {
+        type: 'image/jpeg',
+      });
+      exifr.parse.mockImplementation(async () => ({
+        CreateDate: new Date(Date.UTC(2016, 0, 1, 12, 0, 10)),
+        OffsetTimeDigitized: '+00:00',
+      }));
+
+      const { homeRef, submit, cleanup } = await renderWithFiles({
+        files: [dated],
+      });
+      await settleExtractions();
+      await submit();
+
+      exifr.parse.mockImplementation(async () => {
+        throw new Error('no EXIF');
+      });
+      const undated = new File([photoBytes('undated')], 'undated.jpg', {
+        type: 'image/jpeg',
+      });
+      await renderer.act(async () => {
+        await homeRef.current.handleAttachmentData({
+          attachmentData: [undated],
+        });
+      });
+      await settleExtractions();
+
+      expect(homeRef.current.state.CreateDate).toBe('2016-11-17T19:00:00');
+
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    // The reset is only the start: a photo that carries a time still gives
+    // the next report that time.
+    test('takes the next report’s time from its own photo', async () => {
+      const first = new File([photoBytes('first')], 'first.jpg', {
+        type: 'image/jpeg',
+      });
+      exifr.parse.mockImplementation(async () => ({
+        CreateDate: new Date(Date.UTC(2016, 0, 1, 12, 0, 10)),
+        OffsetTimeDigitized: '+00:00',
+      }));
+
+      const { homeRef, submit, cleanup } = await renderWithFiles({
+        files: [first],
+      });
+      await settleExtractions();
+      await submit();
+
+      exifr.parse.mockImplementation(async () => ({
+        CreateDate: new Date(Date.UTC(2016, 0, 1, 13, 0, 0)),
+        OffsetTimeDigitized: '+00:00',
+      }));
+      const second = new File([photoBytes('second')], 'second.jpg', {
+        type: 'image/jpeg',
+      });
+      await renderer.act(async () => {
+        await homeRef.current.handleAttachmentData({
+          attachmentData: [second],
+        });
+      });
+      await settleExtractions();
+
+      expect(homeRef.current.state.CreateDate).toBe('2016-01-01T13:00:00');
+
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
     test('submits the pre-uploaded attachment IDs instead of re-sending the files', async () => {
       const photo = new File(['photo'], 'photo.jpg', { type: 'image/jpeg' });
       const { homeRef, axiosPost, submit, cleanup } = await renderWithFiles({

@@ -3697,6 +3697,15 @@ class Home extends React.Component {
                             latitude: defaultLatitude,
                             longitude: defaultLongitude,
                           });
+                          // The filed report took its time with it. The next
+                          // report has no time of its own until its photos
+                          // give one, so it starts at now -- the time a
+                          // reloaded page shows. Keeping the filed report's
+                          // time left it in the field whenever the next
+                          // photo had none to give.
+                          this.setCreateDate({
+                            millisecondsSinceEpoch: Date.now(),
+                          });
                           Home.notifySubmissionThanks(
                             <React.Fragment>
                               <p>Thanks for your submission!</p>

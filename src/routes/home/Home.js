@@ -270,6 +270,12 @@ const createDateValue = ({ millisecondsSinceEpoch, offset }) => {
   );
 };
 
+// The first two comma-separated parts of an address -- the street and the
+// borough -- which is as much as a label needs to name the place. The Where
+// field and the lock's hint both show addresses this way.
+const shortAddress = address =>
+  address ? address.split(', ').slice(0, 2).join(', ') : address;
+
 // What the form records as the origin of a location the photos gave it. The
 // map and the address field write their own words in its place, which is how a
 // place the user set is told from one the photos did -- and the place follows
@@ -1450,6 +1456,9 @@ class Home extends React.Component {
       violationSummaryComponent: null,
       submissions: [],
       addressProvenance: '',
+      // The place unchecking the lock would return the report to, with its
+      // address; see `refreshUnlockPlace`. Null when there is no such place.
+      unlockPlace: null,
 
       plateDataByAttachmentName: {},
 
@@ -1484,6 +1493,8 @@ class Home extends React.Component {
     this.geosearchAddressCache = createGeosearchAddressCache();
     // Places with an address lookup in flight; see geocodeBatchViolation.
     this.geosearchesInFlight = new Set();
+    // Places with a hint lookup in flight; see `refreshUnlockPlace`.
+    this.unlockAddressLookups = new Set();
     // Serialises batch passes: picks accumulate, and each pass must see the
     // results of the one before it (see addFilesToBatch).
     this.batchQueue = Promise.resolve();
@@ -1652,6 +1663,19 @@ class Home extends React.Component {
 
     if (prevState.attachmentData !== this.state.attachmentData) {
       this.warnAboutMissingPhotoValues();
+    }
+
+    // The lock's hint names the place the photos give, so it is asked for
+    // again when the box changes, the photos it reads change, or the map
+    // moves the locked place.
+    if (
+      prevState.isLocationLocked !== this.state.isLocationLocked ||
+      (this.state.isLocationLocked &&
+        (prevState.attachmentData !== this.state.attachmentData ||
+          prevState.latitude !== this.state.latitude ||
+          prevState.longitude !== this.state.longitude))
+    ) {
+      this.refreshUnlockPlace();
     }
   }
 
@@ -4680,6 +4704,97 @@ class Home extends React.Component {
     });
   };
 
+  // The place unchecking the box would return the report to, with its
+  // address: the newest located photo's, which is what `unlockLocation` gives
+  // the form. The box shows it beside its text, so a camera whose first fix
+  // was stale can be seen to catch up -- a later photo at the right place
+  // changes the address, and the user knows unchecking now goes there.
+  //
+  // The place is kept with the address rather than the address alone: the map
+  // can move the locked place, and whether the two differ is a question about
+  // coordinates, not about the words an address is written in.
+  refreshUnlockPlace = async () => {
+    const { attachmentData, isLocationLocked } = this.state;
+
+    const located = isLocationLocked
+      ? latestLocatedPhoto(this.readingsOf(attachmentData))
+      : null;
+
+    if (
+      !located ||
+      !this.placeIsInNyc(located) ||
+      (located.latitude === this.state.latitude &&
+        located.longitude === this.state.longitude)
+    ) {
+      if (this.state.unlockPlace !== null) {
+        this.setState({ unlockPlace: null });
+      }
+      return;
+    }
+
+    const { latitude, longitude } = located;
+
+    // The photos, the lock or the place may have moved while a lookup was
+    // out, so an answer is shown only for the place the box would still
+    // return to.
+    const showIfCurrent = address => {
+      const current = this.state.isLocationLocked
+        ? latestLocatedPhoto(this.readingsOf(this.state.attachmentData))
+        : null;
+
+      if (current?.latitude !== latitude || current?.longitude !== longitude) {
+        return;
+      }
+
+      this.setState({
+        unlockPlace: address ? { latitude, longitude, address } : null,
+      });
+    };
+
+    const cached = this.geosearchAddressCache.get({ latitude, longitude });
+    if (cached !== undefined) {
+      showIfCurrent(shortAddress(cached));
+      return;
+    }
+
+    const key = `${latitude},${longitude}`;
+    if (this.unlockAddressLookups.has(key)) {
+      return;
+    }
+    this.unlockAddressLookups.add(key);
+
+    try {
+      // Not debouncedGeosearch: debounce() resolves every pending call with
+      // the last call's response, and this lookup is not the user moving the
+      // map.
+      const data = await fetchGeosearchAddress({ latitude, longitude });
+      const { properties } = data.features[0];
+      const address = formatGeosearchAddress(properties);
+      // A fallback says the city's address directory was unavailable, so the
+      // address may change once it answers: show it, but do not keep it.
+      if (!data.fellBackToTopResult) {
+        this.geosearchAddressCache.set({ latitude, longitude, address });
+      }
+      showIfCurrent(shortAddress(address));
+    } catch (err) {
+      // The hint is only a hint: a failed lookup leaves it out, and the
+      // report can still be submitted.
+      console.error(err);
+    } finally {
+      this.unlockAddressLookups.delete(key);
+    }
+  };
+
+  // Whether `setCoords` would name a place at these coordinates. A place
+  // outside the city has no address to return to: unchecking the box would
+  // show the out-of-NYC error message instead.
+  placeIsInNyc = ({ latitude, longitude }) => {
+    const lookup = new PolygonLookup(
+      this.props.boroughBoundariesFeatureCollection,
+    );
+    return isPointInNycMemoized({ lookup, end: { latitude, longitude } });
+  };
+
   // Unchecking the lock asks the photos where the report was. The lock held
   // the place they would have given, so with the lock gone that place is what
   // the report shows -- the same place it would have had without the box. A
@@ -6755,12 +6870,8 @@ class Home extends React.Component {
                                 width: '100%',
                               }}
                             >
-                              {this.state.formatted_address
-                                ? this.state.formatted_address
-                                    .split(', ')
-                                    .slice(0, 2)
-                                    .join(', ')
-                                : 'Click to choose address on map'}
+                              {shortAddress(this.state.formatted_address) ||
+                                'Click to choose address on map'}
                             </button>
                           </label>
 
@@ -6773,6 +6884,18 @@ class Home extends React.Component {
                               onChange={this.handleInputChange}
                             />{' '}
                             Reuse this address
+                            {this.state.isLocationLocked &&
+                              this.state.unlockPlace &&
+                              (this.state.unlockPlace.latitude !==
+                                this.state.latitude ||
+                                this.state.unlockPlace.longitude !==
+                                  this.state.longitude) && (
+                                <React.Fragment>
+                                  {' '}
+                                  (uncheck to return to:{' '}
+                                  {this.state.unlockPlace.address})
+                                </React.Fragment>
+                              )}
                           </label>
 
                           <Modal

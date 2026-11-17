@@ -16,6 +16,7 @@
  * lifecycle pattern this mirrors.
  */
 
+import path from 'path';
 import { chromium } from 'playwright';
 import runServer from './runServer.js';
 
@@ -118,6 +119,117 @@ const run = async () => {
         httpOnly: true,
       },
     ]);
+
+    // ── Home: the selected plate overlay stays under the map modal ──
+    // `plate-overlay-selected` carries `z-index: 1`, and react-modal 3.12.1
+    // gives its overlay no `z-index`. The photo wrapper must keep its own
+    // stacking context, or the plate box paints on top of the open map.
+    await loggedInContext.route('**/api/uploadAttachment', route =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ id: 'smoke-attachment' }),
+      }),
+    );
+    await loggedInContext.route('**/platerecognizer', route =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          results: [
+            {
+              plate: 'ABC1234',
+              score: 0.9,
+              box: { xmin: 100, ymin: 100, xmax: 300, ymax: 150 },
+              region: { code: 'us-ny' },
+            },
+          ],
+          uploadWidth: 1000,
+          uploadHeight: 1000,
+          timings: {},
+        }),
+      }),
+    );
+    await loggedInContext.route('**/api/geosearch', route =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          formatted_address: '123 Test Street, New York, NY 10001',
+        }),
+      }),
+    );
+
+    const layeringPage = await loggedInContext.newPage();
+    await layeringPage.goto(BASE_URL, { waitUntil: 'load' });
+    await layeringPage
+      .locator('input[type=file][accept*="image"]')
+      .first()
+      .setInputFiles(
+        path.resolve(
+          __dirname,
+          '..',
+          'src',
+          '447139692-0ee99c9b-73a4-49fb-a610-389db5cbddd3_exif_stripped.jpg',
+        ),
+      );
+    await layeringPage.waitForSelector('[aria-label^="Select license plate"]', {
+      timeout: 60000,
+    });
+    await layeringPage.click('button[name="where"]');
+    await layeringPage.waitForSelector('.ReactModal__Overlay', {
+      timeout: 10000,
+    });
+
+    const plateOverlayStacking = await layeringPage.evaluate(() => {
+      const modalOverlay = document.querySelector('.ReactModal__Overlay');
+      const plateOverlay = document.querySelector(
+        '[aria-label^="Select license plate"]',
+      );
+      if (!modalOverlay || !plateOverlay) {
+        return null;
+      }
+
+      // The modal's portal is a sibling of the scroller in the scroll area.
+      const scrollArea = modalOverlay.parentElement?.parentElement;
+      const scroller = scrollArea
+        ? [...scrollArea.children].find(
+            child => !child.classList.contains('ReactModalPortal'),
+          )
+        : null;
+      if (!scroller) {
+        return null;
+      }
+
+      // The page cannot scroll behind the open modal, so bring the photo
+      // under the map directly. The map content starts 40px inside the
+      // overlay.
+      scroller.scrollTop += plateOverlay.getBoundingClientRect().top - 200;
+
+      const rect = plateOverlay.getBoundingClientRect();
+      const top = document.elementFromPoint(
+        rect.left + rect.width / 2,
+        rect.top + rect.height / 2,
+      );
+
+      return {
+        plateOverlaySelected: plateOverlay.textContent.includes('✓'),
+        topTag: top?.tagName,
+        underModal: Boolean(top?.closest('.ReactModal__Overlay')),
+      };
+    });
+
+    failures += runChecks([
+      {
+        name: 'home: the selected plate overlay stays under the map modal',
+        ok:
+          plateOverlayStacking?.plateOverlaySelected === true &&
+          plateOverlayStacking?.underModal === true,
+        detail: JSON.stringify(plateOverlayStacking),
+      },
+    ]);
+
+    await layeringPage.close();
 
     let submissionsPostCount = 0;
     let submissionsPostBody = null;

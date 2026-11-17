@@ -1190,6 +1190,10 @@ class Home extends React.Component {
     // it is attached. The form's time and place are worked out from these
     // again whenever the photos change -- see applyPhotosToForm.
     this.photoReadings = new Map();
+    // How many plate reads are in flight. The spinner stays up until the last
+    // one answers, so a boolean is not enough: with two photos, the first read
+    // to finish would hide it while the other was still running.
+    this.alprReadsInFlight = 0;
     this.plateRef = React.createRef();
     this.attachmentInputRef = React.createRef();
     this.folderInputRef = React.createRef();
@@ -2356,6 +2360,7 @@ class Home extends React.Component {
               attachmentBuffer,
             )) || { name: 'jpg' };
 
+            this.alprReadsInFlight += 1;
             this.setState({ isAlprLoading: true });
 
             // What this photo's reads will say, filled in by the reads below
@@ -2378,6 +2383,13 @@ class Home extends React.Component {
                 isAlprEnabled: this.state.isAlprEnabled,
               })
                 .then(result => {
+                  // The photo may have been removed while its read was out.
+                  // The form has let its reading go, so nothing the read says
+                  // belongs to it any more.
+                  if (!this.state.attachmentData.includes(attachmentFile)) {
+                    return;
+                  }
+
                   if (
                     this.state.plate === '' &&
                     document.activeElement !== this.plateRef.current
@@ -2395,7 +2407,10 @@ class Home extends React.Component {
                   }));
                 })
                 .finally(() => {
-                  this.setState({ isAlprLoading: false });
+                  this.alprReadsInFlight -= 1;
+                  this.setState({
+                    isAlprLoading: this.alprReadsInFlight > 0,
+                  });
                 }),
               timeAndPlaceReads: [
                 // Recorded rather than applied: the time is the earliest

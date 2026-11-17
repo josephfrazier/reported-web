@@ -418,7 +418,12 @@ function readVideo({ attachmentFile, attachmentArrayBuffer }) {
   };
 
   // https://stackoverflow.com/questions/28916329/mp4-video-file-with-gps-location/42596889#42596889
-  const uint8array = mp4boxfile.moov?.udta?.['©xyz']?.data;
+  // Most files put the box under the movie's `udta`; a camera can write it
+  // under a track's instead.
+  const xyz =
+    mp4boxfile.moov?.udta?.['©xyz'] ||
+    mp4boxfile.moov?.traks?.find(trak => trak.udta?.['©xyz'])?.udta['©xyz'];
+  const uint8array = xyz?.data;
   if (uint8array) {
     // https://stackoverflow.com/questions/8936984/uint8array-to-string-in-javascript/36949791#36949791
     const string = new TextDecoder('utf-8').decode(uint8array);

@@ -1314,6 +1314,29 @@ describe('Home', () => {
     cleanup();
   });
 
+  test("takes a video's place from a track's GPS box", async () => {
+    // The `©xyz` box lives under the movie's `udta` in most files; some
+    // cameras write it under a track's instead. It is the same reading
+    // either way.
+    MP4Box.createFile.mockImplementation(() => ({
+      appendBuffer() {},
+      getInfo: () => ({ created: new Date(Date.UTC(2016, 0, 1, 12, 0, 10)) }),
+      moov: {
+        udta: {},
+        traks: [{ udta: { '©xyz': { data: Buffer.from('+40.73-074.01/') } } }],
+      },
+    }));
+
+    const video = new File([videoBytes()], 'track.mp4', { type: 'video/mp4' });
+    const { homeRef, cleanup } = await renderAndExtract([video]);
+
+    expect(homeRef.current.state.latitude).toBe(40.73);
+    expect(homeRef.current.state.longitude).toBe(-74.01);
+
+    MP4Box.createFile.mockReset();
+    cleanup();
+  });
+
   test("keeps a summer video's wall clock across the 1904 epoch's DST gap", async () => {
     // mp4box reads the header's 1904 epoch in local time, so the Date it
     // reports carries New York's January offset (five hours); the form then

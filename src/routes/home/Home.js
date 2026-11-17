@@ -390,6 +390,44 @@ const mp4CreationTime = created => {
   ).getTime();
 };
 
+// A `©day` box's date, when it records its zone: the moment it names, in the
+// seconds-since-epoch and minutes-west form the form reads times in. `©day`
+// is an ISO 8601 date such as `2026-09-02T18:40:42-0400`. The zone is what
+// makes the header's `creation_time` a true UTC instant rather than a local
+// wall clock written as if it were UTC; a `©day` with no zone cannot tell
+// the two apart, so it answers nothing.
+const readingFromDay = day => {
+  const match = day.match(
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?(Z|[+-]\d{2}:?\d{2})$/,
+  );
+  if (!match) {
+    return null;
+  }
+
+  const [, year, month, date, hours, minutes, seconds = '0', zone] = match;
+
+  let offset = 0;
+  if (zone !== 'Z') {
+    const sign = zone.startsWith('-') ? 1 : -1;
+    const [zoneHours, zoneMinutes] = zone.slice(1).match(/\d{2}/g);
+    offset = sign * (Number(zoneHours) * 60 + Number(zoneMinutes));
+  }
+
+  const wallClock = Date.UTC(
+    Number(year),
+    Number(month) - 1,
+    Number(date),
+    Number(hours),
+    Number(minutes),
+    Number(seconds),
+  );
+
+  return {
+    millisecondsSinceEpoch: wallClock + offset * 60000,
+    offset,
+  };
+};
+
 // What a video's own boxes say about it: when it was made, and where. The
 // two answers are independent -- a camera can stamp a creation time without
 // writing a location -- so a missing GPS box must not take the time with it.
@@ -411,8 +449,20 @@ function readVideo({ attachmentFile, attachmentArrayBuffer }) {
   // The header's creation time, absent from a file too broken to say.
   const { created } = mp4boxfile.getInfo();
 
+  // A `©day` date with a zone settles what the header's `creation_time`
+  // cannot: whether it is UTC or a local wall clock. A file that records one
+  // is read as the moment it names; every other file keeps the New York wall
+  // clock reading below.
+  const dayData = mp4boxfile.moov?.udta?.['©day']?.data;
+  const dayReading = dayData
+    ? readingFromDay(new TextDecoder('utf-8').decode(dayData))
+    : null;
+
   const reading = {
-    millisecondsSinceEpoch: created ? mp4CreationTime(created) : NaN,
+    millisecondsSinceEpoch:
+      dayReading?.millisecondsSinceEpoch ??
+      (created ? mp4CreationTime(created) : NaN),
+    offset: dayReading?.offset ?? NaN,
     latitude: NaN,
     longitude: NaN,
   };
@@ -704,7 +754,7 @@ const photoTimeIsPlausible = millisecondsSinceEpoch =>
 // there. An offset that does not parse counts as none. A time outside the
 // plausible range is not a time this report should carry, so it throws, the
 // same as a file with no readable date.
-const readingFromDate = ({ date, offsetTimeDigitized }) => {
+const readingFromDate = ({ date, offsetTimeDigitized, offset }) => {
   const millisecondsSinceEpoch = date.getTime();
 
   if (!photoTimeIsPlausible(millisecondsSinceEpoch)) {
@@ -713,7 +763,11 @@ const readingFromDate = ({ date, offsetTimeDigitized }) => {
     );
   }
 
-  const parsedOffset = parseInt(offsetTimeDigitized, 10) * -60;
+  // A reading that already knows its offset (a video's `©day`) hands it over
+  // in minutes west; EXIF records one as a `±HH:MM` string.
+  const parsedOffset = Number.isFinite(offset)
+    ? offset
+    : parseInt(offsetTimeDigitized, 10) * -60;
 
   return {
     millisecondsSinceEpoch,
@@ -730,13 +784,14 @@ async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
       // the way a picture's is when the picture records none. A file with no
       // creation time gives an invalid date, which the plausibility check
       // refuses like any other unusable time.
-      const { millisecondsSinceEpoch } = readVideo({
+      const { millisecondsSinceEpoch, offset } = readVideo({
         attachmentFile,
         attachmentArrayBuffer,
       });
 
       return readingFromDate({
         date: new Date(millisecondsSinceEpoch),
+        offset,
       });
     }
     if (!isImage({ ext })) {

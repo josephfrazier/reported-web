@@ -1569,6 +1569,81 @@ describe('Home', () => {
     tree.unmount();
   });
 
+  test('keeps the plate spinner up until every read answers', async () => {
+    // Two plate reads can overlap -- adding a second photo re-reads the first
+    // as well. The spinner belongs to the set, not to whichever read happens
+    // to finish first.
+    const photos = ['first', 'second'].map(
+      name =>
+        new File([photoBytes(name)], `${name}.jpg`, { type: 'image/jpeg' }),
+    );
+    const sizes = photos.map(photo => photo.size);
+
+    const answerBySize = {};
+    const gatePlateRead = size =>
+      new Promise(resolve => {
+        answerBySize[size] = () =>
+          resolve({
+            data: { results: [], uploadWidth: 1000, uploadHeight: 1000 },
+          });
+      });
+
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+    const axiosPost = jest
+      .spyOn(axios, 'post')
+      .mockImplementation((url, body) => {
+        if (url === '/platerecognizer') {
+          return gatePlateRead(body.get('attachmentFile').size);
+        }
+        return Promise.resolve({ data: { features: [] } });
+      });
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({
+        initialState: { email: 'test@example.com', loginSuccessful: true },
+        homeRef,
+      });
+    });
+
+    const settle = () =>
+      renderer.act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 50));
+      });
+
+    await renderer.act(async () => {
+      homeRef.current.handleAttachmentData({ attachmentData: photos });
+    });
+    await settle();
+    expect(homeRef.current.state.isAlprLoading).toBe(true);
+
+    // The first answer arrives; the second read is still out.
+    renderer.act(() => {
+      answerBySize[sizes[0]]();
+    });
+    await settle();
+    expect(homeRef.current.state.isAlprLoading).toBe(true);
+
+    renderer.act(() => {
+      answerBySize[sizes[1]]();
+    });
+    await settle();
+    expect(homeRef.current.state.isAlprLoading).toBe(false);
+
+    axiosGet.mockRestore();
+    axiosPost.mockRestore();
+    consoleError.mockRestore();
+    global.URL.createObjectURL = originalCreateObjectURL;
+    tree.unmount();
+  });
+
   // Three photos, each taken ten seconds and a little way from the last, so a
   // submission's time and place land on different photos: the earliest for the
   // time, the last one with coordinates for the place.

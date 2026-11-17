@@ -564,7 +564,7 @@ input[type='search']::-webkit-search-cancel-button {
   border-radius: 2px;
 }
 
-.plate-crop img {
+.plate-crop-image {
   position: absolute;
   max-width: none;
 }

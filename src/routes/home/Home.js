@@ -41,7 +41,6 @@ import Dropzone from '@josephfrazier/react-dropzone';
 import { ToastContainer, toast } from 'react-toastify';
 import toastifyStyles from 'react-toastify/dist/ReactToastify.css';
 import PolygonLookup from 'polygon-lookup';
-import CircularProgress from '@mui/material/CircularProgress';
 
 import marx from 'marx-css/css/marx.css';
 import usStateNames, { licenseStateName } from '../../usStateNames.js';
@@ -1441,7 +1440,6 @@ class Home extends React.Component {
       // merging. Two at a time, which is all the queue offers a button for.
       batchMergeSelection: [],
 
-      isAlprLoading: false,
       isPasswordRevealed: false,
       isUserInfoSaving: false,
       isSubmitting: false,
@@ -6626,9 +6624,6 @@ class Home extends React.Component {
                         <React.Fragment>
                           <label htmlFor="plate" ref={this.plateLabelRef}>
                             License/Medallion:
-                            {this.state.isAlprLoading && (
-                              <CircularProgress size="1em" />
-                            )}
                             <div
                               style={{
                                 display: 'flex',

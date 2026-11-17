@@ -25,10 +25,7 @@
   },
   "dependencies": {
     "@babel/polyfill": "^7.0.0",
-    "@emotion/react": "^11.14.0",
-    "@emotion/styled": "^11.14.1",
     "@josephfrazier/react-dropzone": "4.2.13-development",
-    "@mui/material": "^7.2.0",
     "@sentry/browser": "^11.4.0",
     "@sentry/node": "^11.4.0",
     "axios": "^1.20.0",

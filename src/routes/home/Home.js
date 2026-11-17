@@ -365,24 +365,128 @@ async function blobToBuffer({ attachmentFile }) {
   return { attachmentBuffer, attachmentArrayBuffer };
 }
 
-// TODO decouple location/date extraction
-function extractLocationDateFromVideo({ attachmentArrayBuffer }) {
+// The moment an mp4's `created` names. The header counts seconds since 1904
+// in the file's own clock and records no offset, so its wall clock is read
+// where the report is filed -- the way a picture's is when the picture
+// records none. Going through a local Date is what puts the capture date's
+// offset in front of `readingFromDate`.
+//
+// mp4box's own `created` Date cannot be used as-is: it builds its 1904 epoch
+// from local time, so it carries the runtime's offset in January 1904 rather
+// than the capture date's. In New York that difference is the daylight-saving
+// hour, which used to make a summer video read back an hour late.
+const mp4CreationTime = created => {
+  const epochOffsetMs = new Date(1904, 0, 1).getTimezoneOffset() * 60000;
+  const wallClock = new Date(created.getTime() - epochOffsetMs);
+
+  return new Date(
+    wallClock.getUTCFullYear(),
+    wallClock.getUTCMonth(),
+    wallClock.getUTCDate(),
+    wallClock.getUTCHours(),
+    wallClock.getUTCMinutes(),
+    wallClock.getUTCSeconds(),
+    wallClock.getUTCMilliseconds(),
+  ).getTime();
+};
+
+// A `©day` box's date, when it records its zone: the moment it names, in the
+// seconds-since-epoch and minutes-west form the form reads times in. `©day`
+// is an ISO 8601 date such as `2026-09-02T18:40:42-0400`. The zone is what
+// makes the header's `creation_time` a true UTC instant rather than a local
+// wall clock written as if it were UTC; a `©day` with no zone cannot tell
+// the two apart, so it answers nothing.
+const readingFromDay = day => {
+  const match = day.match(
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?(Z|[+-]\d{2}:?\d{2})$/,
+  );
+  if (!match) {
+    return null;
+  }
+
+  const [, year, month, date, hours, minutes, seconds = '0', zone] = match;
+
+  let offset = 0;
+  if (zone !== 'Z') {
+    const sign = zone.startsWith('-') ? 1 : -1;
+    const [zoneHours, zoneMinutes] = zone.slice(1).match(/\d{2}/g);
+    offset = sign * (Number(zoneHours) * 60 + Number(zoneMinutes));
+  }
+
+  const wallClock = Date.UTC(
+    Number(year),
+    Number(month) - 1,
+    Number(date),
+    Number(hours),
+    Number(minutes),
+    Number(seconds),
+  );
+
+  return {
+    millisecondsSinceEpoch: wallClock + offset * 60000,
+    offset,
+  };
+};
+
+// What a video's own boxes say about it: when it was made, and where. The
+// two answers are independent -- a camera can stamp a creation time without
+// writing a location -- so a missing GPS box must not take the time with it.
+// A value the file does not answer with stays NaN, and is passed over by
+// whichever rule is looking.
+//
+// One parse answers both reads, keyed by the file: mp4box reads the whole
+// buffer, and parsing a large video twice for two answers is wasted work.
+const videoReadings = new WeakMap();
+
+function readVideo({ attachmentFile, attachmentArrayBuffer }) {
+  if (videoReadings.has(attachmentFile)) {
+    return videoReadings.get(attachmentFile);
+  }
+
   const mp4boxfile = MP4Box.createFile();
   attachmentArrayBuffer.fileStart = 0; // eslint-disable-line no-param-reassign
   mp4boxfile.appendBuffer(attachmentArrayBuffer);
-  const info = mp4boxfile.getInfo();
-  const { created } = info; // TODO handle missing
+  // The header's creation time, absent from a file too broken to say.
+  const { created } = mp4boxfile.getInfo();
+
+  // A `©day` date with a zone settles what the header's `creation_time`
+  // cannot: whether it is UTC or a local wall clock. A file that records one
+  // is read as the moment it names; every other file keeps the New York wall
+  // clock reading below.
+  const dayData = mp4boxfile.moov?.udta?.['©day']?.data;
+  const dayReading = dayData
+    ? readingFromDay(new TextDecoder('utf-8').decode(dayData))
+    : null;
+
+  const reading = {
+    millisecondsSinceEpoch:
+      dayReading?.millisecondsSinceEpoch ??
+      (created ? mp4CreationTime(created) : NaN),
+    offset: dayReading?.offset ?? NaN,
+    latitude: NaN,
+    longitude: NaN,
+  };
 
   // https://stackoverflow.com/questions/28916329/mp4-video-file-with-gps-location/42596889#42596889
-  const uint8array = mp4boxfile.moov.udta['©xyz'].data; // TODO handle missing
-  // https://stackoverflow.com/questions/8936984/uint8array-to-string-in-javascript/36949791#36949791
-  const string = new TextDecoder('utf-8').decode(uint8array);
-  const [latitude, longitude] = execall(/[+-][\d.]+/g, string)
-    .map(m => m.match)
-    .map(Number);
+  // Most files put the box under the movie's `udta`; a camera can write it
+  // under a track's instead.
+  const xyz =
+    mp4boxfile.moov?.udta?.['©xyz'] ||
+    mp4boxfile.moov?.traks?.find(trak => trak.udta?.['©xyz'])?.udta['©xyz'];
+  const uint8array = xyz?.data;
+  if (uint8array) {
+    // https://stackoverflow.com/questions/8936984/uint8array-to-string-in-javascript/36949791#36949791
+    const string = new TextDecoder('utf-8').decode(uint8array);
+    const [latitude, longitude] = execall(/[+-][\d.]+/g, string)
+      .map(m => m.match)
+      .map(Number);
 
-  // TODO make sure time is correct (ugh timezones...)
-  return [{ latitude, longitude }, created.getTime()];
+    reading.latitude = latitude;
+    reading.longitude = longitude;
+  }
+
+  videoReadings.set(attachmentFile, reading);
+  return reading;
 }
 
 // derived from https://github.com/feross/capture-frame/tree/06b8f5eac78fea305f7f577d1697ee3b6999c9a8#complete-example
@@ -607,7 +711,18 @@ async function extractLocation({
 
   try {
     if (isVideo({ ext })) {
-      return extractLocationDateFromVideo({ attachmentArrayBuffer })[0];
+      const { latitude, longitude } = readVideo({
+        attachmentFile,
+        attachmentArrayBuffer,
+      });
+
+      // A video without a GPS box reads no coordinates, the way a picture
+      // without one does: that is no location, not a broken read.
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+        throw new Error(`${attachmentFile.name} carries no location`);
+      }
+
+      return { latitude, longitude };
     }
     if (!isImage({ ext })) {
       throw new Error(`${attachmentFile.name} is not an image/video`);
@@ -644,7 +759,7 @@ const photoTimeIsPlausible = millisecondsSinceEpoch =>
 // there. An offset that does not parse counts as none. A time outside the
 // plausible range is not a time this report should carry, so it throws, the
 // same as a file with no readable date.
-const readingFromDate = ({ date, offsetTimeDigitized }) => {
+const readingFromDate = ({ date, offsetTimeDigitized, offset }) => {
   const millisecondsSinceEpoch = date.getTime();
 
   if (!photoTimeIsPlausible(millisecondsSinceEpoch)) {
@@ -653,7 +768,11 @@ const readingFromDate = ({ date, offsetTimeDigitized }) => {
     );
   }
 
-  const parsedOffset = parseInt(offsetTimeDigitized, 10) * -60;
+  // A reading that already knows its offset (a video's `©day`) hands it over
+  // in minutes west; EXIF records one as a `±HH:MM` string.
+  const parsedOffset = Number.isFinite(offset)
+    ? offset
+    : parseInt(offsetTimeDigitized, 10) * -60;
 
   return {
     millisecondsSinceEpoch,
@@ -667,11 +786,17 @@ async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
   try {
     if (isVideo({ ext })) {
       // An MP4 records when it was made and no offset, so its time is read
-      // the way a picture's is when the picture records none.
+      // the way a picture's is when the picture records none. A file with no
+      // creation time gives an invalid date, which the plausibility check
+      // refuses like any other unusable time.
+      const { millisecondsSinceEpoch, offset } = readVideo({
+        attachmentFile,
+        attachmentArrayBuffer,
+      });
+
       return readingFromDate({
-        date: new Date(
-          extractLocationDateFromVideo({ attachmentArrayBuffer })[1],
-        ),
+        date: new Date(millisecondsSinceEpoch),
+        offset,
       });
     }
     if (!isImage({ ext })) {
@@ -1120,6 +1245,10 @@ class Home extends React.Component {
     // it is attached. The form's time and place are worked out from these
     // again whenever the photos change -- see applyPhotosToForm.
     this.photoReadings = new Map();
+    // How many plate reads are in flight. The spinner stays up until the last
+    // one answers, so a boolean is not enough: with two photos, the first read
+    // to finish would hide it while the other was still running.
+    this.alprReadsInFlight = 0;
     this.plateRef = React.createRef();
     this.attachmentInputRef = React.createRef();
     this.folderInputRef = React.createRef();
@@ -2026,6 +2155,14 @@ class Home extends React.Component {
   // The plate, time and place a submission takes from the photos it holds,
   // worked out again whenever that set changes: a photo dropped leaves the
   // others to say what they are.
+  applyPhotosToForm = (photos, options = {}) => {
+    this.applyPhotosPlate(photos);
+    this.applyPhotoTimeAndPlace(photos, options);
+  };
+
+  // The time and place alone -- everything the photos say without a plate
+  // read. `handleAttachmentData` applies these as soon as their own reads
+  // land, rather than holding them for the plate's network round trip.
   //
   // Each follows the photos only while it is still what they gave it. A time
   // the user typed no longer matches what they say, and a place the user set
@@ -2035,9 +2172,7 @@ class Home extends React.Component {
   //
   // With nothing attached before, there is nothing of the user's to keep, and
   // the photos say what the time and place are.
-  applyPhotosToForm = (photos, { previousPhotos = null } = {}) => {
-    this.applyPhotosPlate(photos);
-
+  applyPhotoTimeAndPlace = (photos, { previousPhotos = null } = {}) => {
     if (photos.length === 0) {
       return;
     }
@@ -2254,7 +2389,10 @@ class Home extends React.Component {
       async () => {
         startBackgroundUploads(attachmentData);
 
-        const listsOfExtractions = await Promise.all(
+        // One pass per attachment: its plate read, which is a network round
+        // trip, and its own time and place, which are on the device. They are
+        // kept apart because the form waits for different things from them.
+        const perPhotoReads = await Promise.all(
           this.state.attachmentData.map(async (attachmentFile, index) => {
             if (attachmentFile.size > 20 * 1000 * 1000) {
               // just under 20MB, should match fileSize in server.js
@@ -2277,11 +2415,12 @@ class Home extends React.Component {
               attachmentBuffer,
             )) || { name: 'jpg' };
 
+            this.alprReadsInFlight += 1;
             this.setState({ isAlprLoading: true });
 
-            // What this photo's reads will say, filled in by the two below as
-            // they answer. Kept rather than collected for one pass: the form
-            // reads them again every time the photos change.
+            // What this photo's reads will say, filled in by the reads below
+            // as they answer. Kept rather than collected for one pass: the
+            // form reads them again every time the photos change.
             const reading = emptyReading(attachmentFile);
             this.photoReadings.set(attachmentFile, reading);
 
@@ -2291,14 +2430,21 @@ class Home extends React.Component {
               ext,
             });
 
-            return Promise.allSettled([
-              extractPlate({
+            return {
+              plateRead: extractPlate({
                 attachmentFile,
                 attachmentBuffer,
                 ext,
                 isAlprEnabled: this.state.isAlprEnabled,
               })
                 .then(result => {
+                  // The photo may have been removed while its read was out.
+                  // The form has let its reading go, so nothing the read says
+                  // belongs to it any more.
+                  if (!this.state.attachmentData.includes(attachmentFile)) {
+                    return;
+                  }
+
                   if (
                     this.state.plate === '' &&
                     document.activeElement !== this.plateRef.current
@@ -2316,40 +2462,59 @@ class Home extends React.Component {
                   }));
                 })
                 .finally(() => {
-                  this.setState({ isAlprLoading: false });
+                  this.alprReadsInFlight -= 1;
+                  this.setState({
+                    isAlprLoading: this.alprReadsInFlight > 0,
+                  });
                 }),
-              // Recorded rather than applied: the time is the earliest
-              // photo's, which is not known until every photo has been read.
-              datePromise.then(date => {
-                reading.createDateMs = date.millisecondsSinceEpoch;
-                reading.createDateOffset = date.offset;
-              }),
-              extractLocation({
-                attachmentFile,
-                attachmentArrayBuffer,
-                ext,
-                isReverseGeocodingEnabled: this.state.isReverseGeocodingEnabled,
-              }).then(({ latitude, longitude }) => {
-                if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
-                  throw 'location (may have been stripped by Android, see https://github.com/josephfrazier/reported-web/issues/751 for details)'; // eslint-disable-line no-throw-literal
-                }
+              timeAndPlaceReads: [
+                // Recorded rather than applied: the time is the earliest
+                // photo's, which is not known until every photo has been read.
+                datePromise.then(date => {
+                  reading.createDateMs = date.millisecondsSinceEpoch;
+                  reading.createDateOffset = date.offset;
+                }),
+                extractLocation({
+                  attachmentFile,
+                  attachmentArrayBuffer,
+                  ext,
+                  isReverseGeocodingEnabled:
+                    this.state.isReverseGeocodingEnabled,
+                }).then(({ latitude, longitude }) => {
+                  if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
+                    throw 'location (may have been stripped by Android, see https://github.com/josephfrazier/reported-web/issues/751 for details)'; // eslint-disable-line no-throw-literal
+                  }
 
-                // Recorded rather than applied: which photo's place wins is
-                // not known until every photo has been read, and applying
-                // each one as it arrived left that to whichever read
-                // happened to finish last.
-                reading.latitude = latitude;
-                reading.longitude = longitude;
-              }),
-            ]);
+                  // Recorded rather than applied: which photo's place wins is
+                  // not known until every photo has been read, and applying
+                  // each one as it arrived left that to whichever read
+                  // happened to finish last.
+                  reading.latitude = latitude;
+                  reading.longitude = longitude;
+                }),
+              ],
+            };
           }),
         );
 
-        // Every photo has now been read, so the form takes its time and its
-        // place from the set as a whole, rather than from each photo in turn.
-        this.applyPhotosToForm(this.state.attachmentData, {
+        // The time and place are the device's own answers, so the form takes
+        // them from the set as a whole as soon as those reads land. A plate
+        // read can take seconds; the report's clock should not wait for it.
+        await Promise.allSettled(
+          perPhotoReads.flatMap(({ timeAndPlaceReads }) => timeAndPlaceReads),
+        );
+        this.applyPhotoTimeAndPlace(this.state.attachmentData, {
           previousPhotos,
         });
+
+        // The plate reads answer on their own time, and the set's plate is
+        // worked out once they have.
+        const listsOfExtractions = await Promise.all(
+          perPhotoReads.map(({ plateRead, timeAndPlaceReads }) =>
+            Promise.allSettled([plateRead, ...timeAndPlaceReads]),
+          ),
+        );
+        this.applyPhotosPlate(this.state.attachmentData);
 
         if (listsOfExtractions.length === 0) {
           return;
@@ -3696,6 +3861,15 @@ class Home extends React.Component {
                           this.setCoords({
                             latitude: defaultLatitude,
                             longitude: defaultLongitude,
+                          });
+                          // The filed report took its time with it. The next
+                          // report has no time of its own until its photos
+                          // give one, so it starts at now -- the time a
+                          // reloaded page shows. Keeping the filed report's
+                          // time left it in the field whenever the next
+                          // photo had none to give.
+                          this.setCreateDate({
+                            millisecondsSinceEpoch: Date.now(),
                           });
                           Home.notifySubmissionThanks(
                             <React.Fragment>

@@ -1314,6 +1314,58 @@ describe('Home', () => {
     cleanup();
   });
 
+  test("reads a video's time from a ©day box's own zone", async () => {
+    // A camera that writes true UTC in the header can also record the zone
+    // it was in. Without that zone the header is read as New York wall time;
+    // with it the moment is exact. A winter date keeps the offset at one
+    // value, so this test does not depend on the DST lookup.
+    MP4Box.createFile.mockImplementation(() => ({
+      appendBuffer() {},
+      // mp4box reports a header of 22:40:42Z plus its local 1904 epoch.
+      getInfo: () => ({ created: new Date(Date.UTC(2016, 0, 2, 3, 40, 42)) }),
+      moov: {
+        udta: {
+          '©xyz': { data: Buffer.from('+40.7128-074.0060/') },
+          '©day': { data: Buffer.from('2016-01-01T17:40:42-0500') },
+        },
+      },
+    }));
+
+    const video = new File([videoBytes()], 'utc.mp4', { type: 'video/mp4' });
+    const { homeRef, cleanup } = await renderAndExtract([video]);
+
+    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T17:40:42');
+
+    MP4Box.createFile.mockReset();
+    cleanup();
+  });
+
+  test('ignores a ©day box that records no zone', async () => {
+    // Without a zone, `©day` cannot say whether its clock is UTC or local,
+    // so the header keeps its New York wall clock reading.
+    MP4Box.createFile.mockImplementation(() => ({
+      appendBuffer() {},
+      getInfo: () => ({ created: new Date(Date.UTC(2016, 0, 2, 3, 40, 42)) }),
+      moov: {
+        udta: {
+          '©xyz': { data: Buffer.from('+40.7128-074.0060/') },
+          '©day': { data: Buffer.from('2016-01-01T17:40:42') },
+        },
+      },
+    }));
+
+    const video = new File([videoBytes()], 'no-zone.mp4', {
+      type: 'video/mp4',
+    });
+    const { homeRef, cleanup } = await renderAndExtract([video]);
+
+    // The header's true UTC is read as New York wall time: 22:40:42Z.
+    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T22:40:42');
+
+    MP4Box.createFile.mockReset();
+    cleanup();
+  });
+
   test("keeps a summer video's wall clock across the 1904 epoch's DST gap", async () => {
     // mp4box reads the header's 1904 epoch in local time, so the Date it
     // reports carries New York's January offset (five hours); the form then

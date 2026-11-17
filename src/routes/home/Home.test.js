@@ -1310,6 +1310,150 @@ describe('Home', () => {
     cleanup();
   });
 
+  test("reads a video's time from a ©day box's own zone", async () => {
+    // A camera that writes true UTC in the header can also record the zone
+    // it was in. Without that zone the header is read as New York wall time;
+    // with it the moment is exact. A winter date keeps the offset at one
+    // value, so this test does not depend on the DST lookup.
+    MP4Box.createFile.mockImplementation(() => ({
+      appendBuffer() {},
+      // mp4box reports a header of 22:40:42Z plus its local 1904 epoch.
+      getInfo: () => ({ created: new Date(Date.UTC(2016, 0, 2, 3, 40, 42)) }),
+      moov: {
+        udta: {
+          '©xyz': { data: Buffer.from('+40.7128-074.0060/') },
+          '©day': { data: Buffer.from('2016-01-01T17:40:42-0500') },
+        },
+      },
+    }));
+
+    const video = new File([videoBytes()], 'utc.mp4', { type: 'video/mp4' });
+    const { homeRef, cleanup } = await renderAndExtract([video]);
+
+    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T17:40:42');
+
+    MP4Box.createFile.mockReset();
+    cleanup();
+  });
+
+  test('ignores a ©day box that records no zone', async () => {
+    // Without a zone, `©day` cannot say whether its clock is UTC or local,
+    // so the header keeps its New York wall clock reading.
+    MP4Box.createFile.mockImplementation(() => ({
+      appendBuffer() {},
+      getInfo: () => ({ created: new Date(Date.UTC(2016, 0, 2, 3, 40, 42)) }),
+      moov: {
+        udta: {
+          '©xyz': { data: Buffer.from('+40.7128-074.0060/') },
+          '©day': { data: Buffer.from('2016-01-01T17:40:42') },
+        },
+      },
+    }));
+
+    const video = new File([videoBytes()], 'no-zone.mp4', {
+      type: 'video/mp4',
+    });
+    const { homeRef, cleanup } = await renderAndExtract([video]);
+
+    // The header's true UTC is read as New York wall time: 22:40:42Z.
+    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T22:40:42');
+
+    MP4Box.createFile.mockReset();
+    cleanup();
+  });
+
+  test("takes a video's place from a track's GPS box", async () => {
+    // The `©xyz` box lives under the movie's `udta` in most files; some
+    // cameras write it under a track's instead. It is the same reading
+    // either way.
+    MP4Box.createFile.mockImplementation(() => ({
+      appendBuffer() {},
+      getInfo: () => ({ created: new Date(Date.UTC(2016, 0, 1, 12, 0, 10)) }),
+      moov: {
+        udta: {},
+        traks: [{ udta: { '©xyz': { data: Buffer.from('+40.73-074.01/') } } }],
+      },
+    }));
+
+    const video = new File([videoBytes()], 'track.mp4', { type: 'video/mp4' });
+    const { homeRef, cleanup } = await renderAndExtract([video]);
+
+    expect(homeRef.current.state.latitude).toBe(40.73);
+    expect(homeRef.current.state.longitude).toBe(-74.01);
+
+    MP4Box.createFile.mockReset();
+    cleanup();
+  });
+
+  test("keeps a summer video's wall clock across the 1904 epoch's DST gap", async () => {
+    // mp4box reads the header's 1904 epoch in local time, so the Date it
+    // reports carries New York's January offset (five hours); the form then
+    // reads the capture date in July's (four). The hour that difference used
+    // to add must not show: the camera's 12:00:10 stays 12:00:10.
+    //
+    MP4Box.createFile.mockImplementation(() => ({
+      appendBuffer() {},
+      getInfo: () => ({ created: new Date(Date.UTC(2016, 6, 1, 17, 0, 10)) }),
+      moov: {
+        udta: {
+          '©xyz': { data: Buffer.from('+40.7128-074.0060/') },
+        },
+      },
+    }));
+
+    const video = new File([videoBytes()], 'summer.mp4', { type: 'video/mp4' });
+    const { homeRef, cleanup } = await renderAndExtract([video]);
+
+    expect(homeRef.current.state.CreateDate).toBe('2016-07-01T12:00:10');
+
+    MP4Box.createFile.mockReset();
+    cleanup();
+  });
+
+  test("takes a video's time even when it records no place", async () => {
+    // A camera can stamp a creation time without writing a GPS box -- the
+    // Panasonic that made the report's own video does. The two answers are
+    // independent: the missing place must not take the time with it, and one
+    // parse answers both reads.
+    MP4Box.createFile.mockImplementation(() => ({
+      appendBuffer() {},
+      getInfo: () => ({ created: new Date(Date.UTC(2016, 0, 1, 12, 0, 10)) }),
+      moov: { udta: {} },
+    }));
+
+    const video = new File([videoBytes()], 'video.mp4', { type: 'video/mp4' });
+    const { homeRef, cleanup } = await renderAndExtract([video]);
+
+    // Noon UTC is 7:00 that morning in New York.
+    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T07:00:10');
+    // Nothing moved the place: the video never said where it was.
+    expect(homeRef.current.state.latitude).toBe(40.7128);
+    expect(homeRef.current.state.longitude).toBe(-74.006);
+    expect(MP4Box.createFile).toHaveBeenCalledTimes(1);
+
+    MP4Box.createFile.mockReset();
+    cleanup();
+  });
+
+  test('leaves the form time alone for a video with no creation time', async () => {
+    // A broken or copied file can have no usable header time at all. The form
+    // keeps the time it had, the way a picture without EXIF does.
+    MP4Box.createFile.mockImplementation(() => ({
+      appendBuffer() {},
+      getInfo: () => ({}),
+      moov: { udta: {} },
+    }));
+
+    const video = new File([videoBytes()], 'video.mp4', { type: 'video/mp4' });
+    const { homeRef, cleanup } = await renderAndExtract([video]);
+
+    // The form's time is the suite's pinned now, read in New York time.
+    expect(homeRef.current.state.CreateDate).toBe('2016-11-17T19:00:00');
+
+    MP4Box.createFile.mockReset();
+    cleanup();
+  });
+
   test('leaves the form time alone for a video stamped with the mp4 epoch', async () => {
     // A broken or copied file can carry the format's own epoch (1904) in its
     // header instead of a real time.
@@ -1388,6 +1532,288 @@ describe('Home', () => {
     expect(homeRef.current.state.CreateDate).toBe('2016-11-17T19:00:00');
 
     cleanup();
+  });
+
+  test('shows a photo’s time and place before its plate read answers', async () => {
+    // The time and place come from the photo itself; the plate read is a
+    // network round trip that the report's own session saw take seconds. The
+    // row is published with both in hand, before a single plate is read.
+    const photo = new File([photoBytes('early')], 'early.jpg', {
+      type: 'image/jpeg',
+    });
+
+    exifr.parse.mockImplementation(async () => ({
+      CreateDate: new Date(Date.UTC(2016, 0, 1, 12, 0, 10)),
+      OffsetTimeDigitized: '+00:00',
+    }));
+    exifr.gps.mockImplementation(async () => ({
+      latitude: 40.73,
+      longitude: -74.01,
+    }));
+
+    let answerPlate;
+    const plateAnswered = new Promise(resolve => {
+      answerPlate = resolve;
+    });
+
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+    const axiosPost = jest.spyOn(axios, 'post').mockImplementation(url => {
+      if (url === '/platerecognizer') {
+        return plateAnswered.then(() => ({
+          data: {
+            results: [
+              {
+                plate: 'T123456C',
+                score: 0.9,
+                box: { xmin: 0, ymin: 0, xmax: 10, ymax: 10 },
+                region: { code: 'us-ny' },
+                candidates: [],
+              },
+            ],
+            uploadWidth: 1000,
+            uploadHeight: 1000,
+          },
+        }));
+      }
+      if (url === '/api/geosearch') {
+        return Promise.resolve({ data: { features: [] } });
+      }
+      if (url === '/api/uploadAttachment') {
+        return Promise.resolve({ data: { id: 'a'.repeat(64) } });
+      }
+      return Promise.resolve({ data: {} });
+    });
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({
+        initialState: { email: 'test@example.com', loginSuccessful: true },
+        homeRef,
+      });
+    });
+
+    const settle = () =>
+      renderer.act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 700));
+      });
+
+    // The pass is not awaited: its plate read is held back.
+    let batch;
+    await renderer.act(async () => {
+      batch = homeRef.current.addFilesToBatch([photo]);
+    });
+    await settle();
+
+    // The row has the photo's own reads; the plate read has not answered.
+    const [row] = homeRef.current.state.batchViolations;
+    expect(row.createDateMs).toBe(Date.UTC(2016, 0, 1, 12, 0, 10));
+    expect(row.latitude).toBe(40.73);
+    expect(row.longitude).toBe(-74.01);
+    expect(row.plate).toBe('');
+
+    // It still fills the row, and the form, when it answers.
+    renderer.act(() => {
+      answerPlate();
+    });
+    await renderer.act(async () => {
+      await batch;
+    });
+    await settle();
+    expect(homeRef.current.state.batchViolations[0].plate).toBe('T123456C');
+    expect(homeRef.current.state.plate).toBe('T123456C');
+
+    exifr.gps.mockReset();
+    exifr.parse.mockReset();
+    axiosGet.mockRestore();
+    axiosPost.mockRestore();
+    consoleError.mockRestore();
+    global.URL.createObjectURL = originalCreateObjectURL;
+    tree.unmount();
+  });
+
+  test('keeps the batch progress up until every read answers', async () => {
+    // Two plate reads can overlap. The progress belongs to the set, not to
+    // whichever read happens to finish first.
+    const photos = ['first', 'second'].map(
+      name =>
+        new File([photoBytes(name)], `${name}.jpg`, { type: 'image/jpeg' }),
+    );
+    const sizes = photos.map(photo => photo.size);
+
+    const answerBySize = {};
+    const gatePlateRead = size =>
+      new Promise(resolve => {
+        answerBySize[size] = () =>
+          resolve({
+            data: { results: [], uploadWidth: 1000, uploadHeight: 1000 },
+          });
+      });
+
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+    const axiosPost = jest
+      .spyOn(axios, 'post')
+      .mockImplementation((url, body) => {
+        if (url === '/platerecognizer') {
+          return gatePlateRead(body.get('attachmentFile').size);
+        }
+        return Promise.resolve({ data: { features: [] } });
+      });
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({
+        initialState: { email: 'test@example.com', loginSuccessful: true },
+        homeRef,
+      });
+    });
+
+    const settle = () =>
+      renderer.act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 700));
+      });
+
+    // The pass is not awaited: both plate reads are held back.
+    let batch;
+    await renderer.act(async () => {
+      batch = homeRef.current.addFilesToBatch(photos);
+    });
+    await settle();
+    expect(homeRef.current.state.batchProgress).toMatchObject({
+      stage: 'alpr',
+      completed: 0,
+      total: 2,
+    });
+
+    // The first answer arrives; the second read is still out.
+    renderer.act(() => {
+      answerBySize[sizes[0]]();
+    });
+    await settle();
+    expect(homeRef.current.state.batchProgress).toMatchObject({
+      stage: 'alpr',
+      completed: 1,
+      total: 2,
+    });
+
+    renderer.act(() => {
+      answerBySize[sizes[1]]();
+    });
+    await renderer.act(async () => {
+      await batch;
+    });
+    await settle();
+    expect(homeRef.current.state.batchProgress).toBeNull();
+
+    axiosGet.mockRestore();
+    axiosPost.mockRestore();
+    consoleError.mockRestore();
+    global.URL.createObjectURL = originalCreateObjectURL;
+    tree.unmount();
+  });
+
+  test("does not take a removed photo's plate reading", async () => {
+    // A plate read can answer after the photo it belongs to has been
+    // removed. The form has let that reading go, so its answer must not
+    // arrive as if the report still held the photo.
+    const photo = new File([photoBytes('removed')], 'removed.jpg', {
+      type: 'image/jpeg',
+    });
+
+    let answerPlate;
+    const plateAnswered = new Promise(resolve => {
+      answerPlate = resolve;
+    });
+
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+    const axiosPost = jest.spyOn(axios, 'post').mockImplementation(url => {
+      if (url === '/platerecognizer') {
+        return plateAnswered.then(() => ({
+          data: {
+            results: [
+              {
+                plate: 'T123456C',
+                score: 0.9,
+                box: { xmin: 0, ymin: 0, xmax: 10, ymax: 10 },
+                region: { code: 'us-ny' },
+                candidates: [],
+              },
+            ],
+            uploadWidth: 1000,
+            uploadHeight: 1000,
+          },
+        }));
+      }
+      return Promise.resolve({ data: {} });
+    });
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({
+        initialState: { email: 'test@example.com', loginSuccessful: true },
+        homeRef,
+      });
+    });
+
+    const settle = () =>
+      renderer.act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 700));
+      });
+
+    // The pass is not awaited: its plate read is held back.
+    let batch;
+    await renderer.act(async () => {
+      batch = homeRef.current.addFilesToBatch([photo]);
+    });
+    await settle();
+    expect(homeRef.current.state.batchViolations).toHaveLength(1);
+
+    // The photo goes before its reading answers.
+    await renderer.act(async () => {
+      homeRef.current.deletePhoto({ file: photo, name: 'removed.jpg' });
+    });
+    expect(homeRef.current.state.batchViolations).toEqual([]);
+
+    renderer.act(() => {
+      answerPlate();
+    });
+    await renderer.act(async () => {
+      await batch;
+    });
+    await settle();
+
+    expect(homeRef.current.state.batchViolations).toEqual([]);
+    expect(homeRef.current.state.plate).toBe('');
+    expect(homeRef.current.state.allPlateData).toBeNull();
+    expect(
+      homeRef.current.state.plateDataByAttachmentName['removed.jpg'],
+    ).toBeUndefined();
+
+    axiosGet.mockRestore();
+    axiosPost.mockRestore();
+    consoleError.mockRestore();
+    global.URL.createObjectURL = originalCreateObjectURL;
+    tree.unmount();
   });
 
   // Three photos, each taken ten seconds and a little way from the last, so a
@@ -3730,6 +4156,114 @@ describe('Home', () => {
       // The report has the photo now, and nothing on the page shows it.
       expect(homeRef.current.photoReadings.has(photo)).toBe(false);
 
+      cleanup();
+    });
+
+    // Waits out the extraction pass -- real FileReader I/O through the
+    // stubs above -- so a test can see the time a photo gave the form.
+    const settleExtractions = () =>
+      renderer.act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 700));
+      });
+
+    // The report just filed keeps its time; the next report has none of its
+    // own until its photos give one, so it starts at now -- the time a
+    // reloaded page shows. The form used to keep the filed report's time,
+    // and a photo that read no time of its own then left it there.
+    test('starts the next report at now, not at the filed report’s time', async () => {
+      const photo = new File([photoBytes('taken')], 'taken.jpg', {
+        type: 'image/jpeg',
+      });
+      exifr.parse.mockImplementation(async () => ({
+        CreateDate: new Date(Date.UTC(2016, 0, 1, 12, 0, 10)),
+        OffsetTimeDigitized: '+00:00',
+      }));
+
+      const { homeRef, submit, cleanup } = await renderWithFiles({
+        files: [photo],
+      });
+      await settleExtractions();
+
+      // The photo gave the form its time, and the report filed with it.
+      expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:10');
+
+      await submit();
+
+      // The suite pins now to 2016-11-18 00:00 UTC, which is 19:00 the
+      // evening before in New York.
+      expect(homeRef.current.state.CreateDate).toBe('2016-11-17T19:00:00');
+
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    // A photo exported without EXIF has no time to give, so the form keeps
+    // the time it has -- which, after a submission, has to be now rather
+    // than the time of the report just filed.
+    test('keeps now when the next report’s photo has no time to give', async () => {
+      const dated = new File([photoBytes('dated')], 'dated.jpg', {
+        type: 'image/jpeg',
+      });
+      exifr.parse.mockImplementation(async () => ({
+        CreateDate: new Date(Date.UTC(2016, 0, 1, 12, 0, 10)),
+        OffsetTimeDigitized: '+00:00',
+      }));
+
+      const { homeRef, submit, cleanup } = await renderWithFiles({
+        files: [dated],
+      });
+      await settleExtractions();
+      await submit();
+
+      exifr.parse.mockImplementation(async () => {
+        throw new Error('no EXIF');
+      });
+      const undated = new File([photoBytes('undated')], 'undated.jpg', {
+        type: 'image/jpeg',
+      });
+      await renderer.act(async () => {
+        await homeRef.current.addFilesToBatch([undated]);
+      });
+      await settleExtractions();
+
+      expect(homeRef.current.state.CreateDate).toBe('2016-11-17T19:00:00');
+
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    // The reset is only the start: a photo that carries a time still gives
+    // the next report that time.
+    test('takes the next report’s time from its own photo', async () => {
+      const first = new File([photoBytes('first')], 'first.jpg', {
+        type: 'image/jpeg',
+      });
+      exifr.parse.mockImplementation(async () => ({
+        CreateDate: new Date(Date.UTC(2016, 0, 1, 12, 0, 10)),
+        OffsetTimeDigitized: '+00:00',
+      }));
+
+      const { homeRef, submit, cleanup } = await renderWithFiles({
+        files: [first],
+      });
+      await settleExtractions();
+      await submit();
+
+      exifr.parse.mockImplementation(async () => ({
+        CreateDate: new Date(Date.UTC(2016, 0, 1, 13, 0, 0)),
+        OffsetTimeDigitized: '+00:00',
+      }));
+      const second = new File([photoBytes('second')], 'second.jpg', {
+        type: 'image/jpeg',
+      });
+      await renderer.act(async () => {
+        await homeRef.current.addFilesToBatch([second]);
+      });
+      await settleExtractions();
+
+      expect(homeRef.current.state.CreateDate).toBe('2016-01-01T13:00:00');
+
+      exifr.parse.mockReset();
       cleanup();
     });
 

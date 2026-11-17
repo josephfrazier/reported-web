@@ -374,24 +374,128 @@ async function blobToBuffer({ attachmentFile }) {
   return { attachmentBuffer, attachmentArrayBuffer };
 }
 
-// TODO decouple location/date extraction
-function extractLocationDateFromVideo({ attachmentArrayBuffer }) {
+// The moment an mp4's `created` names. The header counts seconds since 1904
+// in the file's own clock and records no offset, so its wall clock is read
+// where the report is filed -- the way a picture's is when the picture
+// records none. Going through a local Date is what puts the capture date's
+// offset in front of `readingFromDate`.
+//
+// mp4box's own `created` Date cannot be used as-is: it builds its 1904 epoch
+// from local time, so it carries the runtime's offset in January 1904 rather
+// than the capture date's. In New York that difference is the daylight-saving
+// hour, which used to make a summer video read back an hour late.
+const mp4CreationTime = created => {
+  const epochOffsetMs = new Date(1904, 0, 1).getTimezoneOffset() * 60000;
+  const wallClock = new Date(created.getTime() - epochOffsetMs);
+
+  return new Date(
+    wallClock.getUTCFullYear(),
+    wallClock.getUTCMonth(),
+    wallClock.getUTCDate(),
+    wallClock.getUTCHours(),
+    wallClock.getUTCMinutes(),
+    wallClock.getUTCSeconds(),
+    wallClock.getUTCMilliseconds(),
+  ).getTime();
+};
+
+// A `©day` box's date, when it records its zone: the moment it names, in the
+// seconds-since-epoch and minutes-west form the form reads times in. `©day`
+// is an ISO 8601 date such as `2026-09-02T18:40:42-0400`. The zone is what
+// makes the header's `creation_time` a true UTC instant rather than a local
+// wall clock written as if it were UTC; a `©day` with no zone cannot tell
+// the two apart, so it answers nothing.
+const readingFromDay = day => {
+  const match = day.match(
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?(Z|[+-]\d{2}:?\d{2})$/,
+  );
+  if (!match) {
+    return null;
+  }
+
+  const [, year, month, date, hours, minutes, seconds = '0', zone] = match;
+
+  let offset = 0;
+  if (zone !== 'Z') {
+    const sign = zone.startsWith('-') ? 1 : -1;
+    const [zoneHours, zoneMinutes] = zone.slice(1).match(/\d{2}/g);
+    offset = sign * (Number(zoneHours) * 60 + Number(zoneMinutes));
+  }
+
+  const wallClock = Date.UTC(
+    Number(year),
+    Number(month) - 1,
+    Number(date),
+    Number(hours),
+    Number(minutes),
+    Number(seconds),
+  );
+
+  return {
+    millisecondsSinceEpoch: wallClock + offset * 60000,
+    offset,
+  };
+};
+
+// What a video's own boxes say about it: when it was made, and where. The
+// two answers are independent -- a camera can stamp a creation time without
+// writing a location -- so a missing GPS box must not take the time with it.
+// A value the file does not answer with stays NaN, and is passed over by
+// whichever rule is looking.
+//
+// One parse answers both reads, keyed by the file: mp4box reads the whole
+// buffer, and parsing a large video twice for two answers is wasted work.
+const videoReadings = new WeakMap();
+
+function readVideo({ attachmentFile, attachmentArrayBuffer }) {
+  if (videoReadings.has(attachmentFile)) {
+    return videoReadings.get(attachmentFile);
+  }
+
   const mp4boxfile = MP4Box.createFile();
   attachmentArrayBuffer.fileStart = 0; // eslint-disable-line no-param-reassign
   mp4boxfile.appendBuffer(attachmentArrayBuffer);
-  const info = mp4boxfile.getInfo();
-  const { created } = info; // TODO handle missing
+  // The header's creation time, absent from a file too broken to say.
+  const { created } = mp4boxfile.getInfo();
+
+  // A `©day` date with a zone settles what the header's `creation_time`
+  // cannot: whether it is UTC or a local wall clock. A file that records one
+  // is read as the moment it names; every other file keeps the New York wall
+  // clock reading below.
+  const dayData = mp4boxfile.moov?.udta?.['©day']?.data;
+  const dayReading = dayData
+    ? readingFromDay(new TextDecoder('utf-8').decode(dayData))
+    : null;
+
+  const reading = {
+    millisecondsSinceEpoch:
+      dayReading?.millisecondsSinceEpoch ??
+      (created ? mp4CreationTime(created) : NaN),
+    offset: dayReading?.offset ?? NaN,
+    latitude: NaN,
+    longitude: NaN,
+  };
 
   // https://stackoverflow.com/questions/28916329/mp4-video-file-with-gps-location/42596889#42596889
-  const uint8array = mp4boxfile.moov.udta['©xyz'].data; // TODO handle missing
-  // https://stackoverflow.com/questions/8936984/uint8array-to-string-in-javascript/36949791#36949791
-  const string = new TextDecoder('utf-8').decode(uint8array);
-  const [latitude, longitude] = execall(/[+-][\d.]+/g, string)
-    .map(m => m.match)
-    .map(Number);
+  // Most files put the box under the movie's `udta`; a camera can write it
+  // under a track's instead.
+  const xyz =
+    mp4boxfile.moov?.udta?.['©xyz'] ||
+    mp4boxfile.moov?.traks?.find(trak => trak.udta?.['©xyz'])?.udta['©xyz'];
+  const uint8array = xyz?.data;
+  if (uint8array) {
+    // https://stackoverflow.com/questions/8936984/uint8array-to-string-in-javascript/36949791#36949791
+    const string = new TextDecoder('utf-8').decode(uint8array);
+    const [latitude, longitude] = execall(/[+-][\d.]+/g, string)
+      .map(m => m.match)
+      .map(Number);
 
-  // TODO make sure time is correct (ugh timezones...)
-  return [{ latitude, longitude }, created.getTime()];
+    reading.latitude = latitude;
+    reading.longitude = longitude;
+  }
+
+  videoReadings.set(attachmentFile, reading);
+  return reading;
 }
 
 // derived from https://github.com/feross/capture-frame/tree/06b8f5eac78fea305f7f577d1697ee3b6999c9a8#complete-example
@@ -563,7 +667,18 @@ async function extractLocation({
 
   try {
     if (isVideo({ ext })) {
-      return extractLocationDateFromVideo({ attachmentArrayBuffer })[0];
+      const { latitude, longitude } = readVideo({
+        attachmentFile,
+        attachmentArrayBuffer,
+      });
+
+      // A video without a GPS box reads no coordinates, the way a picture
+      // without one does: that is no location, not a broken read.
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+        throw new Error(`${attachmentFile.name} carries no location`);
+      }
+
+      return { latitude, longitude };
     }
     if (!isImage({ ext })) {
       throw new Error(`${attachmentFile.name} is not an image/video`);
@@ -600,7 +715,7 @@ const photoTimeIsPlausible = millisecondsSinceEpoch =>
 // there. An offset that does not parse counts as none. A time outside the
 // plausible range is not a time this report should carry, so it throws, the
 // same as a file with no readable date.
-const readingFromDate = ({ date, offsetTimeDigitized }) => {
+const readingFromDate = ({ date, offsetTimeDigitized, offset }) => {
   const millisecondsSinceEpoch = date.getTime();
 
   if (!photoTimeIsPlausible(millisecondsSinceEpoch)) {
@@ -609,7 +724,11 @@ const readingFromDate = ({ date, offsetTimeDigitized }) => {
     );
   }
 
-  const parsedOffset = parseInt(offsetTimeDigitized, 10) * -60;
+  // A reading that already knows its offset (a video's `©day`) hands it over
+  // in minutes west; EXIF records one as a `±HH:MM` string.
+  const parsedOffset = Number.isFinite(offset)
+    ? offset
+    : parseInt(offsetTimeDigitized, 10) * -60;
 
   return {
     millisecondsSinceEpoch,
@@ -623,11 +742,17 @@ async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
   try {
     if (isVideo({ ext })) {
       // An MP4 records when it was made and no offset, so its time is read
-      // the way a picture's is when the picture records none.
+      // the way a picture's is when the picture records none. A file with no
+      // creation time gives an invalid date, which the plausibility check
+      // refuses like any other unusable time.
+      const { millisecondsSinceEpoch, offset } = readVideo({
+        attachmentFile,
+        attachmentArrayBuffer,
+      });
+
       return readingFromDate({
-        date: new Date(
-          extractLocationDateFromVideo({ attachmentArrayBuffer })[1],
-        ),
+        date: new Date(millisecondsSinceEpoch),
+        offset,
       });
     }
     if (!isImage({ ext })) {
@@ -6354,6 +6479,15 @@ class Home extends React.Component {
                           this.setCoords({
                             latitude: defaultLatitude,
                             longitude: defaultLongitude,
+                          });
+                          // The filed report took its time with it. The next
+                          // report has no time of its own until its photos
+                          // give one, so it starts at now -- the time a
+                          // reloaded page shows. Keeping the filed report's
+                          // time left it in the field whenever the next
+                          // photo had none to give.
+                          this.setCreateDate({
+                            millisecondsSinceEpoch: Date.now(),
                           });
                           // Batch mode reports one violation at a time, so take
                           // the submitted one out of the queue and load the next

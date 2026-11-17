@@ -136,6 +136,24 @@ const PROFILE_BOOLEANS = [
   'receive_nypd_sr_updates_by_email',
 ];
 
+// A Parse request has no deadline of its own, so a request that hangs holds
+// the page open until the browser gives up -- and Heroku's router turns the
+// page into its own 503 after 30 seconds. The profile lookup only merges
+// saved flags over the state cookie, so cutting it short costs nothing: the
+// catch below renders with the cookie alone.
+const PROFILE_LOOKUP_TIMEOUT_MS = 2000;
+
+const withTimeout = (promise, ms) => {
+  let timer;
+  const deadline = new Promise((resolve, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`Parse request timed out after ${ms} ms`)),
+      ms,
+    );
+  });
+  return Promise.race([promise, deadline]).finally(() => clearTimeout(timer));
+};
+
 const pickProfileBooleans = user => {
   const fields = {};
   PROFILE_BOOLEANS.forEach(key => {
@@ -165,7 +183,10 @@ export const resolveSsrSession = async ({ req, res }) => {
     // Best-effort: if Parse is unreachable, render with the cookie alone.
     let sessionUserFields;
     try {
-      const user = await Parse.User.me(sessionToken);
+      const user = await withTimeout(
+        Parse.User.me(sessionToken),
+        PROFILE_LOOKUP_TIMEOUT_MS,
+      );
       sessionUserFields = pickProfileBooleans(user);
     } catch {
       // The session is taken at face value, as documented above.

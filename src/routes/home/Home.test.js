@@ -1472,6 +1472,103 @@ describe('Home', () => {
     cleanup();
   });
 
+  test('shows a photo’s time and place before its plate read answers', async () => {
+    // The time and place come from the photo itself; the plate read is a
+    // network round trip that the report's own session saw take seconds. The
+    // form used to wait for the plate before showing either.
+    const photo = new File([photoBytes('early')], 'early.jpg', {
+      type: 'image/jpeg',
+    });
+
+    exifr.parse.mockImplementation(async () => ({
+      CreateDate: new Date(Date.UTC(2016, 0, 1, 12, 0, 10)),
+      OffsetTimeDigitized: '+00:00',
+    }));
+    exifr.gps.mockImplementation(async () => ({
+      latitude: 40.73,
+      longitude: -74.01,
+    }));
+
+    let answerPlate;
+    const plateAnswered = new Promise(resolve => {
+      answerPlate = resolve;
+    });
+
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+    const axiosPost = jest.spyOn(axios, 'post').mockImplementation(url => {
+      if (url === '/platerecognizer') {
+        return plateAnswered.then(() => ({
+          data: {
+            results: [
+              {
+                plate: 'T123456C',
+                score: 0.9,
+                box: { xmin: 0, ymin: 0, xmax: 10, ymax: 10 },
+                region: { code: 'us-ny' },
+                candidates: [],
+              },
+            ],
+            uploadWidth: 1000,
+            uploadHeight: 1000,
+          },
+        }));
+      }
+      if (url === '/api/geosearch') {
+        return Promise.resolve({ data: { features: [] } });
+      }
+      if (url === '/api/uploadAttachment') {
+        return Promise.resolve({ data: { id: 'a'.repeat(64) } });
+      }
+      return Promise.resolve({ data: {} });
+    });
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({
+        initialState: { email: 'test@example.com', loginSuccessful: true },
+        homeRef,
+      });
+    });
+
+    const settle = () =>
+      renderer.act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 700));
+      });
+
+    await renderer.act(async () => {
+      homeRef.current.handleAttachmentData({ attachmentData: [photo] });
+    });
+    await settle();
+
+    // The photo's own reads have landed; the plate read has not.
+    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:10');
+    expect(homeRef.current.state.latitude).toBe(40.73);
+    expect(homeRef.current.state.longitude).toBe(-74.01);
+    expect(homeRef.current.state.plate).toBe('');
+
+    // It still fills the field when it answers.
+    renderer.act(() => {
+      answerPlate();
+    });
+    await settle();
+    expect(homeRef.current.state.plate).toBe('T123456C');
+
+    exifr.gps.mockReset();
+    exifr.parse.mockReset();
+    axiosGet.mockRestore();
+    axiosPost.mockRestore();
+    consoleError.mockRestore();
+    global.URL.createObjectURL = originalCreateObjectURL;
+    tree.unmount();
+  });
+
   // Three photos, each taken ten seconds and a little way from the last, so a
   // submission's time and place land on different photos: the earliest for the
   // time, the last one with coordinates for the place.

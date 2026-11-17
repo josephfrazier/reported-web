@@ -2091,6 +2091,14 @@ class Home extends React.Component {
   // The plate, time and place a submission takes from the photos it holds,
   // worked out again whenever that set changes: a photo dropped leaves the
   // others to say what they are.
+  applyPhotosToForm = (photos, options = {}) => {
+    this.applyPhotosPlate(photos);
+    this.applyPhotoTimeAndPlace(photos, options);
+  };
+
+  // The time and place alone -- everything the photos say without a plate
+  // read. `handleAttachmentData` applies these as soon as their own reads
+  // land, rather than holding them for the plate's network round trip.
   //
   // Each follows the photos only while it is still what they gave it. A time
   // the user typed no longer matches what they say, and a place the user set
@@ -2100,9 +2108,7 @@ class Home extends React.Component {
   //
   // With nothing attached before, there is nothing of the user's to keep, and
   // the photos say what the time and place are.
-  applyPhotosToForm = (photos, { previousPhotos = null } = {}) => {
-    this.applyPhotosPlate(photos);
-
+  applyPhotoTimeAndPlace = (photos, { previousPhotos = null } = {}) => {
     if (photos.length === 0) {
       return;
     }
@@ -2319,7 +2325,10 @@ class Home extends React.Component {
       async () => {
         startBackgroundUploads(attachmentData);
 
-        const listsOfExtractions = await Promise.all(
+        // One pass per attachment: its plate read, which is a network round
+        // trip, and its own time and place, which are on the device. They are
+        // kept apart because the form waits for different things from them.
+        const perPhotoReads = await Promise.all(
           this.state.attachmentData.map(async (attachmentFile, index) => {
             if (attachmentFile.size > 20 * 1000 * 1000) {
               // just under 20MB, should match fileSize in server.js
@@ -2344,9 +2353,9 @@ class Home extends React.Component {
 
             this.setState({ isAlprLoading: true });
 
-            // What this photo's reads will say, filled in by the two below as
-            // they answer. Kept rather than collected for one pass: the form
-            // reads them again every time the photos change.
+            // What this photo's reads will say, filled in by the reads below
+            // as they answer. Kept rather than collected for one pass: the
+            // form reads them again every time the photos change.
             const reading = emptyReading(attachmentFile);
             this.photoReadings.set(attachmentFile, reading);
 
@@ -2356,8 +2365,8 @@ class Home extends React.Component {
               ext,
             });
 
-            return Promise.allSettled([
-              extractPlate({
+            return {
+              plateRead: extractPlate({
                 attachmentFile,
                 attachmentBuffer,
                 ext,
@@ -2383,38 +2392,54 @@ class Home extends React.Component {
                 .finally(() => {
                   this.setState({ isAlprLoading: false });
                 }),
-              // Recorded rather than applied: the time is the earliest
-              // photo's, which is not known until every photo has been read.
-              datePromise.then(date => {
-                reading.createDateMs = date.millisecondsSinceEpoch;
-                reading.createDateOffset = date.offset;
-              }),
-              extractLocation({
-                attachmentFile,
-                attachmentArrayBuffer,
-                ext,
-                isReverseGeocodingEnabled: this.state.isReverseGeocodingEnabled,
-              }).then(({ latitude, longitude }) => {
-                if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
-                  throw 'location (may have been stripped by Android, see https://github.com/josephfrazier/reported-web/issues/751 for details)'; // eslint-disable-line no-throw-literal
-                }
+              timeAndPlaceReads: [
+                // Recorded rather than applied: the time is the earliest
+                // photo's, which is not known until every photo has been read.
+                datePromise.then(date => {
+                  reading.createDateMs = date.millisecondsSinceEpoch;
+                  reading.createDateOffset = date.offset;
+                }),
+                extractLocation({
+                  attachmentFile,
+                  attachmentArrayBuffer,
+                  ext,
+                  isReverseGeocodingEnabled:
+                    this.state.isReverseGeocodingEnabled,
+                }).then(({ latitude, longitude }) => {
+                  if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
+                    throw 'location (may have been stripped by Android, see https://github.com/josephfrazier/reported-web/issues/751 for details)'; // eslint-disable-line no-throw-literal
+                  }
 
-                // Recorded rather than applied: which photo's place wins is
-                // not known until every photo has been read, and applying
-                // each one as it arrived left that to whichever read
-                // happened to finish last.
-                reading.latitude = latitude;
-                reading.longitude = longitude;
-              }),
-            ]);
+                  // Recorded rather than applied: which photo's place wins is
+                  // not known until every photo has been read, and applying
+                  // each one as it arrived left that to whichever read
+                  // happened to finish last.
+                  reading.latitude = latitude;
+                  reading.longitude = longitude;
+                }),
+              ],
+            };
           }),
         );
 
-        // Every photo has now been read, so the form takes its time and its
-        // place from the set as a whole, rather than from each photo in turn.
-        this.applyPhotosToForm(this.state.attachmentData, {
+        // The time and place are the device's own answers, so the form takes
+        // them from the set as a whole as soon as those reads land. A plate
+        // read can take seconds; the report's clock should not wait for it.
+        await Promise.allSettled(
+          perPhotoReads.flatMap(({ timeAndPlaceReads }) => timeAndPlaceReads),
+        );
+        this.applyPhotoTimeAndPlace(this.state.attachmentData, {
           previousPhotos,
         });
+
+        // The plate reads answer on their own time, and the set's plate is
+        // worked out once they have.
+        const listsOfExtractions = await Promise.all(
+          perPhotoReads.map(({ plateRead, timeAndPlaceReads }) =>
+            Promise.allSettled([plateRead, ...timeAndPlaceReads]),
+          ),
+        );
+        this.applyPhotosPlate(this.state.attachmentData);
 
         if (listsOfExtractions.length === 0) {
           return;

@@ -1949,6 +1949,7 @@ exports[`Home renders submission form and Previous Submissions when logged in wi
                     style={
                       {
                         "display": "inline-block",
+                        "isolation": "isolate",
                         "maxWidth": "100%",
                         "position": "relative",
                       }
@@ -2815,6 +2816,7 @@ exports[`Home renders with allPlateResults entry missing plate and photos 1`] = 
                     style={
                       {
                         "display": "inline-block",
+                        "isolation": "isolate",
                         "maxWidth": "100%",
                         "position": "relative",
                       }
@@ -3681,6 +3683,7 @@ exports[`Home renders with undefined allPlateResults and photos 1`] = `
                     style={
                       {
                         "display": "inline-block",
+                        "isolation": "isolate",
                         "maxWidth": "100%",
                         "position": "relative",
                       }

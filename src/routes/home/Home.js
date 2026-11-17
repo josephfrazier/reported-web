@@ -3982,6 +3982,11 @@ class Home extends React.Component {
                                       position: 'relative',
                                       display: 'inline-block',
                                       maxWidth: '100%',
+                                      // The plate overlays stack inside this
+                                      // wrapper, not against the page. Their
+                                      // z-index would otherwise paint over the
+                                      // map modal, whose overlay has none.
+                                      isolation: 'isolate',
                                     }}
                                   >
                                     <a

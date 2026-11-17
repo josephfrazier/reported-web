@@ -1644,6 +1644,91 @@ describe('Home', () => {
     tree.unmount();
   });
 
+  test("does not take a removed photo's plate reading", async () => {
+    // A plate read can answer after the photo it belongs to has been
+    // removed. The form has let that reading go, so its answer must not
+    // arrive as if the report still held the photo.
+    const photo = new File([photoBytes('removed')], 'removed.jpg', {
+      type: 'image/jpeg',
+    });
+
+    let answerPlate;
+    const plateAnswered = new Promise(resolve => {
+      answerPlate = resolve;
+    });
+
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+    const axiosPost = jest.spyOn(axios, 'post').mockImplementation(url => {
+      if (url === '/platerecognizer') {
+        return plateAnswered.then(() => ({
+          data: {
+            results: [
+              {
+                plate: 'T123456C',
+                score: 0.9,
+                box: { xmin: 0, ymin: 0, xmax: 10, ymax: 10 },
+                region: { code: 'us-ny' },
+                candidates: [],
+              },
+            ],
+            uploadWidth: 1000,
+            uploadHeight: 1000,
+          },
+        }));
+      }
+      return Promise.resolve({ data: {} });
+    });
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({
+        initialState: { email: 'test@example.com', loginSuccessful: true },
+        homeRef,
+      });
+    });
+
+    const settle = () =>
+      renderer.act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 700));
+      });
+
+    await renderer.act(async () => {
+      homeRef.current.handleAttachmentData({ attachmentData: [photo] });
+    });
+    await settle();
+    expect(homeRef.current.state.plate).toBe('');
+
+    // The photo goes before its reading answers.
+    await renderer.act(async () => {
+      homeRef.current.removeAttachment('removed.jpg');
+    });
+    await settle();
+
+    renderer.act(() => {
+      answerPlate();
+    });
+    await settle();
+
+    expect(homeRef.current.state.plate).toBe('');
+    expect(homeRef.current.state.allPlateData).toBeNull();
+    expect(
+      homeRef.current.state.plateDataByAttachmentName['removed.jpg'],
+    ).toBeUndefined();
+
+    axiosGet.mockRestore();
+    axiosPost.mockRestore();
+    consoleError.mockRestore();
+    global.URL.createObjectURL = originalCreateObjectURL;
+    tree.unmount();
+  });
+
   // Three photos, each taken ten seconds and a little way from the last, so a
   // submission's time and place land on different photos: the earliest for the
   // time, the last one with coordinates for the place.

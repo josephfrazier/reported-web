@@ -1314,6 +1314,58 @@ describe('Home', () => {
     cleanup();
   });
 
+  test("reads a video's time from a ©day box's own zone", async () => {
+    // A camera that writes true UTC in the header can also record the zone
+    // it was in. Without that zone the header is read as New York wall time;
+    // with it the moment is exact. A winter date keeps the offset at one
+    // value, so this test does not depend on the DST lookup.
+    MP4Box.createFile.mockImplementation(() => ({
+      appendBuffer() {},
+      // mp4box reports a header of 22:40:42Z plus its local 1904 epoch.
+      getInfo: () => ({ created: new Date(Date.UTC(2016, 0, 2, 3, 40, 42)) }),
+      moov: {
+        udta: {
+          '©xyz': { data: Buffer.from('+40.7128-074.0060/') },
+          '©day': { data: Buffer.from('2016-01-01T17:40:42-0500') },
+        },
+      },
+    }));
+
+    const video = new File([videoBytes()], 'utc.mp4', { type: 'video/mp4' });
+    const { homeRef, cleanup } = await renderAndExtract([video]);
+
+    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T17:40:42');
+
+    MP4Box.createFile.mockReset();
+    cleanup();
+  });
+
+  test('ignores a ©day box that records no zone', async () => {
+    // Without a zone, `©day` cannot say whether its clock is UTC or local,
+    // so the header keeps its New York wall clock reading.
+    MP4Box.createFile.mockImplementation(() => ({
+      appendBuffer() {},
+      getInfo: () => ({ created: new Date(Date.UTC(2016, 0, 2, 3, 40, 42)) }),
+      moov: {
+        udta: {
+          '©xyz': { data: Buffer.from('+40.7128-074.0060/') },
+          '©day': { data: Buffer.from('2016-01-01T17:40:42') },
+        },
+      },
+    }));
+
+    const video = new File([videoBytes()], 'no-zone.mp4', {
+      type: 'video/mp4',
+    });
+    const { homeRef, cleanup } = await renderAndExtract([video]);
+
+    // The header's true UTC is read as New York wall time: 22:40:42Z.
+    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T22:40:42');
+
+    MP4Box.createFile.mockReset();
+    cleanup();
+  });
+
   test("takes a video's place from a track's GPS box", async () => {
     // The `©xyz` box lives under the movie's `udta` in most files; some
     // cameras write it under a track's instead. It is the same reading
@@ -1585,6 +1637,166 @@ describe('Home', () => {
 
     exifr.gps.mockReset();
     exifr.parse.mockReset();
+    axiosGet.mockRestore();
+    axiosPost.mockRestore();
+    consoleError.mockRestore();
+    global.URL.createObjectURL = originalCreateObjectURL;
+    tree.unmount();
+  });
+
+  test('keeps the plate spinner up until every read answers', async () => {
+    // Two plate reads can overlap -- adding a second photo re-reads the first
+    // as well. The spinner belongs to the set, not to whichever read happens
+    // to finish first.
+    const photos = ['first', 'second'].map(
+      name =>
+        new File([photoBytes(name)], `${name}.jpg`, { type: 'image/jpeg' }),
+    );
+    const sizes = photos.map(photo => photo.size);
+
+    const answerBySize = {};
+    const gatePlateRead = size =>
+      new Promise(resolve => {
+        answerBySize[size] = () =>
+          resolve({
+            data: { results: [], uploadWidth: 1000, uploadHeight: 1000 },
+          });
+      });
+
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+    const axiosPost = jest
+      .spyOn(axios, 'post')
+      .mockImplementation((url, body) => {
+        if (url === '/platerecognizer') {
+          return gatePlateRead(body.get('attachmentFile').size);
+        }
+        return Promise.resolve({ data: { features: [] } });
+      });
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({
+        initialState: { email: 'test@example.com', loginSuccessful: true },
+        homeRef,
+      });
+    });
+
+    const settle = () =>
+      renderer.act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 50));
+      });
+
+    await renderer.act(async () => {
+      homeRef.current.handleAttachmentData({ attachmentData: photos });
+    });
+    await settle();
+    expect(homeRef.current.state.isAlprLoading).toBe(true);
+
+    // The first answer arrives; the second read is still out.
+    renderer.act(() => {
+      answerBySize[sizes[0]]();
+    });
+    await settle();
+    expect(homeRef.current.state.isAlprLoading).toBe(true);
+
+    renderer.act(() => {
+      answerBySize[sizes[1]]();
+    });
+    await settle();
+    expect(homeRef.current.state.isAlprLoading).toBe(false);
+
+    axiosGet.mockRestore();
+    axiosPost.mockRestore();
+    consoleError.mockRestore();
+    global.URL.createObjectURL = originalCreateObjectURL;
+    tree.unmount();
+  });
+
+  test("does not take a removed photo's plate reading", async () => {
+    // A plate read can answer after the photo it belongs to has been
+    // removed. The form has let that reading go, so its answer must not
+    // arrive as if the report still held the photo.
+    const photo = new File([photoBytes('removed')], 'removed.jpg', {
+      type: 'image/jpeg',
+    });
+
+    let answerPlate;
+    const plateAnswered = new Promise(resolve => {
+      answerPlate = resolve;
+    });
+
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+    const axiosPost = jest.spyOn(axios, 'post').mockImplementation(url => {
+      if (url === '/platerecognizer') {
+        return plateAnswered.then(() => ({
+          data: {
+            results: [
+              {
+                plate: 'T123456C',
+                score: 0.9,
+                box: { xmin: 0, ymin: 0, xmax: 10, ymax: 10 },
+                region: { code: 'us-ny' },
+                candidates: [],
+              },
+            ],
+            uploadWidth: 1000,
+            uploadHeight: 1000,
+          },
+        }));
+      }
+      return Promise.resolve({ data: {} });
+    });
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({
+        initialState: { email: 'test@example.com', loginSuccessful: true },
+        homeRef,
+      });
+    });
+
+    const settle = () =>
+      renderer.act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 700));
+      });
+
+    await renderer.act(async () => {
+      homeRef.current.handleAttachmentData({ attachmentData: [photo] });
+    });
+    await settle();
+    expect(homeRef.current.state.plate).toBe('');
+
+    // The photo goes before its reading answers.
+    await renderer.act(async () => {
+      homeRef.current.removeAttachment('removed.jpg');
+    });
+    await settle();
+
+    renderer.act(() => {
+      answerPlate();
+    });
+    await settle();
+
+    expect(homeRef.current.state.plate).toBe('');
+    expect(homeRef.current.state.allPlateData).toBeNull();
+    expect(
+      homeRef.current.state.plateDataByAttachmentName['removed.jpg'],
+    ).toBeUndefined();
+
     axiosGet.mockRestore();
     axiosPost.mockRestore();
     consoleError.mockRestore();

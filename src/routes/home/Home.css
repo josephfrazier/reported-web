@@ -673,6 +673,11 @@ input[type='search']::-webkit-search-cancel-button {
   align-items: flex-start;
   gap: 4px;
   margin: 8px 0;
+
+  /* The tiles' controls stack among themselves, not against the page. Their
+     positive z-indexes would otherwise join the page's stacking context and
+     paint over an open modal: its overlay has no z-index of its own. */
+  isolation: isolate;
 }
 
 @media (width <= 480px) {

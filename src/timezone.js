@@ -54,10 +54,7 @@ function FindDstSwitchDate(year, month) {
   }
 }
 
-function DisplayDstSwitchDates() {
-  let year = new Date().getYear();
-  if (year < 1000) year += 1900;
-
+function DisplayDstSwitchDates(year) {
   let firstSwitch = 0;
   let secondSwitch = 0;
   let lastOffset = 99;
@@ -84,7 +81,12 @@ function DisplayDstSwitchDates() {
 }
 
 function isDst(date) {
-  const { firstDstDate, secondDstDate } = DisplayDstSwitchDates();
+  // The date being read may be from another year -- a report can be filed for
+  // an old photo -- so the switches to compare against are its own year's, not
+  // today's.
+  const { firstDstDate, secondDstDate } = DisplayDstSwitchDates(
+    date.getFullYear(),
+  );
   const from = new Date(firstDstDate);
   const to = new Date(secondDstDate);
 

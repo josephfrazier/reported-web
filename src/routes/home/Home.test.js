@@ -5372,6 +5372,253 @@ describe('a locked address', () => {
     );
   };
 
+  // The form renders only for a logged-in user, and the hint lives in it.
+  const loggedIn = { email: 'test@example.com', loginSuccessful: true };
+
+  // The form draws a thumbnail for each attachment, which asks the browser
+  // for an object URL. jsdom has none.
+  const stubObjectUrls = () => {
+    const original = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+    return () => {
+      global.URL.createObjectURL = original;
+    };
+  };
+
+  // A photo the form has read, attached to the report: the lock's hint asks
+  // the same readings unchecking does.
+  const locatedPhoto = ({
+    homeRef,
+    name,
+    latitude,
+    longitude,
+    createDateMs,
+  }) => {
+    const photo = new File(['photo'], name, { type: 'image/jpeg' });
+    homeRef.current.photoReadings.set(photo, {
+      latitude,
+      longitude,
+      createDateMs,
+    });
+    return photo;
+  };
+
+  // The hint names the place unchecking would return to, which is what lets
+  // the user watch a stale fix be replaced by a fresh one.
+  test('shows the address unchecking would return to', async () => {
+    const homeRef = React.createRef();
+    const tree = renderHome({ initialState: loggedIn, homeRef });
+
+    // Let the mount-time geolocation resolve before the user picks a place.
+    await renderer.act(async () => {});
+
+    const restoreObjectUrls = stubObjectUrls();
+    const axiosPost = jest.spyOn(axios, 'post').mockImplementation(url => {
+      if (url === '/api/geosearch') {
+        return Promise.resolve({
+          data: {
+            features: [
+              {
+                properties: {
+                  housenumber: '2',
+                  street: 'Main St',
+                  borough: 'Manhattan',
+                },
+              },
+            ],
+          },
+        });
+      }
+      return Promise.resolve({ data: {} });
+    });
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    const photo = locatedPhoto({
+      homeRef,
+      name: 'photo.jpg',
+      latitude: 40.73,
+      longitude: -74.01,
+      createDateMs: 3000,
+    });
+
+    renderer.act(() => {
+      homeRef.current.setState({
+        ...chosenPlace,
+        isLocationLocked: true,
+        attachmentData: [photo],
+      });
+    });
+
+    // The lookup starts from that update; let it answer.
+    await renderer.act(async () => {});
+
+    expect(renderedText(tree.toJSON())).toContain(
+      'Reuse this address (uncheck to return to: 2 Main St, Manhattan)',
+    );
+
+    // The hint goes with the box: unchecked, there is no place to go back to.
+    renderer.act(() => {
+      homeRef.current.handleInputChange({
+        target: { name: 'isLocationLocked', type: 'checkbox', checked: false },
+      });
+    });
+
+    expect(renderedText(tree.toJSON())).not.toContain('uncheck to return to');
+
+    restoreObjectUrls();
+    axiosPost.mockRestore();
+    consoleError.mockRestore();
+    tree.unmount();
+  });
+
+  test('shows no return address when no photo knows a place', async () => {
+    const homeRef = React.createRef();
+    const tree = renderHome({ initialState: loggedIn, homeRef });
+
+    // Let the mount-time geolocation resolve before the user picks a place.
+    await renderer.act(async () => {});
+
+    const restoreObjectUrls = stubObjectUrls();
+    const photo = new File(['photo'], 'photo.jpg', { type: 'image/jpeg' });
+
+    renderer.act(() => {
+      homeRef.current.setState({
+        ...chosenPlace,
+        isLocationLocked: true,
+        attachmentData: [photo],
+      });
+    });
+
+    await renderer.act(async () => {});
+
+    expect(renderedText(tree.toJSON())).not.toContain('uncheck to return to');
+
+    restoreObjectUrls();
+    tree.unmount();
+  });
+
+  test('shows no return address when the photos give the place already chosen', async () => {
+    const homeRef = React.createRef();
+    const tree = renderHome({ initialState: loggedIn, homeRef });
+
+    // Let the mount-time geolocation resolve before the user picks a place.
+    await renderer.act(async () => {});
+
+    const restoreObjectUrls = stubObjectUrls();
+    const axiosPost = jest
+      .spyOn(axios, 'post')
+      .mockResolvedValue({ data: { features: [] } });
+
+    const photo = locatedPhoto({
+      homeRef,
+      name: 'photo.jpg',
+      latitude: chosenPlace.latitude,
+      longitude: chosenPlace.longitude,
+      createDateMs: 3000,
+    });
+
+    renderer.act(() => {
+      homeRef.current.setState({
+        ...chosenPlace,
+        isLocationLocked: true,
+        attachmentData: [photo],
+      });
+    });
+
+    await renderer.act(async () => {});
+
+    // Unchecking would return to the place the form already holds, so the
+    // label says nothing -- and no address lookup is needed to know that.
+    expect(renderedText(tree.toJSON())).not.toContain('uncheck to return to');
+    expect(
+      axiosPost.mock.calls.filter(([url]) => url === '/api/geosearch'),
+    ).toHaveLength(0);
+
+    restoreObjectUrls();
+    axiosPost.mockRestore();
+    tree.unmount();
+  });
+
+  // The phone's fix catches up with the car: a later photo knows the right
+  // place, and the hint follows it. That is the signal the box was added for.
+  test("changes to a later photo's place as the fix catches up", async () => {
+    const homeRef = React.createRef();
+    const tree = renderHome({ initialState: loggedIn, homeRef });
+
+    // Let the mount-time geolocation resolve before the user picks a place.
+    await renderer.act(async () => {});
+
+    const restoreObjectUrls = stubObjectUrls();
+    const axiosPost = jest
+      .spyOn(axios, 'post')
+      .mockImplementation((url, body) => {
+        if (url === '/api/geosearch') {
+          return Promise.resolve({
+            data: {
+              features: [
+                {
+                  properties: {
+                    housenumber: '1',
+                    street: body.lat === 40.73 ? 'Stale St' : 'Fresh St',
+                    borough: 'Manhattan',
+                  },
+                },
+              ],
+            },
+          });
+        }
+        return Promise.resolve({ data: {} });
+      });
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    const stale = locatedPhoto({
+      homeRef,
+      name: 'stale.jpg',
+      latitude: 40.73,
+      longitude: -74.01,
+      createDateMs: 1000,
+    });
+
+    renderer.act(() => {
+      homeRef.current.setState({
+        ...chosenPlace,
+        isLocationLocked: true,
+        attachmentData: [stale],
+      });
+    });
+    await renderer.act(async () => {});
+
+    expect(renderedText(tree.toJSON())).toContain(
+      'uncheck to return to: 1 Stale St, Manhattan',
+    );
+
+    const fresh = locatedPhoto({
+      homeRef,
+      name: 'fresh.jpg',
+      latitude: 40.75,
+      longitude: -73.95,
+      createDateMs: 2000,
+    });
+
+    renderer.act(() => {
+      homeRef.current.setState({ attachmentData: [stale, fresh] });
+    });
+    await renderer.act(async () => {});
+
+    expect(renderedText(tree.toJSON())).toContain(
+      'uncheck to return to: 1 Fresh St, Manhattan',
+    );
+
+    restoreObjectUrls();
+    axiosPost.mockRestore();
+    consoleError.mockRestore();
+    tree.unmount();
+  });
+
   test('keeps the place the user picked when a photo reports another one', () => {
     const homeRef = React.createRef();
     const tree = renderHome({ homeRef });

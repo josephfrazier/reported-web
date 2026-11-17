@@ -358,6 +358,35 @@ describe('authenticate', () => {
       expect(res.append).not.toHaveBeenCalled();
     });
 
+    test('renders with the cookie when the profile lookup hangs', async () => {
+      // A Parse request that never answers must not hold the page open until
+      // the router turns it into a 503. The lookup only merges saved flags,
+      // so the deadline leaves the cookie's state as the render input.
+      const me = jest
+        .spyOn(Parse.User, 'me')
+        .mockImplementation(() => new Promise(() => {}));
+      try {
+        const res = fakeResponse();
+
+        const result = await resolveSsrSession({
+          req: cookieRequest('r:unanswered'),
+          res,
+        });
+
+        expect(result).toMatchObject({
+          sessionPresent: true,
+          sessionUserFields: undefined,
+        });
+        expect(res.cookie).toHaveBeenCalledWith(
+          SESSION_COOKIE,
+          'r:unanswered',
+          expect.objectContaining({ httpOnly: true }),
+        );
+      } finally {
+        me.mockRestore();
+      }
+    });
+
     test('migrates legacy credentials from the state cookie', async () => {
       const state = {
         email,

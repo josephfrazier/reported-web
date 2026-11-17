@@ -412,6 +412,61 @@ const run = async () => {
       },
     ]);
 
+    // A thrown server error reaches the browser as
+    // `{ error: { message, ... } }` (handlePromiseRejection), while the
+    // routes' own 4xx answers use `{ error: '…' }`. A visitor must never see
+    // the object rendered as "[object Object]", and internal text such as
+    // "unauthorized" is not actionable for them, so a 5xx gets a plain
+    // service message.
+    const failingContext = await browser.newContext();
+    let polygonFailureRequested = false;
+    await failingContext.route(/\/api\/submissions-in-polygon(\?|$)/, route => {
+      polygonFailureRequested = true;
+      route.fulfill({
+        status: 500,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: { message: 'unauthorized' } }),
+      });
+    });
+    await failingContext.route(/\/api\/submission(\?|$)/, route => {
+      route.fulfill({
+        status: 500,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: { message: 'unauthorized' } }),
+      });
+    });
+    const failingPage = await failingContext.newPage();
+    const failingDialog = new Promise(resolve => {
+      failingPage.once('dialog', async dialog => {
+        resolve(dialog.message());
+        await dialog.dismiss();
+      });
+    });
+    await failingPage.goto(
+      `${BASE_URL}/submissions-map?polygon=40.0,-73.0;40.0,-73.1;40.1,-73.1&case_id=311-12345`,
+      { waitUntil: 'load' },
+    );
+    const failingAlert = await failingDialog;
+    const failingStatus = await failingPage
+      .locator('#draw-status')
+      .textContent();
+
+    failures += runChecks([
+      {
+        name: 'submissions map: a server error shows a readable alert',
+        ok:
+          polygonFailureRequested &&
+          !failingAlert.includes('[object Object]') &&
+          failingAlert.includes('temporarily unavailable'),
+        detail: JSON.stringify({ failingAlert, polygonFailureRequested }),
+      },
+      {
+        name: 'submissions map: a server error stays on the draw status line',
+        ok: failingStatus.includes('temporarily unavailable'),
+        detail: JSON.stringify({ failingStatus }),
+      },
+    ]);
+
     // ── Submissions map: logged out ──
     const loggedOutContext = await browser.newContext();
     const loggedOutPage = await loggedOutContext.newPage();

@@ -365,6 +365,31 @@ async function blobToBuffer({ attachmentFile }) {
   return { attachmentBuffer, attachmentArrayBuffer };
 }
 
+// The moment an mp4's `created` names. The header counts seconds since 1904
+// in the file's own clock and records no offset, so its wall clock is read
+// where the report is filed -- the way a picture's is when the picture
+// records none. Going through a local Date is what puts the capture date's
+// offset in front of `readingFromDate`.
+//
+// mp4box's own `created` Date cannot be used as-is: it builds its 1904 epoch
+// from local time, so it carries the runtime's offset in January 1904 rather
+// than the capture date's. In New York that difference is the daylight-saving
+// hour, which used to make a summer video read back an hour late.
+const mp4CreationTime = created => {
+  const epochOffsetMs = new Date(1904, 0, 1).getTimezoneOffset() * 60000;
+  const wallClock = new Date(created.getTime() - epochOffsetMs);
+
+  return new Date(
+    wallClock.getUTCFullYear(),
+    wallClock.getUTCMonth(),
+    wallClock.getUTCDate(),
+    wallClock.getUTCHours(),
+    wallClock.getUTCMinutes(),
+    wallClock.getUTCSeconds(),
+    wallClock.getUTCMilliseconds(),
+  ).getTime();
+};
+
 // TODO decouple location/date extraction
 function extractLocationDateFromVideo({ attachmentArrayBuffer }) {
   const mp4boxfile = MP4Box.createFile();
@@ -381,8 +406,7 @@ function extractLocationDateFromVideo({ attachmentArrayBuffer }) {
     .map(m => m.match)
     .map(Number);
 
-  // TODO make sure time is correct (ugh timezones...)
-  return [{ latitude, longitude }, created.getTime()];
+  return [{ latitude, longitude }, mp4CreationTime(created)];
 }
 
 // derived from https://github.com/feross/capture-frame/tree/06b8f5eac78fea305f7f577d1697ee3b6999c9a8#complete-example

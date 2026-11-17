@@ -70,7 +70,9 @@ require('timezone-mock').register('US/Eastern');
 require('timezone-mock').options({
   fallbackFn: param => new RealDate(param),
 });
-require('jest-mock-now')();
+const mockNow = require('jest-mock-now');
+
+mockNow();
 
 // timezone-mock's replacement Date leaves `toTimeString` out (the package has
 // a TODO for it), and the New York offset helper reads DST switch times with
@@ -1310,6 +1312,40 @@ describe('Home', () => {
 
     MP4Box.createFile.mockReset();
     cleanup();
+  });
+
+  test("keeps a summer video's wall clock across the 1904 epoch's DST gap", async () => {
+    // mp4box reads the header's 1904 epoch in local time, so the Date it
+    // reports carries New York's January offset (five hours); the form then
+    // reads the capture date in July's (four). The hour that difference used
+    // to add must not show: the camera's 12:00:10 stays 12:00:10.
+    //
+    // The offset helper reads the DST switches of the current year, so pin
+    // now to a November after the capture date, in the same year: the suite's
+    // usual 2016 clock cannot see 2016's summer switches.
+    mockNow(new RealDate(Date.UTC(2026, 10, 17)));
+
+    MP4Box.createFile.mockImplementation(() => ({
+      appendBuffer() {},
+      getInfo: () => ({ created: new Date(Date.UTC(2026, 6, 1, 17, 0, 10)) }),
+      moov: {
+        udta: {
+          '©xyz': { data: Buffer.from('+40.7128-074.0060/') },
+        },
+      },
+    }));
+
+    const video = new File([videoBytes()], 'summer.mp4', { type: 'video/mp4' });
+    const { homeRef, cleanup } = await renderAndExtract([video]);
+
+    // Read before putting the suite's clock and mocks back, so a failure
+    // cannot leak them into the next test.
+    const createDate = homeRef.current.state.CreateDate;
+    MP4Box.createFile.mockReset();
+    mockNow();
+    cleanup();
+
+    expect(createDate).toBe('2026-07-01T12:00:10');
   });
 
   test('leaves the form time alone for a video stamped with the mp4 epoch', async () => {

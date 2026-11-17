@@ -1348,6 +1348,50 @@ describe('Home', () => {
     expect(createDate).toBe('2026-07-01T12:00:10');
   });
 
+  test("takes a video's time even when it records no place", async () => {
+    // A camera can stamp a creation time without writing a GPS box -- the
+    // Panasonic that made the report's own video does. The two answers are
+    // independent: the missing place must not take the time with it, and one
+    // parse answers both reads.
+    MP4Box.createFile.mockImplementation(() => ({
+      appendBuffer() {},
+      getInfo: () => ({ created: new Date(Date.UTC(2016, 0, 1, 12, 0, 10)) }),
+      moov: { udta: {} },
+    }));
+
+    const video = new File([videoBytes()], 'video.mp4', { type: 'video/mp4' });
+    const { homeRef, cleanup } = await renderAndExtract([video]);
+
+    // Noon UTC is 7:00 that morning in New York.
+    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T07:00:10');
+    // Nothing moved the place: the video never said where it was.
+    expect(homeRef.current.state.latitude).toBe(40.7128);
+    expect(homeRef.current.state.longitude).toBe(-74.006);
+    expect(MP4Box.createFile).toHaveBeenCalledTimes(1);
+
+    MP4Box.createFile.mockReset();
+    cleanup();
+  });
+
+  test('leaves the form time alone for a video with no creation time', async () => {
+    // A broken or copied file can have no usable header time at all. The form
+    // keeps the time it had, the way a picture without EXIF does.
+    MP4Box.createFile.mockImplementation(() => ({
+      appendBuffer() {},
+      getInfo: () => ({}),
+      moov: { udta: {} },
+    }));
+
+    const video = new File([videoBytes()], 'video.mp4', { type: 'video/mp4' });
+    const { homeRef, cleanup } = await renderAndExtract([video]);
+
+    // The form's time is the suite's pinned now, read in New York time.
+    expect(homeRef.current.state.CreateDate).toBe('2016-11-17T19:00:00');
+
+    MP4Box.createFile.mockReset();
+    cleanup();
+  });
+
   test('leaves the form time alone for a video stamped with the mp4 epoch', async () => {
     // A broken or copied file can carry the format's own epoch (1904) in its
     // header instead of a real time.

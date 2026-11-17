@@ -2373,6 +2373,13 @@ class Home extends React.Component {
                 isAlprEnabled: this.state.isAlprEnabled,
               })
                 .then(result => {
+                  // The photo may have been removed while its read was out.
+                  // The form has let its reading go, so nothing the read says
+                  // belongs to it any more.
+                  if (!this.state.attachmentData.includes(attachmentFile)) {
+                    return;
+                  }
+
                   if (
                     this.state.plate === '' &&
                     document.activeElement !== this.plateRef.current

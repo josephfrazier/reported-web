@@ -390,23 +390,48 @@ const mp4CreationTime = created => {
   ).getTime();
 };
 
-// TODO decouple location/date extraction
-function extractLocationDateFromVideo({ attachmentArrayBuffer }) {
+// What a video's own boxes say about it: when it was made, and where. The
+// two answers are independent -- a camera can stamp a creation time without
+// writing a location -- so a missing GPS box must not take the time with it.
+// A value the file does not answer with stays NaN, and is passed over by
+// whichever rule is looking.
+//
+// One parse answers both reads, keyed by the file: mp4box reads the whole
+// buffer, and parsing a large video twice for two answers is wasted work.
+const videoReadings = new WeakMap();
+
+function readVideo({ attachmentFile, attachmentArrayBuffer }) {
+  if (videoReadings.has(attachmentFile)) {
+    return videoReadings.get(attachmentFile);
+  }
+
   const mp4boxfile = MP4Box.createFile();
   attachmentArrayBuffer.fileStart = 0; // eslint-disable-line no-param-reassign
   mp4boxfile.appendBuffer(attachmentArrayBuffer);
-  const info = mp4boxfile.getInfo();
-  const { created } = info; // TODO handle missing
+  // The header's creation time, absent from a file too broken to say.
+  const { created } = mp4boxfile.getInfo();
+
+  const reading = {
+    millisecondsSinceEpoch: created ? mp4CreationTime(created) : NaN,
+    latitude: NaN,
+    longitude: NaN,
+  };
 
   // https://stackoverflow.com/questions/28916329/mp4-video-file-with-gps-location/42596889#42596889
-  const uint8array = mp4boxfile.moov.udta['©xyz'].data; // TODO handle missing
-  // https://stackoverflow.com/questions/8936984/uint8array-to-string-in-javascript/36949791#36949791
-  const string = new TextDecoder('utf-8').decode(uint8array);
-  const [latitude, longitude] = execall(/[+-][\d.]+/g, string)
-    .map(m => m.match)
-    .map(Number);
+  const uint8array = mp4boxfile.moov?.udta?.['©xyz']?.data;
+  if (uint8array) {
+    // https://stackoverflow.com/questions/8936984/uint8array-to-string-in-javascript/36949791#36949791
+    const string = new TextDecoder('utf-8').decode(uint8array);
+    const [latitude, longitude] = execall(/[+-][\d.]+/g, string)
+      .map(m => m.match)
+      .map(Number);
 
-  return [{ latitude, longitude }, mp4CreationTime(created)];
+    reading.latitude = latitude;
+    reading.longitude = longitude;
+  }
+
+  videoReadings.set(attachmentFile, reading);
+  return reading;
 }
 
 // derived from https://github.com/feross/capture-frame/tree/06b8f5eac78fea305f7f577d1697ee3b6999c9a8#complete-example
@@ -631,7 +656,18 @@ async function extractLocation({
 
   try {
     if (isVideo({ ext })) {
-      return extractLocationDateFromVideo({ attachmentArrayBuffer })[0];
+      const { latitude, longitude } = readVideo({
+        attachmentFile,
+        attachmentArrayBuffer,
+      });
+
+      // A video without a GPS box reads no coordinates, the way a picture
+      // without one does: that is no location, not a broken read.
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+        throw new Error(`${attachmentFile.name} carries no location`);
+      }
+
+      return { latitude, longitude };
     }
     if (!isImage({ ext })) {
       throw new Error(`${attachmentFile.name} is not an image/video`);
@@ -691,11 +727,16 @@ async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
   try {
     if (isVideo({ ext })) {
       // An MP4 records when it was made and no offset, so its time is read
-      // the way a picture's is when the picture records none.
+      // the way a picture's is when the picture records none. A file with no
+      // creation time gives an invalid date, which the plausibility check
+      // refuses like any other unusable time.
+      const { millisecondsSinceEpoch } = readVideo({
+        attachmentFile,
+        attachmentArrayBuffer,
+      });
+
       return readingFromDate({
-        date: new Date(
-          extractLocationDateFromVideo({ attachmentArrayBuffer })[1],
-        ),
+        date: new Date(millisecondsSinceEpoch),
       });
     }
     if (!isImage({ ext })) {

@@ -219,6 +219,27 @@ function startBackgroundUploads(attachmentData) {
   });
 }
 
+// Marks a promise's rejection handled from the moment it is made. The
+// extraction pass takes every read's rejection with Promise.allSettled, but
+// only once every photo's bytes have been read; a read that refuses before
+// then would be reported as an unhandled rejection first (Sentry issues
+// REPORTED-WEB-G, -H and -J), even though the pass goes on to handle it.
+const markHandled = promise => {
+  promise.catch(() => {});
+  return promise;
+};
+
+// Wraps an async setState callback so a failure in it is reported rather
+// than left unhandled. React ignores what a callback returns, so a rejection
+// from one has nowhere else to go (Sentry issue REPORTED-WEB-E).
+function reportFailures(asyncCallback) {
+  return (...args) => {
+    asyncCallback(...args).catch(err => {
+      console.error('Could not read the attached files:', err);
+    });
+  };
+}
+
 // Whether a failed submit failed because an attachment id it carried names a
 // file the server no longer has. The message is the server's own (see
 // `src/getAttachmentData.js`): the store drops an attachment an hour after it
@@ -503,7 +524,10 @@ async function getVideoScreenshot({ attachmentFile }) {
   video.volume = 0;
   video.setAttribute('crossOrigin', 'anonymous'); // optional, when cross-domain
   video.src = src;
-  video.play();
+  // Browsers may refuse to start playback (autoplay policy, a saved-data
+  // mode). The frame is drawn from the video either way, so a refusal is no
+  // reason to report an error.
+  video.play().catch(() => {});
   await pEvent(video, 'canplay');
 
   video.currentTime = 0; // TODO let user choose time?
@@ -2410,7 +2434,7 @@ class Home extends React.Component {
       state => ({
         attachmentData: state.attachmentData.concat(attachmentData),
       }),
-      async () => {
+      reportFailures(async () => {
         startBackgroundUploads(attachmentData);
 
         // One pass per attachment: its plate read, which is a network round
@@ -2455,67 +2479,73 @@ class Home extends React.Component {
             });
 
             return {
-              plateRead: extractPlate({
-                attachmentFile,
-                attachmentBuffer,
-                ext,
-                isAlprEnabled: this.state.isAlprEnabled,
-              })
-                .then(result => {
-                  // The photo may have been removed while its read was out.
-                  // The form has let its reading go, so nothing the read says
-                  // belongs to it any more.
-                  if (!this.state.attachmentData.includes(attachmentFile)) {
-                    return;
-                  }
-
-                  if (
-                    this.state.plate === '' &&
-                    document.activeElement !== this.plateRef.current
-                  ) {
-                    this.setLicensePlate(result);
-                  }
-                  this.setState(state => ({
-                    allPlateData: result.allPlateData,
-                    plateDataByAttachmentName: result.allPlateData
-                      ? {
-                          ...state.plateDataByAttachmentName,
-                          [attachmentFile.name]: result.allPlateData,
-                        }
-                      : state.plateDataByAttachmentName,
-                  }));
+              plateRead: markHandled(
+                extractPlate({
+                  attachmentFile,
+                  attachmentBuffer,
+                  ext,
+                  isAlprEnabled: this.state.isAlprEnabled,
                 })
-                .finally(() => {
-                  this.alprReadsInFlight -= 1;
-                  this.setState({
-                    isAlprLoading: this.alprReadsInFlight > 0,
-                  });
-                }),
+                  .then(result => {
+                    // The photo may have been removed while its read was out.
+                    // The form has let its reading go, so nothing the read says
+                    // belongs to it any more.
+                    if (!this.state.attachmentData.includes(attachmentFile)) {
+                      return;
+                    }
+
+                    if (
+                      this.state.plate === '' &&
+                      document.activeElement !== this.plateRef.current
+                    ) {
+                      this.setLicensePlate(result);
+                    }
+                    this.setState(state => ({
+                      allPlateData: result.allPlateData,
+                      plateDataByAttachmentName: result.allPlateData
+                        ? {
+                            ...state.plateDataByAttachmentName,
+                            [attachmentFile.name]: result.allPlateData,
+                          }
+                        : state.plateDataByAttachmentName,
+                    }));
+                  })
+                  .finally(() => {
+                    this.alprReadsInFlight -= 1;
+                    this.setState({
+                      isAlprLoading: this.alprReadsInFlight > 0,
+                    });
+                  }),
+              ),
               timeAndPlaceReads: [
                 // Recorded rather than applied: the time is the earliest
                 // photo's, which is not known until every photo has been read.
-                datePromise.then(date => {
-                  reading.createDateMs = date.millisecondsSinceEpoch;
-                  reading.createDateOffset = date.offset;
-                }),
-                extractLocation({
-                  attachmentFile,
-                  attachmentArrayBuffer,
-                  ext,
-                  isReverseGeocodingEnabled:
-                    this.state.isReverseGeocodingEnabled,
-                }).then(({ latitude, longitude }) => {
-                  if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
-                    throw 'location (may have been stripped by Android, see https://github.com/josephfrazier/reported-web/issues/751 for details)'; // eslint-disable-line no-throw-literal
-                  }
+                markHandled(
+                  datePromise.then(date => {
+                    reading.createDateMs = date.millisecondsSinceEpoch;
+                    reading.createDateOffset = date.offset;
+                  }),
+                ),
+                markHandled(
+                  extractLocation({
+                    attachmentFile,
+                    attachmentArrayBuffer,
+                    ext,
+                    isReverseGeocodingEnabled:
+                      this.state.isReverseGeocodingEnabled,
+                  }).then(({ latitude, longitude }) => {
+                    if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
+                      throw 'location (may have been stripped by Android, see https://github.com/josephfrazier/reported-web/issues/751 for details)'; // eslint-disable-line no-throw-literal
+                    }
 
-                  // Recorded rather than applied: which photo's place wins is
-                  // not known until every photo has been read, and applying
-                  // each one as it arrived left that to whichever read
-                  // happened to finish last.
-                  reading.latitude = latitude;
-                  reading.longitude = longitude;
-                }),
+                    // Recorded rather than applied: which photo's place wins is
+                    // not known until every photo has been read, and applying
+                    // each one as it arrived left that to whichever read
+                    // happened to finish last.
+                    reading.latitude = latitude;
+                    reading.longitude = longitude;
+                  }),
+                ),
               ],
             };
           }),
@@ -2568,7 +2598,7 @@ class Home extends React.Component {
             </p>
           </React.Fragment>,
         );
-      },
+      }),
     );
   };
 

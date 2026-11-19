@@ -204,6 +204,7 @@ async function renderAndExtract(files) {
   return {
     homeRef,
     settle,
+    consoleError,
     cleanup: () => {
       exifr.gps.mockReset();
       exifr.parse.mockReset();
@@ -1630,6 +1631,114 @@ describe('Home', () => {
     axiosPost.mockRestore();
     consoleError.mockRestore();
     global.URL.createObjectURL = originalCreateObjectURL;
+    tree.unmount();
+  });
+
+  test('keeps a failed read handled when a file stops the pass', async () => {
+    // The pass takes every read's rejection with Promise.allSettled, but only
+    // once it has read every photo's bytes. A file the browser cannot read
+    // stops the pass before then, leaving the reads it had already started
+    // unhandled -- the refusals Sentry filed as issues REPORTED-WEB-G, -H
+    // and -J. Jest fails a test that leaves a rejection unhandled, so the
+    // failure this guards against is the test failing outright.
+    const early = new File([photoBytes('early')], 'early.jpg', {
+      type: 'image/jpeg',
+    });
+    const unreadable = new File([photoBytes('unreadable')], 'unreadable.jpg', {
+      type: 'image/jpeg',
+    });
+
+    // The early photo's bytes arrive at once, so its reads refuse while the
+    // unreadable photo is still being read. That read then fails and stops
+    // the pass -- late enough that the early photo's reads exist by then.
+    const readError = new ProgressEvent('error');
+    const readBlob = blobUtil.blobToArrayBuffer;
+    const blobToArrayBuffer = jest
+      .spyOn(blobUtil, 'blobToArrayBuffer')
+      .mockImplementation(attachmentFile => {
+        if (attachmentFile.name === 'unreadable.jpg') {
+          return new Promise((resolve, reject) => {
+            setTimeout(() => reject(readError), 50);
+          });
+        }
+        return readBlob(attachmentFile);
+      });
+
+    // The early photo records no usable time or place.
+    exifr.parse.mockImplementation(async buffer => {
+      if (Buffer.from(buffer).toString('utf8').includes('early')) {
+        throw new Error('no EXIF time');
+      }
+      return {
+        CreateDate: new Date(Date.UTC(2016, 0, 1, 12, 0, 10)),
+        OffsetTimeDigitized: '+00:00',
+      };
+    });
+    exifr.gps.mockImplementation(async buffer =>
+      Buffer.from(buffer).toString('utf8').includes('early')
+        ? { latitude: NaN, longitude: NaN }
+        : { latitude: 40.7, longitude: -73.98 },
+    );
+
+    const { consoleError, cleanup } = await renderAndExtract([
+      early,
+      unreadable,
+    ]);
+
+    // The pass's own failure is reported rather than thrown away.
+    expect(consoleError).toHaveBeenCalledWith(
+      'Could not read the attached files:',
+      readError,
+    );
+
+    blobToArrayBuffer.mockRestore();
+    cleanup();
+  });
+
+  test('keeps a file the browser cannot read from failing the pass unhandled', async () => {
+    // FileReader refuses a read it cannot finish with its error event, which
+    // is what blob-util hands back. React ignores what a setState callback
+    // returns, so the pass's own failure used to surface as an unhandled
+    // rejection (Sentry issue REPORTED-WEB-E) instead of being reported as
+    // an error.
+    const readError = new ProgressEvent('error');
+    const blobToArrayBuffer = jest
+      .spyOn(blobUtil, 'blobToArrayBuffer')
+      .mockRejectedValue(readError);
+
+    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+    const axiosPost = jest.spyOn(axios, 'post').mockResolvedValue({ data: {} });
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ homeRef });
+    });
+    renderer.act(() => {
+      homeRef.current.setState({ isAlprEnabled: false });
+    });
+
+    const photo = new File([photoBytes('unreadable')], 'unreadable.jpg', {
+      type: 'image/jpeg',
+    });
+
+    await renderer.act(async () => {
+      await homeRef.current.handleAttachmentData({ attachmentData: [photo] });
+    });
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    expect(consoleError).toHaveBeenCalledWith(
+      'Could not read the attached files:',
+      readError,
+    );
+
+    blobToArrayBuffer.mockRestore();
+    axiosGet.mockRestore();
+    axiosPost.mockRestore();
+    consoleError.mockRestore();
     tree.unmount();
   });
 

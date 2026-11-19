@@ -6172,6 +6172,117 @@ describe('Home', () => {
       cleanup();
     });
 
+    // Press a key on the page, the way the document's keydown listener sees
+    // it.
+    const pressKey = key =>
+      renderer.act(() => {
+        document.dispatchEvent(new KeyboardEvent('keydown', { key }));
+      });
+
+    test('deletes the loaded violation’s only photo with Delete', async () => {
+      const rows = rowsOf(['AAA1111', 'BBB2222']);
+      const { homeRef, cleanup } = await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchPhotos: rows.flatMap(violation => violation.photos),
+          batchViolations: rows,
+          currentViolationIndex: 0,
+        });
+      });
+
+      pressKey('Delete');
+
+      // The photo was the whole row, so the row goes with it, and the next
+      // row loads in its place.
+      expect(
+        homeRef.current.state.batchViolations.map(violation => violation.plate),
+      ).toEqual(['BBB2222']);
+      expect(
+        homeRef.current.state.batchPhotos.map(photo => photo.name),
+      ).toEqual(['BBB2222.jpg']);
+      expect(homeRef.current.state.currentViolationIndex).toBe(0);
+
+      cleanup();
+    });
+
+    test('deletes the only photo with Backspace too', async () => {
+      const rows = rowsOf(['AAA1111']);
+      const { homeRef, cleanup } = await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchPhotos: rows.flatMap(violation => violation.photos),
+          batchViolations: rows,
+          currentViolationIndex: 0,
+        });
+      });
+
+      pressKey('Backspace');
+
+      expect(homeRef.current.state.batchViolations).toEqual([]);
+      expect(homeRef.current.state.batchPhotos).toEqual([]);
+
+      cleanup();
+    });
+
+    test('leaves a violation with several photos alone on Delete', async () => {
+      const [row] = rowsOf(['AAA1111']);
+      row.photos.push({
+        file: new File(['picture'], 'AAA1111-2.jpg', { type: 'image/jpeg' }),
+        name: 'AAA1111-2.jpg',
+        createDateMs: row.createDateMs + 1000,
+        createDateOffset: 0,
+      });
+
+      const { homeRef, cleanup } = await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchPhotos: row.photos,
+          batchViolations: [row],
+          currentViolationIndex: 0,
+        });
+      });
+
+      pressKey('Delete');
+
+      expect(homeRef.current.state.batchViolations).toHaveLength(1);
+      expect(homeRef.current.state.batchViolations[0].photos).toHaveLength(2);
+
+      cleanup();
+    });
+
+    test('leaves the photos alone when Delete is pressed in a field', async () => {
+      const rows = rowsOf(['AAA1111']);
+      const { homeRef, cleanup } = await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchPhotos: rows.flatMap(violation => violation.photos),
+          batchViolations: rows,
+          currentViolationIndex: 0,
+        });
+      });
+
+      // The form's own inputs are not in the page under the test renderer,
+      // so a stand-in element is the focused field.
+      const input = document.createElement('input');
+      document.body.appendChild(input);
+
+      renderer.act(() => {
+        input.dispatchEvent(
+          new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true }),
+        );
+      });
+
+      expect(homeRef.current.state.batchViolations).toHaveLength(1);
+      expect(homeRef.current.state.batchViolations[0].photos).toHaveLength(1);
+
+      input.remove();
+      cleanup();
+    });
+
     // A hand-merge is the grouping being wrong, and the event carries the raw
     // data behind it: the photos' own capture times and places, and the ALPR
     // responses, so the algorithm can be tried against the same batch later.

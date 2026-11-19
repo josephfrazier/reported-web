@@ -4947,7 +4947,43 @@ class Home extends React.Component {
   handleDocumentKeyDown = event => {
     if (event.key === 'Escape' && this.state.isMapOpen) {
       this.setState({ isMapOpen: false });
+      return;
     }
+
+    if (event.key === 'Delete' || event.key === 'Backspace') {
+      const photo = this.photoForDeleteKey(event);
+
+      if (photo) {
+        event.preventDefault();
+        this.deletePhoto(photo);
+      }
+    }
+  };
+
+  // The photo a Delete or Backspace press means: the only photo of the
+  // violation loaded into the form. A row with several leaves the key alone,
+  // because there is no telling which photo it means -- each tile carries its
+  // own trash -- and a key press belongs to whatever has focus when that is a
+  // field being typed in.
+  photoForDeleteKey = event => {
+    if (
+      event.repeat ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.altKey ||
+      this.state.isMapOpen ||
+      this.state.isAuthModalOpen ||
+      event.target?.closest?.(
+        'input, textarea, select, [contenteditable="true"]',
+      )
+    ) {
+      return null;
+    }
+
+    const { batchViolations, currentViolationIndex } = this.state;
+    const loaded = batchViolations[currentViolationIndex];
+
+    return loaded?.photos.length === 1 ? loaded.photos[0] : null;
   };
 
   switchAuthTab = tab => {

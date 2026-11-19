@@ -902,6 +902,25 @@ function defaultBatchSelection(photos) {
   return photos.filter(photo => selected.has(photo));
 }
 
+// The report's attachments after a photo is removed from its violation.
+//
+// A report with no photos ticked cannot be submitted, and removing one is not
+// the user asking for an empty report: when the removal leaves the violation
+// on screen with nothing ticked, its first photo is ticked instead.
+function attachmentsAfterPhotoRemoval({ violation, attachmentData }) {
+  if (
+    !violation ||
+    violation.photos.length === 0 ||
+    violation.photos.some(photo => attachmentData.includes(photo.file))
+  ) {
+    return attachmentData;
+  }
+
+  const [first] = violation.photos;
+
+  return attachmentData.concat(first.file);
+}
+
 // The ALPR responses the plate overlays and the plate suggestions are drawn
 // from, keyed by the name of the photo each came from. A photo whose read
 // failed, or whose read found nothing, contributes nothing.
@@ -2857,17 +2876,38 @@ class Home extends React.Component {
       ? rows.indexOf(loadedAfter)
       : Math.min(sourceIndex, rows.length - 1);
 
+    // The moved photo leaves the report, and a report left with no photos is
+    // one the user cannot mean to submit: the row on screen ticks its first
+    // photo in the moved one's place.
+    const attachmentsAfter = attachmentsAfterPhotoRemoval({
+      violation: loadedAfter,
+      attachmentData: attachmentData.filter(
+        candidate => candidate !== photo.file,
+      ),
+    });
+
     this.setState(
       {
         batchViolations: rows,
         currentViolationIndex: nextIndex,
         batchMergeSelection: this.selectionAfterMove({ source, sourceAfter }),
-        attachmentData: attachmentData.filter(
-          candidate => candidate !== photo.file,
-        ),
+        attachmentData: attachmentsAfter,
       },
       () => {
         if (loadedAfter) {
+          // The photo ticked in place of the moved one gets what a tick gives
+          // any photo: its reading on record, and its upload under way.
+          const tickedIn = loadedAfter.photos.find(
+            candidate =>
+              this.state.attachmentData.includes(candidate.file) &&
+              !previousPhotos.includes(candidate.file),
+          );
+
+          if (tickedIn) {
+            startBackgroundUploads([tickedIn.file]);
+            this.photoReadings.set(tickedIn.file, tickedIn);
+          }
+
           // The row on screen is still there, with one photo less.
           this.applyPhotosToForm(this.state.attachmentData, {
             previousPhotos,
@@ -2912,19 +2952,31 @@ class Home extends React.Component {
         // Where the loaded row ended up. Rows the deletion emptied before it
         // are gone from under the index, and the row itself goes when the
         // photo was its last.
+        const loadedSurvives = loadedWas && survives(loadedWas);
         let currentViolationIndex = loadedIndex;
         if (loadedWas) {
           const survivedBefore = state.batchViolations
             .slice(0, loadedIndex)
             .filter(survives).length;
-          currentViolationIndex = survives(loadedWas)
+          currentViolationIndex = loadedSurvives
             ? survivedBefore
             : Math.min(survivedBefore, batchViolations.length - 1);
         }
 
-        const attachmentData = state.attachmentData.filter(
-          candidate => candidate !== file,
-        );
+        // The row on screen after the deletion, when it is still there.
+        const loadedAfter = loadedSurvives
+          ? batchViolations[currentViolationIndex]
+          : null;
+
+        // Removing the last ticked photo must not leave the report with none:
+        // its violation's first photo is ticked in its place, so Submit is
+        // never one tap from a report with no photos.
+        const attachmentData = attachmentsAfterPhotoRemoval({
+          violation: loadedAfter,
+          attachmentData: state.attachmentData.filter(
+            candidate => candidate !== file,
+          ),
+        });
 
         const change = {
           attachmentData,
@@ -2967,6 +3019,22 @@ class Home extends React.Component {
 
         if (rowWent) {
           this.loadBatchViolation(this.state.currentViolationIndex);
+        } else {
+          // The photo ticked in place of the last one attached gets what a
+          // tick gives any photo: its reading on record, and its upload
+          // under way.
+          const loadedNow =
+            this.state.batchViolations[this.state.currentViolationIndex];
+          const tickedIn = loadedNow?.photos.find(
+            candidate =>
+              this.state.attachmentData.includes(candidate.file) &&
+              !previousPhotos.includes(candidate.file),
+          );
+
+          if (tickedIn) {
+            startBackgroundUploads([tickedIn.file]);
+            this.photoReadings.set(tickedIn.file, tickedIn);
+          }
         }
 
         // The photos that were attached when the user made the change are

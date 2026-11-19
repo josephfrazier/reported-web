@@ -6098,6 +6098,19 @@ describe('Home', () => {
       });
     };
 
+    // Give a row made by `rowsOf` more photos, in capture order after its
+    // first.
+    const addPhotos = (row, names) => {
+      names.forEach((name, index) => {
+        row.photos.push({
+          file: new File(['picture'], name, { type: 'image/jpeg' }),
+          name,
+          createDateMs: row.createDateMs + (index + 1) * 1000,
+          createDateOffset: 0,
+        });
+      });
+    };
+
     test('shift-clicking a row ticks every row between it and the last ticked row', async () => {
       const rows = rowsOf(['AAA1111', 'BBB2222', 'CCC3333', 'DDD4444']);
       const { homeRef, tickMerge, shiftTickMerge, isMergeTicked, cleanup } =
@@ -6280,6 +6293,113 @@ describe('Home', () => {
       expect(homeRef.current.state.batchViolations[0].photos).toHaveLength(1);
 
       input.remove();
+      cleanup();
+    });
+
+    test('ticks the first photo when a removal leaves the report with none', async () => {
+      const [row] = rowsOf(['AAA1111']);
+      addPhotos(row, ['AAA1111-2.jpg', 'AAA1111-3.jpg']);
+
+      const {
+        homeRef,
+        clickQueueLoad,
+        toggleAttachment,
+        clickAttachmentDelete,
+        cleanup,
+      } = await renderBatchWithFiles([]);
+
+      showRows(homeRef, [row]);
+      clickQueueLoad('AAA1111');
+
+      // The report opens with every photo ticked; leave only the first.
+      toggleAttachment('AAA1111-2.jpg', false);
+      toggleAttachment('AAA1111-3.jpg', false);
+      expect(homeRef.current.state.attachmentData).toEqual([
+        row.photos[0].file,
+      ]);
+
+      clickAttachmentDelete('AAA1111.jpg');
+
+      // The photo was the only one ticked, so the first one left is ticked in
+      // its place rather than leaving Submit free to send no photos.
+      expect(
+        homeRef.current.state.batchViolations[0].photos.map(
+          photo => photo.name,
+        ),
+      ).toEqual(['AAA1111-2.jpg', 'AAA1111-3.jpg']);
+      expect(homeRef.current.state.attachmentData).toEqual([
+        row.photos[1].file,
+      ]);
+
+      cleanup();
+    });
+
+    test('leaves the attached photos alone when one of them remains', async () => {
+      const [row] = rowsOf(['AAA1111']);
+      addPhotos(row, ['AAA1111-2.jpg', 'AAA1111-3.jpg']);
+
+      const {
+        homeRef,
+        clickQueueLoad,
+        toggleAttachment,
+        clickAttachmentDelete,
+        cleanup,
+      } = await renderBatchWithFiles([]);
+
+      showRows(homeRef, [row]);
+      clickQueueLoad('AAA1111');
+
+      // Only the last photo stays ticked; the one removed is not.
+      toggleAttachment('AAA1111.jpg', false);
+      toggleAttachment('AAA1111-2.jpg', false);
+      expect(homeRef.current.state.attachmentData).toEqual([
+        row.photos[2].file,
+      ]);
+
+      clickAttachmentDelete('AAA1111.jpg');
+
+      // The report still holds a photo, so the first one left is not ticked.
+      expect(homeRef.current.state.attachmentData).toEqual([
+        row.photos[2].file,
+      ]);
+
+      cleanup();
+    });
+
+    test('ticks the first photo when the last ticked one moves to another row', async () => {
+      const [row, target] = rowsOf(['AAA1111', 'BBB2222']);
+      addPhotos(row, ['AAA1111-2.jpg']);
+
+      const { homeRef, clickQueueLoad, toggleAttachment, cleanup } =
+        await renderBatchWithFiles([]);
+
+      showRows(homeRef, [row, target]);
+      clickQueueLoad('AAA1111');
+      toggleAttachment('AAA1111-2.jpg', false);
+      expect(homeRef.current.state.attachmentData).toEqual([
+        row.photos[0].file,
+      ]);
+
+      renderer.act(() => {
+        homeRef.current.movePhotoToViolation({
+          photo: row.photos[0],
+          violation: target,
+        });
+      });
+
+      const [sourceAfter, targetAfter] = homeRef.current.state.batchViolations;
+      expect(sourceAfter.photos.map(photo => photo.name)).toEqual([
+        'AAA1111-2.jpg',
+      ]);
+      // The row on screen keeps a photo for its report.
+      expect(homeRef.current.state.attachmentData).toEqual([
+        row.photos[1].file,
+      ]);
+      expect(targetAfter.photos.map(photo => photo.name)).toEqual([
+        'BBB2222.jpg',
+        'AAA1111.jpg',
+      ]);
+
       cleanup();
     });
 

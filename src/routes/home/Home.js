@@ -6628,12 +6628,6 @@ class Home extends React.Component {
                           }
                           Home.notifySubmissionThanks(
                             <React.Fragment>
-                              <p>Thanks for your submission!</p>
-                              <p>
-                                Your information has been submitted to Reported.
-                                It may take up to 24 hours for it to be
-                                processed.
-                              </p>
                               {queueIsDone && (
                                 <p>
                                   Have more photos? Add a folder and we will go

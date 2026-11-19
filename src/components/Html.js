@@ -88,7 +88,10 @@ class Html extends React.Component {
               dangerouslySetInnerHTML={{
                 __html: `if ('serviceWorker' in navigator) {
                   // sw.js can literally be empty, but must exist
-                  navigator.serviceWorker.register('/sw.js');
+                  // Registration is best effort: a browser that refuses it
+                  // (private mode, a blocked script) loses only the offline
+                  // page, so its rejection is not an error to report.
+                  navigator.serviceWorker.register('/sw.js').catch(() => {});
                 }`,
               }}
             />

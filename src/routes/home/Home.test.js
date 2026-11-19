@@ -4829,6 +4829,27 @@ describe('Home', () => {
           .findAllByType('button')
           .find(({ children }) => children.includes(text));
 
+      // Whether a node tree names `plate`: as text, or in the alt text of a
+      // crop standing in for the text.
+      const namesPlate = (node, plate) => {
+        if (node == null) {
+          return false;
+        }
+        if (typeof node === 'string') {
+          return node.includes(plate);
+        }
+        if (Array.isArray(node)) {
+          return node.some(child => namesPlate(child, plate));
+        }
+        return node.props?.alt === plate || namesPlate(node.children, plate);
+      };
+
+      // A queue row's description -- the control that loads it.
+      const rowDescription = plate =>
+        tree.root
+          .findAllByType('button')
+          .find(({ children }) => namesPlate(children, plate));
+
       // A queue row's merge checkbox, found by the plate its label names.
       const mergeBox = text =>
         tree.root.findAllByType('input').find(({ props }) => {
@@ -4839,6 +4860,9 @@ describe('Home', () => {
             label.includes(text)
           );
         });
+
+      // Whether a queue row's merge box is ticked.
+      const isMergeTicked = text => mergeBox(text).props.checked;
 
       return {
         homeRef,
@@ -4900,6 +4924,15 @@ describe('Home', () => {
               box.props.onChange();
             }
           }),
+        // Shift-click a queue row's merge box: tick the row and everything
+        // between it and the row whose box was clicked last.
+        shiftTickMerge: text =>
+          renderer.act(() => {
+            mergeBox(text).props.onChange({
+              nativeEvent: { shiftKey: true },
+            });
+          }),
+        isMergeTicked,
         // Take a queue row out of the merge selection, which is how a test
         // gets back to the empty selection the queue ticks a row on.
         untickMerge: text =>
@@ -4914,27 +4947,16 @@ describe('Home', () => {
         // separate buttons that do not carry the plate. A row whose plate is
         // the read's own shows a crop of the photo in place of the text, so
         // the plate is in that image's alt text there.
-        clickQueueLoad: plate => {
-          const namesPlate = node => {
-            if (node == null) {
-              return false;
-            }
-            if (typeof node === 'string') {
-              return node.includes(plate);
-            }
-            if (Array.isArray(node)) {
-              return node.some(namesPlate);
-            }
-            return node.props?.alt === plate || namesPlate(node.children);
-          };
-
+        clickQueueLoad: plate =>
           renderer.act(() => {
-            tree.root
-              .findAllByType('button')
-              .find(({ children }) => namesPlate(children))
-              .props.onClick();
-          });
-        },
+            rowDescription(plate).props.onClick();
+          }),
+        // Shift-click a row's description: tick a range rather than load the
+        // row, the same as shift-clicking its merge box.
+        shiftClickRow: plate =>
+          renderer.act(() => {
+            rowDescription(plate).props.onClick({ shiftKey: true });
+          }),
         // Press the X on the queue row whose description carries `plate`. The
         // control shows an emoji rather than a word, so it is found by the
         // label it announces.
@@ -6040,6 +6062,112 @@ describe('Home', () => {
       ]);
       expect(batchViolations[0].createDateMs).toBe(farAt);
       expect(batchMergeSelection).toEqual([]);
+
+      cleanup();
+    });
+
+    // A queue of single-photo violations, one per plate, oldest first: the
+    // shape the tick-range tests need, with no reads to wait for.
+    const rowsOf = (plates, firstAt = 1704110400000) =>
+      plates.map((plate, index) => {
+        const name = `${plate}.jpg`;
+        const createDateMs = firstAt + index * 60 * 1000;
+        return {
+          photos: [
+            {
+              file: new File(['picture'], name, { type: 'image/jpeg' }),
+              name,
+              createDateMs,
+              createDateOffset: 0,
+            },
+          ],
+          plate,
+          licenseState: 'NY',
+          latitude: 40.7129,
+          longitude: -74.0061,
+          createDateMs,
+        };
+      });
+
+    const showRows = (homeRef, rows) => {
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchPhotos: rows.flatMap(violation => violation.photos),
+          batchViolations: rows,
+        });
+      });
+    };
+
+    test('shift-clicking a row ticks every row between it and the last ticked row', async () => {
+      const rows = rowsOf(['AAA1111', 'BBB2222', 'CCC3333', 'DDD4444']);
+      const { homeRef, tickMerge, shiftTickMerge, isMergeTicked, cleanup } =
+        await renderBatchWithFiles([]);
+
+      showRows(homeRef, rows);
+
+      tickMerge('AAA1111');
+      shiftTickMerge('CCC3333');
+
+      expect(isMergeTicked('AAA1111')).toBe(true);
+      expect(isMergeTicked('BBB2222')).toBe(true);
+      expect(isMergeTicked('CCC3333')).toBe(true);
+      // The range stops at the row clicked: rows past it stay unticked.
+      expect(isMergeTicked('DDD4444')).toBe(false);
+
+      cleanup();
+    });
+
+    test('shift-clicking a row next to the last ticked one ticks just that row', async () => {
+      const rows = rowsOf(['AAA1111', 'BBB2222', 'CCC3333']);
+      const { homeRef, tickMerge, shiftTickMerge, isMergeTicked, cleanup } =
+        await renderBatchWithFiles([]);
+
+      showRows(homeRef, rows);
+
+      tickMerge('AAA1111');
+      shiftTickMerge('BBB2222');
+
+      expect(isMergeTicked('AAA1111')).toBe(true);
+      expect(isMergeTicked('BBB2222')).toBe(true);
+      expect(isMergeTicked('CCC3333')).toBe(false);
+
+      cleanup();
+    });
+
+    test('shift-clicking with nothing ticked ticks just that row', async () => {
+      const rows = rowsOf(['AAA1111', 'BBB2222', 'CCC3333']);
+      const { homeRef, shiftTickMerge, isMergeTicked, cleanup } =
+        await renderBatchWithFiles([]);
+
+      showRows(homeRef, rows);
+
+      shiftTickMerge('BBB2222');
+
+      expect(isMergeTicked('AAA1111')).toBe(false);
+      expect(isMergeTicked('BBB2222')).toBe(true);
+      expect(isMergeTicked('CCC3333')).toBe(false);
+
+      cleanup();
+    });
+
+    test('shift-clicking a row’s text ticks a range instead of loading it', async () => {
+      const rows = rowsOf(['AAA1111', 'BBB2222', 'CCC3333', 'DDD4444']);
+      const { homeRef, tickMerge, shiftClickRow, isMergeTicked, cleanup } =
+        await renderBatchWithFiles([]);
+
+      showRows(homeRef, rows);
+
+      // The last ticked row is further down the list, so the range runs
+      // backwards to the row clicked.
+      tickMerge('DDD4444');
+      shiftClickRow('BBB2222');
+
+      expect(isMergeTicked('AAA1111')).toBe(false);
+      expect(isMergeTicked('BBB2222')).toBe(true);
+      expect(isMergeTicked('CCC3333')).toBe(true);
+      expect(isMergeTicked('DDD4444')).toBe(true);
+      // A shift-click ticks; it does not load the row into the form.
+      expect(homeRef.current.state.currentViolationIndex).toBe(-1);
 
       cleanup();
     });

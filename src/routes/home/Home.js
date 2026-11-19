@@ -1501,6 +1501,10 @@ class Home extends React.Component {
     // Serialises batch passes: picks accumulate, and each pass must see the
     // results of the one before it (see addFilesToBatch).
     this.batchQueue = Promise.resolve();
+    // The row whose merge box was last clicked: where a shift-click's range
+    // starts. Kept by identity rather than index, because the queue is
+    // re-sorted and rows divide as their reads land.
+    this.batchMergeAnchor = null;
     // The rows the user has deleted, by identity. Deleting a row usually takes
     // its photos out of the batch, and that is what keeps it from coming back;
     // a row whose photo another row still holds has none to take, so it is
@@ -4095,7 +4099,46 @@ class Home extends React.Component {
 
   // Tick or untick a violation for merging. Any number can be ticked; the
   // button appears once there are two, because one is not a merge.
-  toggleBatchMergeSelection = identity => {
+  //
+  // A shift-click ticks this row and every row between it and the one whose
+  // box was clicked last, the way a list selects a range -- and only adds to
+  // what is ticked, so a click next to the last row ticks that row alone.
+  toggleBatchMergeSelection = (identity, { extend = false } = {}) => {
+    const { batchViolations } = this.state;
+    const clickedIndex = batchViolations.findIndex(
+      violation => batchViolationIdentity(violation) === identity,
+    );
+
+    if (clickedIndex === -1) {
+      return;
+    }
+
+    const anchorIndex = batchViolations.findIndex(
+      violation => batchViolationIdentity(violation) === this.batchMergeAnchor,
+    );
+    this.batchMergeAnchor = identity;
+
+    if (extend) {
+      // The range runs both ways from the anchor. No anchor -- nothing
+      // clicked yet, or the row it named has gone -- leaves just this row.
+      const range =
+        anchorIndex === -1
+          ? [identity]
+          : batchViolations
+              .slice(
+                Math.min(anchorIndex, clickedIndex),
+                Math.max(anchorIndex, clickedIndex) + 1,
+              )
+              .map(batchViolationIdentity);
+
+      this.setState(state => ({
+        batchMergeSelection: [
+          ...new Set([...state.batchMergeSelection, ...range]),
+        ],
+      }));
+      return;
+    }
+
     this.setState(state => ({
       batchMergeSelection: state.batchMergeSelection.includes(identity)
         ? state.batchMergeSelection.filter(entry => entry !== identity)
@@ -5594,8 +5637,10 @@ class Home extends React.Component {
                       <input
                         type="checkbox"
                         checked={batchMergeSelection.includes(identity)}
-                        onChange={() =>
-                          this.toggleBatchMergeSelection(identity)
+                        onChange={event =>
+                          this.toggleBatchMergeSelection(identity, {
+                            extend: event?.nativeEvent?.shiftKey === true,
+                          })
                         }
                         aria-label={`Merge ${formatBatchViolationTime(
                           violation.createDateMs,
@@ -5610,7 +5655,18 @@ class Home extends React.Component {
                     <button
                       type="button"
                       className={homeStyles['batch-violation-description']}
-                      onClick={() => this.selectBatchViolation(index)}
+                      onClick={event => {
+                        // Shift-clicking a row ticks a range for merging
+                        // rather than loading it, the way its merge box does.
+                        if (event?.shiftKey && batchViolations.length > 1) {
+                          this.toggleBatchMergeSelection(identity, {
+                            extend: true,
+                          });
+                          return;
+                        }
+
+                        this.selectBatchViolation(index);
+                      }}
                     >
                       {formatBatchViolationTime(violation.createDateMs)} —{' '}
                       {rowPlateLabel}

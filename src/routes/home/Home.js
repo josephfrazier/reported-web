@@ -524,7 +524,10 @@ async function getVideoScreenshot({ attachmentFile }) {
   video.volume = 0;
   video.setAttribute('crossOrigin', 'anonymous'); // optional, when cross-domain
   video.src = src;
-  video.play();
+  // Browsers may refuse to start playback (autoplay policy, a saved-data
+  // mode). The frame is drawn from the video either way, so a refusal is no
+  // reason to report an error.
+  video.play().catch(() => {});
   await pEvent(video, 'canplay');
 
   video.currentTime = 0; // TODO let user choose time?

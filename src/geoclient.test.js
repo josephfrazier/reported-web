@@ -14,9 +14,10 @@ import { geosearchFixtures, padFixtures } from './geoclient.fixtures.js';
 const GEOSEARCH_URL = 'https://geosearch.planninglabs.nyc/v2/reverse';
 const PAD_URL = 'https://data.cityofnewyork.us/resource/64uk-42ks.json';
 
-const feature = ({ name, bbl, layer = 'venue' }) => ({
+const feature = ({ name, bbl, layer = 'venue', housenumber }) => ({
   properties: {
     name,
+    housenumber,
     addendum: { pad: { bbl } },
     layer,
   },
@@ -52,6 +53,83 @@ describe('selectCanonicalFeature', () => {
     const result = await selectCanonicalFeature(features, getPadAddressForBbl);
 
     expect(result.properties.name).toBe('127 BERGAN STREET');
+  });
+
+  test('prefers the first feature with a housenumber when no feature matches the PAD address', async () => {
+    const features = [
+      feature({ name: '72 PRECINCT STATIONHOUSE', bbl: '3006680029' }),
+      feature({
+        name: '834 FOURTH AVENUE',
+        bbl: '3006680029',
+        housenumber: '834',
+      }),
+      feature({ name: '160 29 STREET', bbl: '3006680029', housenumber: '160' }),
+    ];
+
+    const result = await selectCanonicalFeature(
+      features,
+      async () => '154 29 STREET',
+    );
+
+    expect(result.properties.name).toBe('834 FOURTH AVENUE');
+  });
+
+  test('prefers the PAD match over an earlier feature with a housenumber', async () => {
+    const features = [
+      feature({ name: '160 29 STREET', bbl: '3006680029', housenumber: '160' }),
+      feature({ name: '830 4 AVENUE', bbl: '3006680029', housenumber: '830' }),
+    ];
+
+    const result = await selectCanonicalFeature(
+      features,
+      async () => '830 4 AVENUE',
+    );
+
+    expect(result.properties.name).toBe('830 4 AVENUE');
+  });
+
+  test('returns the top result when no feature has a housenumber', async () => {
+    const features = [
+      feature({ name: '72 PRECINCT STATIONHOUSE', bbl: '3006680029' }),
+      feature({ name: 'NYPD PRECINCT 72', bbl: '3006680029' }),
+    ];
+
+    const result = await selectCanonicalFeature(
+      features,
+      async () => '154 29 STREET',
+    );
+
+    expect(result.properties.name).toBe('72 PRECINCT STATIONHOUSE');
+  });
+
+  test('prefers a feature with a housenumber when the PAD lookup fails', async () => {
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+    const features = [
+      feature({ name: '72 PRECINCT STATIONHOUSE', bbl: '3006680029' }),
+      feature({
+        name: '834 FOURTH AVENUE',
+        bbl: '3006680029',
+        housenumber: '834',
+      }),
+    ];
+
+    const result = await selectCanonicalFeature(features, async () => {
+      throw new Error('PAD is down');
+    });
+
+    expect(result.properties.name).toBe('834 FOURTH AVENUE');
+  });
+
+  test('prefers a feature with a housenumber when the top result has no BBL', async () => {
+    const features = [
+      feature({ name: '72 PRECINCT STATIONHOUSE' }),
+      feature({ name: '834 FOURTH AVENUE', housenumber: '834' }),
+    ];
+
+    const result = await selectCanonicalFeature(features, getPadAddressForBbl);
+
+    expect(getPadAddressForBbl).not.toHaveBeenCalled();
+    expect(result.properties.name).toBe('834 FOURTH AVENUE');
   });
 
   test('returns the top result when the PAD lookup fails', async () => {
@@ -258,6 +336,48 @@ describe('geosearch', () => {
     });
 
     expect(result.features[0].properties.name).toBe('101 TECH PLACE');
+  });
+
+  // The point near the 72nd Precinct stationhouse: the top results are
+  // names for the stationhouse, and none of them has a housenumber. The
+  // address picker on portal.311.nyc.gov resolves street addresses only,
+  // so the answer leads with the first result that has a housenumber.
+  test('prefers a result with a housenumber over a leading venue', async () => {
+    axios.get.mockImplementation(async (url, config) => {
+      if (url === GEOSEARCH_URL) {
+        expect(config.params['point.lat']).toBe(40.65792222222222);
+        return {
+          data: {
+            features: [
+              feature({
+                name: '72 PRECINCT STATIONHOUSE',
+                bbl: '3006680029',
+              }),
+              feature({
+                name: '834 FOURTH AVENUE',
+                bbl: '3006680029',
+                housenumber: '834',
+              }),
+            ],
+          },
+        };
+      }
+
+      if (url === PAD_URL) {
+        return { data: [{ address: '154 29 STREET' }] };
+      }
+
+      throw new Error(`Unexpected axios.get URL: ${url}`);
+    });
+
+    const result = await geosearch({
+      lat: 40.65792222222222,
+      long: -74.00086944444445,
+    });
+
+    expect(result.features).toHaveLength(1);
+    expect(result.features[0].properties.name).toBe('834 FOURTH AVENUE');
+    expect(result.fellBackToTopResult).toBe(false);
   });
 
   test('returns the right object around the Empire State Building', async () => {

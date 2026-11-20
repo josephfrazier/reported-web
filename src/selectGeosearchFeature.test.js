@@ -32,9 +32,10 @@ describe('selectGeosearchFeature', () => {
     );
   });
 
-  test('ignores an empty-string housenumber', () => {
+  test('ignores empty and whitespace-only housenumbers', () => {
     const features = [
       feature({ housenumber: '', street: '72 PRECINCT STATIONHOUSE' }),
+      feature({ housenumber: '   ', street: 'NYPD PRECINCT 72' }),
       feature({ housenumber: '834', street: 'FOURTH AVENUE' }),
     ];
 

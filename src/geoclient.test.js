@@ -74,6 +74,20 @@ describe('selectCanonicalFeature', () => {
     expect(result.properties.name).toBe('834 FOURTH AVENUE');
   });
 
+  test('prefers the PAD match over an earlier feature with a housenumber', async () => {
+    const features = [
+      feature({ name: '160 29 STREET', bbl: '3006680029', housenumber: '160' }),
+      feature({ name: '830 4 AVENUE', bbl: '3006680029', housenumber: '830' }),
+    ];
+
+    const result = await selectCanonicalFeature(
+      features,
+      async () => '830 4 AVENUE',
+    );
+
+    expect(result.properties.name).toBe('830 4 AVENUE');
+  });
+
   test('returns the top result when no feature has a housenumber', async () => {
     const features = [
       feature({ name: '72 PRECINCT STATIONHOUSE', bbl: '3006680029' }),

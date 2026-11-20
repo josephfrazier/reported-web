@@ -3,8 +3,9 @@
 // address picker on portal.311.nyc.gov resolves street addresses only, so
 // prefer the first result that has a housenumber. Keep the top result when
 // no result has one.
+const hasHousenumber = feature =>
+  Boolean(String(feature.properties?.housenumber || '').trim());
+
 export default function selectGeosearchFeature(features) {
-  return (
-    features.find(feature => feature.properties.housenumber) || features[0]
-  );
+  return features.find(hasHousenumber) || features[0];
 }

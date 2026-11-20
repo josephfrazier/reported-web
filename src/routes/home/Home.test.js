@@ -2499,6 +2499,62 @@ describe('Home', () => {
     tree.unmount();
   });
 
+  test('prefers a geosearch result with a housenumber over a leading venue', async () => {
+    jest.useFakeTimers();
+
+    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+    const axiosPost = jest.spyOn(axios, 'post').mockResolvedValue({
+      data: {
+        features: [
+          {
+            properties: {
+              street: '72 PRECINCT STATIONHOUSE',
+              borough: 'Brooklyn',
+            },
+          },
+          {
+            properties: {
+              housenumber: '834',
+              street: 'FOURTH AVENUE',
+              borough: 'Brooklyn',
+            },
+          },
+        ],
+      },
+    });
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ homeRef });
+    });
+
+    // A venue name in the address makes every 311 submission for the report
+    // fail at the "Where" step, so the first result with a housenumber wins.
+    renderer.act(() => {
+      homeRef.current.setCoords({
+        latitude: 40.6579,
+        longitude: -74.0009,
+      });
+    });
+    await renderer.act(async () => {
+      jest.advanceTimersByTime(500);
+    });
+
+    expect(homeRef.current.state.formatted_address).toBe(
+      '834 Fourth Avenue, Brooklyn',
+    );
+
+    jest.useRealTimers();
+    axiosGet.mockRestore();
+    axiosPost.mockRestore();
+    consoleError.mockRestore();
+    tree.unmount();
+  });
+
   test('does not remember an address that fell back to the top result', async () => {
     jest.useFakeTimers();
 

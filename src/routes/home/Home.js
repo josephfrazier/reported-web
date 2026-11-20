@@ -53,6 +53,7 @@ import {
   serializeHomeState,
 } from '../../homeStateCookie.js';
 import formatGeosearchAddress from '../../formatGeosearchAddress.js';
+import selectGeosearchFeature from '../../selectGeosearchFeature.js';
 import earliestTakenPhoto from '../../earliestTakenPhoto.js';
 import createGeosearchAddressCache from '../../geosearchAddressCache.js';
 import groupAttachmentsByViolation, {
@@ -2008,7 +2009,7 @@ class Home extends React.Component {
 
     debouncedGeosearch({ latitude, longitude, address })
       .then(data => {
-        const { properties } = data.features[0];
+        const { properties } = selectGeosearchFeature(data.features);
 
         // Geosearch responses can arrive out of order (the debounce only
         // coalesces calls less than 500ms apart), so ignore a response that
@@ -4882,7 +4883,7 @@ class Home extends React.Component {
       // the last call's response, and this lookup is not the user moving the
       // map.
       const data = await fetchGeosearchAddress({ latitude, longitude });
-      const { properties } = data.features[0];
+      const { properties } = selectGeosearchFeature(data.features);
       const address = formatGeosearchAddress(properties);
       // A fallback says the city's address directory was unavailable, so the
       // address may change once it answers: show it, but do not keep it.

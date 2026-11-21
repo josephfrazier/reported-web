@@ -9581,12 +9581,10 @@ markerwithlabel@^2.0.1:
   version "2.0.1"
   resolved "https://registry.yarnpkg.com/markerwithlabel/-/markerwithlabel-2.0.1.tgz#822f4eb68c488c2509c5ebdb75982eb84a856096"
 
-marx-css@^3.0.3:
-  version "3.0.8"
-  resolved "https://registry.yarnpkg.com/marx-css/-/marx-css-3.0.8.tgz#1a410cc0c6848dfb72cdd64df9cc1e3581795479"
-  integrity sha512-/3tWbONbua+3aD2mUajDWXmKY+WO25z6PfEaMwMsxtGDUaMKaaxQhr1DGuqngS6CCSafORV9SMiDPCvI2ErOPw==
-  dependencies:
-    sanitize.css "^11.0.1"
+marx-css@^5.3.0:
+  version "5.3.0"
+  resolved "https://registry.yarnpkg.com/marx-css/-/marx-css-5.3.0.tgz#fdf34230cec46df6823482dccea04ebc73d044a5"
+  integrity sha512-n8pUTCEm/CPRwB0ilFcYH/AGFKUIl1J2vrJ+fu6h7mk+ajvtrs6FLBJoc6QVwitFyVBlTGfrwE2zh+4cRQ6Ldw==
 
 math-intrinsics@^1.1.0:
   version "1.1.0"
@@ -12085,7 +12083,6 @@ sax@1.6.1:
   version "1.6.1"
   resolved "https://registry.yarnpkg.com/sax/-/sax-1.6.1.tgz#4c23cf608c0b693ab54b4b5888e92cfe977b9843"
   integrity sha512-42tBVwLWnaQvW5zc4HbZrTuWccECCZfBi92FDuwtqxasH+JbPB3/FOKb1m222K42R4WxuxzzMsTswfzgtSu64Q==
-
 saxes@^6.0.0:
   version "6.0.0"
   resolved "https://registry.yarnpkg.com/saxes/-/saxes-6.0.0.tgz#fe5b4a4768df4f14a201b1ba6a65c1f3d9988cc5"

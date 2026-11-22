@@ -93,7 +93,8 @@ const alprSnapshotResults = [
 
 describe('mergeViolations', () => {
   // The shape this exists for: a far shot taken to establish where the car is,
-  // then closeups that read the plate three minutes later.
+  // then closeups that read the plate three minutes later. The far shot reads
+  // no plate, so the grouping has nothing to join it with.
   const farShot = buildPhoto({
     name: 'far.jpg',
     createDateMs: 1_000_000,
@@ -111,10 +112,10 @@ describe('mergeViolations', () => {
       }),
     });
 
-  test('joins two violations that the time window kept apart', () => {
+  test('joins a photo with no read to the closeup that names the car', () => {
     const reading = closeup('aaa111');
 
-    // Three minutes apart, so the grouping is right to keep them separate.
+    // The far shot has no plate to match, so the grouping keeps the two apart.
     expect(groupAttachmentsByViolation([farShot, reading])).toHaveLength(2);
 
     const [far] = groupAttachmentsByViolation([farShot]);
@@ -335,66 +336,83 @@ describe('groupAttachmentsByViolation', () => {
     expect(groupAttachmentsByViolation([])).toEqual([]);
   });
 
-  test('folds the OCR variants of one medallion into a single violation', () => {
-    const startTime = Date.now();
-    // One photo reading the medallion four ways, plus its partial re-reads
-    // either side of it. Folding is what keeps these three together: counted
-    // as exact strings there is no plate that two of them share, so the vote
-    // would have nothing to pick and each reading would become a violation of
-    // its own.
-    const medallionReading = plate =>
-      buildPhoto({
-        name: `${plate}.jpg`,
-        createDateMs: startTime,
-        plateResults: alprResponse({
-          results: [
-            alprResult({
-              plate,
-              box: { xmin: 704, ymin: 1319, xmax: 801, ymax: 1366 },
-            }),
-          ],
-        }),
-      });
+  test('makes each photo a violation of its own when no plate joins them', () => {
+    // Cars parked along one block are seconds and metres apart. That is not
+    // evidence that they are one car, so time and place are not grouping
+    // signals: without a plate read, each photo stands alone.
     const photos = [
-      buildPhoto({
-        name: 'variants.jpg',
-        createDateMs: startTime,
-        plateResults: alprResponse({ results: alprSnapshotResults }),
-        uploadWidth: 1919,
-        uploadHeight: 2560,
-      }),
-      medallionReading('t6968i7c'),
-      medallionReading('t696817c'),
+      buildPhoto({ name: 'first.jpg', createDateMs: 1000 }),
+      buildPhoto({ name: 'second.jpg', createDateMs: 2000 }),
+      buildPhoto({ name: 'third.jpg', createDateMs: 3000 }),
     ];
 
     const violations = groupAttachmentsByViolation(photos);
 
-    // The medallion's three photos are one violation, and folding is what
-    // keeps them together: counted as exact strings, no two of them share a
-    // plate and each reading would be a violation of its own.
-    const [medallion] = violations;
-    expect(medallion.photos).toEqual(photos);
-    // The clean read, the only variant matching ^T\d{6}C$. Plates come back
-    // uppercased, the same normalisation `extractPlate` applies to what the
-    // plate input shows.
-    expect(medallion.plate).toBe('T696817C');
-    expect(medallion.licenseState).toBe('NY');
-
-    // The frame read two more cars as well, and each of them is reported from
-    // it. The medallion's round wins the frame and is the photo's own car, so
-    // it keeps it; the other two have nothing else, and would go unreported if
-    // the frame went with the round.
-    expect(
-      violations
-        .slice(1)
-        .map(violation => [
-          violation.plate,
-          violation.photos.map(photo => photo.name),
-        ]),
-    ).toEqual([
-      ['K73JAU', ['variants.jpg']],
-      ['LDA8765', ['variants.jpg']],
+    expect(violations.map(violation => violation.photos)).toEqual([
+      [photos[0]],
+      [photos[1]],
+      [photos[2]],
     ]);
+    expect(violations.map(violation => violation.plate)).toEqual(['', '', '']);
+  });
+
+  test('leaves a photo with no plate read as a violation of its own', () => {
+    const startTime = Date.now();
+    const reading = name =>
+      buildPhoto({
+        name,
+        createDateMs: startTime,
+        plateResults: alprResponse({
+          results: [alprResult({ plate: 'aaa111', box: CENTRED_BOX })],
+        }),
+      });
+    const first = reading('first.jpg');
+    const blurry = buildPhoto({
+      name: 'blurry.jpg',
+      createDateMs: startTime + 500,
+      plateResults: alprResponse({ results: [] }),
+    });
+    const second = reading('second.jpg');
+
+    const violations = groupAttachmentsByViolation([first, blurry, second]);
+
+    // The two readings of one plate are one violation, and the blurry shot
+    // between them is not adopted by it: nothing says which car it is of, and
+    // time cannot be trusted to say. The user can merge it by hand.
+    expect(
+      violations.map(violation => [
+        violation.plate,
+        violation.photos.map(photo => photo.name),
+      ]),
+    ).toEqual([
+      ['AAA111', ['first.jpg', 'second.jpg']],
+      ['', ['blurry.jpg']],
+    ]);
+  });
+
+  test('merges photos that read the same plate far apart in time', () => {
+    const reading = (name, createDateMs) =>
+      buildPhoto({
+        name,
+        createDateMs,
+        plateResults: alprResponse({
+          results: [alprResult({ plate: 'aaa111', box: CENTRED_BOX })],
+        }),
+      });
+
+    // Three minutes apart: an establishing shot and a closeup of one car.
+    // The plate is what says they are one violation.
+    const violations = groupAttachmentsByViolation([
+      reading('far.jpg', 1_000_000),
+      reading('close.jpg', 1_180_000),
+    ]);
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0].photos.map(photo => photo.name)).toEqual([
+      'far.jpg',
+      'close.jpg',
+    ]);
+    expect(violations[0].createDateMs).toBe(1_000_000);
   });
 
   test('splits two cars photographed back-to-back into two violations', () => {
@@ -420,7 +438,7 @@ describe('groupAttachmentsByViolation', () => {
 
     const violations = groupAttachmentsByViolation([first, second]);
 
-    // Same time and place, so only the plates separate them.
+    // Same time and place, and different plates.
     expect(violations.map(violation => violation.plate)).toEqual([
       'AAA111',
       'BBB222',
@@ -431,51 +449,7 @@ describe('groupAttachmentsByViolation', () => {
     ]);
   });
 
-  test('links photos exactly 60s apart and splits them a millisecond later', () => {
-    const startTime = Date.now();
-    const reading = ({ name, createDateMs, plateResults }) =>
-      buildPhoto({
-        name,
-        createDateMs,
-        latitude: BASE_LATITUDE,
-        longitude: BASE_LONGITUDE,
-        plateResults,
-      });
-    // Two photos of the same car 60 seconds apart, which the threshold links,
-    // and two 60001ms apart, which it does not. Integer milliseconds make the
-    // boundary exact.
-    const linked = [
-      reading({
-        name: 'a.jpg',
-        createDateMs: startTime,
-        plateResults: alprResponse({
-          results: [alprResult({ plate: 'aaa111', box: CENTRED_BOX })],
-        }),
-      }),
-      reading({
-        name: 'b.jpg',
-        createDateMs: startTime + 60000,
-        plateResults: alprResponse({
-          results: [alprResult({ plate: 'aaa111', box: CENTRED_BOX })],
-        }),
-      }),
-    ];
-    const split = [
-      linked[0],
-      reading({
-        name: 'c.jpg',
-        createDateMs: startTime + 60001,
-        plateResults: alprResponse({
-          results: [alprResult({ plate: 'aaa111', box: CENTRED_BOX })],
-        }),
-      }),
-    ];
-
-    expect(groupAttachmentsByViolation(linked)).toHaveLength(1);
-    expect(groupAttachmentsByViolation(split)).toHaveLength(2);
-  });
-
-  test('links photos at different places when they were shot together', () => {
+  test('merges photos at different places when they read the same plate', () => {
     const startTime = Date.now();
     const reading = meters =>
       buildPhoto({
@@ -488,16 +462,14 @@ describe('groupAttachmentsByViolation', () => {
         }),
       });
 
-    // Place plays no part. Two photos taken in the same moment are one
-    // violation however far apart their coordinates claim to be: distances of
-    // hundreds of metres inside one violation are ordinary when the photos are
-    // taken from a bike, and a location fix can be wrong by more than that.
+    // Place plays no part. Photos of one car taken from a bike can be hundreds
+    // of metres apart, and a fix can be wrong by more than that.
     expect(
       groupAttachmentsByViolation([reading(0), reading(800)]),
     ).toHaveLength(1);
   });
 
-  test('links a photo with no GPS on capture time alone', () => {
+  test('merges a photo with no GPS when the plate agrees', () => {
     const startTime = Date.now();
     const located = buildPhoto({
       name: 'located.jpg',
@@ -507,7 +479,7 @@ describe('groupAttachmentsByViolation', () => {
       }),
     });
     // Android strips GPS from media shared through some apps, so a photo
-    // without coordinates must still join the batch it was shot with.
+    // without coordinates must still join its car.
     const stripped = buildPhoto({
       name: 'stripped.jpg',
       createDateMs: startTime + 4000,
@@ -532,15 +504,20 @@ describe('groupAttachmentsByViolation', () => {
     // A camera woken up for the shot can still be reporting the fix from
     // wherever it was last used. The later reading is the one taken once the
     // GPS had caught up with the car.
+    const reading = plate => ({
+      results: [alprResult({ plate, box: CENTRED_BOX })],
+    });
     const stale = buildPhoto({
       name: 'stale.jpg',
       createDateMs: 1_000_000,
       latitude: latitudeMetersNorthOf(40),
+      plateResults: alprResponse(reading('aaa111')),
     });
     const settled = buildPhoto({
       name: 'settled.jpg',
       createDateMs: 1_010_000,
       latitude: latitudeMetersNorthOf(1),
+      plateResults: alprResponse(reading('aaa111')),
     });
 
     const [violation] = groupAttachmentsByViolation([stale, settled]);
@@ -549,27 +526,6 @@ describe('groupAttachmentsByViolation', () => {
     // The time still comes from the start of the group: the report is of when
     // the violation happened, not of when its last photo was taken.
     expect(violation.createDateMs).toBe(1_000_000);
-  });
-
-  test('still splits photos with no GPS that are too far apart in time', () => {
-    const startTime = Date.now();
-    const stripped = createDateMs =>
-      buildPhoto({
-        name: `stripped-${createDateMs}.jpg`,
-        createDateMs,
-        latitude: undefined,
-        longitude: undefined,
-        plateResults: alprResponse({
-          results: [alprResult({ plate: 'aaa111', box: CENTRED_BOX })],
-        }),
-      });
-
-    expect(
-      groupAttachmentsByViolation([
-        stripped(startTime),
-        stripped(startTime + 70000),
-      ]),
-    ).toHaveLength(2);
   });
 
   test('falls back to file last-modified when a photo has no capture time', () => {
@@ -617,64 +573,203 @@ describe('groupAttachmentsByViolation', () => {
     expect(violations[0].createDateMs).toBe(3000);
   });
 
-  test('keeps a cluster with no plate read at all, flagged for manual entry', () => {
+  test('folds the OCR variants of one medallion into a single violation', () => {
     const startTime = Date.now();
-    const blurry = [
+    // One photo reading the medallion four ways, plus its partial re-reads
+    // either side of it. Folding is what keeps these three together: counted
+    // as exact strings there is no plate that two of them share, so the vote
+    // would have nothing to pick and each reading would become a violation of
+    // its own.
+    const medallionBox = { xmin: 704, ymin: 1319, xmax: 801, ymax: 1366 };
+    const medallionReading = plate =>
       buildPhoto({
-        name: 'blurry-1.jpg',
+        name: `${plate}.jpg`,
         createDateMs: startTime,
-        plateResults: alprResponse({ results: [] }),
-      }),
+        plateResults: alprResponse({
+          results: [alprResult({ plate, box: medallionBox })],
+        }),
+      });
+    const photos = [
       buildPhoto({
-        name: 'blurry-2.jpg',
-        createDateMs: startTime + 2000,
-        plateResults: alprResponse({ results: [] }),
+        name: 'variants.jpg',
+        createDateMs: startTime,
+        plateResults: alprResponse({ results: alprSnapshotResults }),
+        uploadWidth: 1919,
+        uploadHeight: 2560,
       }),
+      medallionReading('t6968i7c'),
+      medallionReading('t696817c'),
     ];
 
-    const violations = groupAttachmentsByViolation(blurry);
+    const violations = groupAttachmentsByViolation(photos);
 
+    // The medallion's three photos are one violation, and folding is what
+    // keeps them together: counted as exact strings, no two of them share a
+    // plate and each reading would be a violation of its own.
     expect(violations).toHaveLength(1);
-    expect(violations[0].plate).toBe('');
-    expect(violations[0].photos).toEqual(blurry);
+    expect(violations[0].photos).toEqual(photos);
+    // The clean read, the only variant matching ^T\d{6}C$. Plates come back
+    // uppercased, the same normalisation `extractPlate` applies to what the
+    // plate input shows.
+    expect(violations[0].plate).toBe('T696817C');
+    expect(violations[0].licenseState).toBe('NY');
   });
 
-  test('adopts a photo with no plate read into the sub-cluster nearest in capture time', () => {
-    const startTime = Date.now();
-    const reading = ({ name, plate, createDateMs }) =>
+  test('merges two photos whose candidate sets name the same plate', () => {
+    const medallionBox = { xmin: 704, ymin: 1319, xmax: 801, ymax: 1366 };
+    const first = buildPhoto({
+      name: 'first.jpg',
+      createDateMs: 1000,
+      plateResults: alprResponse({
+        results: [
+          alprResult({
+            plate: 't6968i7c',
+            candidates: [
+              { plate: 't6968i7c', score: 1 },
+              { plate: 't696817c', score: 0.6 },
+            ],
+            box: medallionBox,
+          }),
+        ],
+      }),
+    });
+    const second = buildPhoto({
+      name: 'second.jpg',
+      createDateMs: 2000,
+      plateResults: alprResponse({
+        results: [alprResult({ plate: 't696817c', box: medallionBox })],
+      }),
+    });
+
+    const [violation] = groupAttachmentsByViolation([first, second]);
+
+    // The readings differ, but the first offers the second as its own
+    // alternative, so they are one plate.
+    expect(violation.photos).toEqual([first, second]);
+    expect(violation.plate).toBe('T696817C');
+  });
+
+  // Boxes across one 1000x1000 frame, from the centre outwards. A wide shot's
+  // cars sit at different distances from the middle, which is what tells the
+  // car the photo is of from the cars behind it.
+  const boxesOutwards = [
+    { xmin: 490, ymin: 490, xmax: 510, ymax: 510 },
+    { xmin: 300, ymin: 500, xmax: 320, ymax: 520 },
+    { xmin: 680, ymin: 500, xmax: 700, ymax: 520 },
+    { xmin: 60, ymin: 500, xmax: 80, ymax: 520 },
+    { xmin: 920, ymin: 500, xmax: 940, ymax: 520 },
+  ];
+
+  const wideShot = () =>
+    buildPhoto({
+      name: 'wide.jpg',
+      createDateMs: 1000,
+      ...SQUARE,
+      plateResults: alprResponse({
+        ...SQUARE,
+        results: ['ccc333', 'bbb222', 'ddd444', 'aaa111', 'eee555'].map(
+          (plate, index) => alprResult({ plate, box: boxesOutwards[index] }),
+        ),
+      }),
+    });
+
+  test('gives a wide shot one violation, for the car it is of', () => {
+    const violations = groupAttachmentsByViolation([wideShot()]);
+
+    // The photo is one violation: it is a photo of `ccc333`, the plate nearest
+    // the centre of the frame. The other cars in the frame do not each get a
+    // row, because one photo cannot be evidence for four cars at once.
+    expect(
+      violations.map(violation => [
+        violation.plate,
+        violation.photos.map(photo => photo.name),
+      ]),
+    ).toEqual([['CCC333', ['wide.jpg']]]);
+  });
+
+  test('merges a wide shot with a closeup of the car it is of', () => {
+    const wide = wideShot();
+    const closeup = buildPhoto({
+      name: 'subject.jpg',
+      createDateMs: 2000,
+      ...SQUARE,
+      plateResults: alprResponse({
+        ...SQUARE,
+        results: [alprResult({ plate: 'ccc333', box: CENTRED_BOX })],
+      }),
+    });
+
+    const violations = groupAttachmentsByViolation([wide, closeup]);
+
+    // The closeup names the car the wide shot is of, so the two are one
+    // violation. The other cars in the frame have no photo of their own.
+    expect(
+      violations.map(violation => [
+        violation.plate,
+        violation.photos.map(photo => photo.name),
+      ]),
+    ).toEqual([['CCC333', ['wide.jpg', 'subject.jpg']]]);
+  });
+
+  test('does not merge a wide shot with the closeup of another car in it', () => {
+    const wide = wideShot();
+    const closeup = buildPhoto({
+      name: 'other.jpg',
+      createDateMs: 2000,
+      ...SQUARE,
+      plateResults: alprResponse({
+        ...SQUARE,
+        results: [alprResult({ plate: 'aaa111', box: CENTRED_BOX })],
+      }),
+    });
+
+    const violations = groupAttachmentsByViolation([wide, closeup]);
+
+    // The wide shot is a photo of `ccc333`, the car nearest its centre. Its
+    // `aaa111` read is a car behind, and joining the closeup of that car
+    // would leave `ccc333` with no photo of its own.
+    expect(
+      violations.map(violation => [
+        violation.plate,
+        violation.photos.map(photo => photo.name),
+      ]),
+    ).toEqual([
+      ['CCC333', ['wide.jpg']],
+      ['AAA111', ['other.jpg']],
+    ]);
+  });
+
+  test('leaves a wide shot on its own when two cars in it have closeups', () => {
+    const wide = wideShot();
+    const closeupOf = (name, plate, createDateMs) =>
       buildPhoto({
         name,
         createDateMs,
+        ...SQUARE,
         plateResults: alprResponse({
+          ...SQUARE,
           results: [alprResult({ plate, box: CENTRED_BOX })],
         }),
       });
-    // Three photos of one car, with a blurry shot between the last two: the
-    // blurry one is nearer in time to the second reading than to the first.
-    const first = reading({
-      name: 'first.jpg',
-      plate: 'aaa111',
-      createDateMs: startTime,
-    });
-    const blurry = buildPhoto({
-      name: 'blurry.jpg',
-      createDateMs: startTime + 11000,
-      plateResults: alprResponse({ results: [] }),
-    });
-    const second = reading({
-      name: 'second.jpg',
-      plate: 'bbb222',
-      createDateMs: startTime + 14000,
-    });
+    const subject = closeupOf('subject.jpg', 'ccc333', 2000);
+    const other = closeupOf('other.jpg', 'aaa111', 3000);
 
-    const violations = groupAttachmentsByViolation([first, blurry, second]);
+    const violations = groupAttachmentsByViolation([wide, subject, other]);
 
-    expect(violations.map(violation => violation.plate)).toEqual([
-      'AAA111',
-      'BBB222',
+    // The frame reads two plates that other photos also read, so it is
+    // evidence for two cars. Giving it to either row would take it from the
+    // other, so it stays a violation of its own. The closeups merge with
+    // nothing, each being the only photo of its own car's plate.
+    expect(
+      violations.map(violation => [
+        violation.plate,
+        violation.photos.map(photo => photo.name),
+      ]),
+    ).toEqual([
+      ['CCC333', ['wide.jpg']],
+      ['CCC333', ['subject.jpg']],
+      ['AAA111', ['other.jpg']],
     ]);
-    expect(violations[0].photos).toEqual([first]);
-    expect(violations[1].photos).toEqual([blurry, second]);
   });
 
   test('claims a photo for the car it is of, not the one it merely mentions', () => {
@@ -706,10 +801,10 @@ describe('groupAttachmentsByViolation', () => {
 
     const violations = groupAttachmentsByViolation([shared, behind]);
 
-    // `bbb222` is read twice to `aaa111`'s once, so it wins the vote. It must
-    // not take the close-up of `aaa111` with it: a car whose only photo is
-    // claimed by another car is never reported at all. Both are here, each
-    // with the photo it is of.
+    // The plate in the corner is the car behind, not the car the photo is of.
+    // It is read twice to `aaa111`'s once, and it must not take the close-up
+    // with it: a car whose only photo is claimed by another car is never
+    // reported at all. Both are here, each with the photo it is of.
     expect(
       violations.map(violation => [
         violation.plate,
@@ -721,111 +816,71 @@ describe('groupAttachmentsByViolation', () => {
     ]);
   });
 
-  // Boxes across one 1000x1000 frame, from the centre outwards. A wide shot's
-  // cars sit at different distances from the middle, which is what the vote
-  // orders them by.
-  const boxesOutwards = [
-    { xmin: 490, ymin: 490, xmax: 510, ymax: 510 },
-    { xmin: 300, ymin: 500, xmax: 320, ymax: 520 },
-    { xmin: 680, ymin: 500, xmax: 700, ymax: 520 },
-    { xmin: 60, ymin: 500, xmax: 80, ymax: 520 },
-    { xmin: 920, ymin: 500, xmax: 940, ymax: 520 },
-  ];
-
-  // The bike lane: five cars parked along the block, each plate read once, in
-  // the one frame. Every car's evidence is that frame, so a rule that gives it
-  // to one of them and drops it for the rest reports one car out of five.
-  const wideShotOfFive = () =>
-    buildPhoto({
-      name: 'wide.jpg',
-      createDateMs: 1000,
+  test('leaves a photo that reads two shared plates on its own', () => {
+    // One frame shows two cars, and each car has closeups of its own. The
+    // frame is evidence for both, so it cannot join either row: joining one
+    // would take the frame from the other.
+    const startTime = Date.now();
+    const reading = ({ name, plate, createDateMs, box = CENTRED_BOX }) =>
+      buildPhoto({
+        name,
+        createDateMs,
+        ...SQUARE,
+        plateResults: alprResponse({
+          ...SQUARE,
+          results: [alprResult({ plate, box })],
+        }),
+      });
+    const both = buildPhoto({
+      name: 'both.jpg',
+      createDateMs: startTime,
       ...SQUARE,
       plateResults: alprResponse({
         ...SQUARE,
-        results: ['ccc333', 'bbb222', 'ddd444', 'aaa111', 'eee555'].map(
-          (plate, index) => alprResult({ plate, box: boxesOutwards[index] }),
-        ),
+        results: [
+          alprResult({ plate: 'ppp111', box: CENTRED_BOX }),
+          alprResult({ plate: 'qqq222', box: CORNER_BOX }),
+        ],
       }),
     });
+    const firstCarOne = reading({
+      name: 'p1.jpg',
+      plate: 'ppp111',
+      createDateMs: startTime + 1000,
+    });
+    const firstCarTwo = reading({
+      name: 'p2.jpg',
+      plate: 'ppp111',
+      createDateMs: startTime + 2000,
+    });
+    const secondCarOne = reading({
+      name: 'q1.jpg',
+      plate: 'qqq222',
+      createDateMs: startTime + 3000,
+    });
+    const secondCarTwo = reading({
+      name: 'q2.jpg',
+      plate: 'qqq222',
+      createDateMs: startTime + 4000,
+    });
 
-  test('gives each car in one wide shot a violation of its own', () => {
-    const violations = groupAttachmentsByViolation([wideShotOfFive()]);
+    const violations = groupAttachmentsByViolation([
+      both,
+      firstCarOne,
+      firstCarTwo,
+      secondCarOne,
+      secondCarTwo,
+    ]);
 
-    // All five cars, in the plate order the boxes vote them into, each
-    // reported with the one photo there is of it.
     expect(
       violations.map(violation => [
         violation.plate,
         violation.photos.map(photo => photo.name),
       ]),
     ).toEqual([
-      ['CCC333', ['wide.jpg']],
-      ['BBB222', ['wide.jpg']],
-      ['DDD444', ['wide.jpg']],
-      ['AAA111', ['wide.jpg']],
-      ['EEE555', ['wide.jpg']],
-    ]);
-  });
-
-  test('shares the wide shot with the cars that have no other photo', () => {
-    // One car is also photographed close up; the two beside it are not.
-    const wide = wideShotOfFive();
-    const closeup = buildPhoto({
-      name: 'close.jpg',
-      createDateMs: 2000,
-      ...SQUARE,
-      plateResults: alprResponse({
-        ...SQUARE,
-        results: [alprResult({ plate: 'ccc333', box: CENTRED_BOX })],
-      }),
-    });
-
-    const violations = groupAttachmentsByViolation([wide, closeup]);
-
-    // The car with two photos has both. The cars with nothing but the wide
-    // shot have that, rather than nothing.
-    expect(
-      Object.fromEntries(
-        violations.map(violation => [
-          violation.plate,
-          violation.photos.map(photo => photo.name),
-        ]),
-      ),
-    ).toEqual({
-      CCC333: ['wide.jpg', 'close.jpg'],
-      BBB222: ['wide.jpg'],
-      DDD444: ['wide.jpg'],
-      AAA111: ['wide.jpg'],
-      EEE555: ['wide.jpg'],
-    });
-  });
-
-  test('lists a shared photo once when its rows are merged', () => {
-    const [wide] = groupAttachmentsByViolation([wideShotOfFive()]);
-    const other = buildPhoto({
-      name: 'other.jpg',
-      createDateMs: 9000,
-      ...SQUARE,
-      plateResults: alprResponse({
-        ...SQUARE,
-        results: [alprResult({ plate: 'fff666', box: CENTRED_BOX })],
-      }),
-    });
-
-    // Two violations the user put together by hand, both holding the wide
-    // shot: the merged report holds it once.
-    const merged = mergeViolations([
-      wide,
-      {
-        ...wide,
-        plate: 'FFF666',
-        photos: [wide.photos[0], other],
-      },
-    ]);
-
-    expect(merged.photos.map(photo => photo.name)).toEqual([
-      'wide.jpg',
-      'other.jpg',
+      ['PPP111', ['both.jpg']],
+      ['PPP111', ['p1.jpg', 'p2.jpg']],
+      ['QQQ222', ['q1.jpg', 'q2.jpg']],
     ]);
   });
 
@@ -960,19 +1015,19 @@ describe('groupAttachmentsByViolation', () => {
         photos: violation.photos.map(photo => photo.name),
       })),
     ).toEqual([
-      { plate: 'T696817C', photos: ['1.jpg', '2.jpg', '3.jpg'] },
-      // The third car in `1.jpg`'s frame, which has no photo of its own. Its
-      // time is that photo's, so it sorts with the medallion's row.
-      { plate: 'K73JAU', photos: ['1.jpg'] },
+      // The first frame reads the medallion, the `lda8765` car and a third car.
+      // The `lda8765` read is shared with photos 4 and 5, so the frame is
+      // evidence for two cars and stays a violation of its own. Its own plate
+      // is the medallion, the read nearest its centre.
+      { plate: 'T696817C', photos: ['1.jpg'] },
+      { plate: 'T696817C', photos: ['2.jpg', '3.jpg'] },
       { plate: 'LDA8765', photos: ['4.jpg', '5.jpg'] },
       { plate: '', photos: ['6.jpg'] },
     ]);
 
-    const [medallion, passenger, later, unread] = violations;
-    expect(medallion.createDateMs).toBe(startTime);
-    // The passenger's only photo is the medallion's first one, so its row
-    // starts at that same moment and sorts next to it.
-    expect(passenger.createDateMs).toBe(startTime);
+    const [firstFrame, medallion, later, unread] = violations;
+    expect(firstFrame.createDateMs).toBe(startTime);
+    expect(medallion.createDateMs).toBe(startTime + 4000);
     expect(later.createDateMs).toBe(startTime + 27000);
     expect(unread.createDateMs).toBe(startTime + 158000);
     // The walk carries on down the block, so the last photo of each group is
@@ -997,28 +1052,14 @@ describe('the report cap', () => {
     buildPhoto({
       name,
       createDateMs: 1_000_000 + secondsFromStart * 1000,
+      plateResults: alprResponse({
+        results: [alprResult({ plate: 'aaa111', box: CENTRED_BOX })],
+      }),
     });
 
-  test('splits a block that no read divided into groups of three', () => {
-    // The dark-block case: one block, one stale fix, no plate reads, six
-    // pictures. The time window keeps them together, so the cap is what makes
-    // the block several reports.
-    const photos = ['a', 'b', 'c', 'd', 'e', 'f'].map((letter, index) =>
-      photoAt(`${letter}.jpg`, index),
-    );
-
-    const violations = groupAttachmentsByViolation(photos);
-
-    expect(
-      violations.map(violation => violation.photos.map(photo => photo.name)),
-    ).toEqual([
-      ['a.jpg', 'b.jpg', 'c.jpg'],
-      ['d.jpg', 'e.jpg', 'f.jpg'],
-    ]);
-    expect(violations.map(violation => violation.plate)).toEqual(['', '']);
-  });
-
-  test('splits the remainder into a group of its own', () => {
+  test('splits one car’s photos into groups of three', () => {
+    // Four pictures of one car: one report carries three, so the fourth starts
+    // a report of its own rather than disappearing.
     const photos = ['a', 'b', 'c', 'd'].map((letter, index) =>
       photoAt(`${letter}.jpg`, index),
     );
@@ -1028,6 +1069,11 @@ describe('the report cap', () => {
     expect(
       violations.map(violation => violation.photos.map(photo => photo.name)),
     ).toEqual([['a.jpg', 'b.jpg', 'c.jpg'], ['d.jpg']]);
+    // Both parts are photos of the same car, so both carry its plate.
+    expect(violations.map(violation => violation.plate)).toEqual([
+      'AAA111',
+      'AAA111',
+    ]);
   });
 
   test('keeps three pictures and three videos in one report', () => {
@@ -1074,51 +1120,22 @@ describe('the report cap', () => {
       ['d.jpg', 'e.mp4', 'f.mp4', 'g.mp4'],
       ['h.mp4'],
     ]);
-  });
-
-  test('gives the plate to the group that holds the photo that read it', () => {
-    const start = 1_000_000;
-    const photos = [0, 1, 2, 3, 4, 5].map(index =>
-      buildPhoto({
-        name: `p${index}.jpg`,
-        createDateMs: start + index * 1000,
-        latitude: latitudeMetersNorthOf(index),
-        longitude: BASE_LONGITUDE,
-        plateResults:
-          index === 3
-            ? alprResponse({
-                results: [alprResult({ plate: 'aaa111', box: CENTRED_BOX })],
-              })
-            : undefined,
-      }),
-    );
-
-    const violations = groupAttachmentsByViolation(photos);
-
-    // The read sits in the second group, so the first says nothing: the label
-    // is not copied across the split.
     expect(violations.map(violation => violation.plate)).toEqual([
-      '',
+      'AAA111',
+      'AAA111',
       'AAA111',
     ]);
-    // The first group starts when its first photo was taken and takes the last
-    // fix it holds; the second starts at the fourth photo.
-    expect(violations[0].createDateMs).toBe(start);
-    expect(violations[0].latitude).toBe(latitudeMetersNorthOf(2));
-    expect(violations[1].createDateMs).toBe(start + 3000);
-    expect(violations[1].latitude).toBe(latitudeMetersNorthOf(5));
-    expect(violations[1].photos[0].name).toBe('p3.jpg');
   });
 
   test('does not split a row the user merged', () => {
-    const left = ['a', 'b', 'c'].map((letter, index) =>
-      photoAt(`${letter}.jpg`, index),
+    const photosFor = (letters, firstSecond) =>
+      letters.map((letter, index) =>
+        photoAt(`${letter}.jpg`, firstSecond + index),
+      );
+    const [first] = groupAttachmentsByViolation(photosFor(['a', 'b', 'c'], 0));
+    const [second] = groupAttachmentsByViolation(
+      photosFor(['d', 'e', 'f'], 60),
     );
-    const right = ['d', 'e', 'f'].map((letter, index) =>
-      photoAt(`${letter}.jpg`, index + 60),
-    );
-    const [first] = groupAttachmentsByViolation(left);
-    const [second] = groupAttachmentsByViolation(right);
     expect(first.photos).toHaveLength(3);
     expect(second.photos).toHaveLength(3);
 

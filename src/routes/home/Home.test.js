@@ -1227,7 +1227,12 @@ describe('Home', () => {
       };
     });
 
-    const { homeRef, cleanup } = await renderAndExtract([newer, older]);
+    // A plate read is what makes two photos one violation, so both photos
+    // read the same plate here. That is the shape the rule is about: the
+    // form's place is the newest of the photos the report holds.
+    const { homeRef, cleanup } = await renderWithPlateReads([newer, older], {
+      platesBySize: { [newer.size]: 'AAA111', [older.size]: 'AAA111' },
+    });
 
     expect(homeRef.current.state.latitude).toBe(40.73);
     expect(homeRef.current.state.longitude).toBe(-74.01);
@@ -1862,8 +1867,14 @@ describe('Home', () => {
   };
 
   test('moves the time and place onto the photos left when one is dropped', async () => {
-    const { homeRef, settle, cleanup } =
-      await renderAndExtract(threePhotosApart());
+    const photos = threePhotosApart();
+    // One plate on every photo, so the three are one violation.
+    const platesBySize = Object.fromEntries(
+      photos.map(file => [file.size, 'AAA111']),
+    );
+    const { homeRef, settle, cleanup } = await renderWithPlateReads(photos, {
+      platesBySize,
+    });
 
     // The submission is as old as its earliest photo, and sits where the last
     // photo that knows where it was was taken.
@@ -1885,8 +1896,14 @@ describe('Home', () => {
   });
 
   test('leaves a place the user set alone when a photo is dropped', async () => {
-    const { homeRef, settle, cleanup } =
-      await renderAndExtract(threePhotosApart());
+    const photos = threePhotosApart();
+    // One plate on every photo, so the three are one violation.
+    const platesBySize = Object.fromEntries(
+      photos.map(file => [file.size, 'AAA111']),
+    );
+    const { homeRef, settle, cleanup } = await renderWithPlateReads(photos, {
+      platesBySize,
+    });
 
     // The user moves the pin. Every photo in the set can be wrong about where
     // the car was -- a camera that has just woken up reports its last fix --
@@ -1910,8 +1927,14 @@ describe('Home', () => {
   });
 
   test('leaves a time the user typed alone when a photo is dropped', async () => {
-    const { homeRef, settle, cleanup } =
-      await renderAndExtract(threePhotosApart());
+    const photos = threePhotosApart();
+    // One plate on every photo, so the three are one violation.
+    const platesBySize = Object.fromEntries(
+      photos.map(file => [file.size, 'AAA111']),
+    );
+    const { homeRef, settle, cleanup } = await renderWithPlateReads(photos, {
+      platesBySize,
+    });
 
     renderer.act(() => {
       homeRef.current.setCreateDate({
@@ -2026,7 +2049,14 @@ describe('Home', () => {
 
     const { homeRef, tree, settle, cleanup } = await renderWithPlateReads(
       [named, silent],
-      { platesBySize: { [photoBytes('named').length]: 'T696817C' } },
+      {
+        // Both photos read the row's plate, so they are one violation. The
+        // drop removes one photo from a report that keeps the other.
+        platesBySize: {
+          [photoBytes('named').length]: 'T696817C',
+          [photoBytes('silent').length]: 'T696817C',
+        },
+      },
     );
 
     // Typing over the reading, as the field reports it.
@@ -4099,33 +4129,31 @@ describe('Home', () => {
       };
     }
 
-    test('uploads files to /api/uploadAttachment in the background when files are added', async () => {
+    test('uploads the row it opens to /api/uploadAttachment in the background', async () => {
       const photo = new File(['photo'], 'photo.jpg', { type: 'image/jpeg' });
       const video = new File(['video'], 'video.mp4', { type: 'video/mp4' });
       const { axiosPost, cleanup } = await renderWithFiles({
         files: [photo, video],
       });
 
+      // Each file is a row of its own here, and only the row that opens is
+      // uploaded: a violation the user never opens is never sent anywhere.
       const uploadCalls = axiosPost.mock.calls.filter(
         ([url]) => url === '/api/uploadAttachment',
       );
-      expect(uploadCalls).toHaveLength(2);
-      uploadCalls.forEach(([, body], index) => {
-        const original = index === 0 ? photo : video;
-        const uploaded = body.get('attachmentData');
-        // No credentials in the body: the route authenticates from the
-        // session cookie the browser sends.
-        expect(body.get('email')).toBeNull();
-        expect(body.get('password')).toBeNull();
-        // The upload carries a copy of the file's bytes, not the File from
-        // the file input: the network is handed a File whose contents are
-        // already in memory, since some browsers send an empty body for the
-        // original (see the "Unexpected end of form" section of the README).
-        expect(uploaded).not.toBe(original);
-        expect(uploaded.name).toBe(original.name);
-        expect(uploaded.type).toBe(original.type);
-        expect(uploaded.size).toBe(original.size);
-      });
+      expect(uploadCalls).toHaveLength(1);
+      const [[, body]] = uploadCalls;
+      const uploaded = body.get('attachmentData');
+      expect(body.get('email')).toBeNull();
+      expect(body.get('password')).toBeNull();
+      // The upload carries a copy of the file's bytes, not the File from
+      // the file input: the network is handed a File whose contents are
+      // already in memory, since some browsers send an empty body for the
+      // original (see the "Unexpected end of form" section of the README).
+      expect(uploaded).not.toBe(photo);
+      expect(uploaded.name).toBe(photo.name);
+      expect(uploaded.type).toBe(photo.type);
+      expect(uploaded.size).toBe(photo.size);
       const [, firstUpload] = uploadCalls[0];
       const uploadedBytes = await blobUtil.blobToArrayBuffer(
         firstUpload.get('attachmentData'),
@@ -5635,9 +5663,10 @@ describe('Home', () => {
       cleanup();
     });
 
-    test('reads again only the photos the batch could not read', async () => {
-      // Two photos of one medallion plate, a second apart, so they group into
-      // one violation -- the second read is the one that fails.
+    test('reads a failed photo again when its row is opened, and merges it into its car', async () => {
+      // Two photos of one medallion plate, a second apart. The second read is
+      // the one that fails, so until a second chance reads it the two photos
+      // are two rows.
       const photos = [
         jpeg({ name: 'a.jpg', size: 4 }),
         jpeg({ name: 'b.jpg', size: 5 }),
@@ -5649,19 +5678,33 @@ describe('Home', () => {
         OffsetTimeDigitized: '-05:00',
       }));
 
-      const { homeRef, settle, platerecognizerCalls, cleanup } =
+      const { homeRef, settle, clickQueueLoad, platerecognizerCalls, cleanup } =
         await renderBatchWithFiles(photos, { failAlprCalls: [2] });
 
-      expect(homeRef.current.state.batchViolations).toHaveLength(1);
+      expect(
+        homeRef.current.state.batchViolations.map(violation => violation.plate),
+      ).toEqual(['T696817C', '']);
 
       await settle();
 
+      // The row on screen read cleanly, so nothing is asked again yet. The
+      // failed row takes its second chance when it is opened, not before.
+      expect(platerecognizerCalls()).toHaveLength(2);
+
+      clickQueueLoad('nothing readable');
+      await settle();
+
       // Three calls, not four: the photo that read is answered from the
-      // cache, so only the one that failed is read again. A photo that read
-      // cleanly and found nothing is not re-read either -- there is nothing
-      // to learn from asking twice.
+      // cache, so only the one that failed is read again. Its reading names
+      // the first row's car, so the two rows become one.
       expect(platerecognizerCalls()).toHaveLength(3);
+      expect(homeRef.current.state.batchViolations).toHaveLength(1);
       expect(homeRef.current.state.batchViolations[0].plate).toBe('T696817C');
+      expect(
+        homeRef.current.state.batchViolations[0].photos.map(
+          photo => photo.name,
+        ),
+      ).toEqual(['a.jpg', 'b.jpg']);
       expect(homeRef.current.state.plate).toBe('T696817C');
 
       exifr.gps.mockReset();
@@ -5669,10 +5712,9 @@ describe('Home', () => {
       cleanup();
     });
 
-    test('divides a row the second chance shows to be two cars', async () => {
-      // A photo of one car and a photo of another, a minute apart, which the
-      // time window leaves in one row. Both reads are refused, so until the
-      // second chance reads them the row has no plate to divide it by.
+    test('reads each failed photo again when its own row is opened', async () => {
+      // A photo of one car and a photo of another. Both reads are refused, so
+      // each stands as a row of its own with no plate.
       const photos = [
         jpeg({ name: 'a.jpg', size: 4 }),
         jpeg({ name: 'd.jpg', size: 7 }),
@@ -5684,24 +5726,33 @@ describe('Home', () => {
         OffsetTimeDigitized: '-05:00',
       }));
 
-      const { homeRef, settle, platerecognizerCalls, cleanup } =
+      const { homeRef, settle, clickQueueLoad, platerecognizerCalls, cleanup } =
         await renderBatchWithFiles(photos, { failAlprCalls: [1, 2] });
 
       await settle();
 
-      // The second chance read both photos, they disagree, and the row divides
-      // into the two cars it was holding. Four calls in all: the batch's two,
-      // and the two the second chance made.
+      // The loaded row takes its second chance at the end of the pass; the
+      // other row keeps its failure until it is opened. Three calls in all:
+      // the batch's two, and the one second chance.
+      expect(platerecognizerCalls()).toHaveLength(3);
+      expect(
+        homeRef.current.state.batchViolations.map(violation => violation.plate),
+      ).toEqual(['T696817C', '']);
+
+      clickQueueLoad('nothing readable');
+      await settle();
+
+      // The second row has its own reading now, and the two cars stay apart.
       expect(platerecognizerCalls()).toHaveLength(4);
       expect(
         homeRef.current.state.batchViolations.map(violation => violation.plate),
       ).toEqual(['T696817C', 'K73JAU']);
 
-      // The form was on the row when it divided, so it is on one of the two
-      // now -- the one holding the photos it had attached -- with that car's
-      // plate rather than an empty field.
-      expect(homeRef.current.state.plate).toBe('T696817C');
-      expect(homeRef.current.state.attachmentData).toEqual([photos[0]]);
+      // The form is on the row that was opened, with that car's plate.
+      expect(homeRef.current.state.plate).toBe('K73JAU');
+      expect(
+        homeRef.current.state.attachmentData.map(file => file.name),
+      ).toEqual(['d.jpg']);
 
       exifr.gps.mockReset();
       exifr.parse.mockReset();
@@ -5969,12 +6020,13 @@ describe('Home', () => {
       });
 
       // One publish, of the whole batch, with every row in it and no plate read
-      // yet. The four photos are one time-cluster, and with no plate to divide
-      // them the report cap splits it into three and one.
-      expect(passes).toEqual([{ reads: 0, violations: 2 }]);
+      // yet. Every photo is a row of its own until a read names its car, so
+      // the four photos are four rows.
+      expect(passes).toEqual([{ reads: 0, violations: 4 }]);
 
       // And it is still the grouping that decides, once the plates are in: the
-      // row divided as they arrived, so the queue ends up with one row per car.
+      // rows merged as the reads arrived, so the queue ends up with one row
+      // per car.
       expect(
         homeRef.current.state.batchViolations.map(v => [
           v.plate,
@@ -6601,9 +6653,10 @@ describe('Home', () => {
         ['T696817C', ['a.jpg', 'b.jpg']],
         ['LDA8765', ['c.jpg']],
       ]);
-      // The open report still holds only the photo it started with: the new
-      // one waits in the grid, ticked or not by the user.
-      expect(attachmentData.map(file => file.name)).toEqual(['a.jpg']);
+      // The open report gained the photo of its car: a merge reloads the form
+      // with the row's photos, so the report is the whole car rather than the
+      // one photo that happened to be read first.
+      expect(attachmentData.map(file => file.name)).toEqual(['a.jpg', 'b.jpg']);
       expect(currentViolationIndex).toBe(0);
 
       exifr.gps.mockReset();
@@ -6822,12 +6875,12 @@ describe('Home', () => {
       cleanup();
     });
 
-    // A row is one violation, and a violation is what its photos say it is: a
-    // reading still to come can take a photo, and the ones reading with it,
-    // into a row of their own. Until the readings are in, the row is a guess.
-    test('says a row may split while some of its photos are still being read', async () => {
+    // A row is one violation until a read names the car, and the reads land
+    // one at a time. The queue shows each photo as its own row until then, and
+    // folds them together as the readings arrive.
+    test('adds a later read to its car’s row as it lands', async () => {
       // Two photos of one car. The first is read at once, which is what puts a
-      // plate on the row and makes it look settled; the second is held back.
+      // plate on its row; the second is held back.
       const first = jpeg({ name: 'a.jpg', size: 4 });
       const second = jpeg({ name: 'b.jpg', size: 5 });
 
@@ -6846,38 +6899,42 @@ describe('Home', () => {
         adding = homeRef.current.addFilesToBatch([first, second]);
       });
 
-      // The row is up as soon as the local metadata pass is done, with one
+      // The rows are up as soon as the local metadata pass is done, with one
       // reading in and one still out.
       await renderer.act(async () => {
         await new Promise(resolve => setTimeout(resolve, 150));
       });
 
-      // The row has a plate to show -- its letters and the crop of it -- and
-      // still says so.
-      expect(renderedText(tree.toJSON())).toContain('T696817C (2 photos)');
+      // The photo that read has a row with its plate and the crop of it; the
+      // one still being read is a row of its own.
+      expect(renderedText(tree.toJSON())).toContain('T696817C (1 photo)');
       expect(
         tree.root
           .findAllByType('img')
           .some(({ props }) => props.className === 'plate-crop-image'),
       ).toBe(true);
-      expect(renderedText(tree.toJSON())).toContain('may split');
+      expect(renderedText(tree.toJSON())).toContain('reading plates…');
 
       await renderer.act(async () => {
         await adding;
       });
 
-      // Every reading is in, so the row is what its photos say it is.
-      expect(renderedText(tree.toJSON())).not.toContain('may split');
+      // The second reading names the same car, so the two rows are one.
+      expect(
+        homeRef.current.state.batchViolations.map(violation => [
+          violation.plate,
+          violation.photos.map(photo => photo.name),
+        ]),
+      ).toEqual([['T696817C', ['a.jpg', 'b.jpg']]]);
 
       exifr.gps.mockReset();
       exifr.parse.mockReset();
       cleanup();
     });
 
-    // One frame can be the first photo of two rows: a wide shot that reads two
-    // plates gives each car a violation, and both reports can carry the frame.
-    // The rows say so, because a photo that belongs to two rows is the most
-    // confusing split in the queue.
+    // A photo can be in more than one row, and the rows say so. The batch
+    // gives each photo one row, so the second is built here; the badge is what
+    // a row shows when a photo of it is also another row's.
     test('says when a row shares a photo with another violation', async () => {
       const frame = jpeg({ name: 'frame.jpg', size: 10 });
 
@@ -6889,10 +6946,13 @@ describe('Home', () => {
 
       const { homeRef, tree, cleanup } = await renderBatchWithFiles([frame]);
 
-      expect(homeRef.current.state.batchViolations.map(v => v.plate)).toEqual([
-        'AAA111',
-        'BBB222',
-      ]);
+      const [first] = homeRef.current.state.batchViolations;
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchViolations: [first, { ...first, plate: 'BBB222' }],
+        });
+      });
+
       expect(
         homeRef.current.state.batchViolations.map(violation =>
           violation.photos.map(photo => photo.name),
@@ -8595,11 +8655,10 @@ describe('Home', () => {
       cleanup();
     });
 
-    // Two rows read from one frame: submitting the first takes the frame out
-    // of the batch with it, and the row that shared it is still a violation
-    // with a report of its own to make. It has to stay on screen -- it used to
-    // go with the frame, and come back when the next batch put photos into the
-    // batch again, which reads as a violation resurrecting.
+    // Two rows that hold one frame. The batch gives each photo one row, so the
+    // second is built here. Submitting the first takes the frame out of the
+    // batch with it, and the row that shared it is still a violation with a
+    // report of its own to make. It has to stay on screen.
     test('keeps a row on screen when a submitted row takes the last photo', async () => {
       const frame = jpeg({ name: 'frame.jpg', size: 10 });
 
@@ -8612,6 +8671,20 @@ describe('Home', () => {
       const { homeRef, tree, submit, cleanup } = await renderBatchWithFiles([
         frame,
       ]);
+
+      const [batched] = homeRef.current.state.batchViolations;
+      const [framePhoto] = batched.photos;
+      const sharedRow = plate => ({
+        ...batched,
+        photos: [framePhoto],
+        plate,
+        mergedByUser: true,
+      });
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchViolations: [sharedRow('AAA111'), sharedRow('BBB222')],
+        });
+      });
 
       const settled = async () => {
         await renderer.act(async () => {
@@ -8830,17 +8903,22 @@ describe('Home', () => {
 
       const { batchPhotos, batchViolations } = homeRef.current.state;
 
-      // p1 and p4 were not in the report, so they stay in the batch and get a
-      // row of their own, even though that row starts with p1 and so shares
-      // the submitted row's identity.
+      // p1 and p4 were not in the report, so they stay in the batch. Each gets
+      // a row of its own: p1 reads the plate, and p4 reads nothing. The row
+      // that starts with p1 has the submitted row's identity, and still stays:
+      // a row made only of the photos the report took is the one that went.
       expect(batchPhotos.map(photo => photo.name)).toEqual([
         'p1.jpg',
         'p4.jpg',
       ]);
-      expect(batchViolations).toHaveLength(1);
-      expect(batchViolations[0].photos.map(photo => photo.name)).toEqual([
-        'p1.jpg',
-        'p4.jpg',
+      expect(
+        batchViolations.map(row => [
+          row.plate,
+          row.photos.map(photo => photo.name),
+        ]),
+      ).toEqual([
+        ['T696817C', ['p1.jpg']],
+        ['', ['p4.jpg']],
       ]);
 
       cleanup();
@@ -9161,20 +9239,35 @@ describe('Home', () => {
       return { ...rendered, wide, later };
     };
 
-    // A frame that reads as two cars is the only photo of each of them, so
-    // each row holds it and neither has a photo of its own.
+    // Two rows that hold one frame. The batch gives each photo one row, so the
+    // second is built here; both are marked as the user's own, so the reads
+    // that follow leave them whole.
     const twoCarsInOneFrame = async () => {
       const frame = jpeg({ name: 'frame.jpg', size: 10 });
       const rendered = await renderBatchWithFiles([frame]);
 
+      const { homeRef } = rendered;
+      const [batched] = homeRef.current.state.batchViolations;
+      const [framePhoto] = batched.photos;
+      const sharedRow = plate => ({
+        ...batched,
+        photos: [framePhoto],
+        plate,
+        mergedByUser: true,
+      });
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchPhotos: [framePhoto],
+          batchViolations: [sharedRow('AAA111'), sharedRow('BBB222')],
+        });
+      });
+
       const plates = () =>
-        rendered.homeRef.current.state.batchViolations.map(
-          violation => violation.plate,
-        );
+        homeRef.current.state.batchViolations.map(violation => violation.plate);
 
       expect(plates()).toEqual(['AAA111', 'BBB222']);
       expect(
-        rendered.homeRef.current.state.batchViolations[0].photos.map(
+        homeRef.current.state.batchViolations[0].photos.map(
           photo => photo.name,
         ),
       ).toEqual([frame.name]);
@@ -9565,10 +9658,13 @@ describe('Home', () => {
     });
 
     // The pictures, as the folder named them; the text file and the macOS
-    // entry are not attachments and are not here.
-    expect(homeRef.current.state.attachmentData.map(file => file.name)).toEqual(
-      ['album/older.jpg', 'album/newer.jpg'],
-    );
+    // entry are not attachments and are not here. Each picture starts a
+    // violation of its own, so the batch holds both even though the form
+    // shows the first.
+    expect(homeRef.current.state.batchPhotos.map(photo => photo.name)).toEqual([
+      'album/older.jpg',
+      'album/newer.jpg',
+    ]);
 
     tree.unmount();
     exifr.gps.mockReset();
@@ -9628,10 +9724,13 @@ describe('Home', () => {
     });
 
     // The photos, named as the zip had them with the folder they shared
-    // dropped; the text file and the macOS entry are not attachments.
-    expect(homeRef.current.state.attachmentData.map(file => file.name)).toEqual(
-      ['older.jpg', 'newer.jpg'],
-    );
+    // dropped; the text file and the macOS entry are not attachments. Each
+    // starts a violation of its own, so the batch holds both even though the
+    // form shows the first.
+    expect(homeRef.current.state.batchPhotos.map(photo => photo.name)).toEqual([
+      'older.jpg',
+      'newer.jpg',
+    ]);
     expect(toastSuccess.mock.calls[0][0]).toBe('2 pictures from photos.zip');
 
     tree.unmount();
@@ -9691,10 +9790,12 @@ describe('Home', () => {
     });
 
     // The photos took the zip's place; the archive itself is not an
-    // attachment, and neither is the text file or the macOS entry.
-    expect(homeRef.current.state.attachmentData.map(file => file.name)).toEqual(
-      ['older.jpg', 'newer.jpg'],
-    );
+    // attachment, and neither is the text file or the macOS entry. Each photo
+    // starts a violation of its own, so the batch holds both.
+    expect(homeRef.current.state.batchPhotos.map(photo => photo.name)).toEqual([
+      'older.jpg',
+      'newer.jpg',
+    ]);
     expect(toastSuccess.mock.calls[0][0]).toBe('2 pictures from photos.zip');
 
     tree.unmount();

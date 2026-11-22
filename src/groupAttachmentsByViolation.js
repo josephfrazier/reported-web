@@ -4,51 +4,43 @@
  * Semi-automatic mode runs ALPR, date and location extraction over a whole
  * batch of photos, then hands the results here. Grouping has to happen before
  * anything is filled in, because the form is filled in per violation rather
- * than per photo: several photos of one car are one report, and that report
- * takes its time from its earliest photo and its location from the last one
- * that has coordinates.
+ * than per photo.
  *
- * Five passes, in this order (see docs/plans/semi-automatic-mode.html):
+ * One photo is one violation until a plate says otherwise. Time and place
+ * cannot tell the cars apart: cars parked along one block stand a few seconds
+ * and a few metres apart, so two photos of two cars can be closer together
+ * than two photos of one car. The plate is the signal that names the car, so
+ * it is the only signal the grouping merges on.
  *
- *   1. Sort by capture time, so everything downstream can assume chronological
- *      order.
- *   2. Cluster by time alone: two photos link when they were taken within
- *      TIME_THRESHOLD_MS of each other. Connected components of that relation
- *      are the candidate violations.
+ * The passes, in this order:
  *
- * Time is the only geometric signal here, and both numbers come from measuring
- * the reports themselves rather than from guessing.
+ *   1. Sort by capture time. The queue walks the batch in the order it was
+ *      shot, and a violation takes its time from its earliest photo.
+ *   2. Fold plate strings. Plate Recognizer ranks its own alternatives in
+ *      `candidates`, so the four ways it reads one medallion are one plate,
+ *      not four. Folding is a union-find over strings, with an edge for every
+ *      pair a single result offers.
+ *   3. Pick each photo's own plate. A photo can read several plates -- a
+ *      closeup of one car with another parked behind it -- and it is a photo
+ *      of the car whose box sits nearest the centre of the frame. The
+ *      medallion pattern and the read's score are the tie-breaks after
+ *      centrality.
+ *   4. Merge photos that name the same plate, unless one of them reads
+ *      another plate that a different photo also read. Such a photo is
+ *      evidence for two cars, and giving it to one row takes it from the
+ *      other, so it stays a violation of its own.
+ *   5. Split on the report's cap. A report carries three pictures and three
+ *      videos at most, so a violation over either count becomes consecutive
+ *      groups, in capture order, that fit. Every photo of a violation reads
+ *      the plate it reports, so each part keeps that plate.
+ *
+ * A photo ALPR read nothing in is a violation of its own, flagged for manual
+ * entry. The user can merge it with its car by hand; nothing else knows which
+ * car that is.
  *
  * Capture order is not defined here: `compareByCaptureTime` and
  * `effectiveTimeMs` come from `latestLocatedPhoto.js`, which sorts the form's
  * photos the same way.
- *
- * Distance was a second signal until it was measured. Of 385 gaps between two
- * photos of one violation, 328 were at *identical* coordinates -- a phone
- * reuses one location fix for shots taken seconds apart -- and most of the rest
- * could not be told apart from GPS error: 4,739 m in 2 s, 1,798 m in 2 s, which
- * nothing covers. A distance threshold could therefore only ever split a real
- * violation, never separate two of them.
- *
- * 60 s comes from the same measurement. The largest gap between two photos of
- * one violation was 180 s, and a 5 s window split 33 of 399 of them; 60 s
- * splits 2. What a time window cannot separate, the plate does: two cars at one
- * kerb are 0 m and a few seconds apart.
- *   3. Vote the plate, then split on it. Clustering deliberately runs first:
- *      a plate may only ever divide a cluster, never merge two, which keeps it
- *      from both defining a group and being chosen from it.
- *   4. Adopt the photos ALPR read nothing in into whichever sub-cluster is
- *      nearest in capture time, so a blurry shot still rides along with its
- *      violation.
- *   5. Split on the report's cap. A report carries three pictures and three
- *      videos at most, so a violation over either count becomes consecutive
- *      groups, in capture order, that fit. This is the rule for a block the
- *      other passes cannot divide: a dark street with cars parked along it
- *      can give one stale fix and no plate reads, and the block is several
- *      reports even though nothing in the data separates them. Each group is
- *      grouped by its own photos, so the plate a violation read stays with the
- *      group that holds that photo. A row the user merged by hand is not split
- *      here: that is a report they have already decided on.
  *
  * The caller's photo records are used as they are, never copied, so object
  * identity survives: `violation.photos[i].file` is still the same `File` the
@@ -67,8 +59,6 @@ import latestLocatedPhoto, {
   compareByCaptureTime,
   effectiveTimeMs,
 } from './latestLocatedPhoto.js';
-
-const TIME_THRESHOLD_MS = 60000;
 
 // A report carries three pictures and three videos at most: `createSubmission`
 // keeps exactly that many of each and drops the rest without an error. A
@@ -99,67 +89,6 @@ export function normalizedCenterDistance(box, uploadWidth, uploadHeight) {
     Math.hypot(centerX - uploadWidth / 2, centerY - uploadHeight / 2) /
     Math.hypot(uploadWidth, uploadHeight)
   );
-}
-
-// Capture order, and which photo's place wins, belong to `latestLocatedPhoto`:
-// the form reads them from there too, and two copies would be free to drift.
-
-// Two photos belong to the same violation when they were taken close together
-// in time. Place deliberately plays no part -- see the note at the top of the
-// module for why it cannot.
-//
-// A photo with no capture time uses its file's modification time, which is what
-// `effectiveTimeMs` resolves. Android strips GPS from media shared through some
-// apps (https://github.com/josephfrazier/reported-web/issues/751), which no
-// longer matters here: coordinates were never the fallback, they were the
-// second half of the test, and that half has gone.
-function linkPhotos(a, b) {
-  return Math.abs(effectiveTimeMs(a) - effectiveTimeMs(b)) <= TIME_THRESHOLD_MS;
-}
-
-// Connected components of `linkPhotos`, oldest first (the input is already
-// sorted by capture time, and Map preserves insertion order).
-function clusterByTime(photos) {
-  const parents = photos.map((photo, index) => index);
-  const find = index => {
-    let root = index;
-    while (parents[root] !== root) {
-      root = parents[root];
-    }
-    return root;
-  };
-  const union = (a, b) => {
-    const rootA = find(a);
-    const rootB = find(b);
-    if (rootA !== rootB) {
-      parents[rootB] = rootA;
-    }
-  };
-
-  // Every pair, not just neighbours. The two are equivalent now that time is
-  // the only test -- with the photos in time order, two that link are joined by
-  // everything between them, since each of those sits inside the same window --
-  // so a single pass over neighbours would do. The scan is left as it is
-  // because it is already written and tested, and a batch is only tens of
-  // photos.
-  for (let i = 0; i < photos.length; i += 1) {
-    for (let j = i + 1; j < photos.length; j += 1) {
-      if (linkPhotos(photos[i], photos[j])) {
-        union(i, j);
-      }
-    }
-  }
-
-  const clusters = new Map();
-  photos.forEach((photo, index) => {
-    const root = find(index);
-    if (!clusters.has(root)) {
-      clusters.set(root, []);
-    }
-    clusters.get(root).push(photo);
-  });
-
-  return [...clusters.values()];
 }
 
 // Every plate string a single result could be read as: the winner ALPR picked
@@ -206,7 +135,7 @@ function meanCenterDistance(boxes) {
 
 // Per plate string: which photos could be reading it, the boxes it was found
 // in, and the best score ALPR gave it.
-function buildPlateStats(photos, { ignore = new Set() } = {}) {
+function buildPlateStats(photos) {
   const parents = new Map();
   const find = plate => {
     let root = plate;
@@ -228,9 +157,7 @@ function buildPlateStats(photos, { ignore = new Set() } = {}) {
   photos.forEach(photo => {
     const results = photo.plateResults?.results || [];
     results.forEach(result => {
-      const plates = candidatePlateStrings(result).filter(
-        plate => !ignore.has(plate),
-      );
+      const plates = candidatePlateStrings(result);
       if (plates.length === 0) {
         return;
       }
@@ -338,7 +265,7 @@ function buildPlateGroups({ stats, find }) {
   }));
 }
 
-// Which plate the cluster votes for. Ties that survive all four tie-breaks fall
+// Which plate the photos vote for. Ties that survive all four tie-breaks fall
 // back to the group the earliest photo voted for, then to the alphabetically
 // first reading, so the same batch always groups the same way.
 function pickWinner({ groups, cluster, stats }) {
@@ -426,182 +353,120 @@ export function plateCropFor({ photos, plate }) {
   return null;
 }
 
-// Every plate string a photo read, and how far the nearest box it was found in
-// sits from the centre of the frame. A string with no box anywhere maps to
-// `null`, which is what `normalizedCenterDistance` answers when it cannot
-// place one.
-function plateDistances(photo) {
-  const distances = new Map();
+// The plate group each photo is a photo *of*: the one whose box sits nearest
+// the centre of the frame, with the same tie-breaks the plate vote uses. The
+// group is answered as the union-find root, so two spellings that fold
+// together answer the same group.
+function plateGroupOf({ photo, find }) {
+  const { stats, find: localFind } = buildPlateStats([photo]);
+
+  if (stats.size === 0) {
+    return null;
+  }
+
+  const { plate } = pickWinner({
+    groups: buildPlateGroups({ stats, find: localFind }),
+    cluster: [photo],
+    stats,
+  });
+
+  return find(plate);
+}
+
+// The plate groups a photo read that another photo also read. A photo with two
+// of these shows two cars, and each plate is somebody else's evidence too, so
+// the photo cannot be given to one of them.
+function sharedPlateGroupsOf({ photo, find, photosByRoot }) {
+  const roots = new Set();
 
   (photo.plateResults?.results || []).forEach(result => {
-    const distance = normalizedCenterDistance(
-      result.box,
-      photo.uploadWidth,
-      photo.uploadHeight,
-    );
-
     candidatePlateStrings(result).forEach(plate => {
-      if (distance === null) {
-        if (!distances.has(plate)) {
-          distances.set(plate, null);
-        }
-        return;
-      }
-
-      const nearest = distances.get(plate);
-      if (nearest === undefined || nearest === null || distance < nearest) {
-        distances.set(plate, distance);
-      }
+      roots.add(find(plate));
     });
   });
 
-  return distances;
+  return [...roots].filter(root => photosByRoot.get(root).size > 1);
 }
 
-// Whether a round's plate is the one this photo is evidence for.
-//
-// A photo can read several plates at once -- a close-up of one car with
-// another parked behind it -- and it is evidence for the car it is *of*, which
-// is the plate nearest the centre of the frame. Claiming it for any other car
-// takes the photo away from the car it is of, and a car whose only photo is
-// claimed that way is never reported at all: the round that wins the cluster
-// used to take every photo that merely mentioned its plate, so one wide shot
-// of a block could leave the whole block as one violation.
-//
-// A photo with no box for any of its plates says nothing about which car it is
-// of, so any plate it read may claim it -- the older, more generous answer,
-// kept for the case where there is nothing to choose by.
-function photoIsClaimedBy({ photo, memberSet }) {
-  const distances = plateDistances(photo);
+// The group every plate reading is pooled into, and the photos that read each
+// one.
+function buildPlateReadings(photos) {
+  const { stats, find } = buildPlateStats(photos);
+  const photosByRoot = new Map();
 
-  if (![...distances.keys()].some(plate => memberSet.has(plate))) {
-    return false;
-  }
+  stats.forEach((stat, plate) => {
+    const root = find(plate);
+    if (!photosByRoot.has(root)) {
+      photosByRoot.set(root, new Set());
+    }
+    stat.photos.forEach(photo => photosByRoot.get(root).add(photo));
+  });
 
-  const placed = [...distances.values()].filter(distance => distance !== null);
-
-  if (placed.length === 0) {
-    return true;
-  }
-
-  // Nearest rather than *the* nearest: one box can read two plates, and a
-  // photo of two cars nose to tail puts two plates at the same distance. Any
-  // of the winner's strings being that near is enough to claim the photo.
-  const nearest = Math.min(...placed);
-
-  return [...memberSet].some(plate => distances.get(plate) === nearest);
+  return { find, photosByRoot };
 }
 
-// Passes 3 and 4 of one candidate cluster: split it into violations on the
-// plate, and hand back whatever is left over.
+// The plate group a photo merges on, or null when it merges with nothing.
 //
-// A round takes the winning car's plate strings out of the pool rather than
-// its photos. A photo is evidence for every car in it, and one wide shot of a
-// block is the only evidence four of those cars have: a round that takes the
-// photo leaves them nothing to win with, so they are never reported, and
-// nothing on screen says so -- the row that won still shows their plates in
-// its overlays.
-//
-// So the first pass claims, for each car it picks, only the photos that are
-// *of* that car -- the plate nearest the middle of the frame, see
-// `photoIsClaimedBy` -- which is what keeps a close-up of one car out of the
-// row of the car parked behind it. A car left with no photo of its own after
-// that pass is a passenger in somebody else's wide shot, and the second pass
-// gives it the photos that read its plate: a car reported from a frame it
-// appears in beats a car reported not at all. The two passes are why a photo
-// can now be in more than one violation.
-function splitCluster(cluster) {
-  const groups = [];
-  const claimedPlates = new Set();
-  const passengers = [];
+// A photo merges only when its own plate is the one plate it shares with
+// another photo. If it reads a second shared plate, the photo shows two cars
+// and stays a violation of its own. If its own plate is shared with nobody,
+// there is nothing to merge with.
+function mergeRootOf({ photo, find, photosByRoot }) {
+  const primary = plateGroupOf({ photo, find });
 
-  const platesOf = photo => [...plateDistances(photo).keys()];
-  const hasUnclaimedPlate = photo =>
-    platesOf(photo).some(plate => !claimedPlates.has(plate));
+  if (primary === null) {
+    return null;
+  }
 
-  while (true) {
-    const remaining = cluster.filter(hasUnclaimedPlate);
-    const { stats, find } = buildPlateStats(remaining, {
-      ignore: claimedPlates,
-    });
-    if (stats.size === 0) {
-      break;
+  const shared = sharedPlateGroupsOf({ photo, find, photosByRoot });
+
+  return shared.length === 1 && shared[0] === primary ? primary : null;
+}
+
+// One list of photos per violation, in capture order. A photo that merges with
+// nothing is a row of its own.
+function rowsOfPhotos(sorted) {
+  const { find, photosByRoot } = buildPlateReadings(sorted);
+  const rowsByRoot = new Map();
+  const rows = [];
+
+  sorted.forEach(photo => {
+    const root = mergeRootOf({ photo, find, photosByRoot });
+
+    if (root === null) {
+      rows.push([photo]);
+      return;
     }
 
-    const { members, plate } = pickWinner({
-      groups: buildPlateGroups({ stats, find }),
-      cluster: remaining,
-      stats,
-    });
-    const memberSet = new Set(members);
-    const claimed = remaining.filter(photo =>
-      photoIsClaimedBy({ photo, memberSet }),
-    );
-
-    if (claimed.length > 0) {
-      groups.push({
-        photos: claimed,
-        plate,
-        licenseState: licenseStateForPlate({ photos: claimed, plate }),
-      });
-    } else {
-      passengers.push({ members, plate });
+    if (!rowsByRoot.has(root)) {
+      const row = [];
+      rowsByRoot.set(root, row);
+      rows.push(row);
     }
-
-    members.forEach(member => claimedPlates.add(member));
-  }
-
-  passengers.forEach(({ members, plate }) => {
-    const memberSet = new Set(members);
-    const photos = cluster.filter(photo =>
-      platesOf(photo).some(candidate => memberSet.has(candidate)),
-    );
-
-    groups.push({
-      photos,
-      plate,
-      licenseState: licenseStateForPlate({ photos, plate }),
-    });
+    rowsByRoot.get(root).push(photo);
   });
 
-  // Whatever read no plate at all. A photo that read plates is in a group:
-  // either one claimed it, or it read the plate of a car that had none of its
-  // own and was picked up by the second pass.
-  const orphans = cluster.filter(photo => platesOf(photo).length === 0);
-
-  return { groups, orphans };
+  return rows;
 }
 
-// Photos ALPR read nothing in still belong to whatever they were shot
-// alongside, so give each one to the group nearest in capture time.
-//
-// A group covers a span of time, so the gap that matters is the one to the
-// nearer end of that span: a shot taken between two frames of the same car is
-// zero milliseconds from its group, not half the group's length away. The
-// spans are measured before any orphan joins, so where orphans land does not
-// depend on the order they are placed in.
-function adoptOrphans({ orphans, groups }) {
-  if (orphans.length === 0 || groups.length === 0) {
-    return;
+// The plate a violation reports and the state its region code names. The vote
+// runs over the violation's own photos: a merged row reads one plate on every
+// photo, so that plate wins on the first tie-break; a row of one photo falls
+// through to the plate nearest the centre of its frame.
+function plateFor(photos) {
+  const { stats, find } = buildPlateStats(photos);
+
+  if (stats.size === 0) {
+    return { plate: '', licenseState: '' };
   }
 
-  const spans = groups.map(group => {
-    const times = group.photos.map(effectiveTimeMs);
-    return { group, start: Math.min(...times), end: Math.max(...times) };
+  const { plate } = pickWinner({
+    groups: buildPlateGroups({ stats, find }),
+    cluster: photos,
+    stats,
   });
-  const gapFrom = ({ time, span }) =>
-    Math.max(span.start - time, 0, time - span.end);
 
-  orphans.forEach(orphan => {
-    const time = effectiveTimeMs(orphan);
-    let nearest = 0;
-    spans.forEach((span, index) => {
-      if (gapFrom({ time, span }) < gapFrom({ time, span: spans[nearest] })) {
-        nearest = index;
-      }
-    });
-    spans[nearest].group.photos.push(orphan);
-  });
+  return { plate, licenseState: licenseStateForPlate({ photos, plate }) };
 }
 
 // The time and the place a violation records, which come from opposite ends of
@@ -643,22 +508,6 @@ function buildViolation({ photos, plate, licenseState }) {
   };
 }
 
-// The violations one cluster holds, by the plate: a cluster nothing read stays
-// one violation, and otherwise the plate vote splits it and the photos no read
-// claimed adopt the nearest group. Used for a whole time-cluster, and again for
-// each group the report cap splits off, so a split group carries the plate its
-// own photos read rather than one from a photo in another group.
-function violationsInCluster(cluster) {
-  const { groups, orphans } = splitCluster(cluster);
-
-  if (groups.length === 0) {
-    return [buildViolation({ photos: cluster, plate: '', licenseState: '' })];
-  }
-
-  adoptOrphans({ orphans, groups });
-  return groups.map(group => buildViolation(group));
-}
-
 // Which of the report's two kinds a photo is, or null for a file that is
 // neither: the batch takes pictures, videos and zips, and a zip is opened out
 // before grouping.
@@ -675,9 +524,8 @@ const reportKindOf = photo => {
 
 // One violation, split into as many as the report's caps require. The photos
 // keep their capture order, so the earlier group is the earlier part of the
-// block. Each group is then grouped as its own cluster, so it carries the
-// plate its own photos read, and a group that still holds two plates divides
-// again.
+// car's stay. Every photo of a violation reads the plate the violation
+// reports, so each part keeps that plate and its state.
 function splitAtReportLimits(violation) {
   const counts = { picture: 0, video: 0 };
   violation.photos.forEach(photo => {
@@ -720,25 +568,31 @@ function splitAtReportLimits(violation) {
   });
   flush();
 
-  return groups.flatMap(photos => violationsInCluster(photos));
+  return groups.map(photos =>
+    buildViolation({
+      photos,
+      plate: violation.plate,
+      licenseState: violation.licenseState,
+    }),
+  );
 }
 
 // Combine violations the user says are one report.
 //
-// The grouping splits on time, and a photo taken to establish where a car is
-// can sit minutes before the closeups that read its plate -- so the far shot
-// forms a violation of its own. Only the user knows the two belong together,
-// which is why this combines what it is given instead of inferring anything.
+// The grouping merges only what the plates agree on. A far shot taken to
+// establish where a car is can read no plate, and a closeup's read can fail,
+// so one car can stand as two violations. Only the user knows they belong
+// together, which is why this combines what it is given instead of inferring
+// anything.
 //
-// The photos are merged as they arrive: the clusterer deliberately does not run
-// again, because the whole reason these are two violations is that the time
-// window held them apart. Re-clustering would split them straight back.
+// The photos are merged as they arrive: the grouping has already said these
+// are separate rows, and running it again would say so again.
 //
 // The plate comes from whichever violation read one, and from the one with more
 // photos behind it when both did -- the reading the user can see wins.
 export function mergeViolations(violations) {
-  // Once each. A photo can be in more than one violation -- a wide shot
-  // belongs to every car in it -- and a report holds a picture once.
+  // Once each. A report holds a picture once, and a hand-built violation can
+  // name the same photo twice.
   const photos = [
     ...new Set(violations.flatMap(violation => [...violation.photos])),
   ];
@@ -773,15 +627,14 @@ export function mergeViolations(violations) {
 
 export default function groupAttachmentsByViolation(photos) {
   const sorted = [...photos].sort(compareByCaptureTime);
-  const violations = [];
 
-  clusterByTime(sorted).forEach(cluster => {
-    violations.push(...violationsInCluster(cluster));
-  });
+  const violations = rowsOfPhotos(sorted).map(rowPhotos =>
+    buildViolation({ photos: rowPhotos, ...plateFor(rowPhotos) }),
+  );
 
   // Earliest-first, so the queue walks the batch in the order it was shot.
   // Array.prototype.sort is stable, so violations sharing a timestamp keep the
-  // order their clusters were built in.
+  // order their rows were built in.
   return violations
     .flatMap(splitAtReportLimits)
     .sort((a, b) => a.createDateMs - b.createDateMs);

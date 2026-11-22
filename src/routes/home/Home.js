@@ -856,10 +856,10 @@ function batchRowPlateLabel({ violation, isReading }) {
 // What names a row, for the merge tick and for the list's own keys: the time it
 // reports, its plate, and the photo it opens with.
 //
-// All three parts are needed because a row does not own its photos. One frame
-// of a street is the first photo of every car read from it, so several rows can
-// hold one photo and one time between them; their plates are what tell them
-// apart.
+// A batch shot at one kerb gives several rows the same second, so the time
+// alone does not name one. The first photo and the plate do: the photo is what
+// the form follows through a regrouping, and the plate tells two cars read from
+// the same frame apart.
 function batchViolationIdentity(violation) {
   return `${violation.createDateMs}-${violation.plate}-${violation.photos[0]?.name}`;
 }
@@ -883,23 +883,44 @@ function normalizeExtractedDate(extractedDate) {
 // (capture) order. createSubmission.js takes `images.slice(0, 3)` and
 // `videos.slice(0, 3)` and drops the rest without an error, so anything
 // outside those caps would disappear between review and submission.
-function defaultBatchSelection(photos) {
-  const selected = new Set();
-  let pictures = 0;
-  let videos = 0;
+//
+// `selectedFiles` are photos the user already chose, and they keep their
+// place. A read that merges another photo into the report adds it after them
+// while that kind has room.
+function batchSelectionFor({ photos, selectedFiles = [] }) {
+  const chosen = new Set(
+    photos
+      .map(photo => photo.file)
+      .filter(file => selectedFiles.includes(file)),
+  );
+  const counts = { picture: 0, video: 0 };
 
   photos.forEach(photo => {
     const ext = fileExtension(photo.name);
-    if (isImage({ ext }) && pictures < 3) {
-      pictures += 1;
-      selected.add(photo);
-    } else if (isVideo({ ext }) && videos < 3) {
-      videos += 1;
-      selected.add(photo);
+    if (chosen.has(photo.file)) {
+      if (isImage({ ext })) {
+        counts.picture += 1;
+      } else if (isVideo({ ext })) {
+        counts.video += 1;
+      }
     }
   });
 
-  return photos.filter(photo => selected.has(photo));
+  photos.forEach(photo => {
+    if (chosen.has(photo.file)) {
+      return;
+    }
+    const ext = fileExtension(photo.name);
+    if (isImage({ ext }) && counts.picture < 3) {
+      counts.picture += 1;
+      chosen.add(photo.file);
+    } else if (isVideo({ ext }) && counts.video < 3) {
+      counts.video += 1;
+      chosen.add(photo.file);
+    }
+  });
+
+  return photos.filter(photo => chosen.has(photo.file));
 }
 
 // The report's attachments after a photo is removed from its violation.
@@ -1522,7 +1543,7 @@ class Home extends React.Component {
     this.batchQueue = Promise.resolve();
     // The row whose merge box was last clicked: where a shift-click's range
     // starts. Kept by identity rather than index, because the queue is
-    // re-sorted and rows divide as their reads land.
+    // re-sorted and rows change as their reads land.
     this.batchMergeAnchor = null;
     // The rows the user has deleted, by identity. Deleting a row usually takes
     // its photos out of the batch, and that is what keeps it from coming back;
@@ -1802,23 +1823,22 @@ class Home extends React.Component {
       longitude,
     }));
 
-    // Built and marked the way a row the user made by hand is, so a later
-    // plate read leaves it whole and keeps the plate it was filed under. With
-    // no media there is nothing to group, and the row records the report's own
-    // time and place instead.
-    const [grouped] = groupAttachmentsByViolation(photos);
+    // The files are the submission's own, so each one is a reading of the same
+    // report: one time, one place, and the plate it was filed under. That is
+    // what makes them one violation, so the row is built here rather than by
+    // the grouping, which would give each file a row of its own without a
+    // plate read to join them. Finally, mark it the way a row the user made by
+    // hand is, so a later plate read leaves it whole and keeps the plate it
+    // was filed under. With no media there is nothing to group, and the row
+    // records the report's own time and place instead.
     const [violation] = this.withNycFlags([
       {
-        ...(grouped || {
-          photos: [],
-          createDateMs: Number.isFinite(createDateMs)
-            ? createDateMs
-            : Date.now(),
-          latitude,
-          longitude,
-        }),
+        photos,
         plate,
         licenseState,
+        createDateMs: Number.isFinite(createDateMs) ? createDateMs : Date.now(),
+        latitude,
+        longitude,
         mergedByUser: true,
       },
     ]);
@@ -3112,12 +3132,12 @@ class Home extends React.Component {
   };
 
   // The pass over newly picked files: read each one's date and place, publish
-  // every row at once, then read the plates and let those reads divide rows.
+  // every row at once, then read the plates and let those reads merge rows.
   //
   // Publishing before any plate is read is what puts the queue on screen while
-  // the plates are still being read: a plate only ever splits a time cluster,
-  // never merges two, so with the dates and places in hand the rows are already
-  // known. The plate reads refine them as they land.
+  // the plates are still being read. Every photo is a row of its own at that
+  // point; each read that names the same car merges its row with the ones that
+  // already did.
   //
   // Only the new files are read on an add, not the whole batch: re-walking
   // every photo each time the array grows would re-read a whole folder on
@@ -3201,12 +3221,10 @@ class Home extends React.Component {
 
     // Every row, now, before a single plate is read.
     //
-    // The plate only ever splits a time-cluster, never merges two, so with the
-    // dates and places in hand the rows are already decided: how many there
-    // are and which photos belong to each. Publishing them here is what puts
-    // the queue on screen about a second after the folder is picked, instead
-    // of after the last read -- which, for a batch shot inside the linking
-    // window, was the only moment any row could be called final.
+    // One photo is one violation until a plate says otherwise, so with the
+    // dates and places in hand the rows are already on screen: each photo has
+    // its time and place, and the plate reads have only to merge the rows that
+    // turn out to name the same car.
     this.setState({ batchPhotos: inCaptureOrder });
     // Every place the batch knows about, looked up while the plate reads run.
     // A row made later -- by a read that divides one -- takes its place from
@@ -3222,7 +3240,7 @@ class Home extends React.Component {
       worker: async photo => {
         await waitForReadSlot();
         const result = await this.readBatchPhotoPlate(photo);
-        const divides = this.readDividesRow({ photo, read: result });
+        const changes = this.readChangesFormReport({ photo, read: result });
         completed += 1;
         this.setState(
           state => ({
@@ -3233,7 +3251,7 @@ class Home extends React.Component {
               total: inCaptureOrder.length,
             },
           }),
-          () => this.followReadInForm({ divides }),
+          () => this.followReadInForm({ changes }),
         );
         return result;
       },
@@ -3294,13 +3312,12 @@ class Home extends React.Component {
 
   // The rows the batch would hold if `read` were written onto `photo`.
   //
-  // The whole batch regroups, not the row the photo happens to sit in. A read
-  // is what tells one car from another inside a time-cluster, and the reads
-  // arrive one at a time; regrouping only the row a read lands in leaves the
-  // rows the earlier reads already broke apart to stand, so a cluster of two
-  // cars settles as one row per photo read. Regrouping everything lets a read
-  // pull together what an earlier one separated -- which is what the grouping
-  // does when it can see the photos together.
+  // The whole batch regroups, not the row the photo happens to sit in. The
+  // rows start as one photo each, and every read can merge a row with the ones
+  // that name the same car, whichever rows those are and whatever order the
+  // reads arrive in. Regrouping everything is what lets a late read merge rows
+  // the earlier ones built, and lets a photo leave a row when a later read
+  // shows it belongs to another car.
   //
   // A row the user merged by hand is left as one row: that is a report they
   // have already decided on, and no read is allowed to take it apart again.
@@ -3371,17 +3388,16 @@ class Home extends React.Component {
   //
   // The record `readBatchPhotoPlate` hands back replaces the one it read
   // everywhere that record appears -- the batch's photos and the rows' -- and
-  // the rows then take the reading into account. When the readings divide a
-  // row, the row divides with them: two cars at one kerb sit inside the
-  // linking window, so a time-cluster is often several cars, and the grouping
-  // is what tells them apart. Waiting for the user to press something would
-  // leave a whole batch of different cars as one row, which is what the plate
-  // is read for in the first place.
+  // the rows then take the reading into account. A read that names the same
+  // car as another row merges the two: the rows start as one photo each, so
+  // merging is what turns a batch of close-together cars into one row per car.
+  // Waiting for the user to press something would leave every photo as its own
+  // row, which is what the plate is read for in the first place.
   //
   // The form follows the row that holds the most of the photos it had -- the
-  // report it was already making -- wherever the regrouping put it. A shared
-  // frame can be the first photo of several rows, so the first row holding it
-  // is not necessarily the one the form was on.
+  // report it was already making -- wherever the regrouping put it. A row a
+  // read merges holds photos the form did not have, and a row it divides holds
+  // fewer, so both are followed and reloaded; see `readChangesFormReport`.
   applyPlateRead =
     ({ photo, read }) =>
     state => {
@@ -3448,15 +3464,13 @@ class Home extends React.Component {
     }
   };
 
-  // Load the first row once it is the violation it is going to be, and not
-  // before.
+  // Load the first row once its own photos have been read, and not before.
   //
   // The queue is on screen from the moment the batch's dates and places are
-  // in, but a row is not the report it will end up being until its reads are:
-  // a time-cluster divides into one row per car as its plates arrive, and the
-  // photos it holds are the photos of all of them. Loading then would open the
-  // form on a report that changes underneath it, and upload the photos of rows
-  // the user never opens.
+  // in, but a row can still merge into a larger one until the reads are in.
+  // Loading a row whose own photos are read is what lets the user start while
+  // the rest of the batch is still being read; a later merge into it reloads
+  // the form, see `readChangesFormReport`.
   //
   // Called wherever the queue can come by its first row: the pass reading one,
   // and a publish -- the leftovers after a submit, or a new pick -- putting
@@ -3479,25 +3493,19 @@ class Home extends React.Component {
 
   // Where the form belongs after a plate read lands, once the state has it.
   //
-  // A row that divided under the form leaves the form on the group holding the
-  // photos it had attached -- the report it was already making -- and the form
-  // is loaded again for it, because the report is not the one it was. A row
-  // that did not divide leaves the form exactly as it is, with the reading
-  // filling its plate in; loading again on every reading would throw away a
-  // photo the user had just swapped in.
-  // Whether a read leaves the row the form is on holding fewer photos than it
-  // did.
+  // A read can change the report on screen in two ways. A row that divides
+  // under the form leaves it holding fewer of the photos the report had
+  // attached; the form follows the row that holds them, and the report is
+  // loaded again for it, because it is not the same report. A row that a
+  // reading merges with another is a different report too: the car now has the
+  // merged row's photos, and the form has to show them, or the report would
+  // carry one photo of a car it holds three of. Both cases reload the form; a
+  // reading that leaves the row's photos as they are only fills in its plate.
   //
   // Asked before the write-back, not after: afterwards the row is whichever
-  // group the form followed -- the photo may not be in it at all -- and the
+  // row the form followed -- the photo may not be in it at all -- and the
   // question can no longer be answered.
-  //
-  // A row that gains photos does not count. The form renders the row's photos
-  // as they are, and reloading is what resets the photo selection to the
-  // default, so the picks the user has made survive a row that grows. A row
-  // that has lost a photo is a different report, and the form is reloaded onto
-  // it.
-  readDividesRow = ({ photo, read }) => {
+  readChangesFormReport = ({ photo, read }) => {
     const { batchViolations, currentViolationIndex, attachmentData } =
       this.state;
     const loaded = batchViolations[currentViolationIndex];
@@ -3516,21 +3524,37 @@ class Home extends React.Component {
       return false;
     }
 
-    const remaining = new Set(followed.photos.map(candidate => candidate.file));
+    const before = new Set(loaded.photos.map(candidate => candidate.file));
+    const after = new Set(followed.photos.map(candidate => candidate.file));
 
-    // Only the report's own photos matter. A row that loses a photo the
-    // report never attached is not a different report, and reloading on it
-    // would reset the selection -- and silently attach whatever new photos
-    // the row gained, which is exactly what a later pick must not do.
-    return attachmentData.some(file => !remaining.has(file));
+    // A photo the report attached has left the row, or the row has taken in a
+    // photo it did not hold before. Either way the report is not the one on
+    // screen, and the reload puts the row's photos in front of the user.
+    return (
+      attachmentData.some(file => !after.has(file)) ||
+      [...after].some(file => !before.has(file))
+    );
   };
 
-  followReadInForm = ({ divides }) => {
-    if (divides) {
-      // Keep the photos the report had that are still in the row it followed:
-      // a reload that reselected the row's defaults would take the new ones.
+  followReadInForm = ({ changes }) => {
+    if (changes) {
+      const violation =
+        this.state.batchViolations[this.state.currentViolationIndex];
+      // The photos the report had keep their place, and a merge adds the
+      // row's new photos after them while the report has room. Reloading with
+      // only the old selection would leave the report short of its own car's
+      // photos; reloading with the row's defaults would drop the user's picks.
+      const selectedFiles = violation
+        ? batchSelectionFor({
+            photos: violation.photos,
+            selectedFiles: this.state.attachmentData.filter(file =>
+              violation.photos.some(photo => photo.file === file),
+            ),
+          }).map(photo => photo.file)
+        : undefined;
+
       this.loadBatchViolation(this.state.currentViolationIndex, {
-        attachedFiles: this.state.attachmentData,
+        attachedFiles: selectedFiles,
         sameReport: true,
       });
     } else {
@@ -3576,8 +3600,8 @@ class Home extends React.Component {
   // the claimed photos out is what keeps this from making a second row for
   // them.
   //
-  // The batch calls this before a plate is read, so the rows are the
-  // time-clusters and their labels fill in behind them; the leftovers after a
+  // The batch calls this before a plate is read, so the rows are one photo
+  // each and their labels and merges arrive behind them; the leftovers after a
   // submit call it with their readings already in.
   //
   // Each violation is geocoded before it is published, so loading one finds
@@ -3891,7 +3915,7 @@ class Home extends React.Component {
     // leaves its last photo out, and that is the one holding the newest fix.
     const attached = attachedFiles
       ? violation.photos.filter(photo => attachedFiles.includes(photo.file))
-      : defaultBatchSelection(violation.photos);
+      : batchSelectionFor({ photos: violation.photos });
 
     // Upload this report's photos, so submitting can send attachment IDs rather
     // than the bytes. Doing it here rather than when the folder is picked is
@@ -4136,9 +4160,9 @@ class Home extends React.Component {
         this.markPhotoReading(photo);
 
         const read = await this.readBatchPhotoPlate(photo);
-        const divides = this.readDividesRow({ photo, read });
+        const changes = this.readChangesFormReport({ photo, read });
         this.setState(this.applyPlateRead({ photo, read }), () =>
-          this.followReadInForm({ divides }),
+          this.followReadInForm({ changes }),
         );
         return read;
       },
@@ -4216,11 +4240,11 @@ class Home extends React.Component {
 
   // Combine the ticked violations into one report.
   //
-  // The grouping splits on time, and a photo taken to establish where a car is
-  // can sit minutes before the closeups that read its plate -- so the far shot
-  // becomes a violation of its own. Only the user knows the two are one report,
-  // which is why this does what they say instead of re-running the clusterer:
-  // that would split them straight back apart.
+  // The grouping merges only what the plates agree on. A far shot taken to
+  // establish where a car is can read no plate, and a read can fail, so one
+  // car can stand as two violations. Only the user knows the two are one
+  // report, which is why this does what they say instead of re-running the
+  // grouping: it has no signal that says these belong together.
   mergeSelectedBatchViolations = ({ source = 'tick' } = {}) => {
     const { batchMergeSelection, batchViolations, currentViolationIndex } =
       this.state;
@@ -4283,15 +4307,14 @@ class Home extends React.Component {
   };
 
   // The rows the user has not deleted, and the rows built only from photos a
-  // report already took. A row is kept out of the queue by remembering it
-  // rather than by its photos: one frame can read as two cars, and each of
-  // those rows holds that frame, so deleting one of them has no photo to take
-  // with it -- and the regrouping a later reading does would otherwise put the
-  // row straight back.
+  // report already took.
   //
-  // A submitted row is different: the photos it did not take stay behind and
-  // can form a row with its identity, so only a row made entirely of the
-  // photos it took is the row that already went.
+  // A row is kept out of the queue by remembering what names it rather than
+  // by its photos: the photos can be regrouped, and the row the regrouping
+  // builds would otherwise be new. For a submitted row that is not enough on
+  // its own -- the photos the report left behind can build a row with the same
+  // identity -- so a row made entirely of the photos the report took is the
+  // one that already went. See `withoutDismissedRows`.
   withoutDismissedRows = violations =>
     violations.filter(violation => {
       const identity = batchViolationIdentity(violation);
@@ -4326,10 +4349,9 @@ class Home extends React.Component {
 
     const remainingViolations = batchViolations.filter((_, i) => i !== index);
 
-    // The row's photos go with it, except the ones another row still holds:
-    // one wide shot is evidence for every car in it, and deleting the row of
-    // one of those cars says nothing about the photo the others were reported
-    // from.
+    // The row's photos go with it, except the ones another row still holds: a
+    // photo can name more than one row, and deleting one of those rows says
+    // nothing about the report the other one makes from it.
     const keptElsewhere = new Set(
       remainingViolations.flatMap(each => each.photos),
     );
@@ -5533,10 +5555,9 @@ class Home extends React.Component {
     } = this.state;
 
     // The queue is its rows, not the photos behind them. A photo leaves the
-    // batch when a report takes it, and a row can be left holding one that has
-    // gone -- one frame is evidence for every car in it, and the report of one
-    // of those cars carries the frame off with it -- so `batchPhotos` being
-    // empty says nothing about whether the batch has anything left to report.
+    // batch when a report takes it, and a row can still hold it -- a photo can
+    // name more than one row -- so `batchPhotos` being empty says nothing
+    // about whether the batch has anything left to report.
     if (
       batchPhotos.length === 0 &&
       batchViolations.length === 0 &&
@@ -5545,10 +5566,8 @@ class Home extends React.Component {
       return null;
     }
 
-    // A frame can be evidence for more than one violation: a wide shot that
-    // reads several plates gives each car a row, and the split's second pass
-    // gives the frame to every one of them (see `splitCluster`). A row whose
-    // photo appears in another row says so.
+    // A photo can name more than one violation. A row whose photo appears in
+    // another row says so.
     const rowsByFile = new Map();
     batchViolations.forEach(violation => {
       violation.photos.forEach(photo => {

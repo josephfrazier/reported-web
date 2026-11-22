@@ -351,6 +351,7 @@
   tr[data-v="1"] td:first-child { box-shadow: inset 3px 0 var(--accent); }
   tr[data-v="2"] td:first-child { box-shadow: inset 3px 0 var(--good); }
   tr[data-v="3"] td:first-child { box-shadow: inset 3px 0 var(--warn); }
+  tr[data-v="4"] td:first-child { box-shadow: inset 3px 0 var(--muted); }
   tr[data-v] + tr[data-v] td { border-top: none; }
 
   .chip {
@@ -367,6 +368,7 @@
   .chip--1 { background: var(--accent-tint); border-color: var(--accent-line); color: var(--accent-deep); }
   .chip--2 { background: var(--good-tint); border-color: var(--good); color: var(--good); }
   .chip--3 { background: var(--warn-tint); border-color: var(--warn-line); color: var(--warn); }
+  .chip--4 { background: var(--surface-2); border-color: var(--line); color: var(--muted); }
   .chip--none { background: var(--surface-2); border-color: var(--line); color: var(--muted); }
 
   /* ---------------------------------------------------------------
@@ -512,9 +514,9 @@
     <h1>Semi-Automatic Mode</h1>
     <p class="standfirst">
       Upload a folder of photos — or just a pile of loose files — covering many violations at
-      once. The app takes each photo's date and place, puts the whole batch on screen as rows as
-      soon as it has them, and reads plates behind the queue: each row's label fills in as its
-      photos are read, and a row divides when its photos turn out to be two cars. The first row
+      once. The app takes each photo's date and place, puts the whole batch on screen as one row
+      per photo as soon as it has them, and reads plates behind the queue: each row's label fills
+      in as its photo is read, and rows merge when their photos name the same car. The first row
       loads itself into the form once its own photos have been read — form pre-filled, ready to
       submit, while the rest of the batch is still being read.
     </p>
@@ -522,7 +524,7 @@
     <dl class="meta">
       <div><dt>Status</dt><dd>built</dd></div>
       <div><dt>Written</dt><dd>2026-09-23</dd></div>
-      <div><dt>Revised</dt><dd>2026-11-10</dd></div>
+      <div><dt>Revised</dt><dd>2026-11-22</dd></div>
       <div><dt>Base</dt><dd>ba141241</dd></div>
     </dl>
 
@@ -542,15 +544,16 @@
           <tbody>
             <tr><td>Entry point</td><td>None — every pick, drop and paste feeds the batch; the batch is the only attachment flow</td></tr>
             <tr><td>Photo input</td><td>A folder pick, a loose multi-file pick (zips included), a drag-and-drop, or a paste — all equally supported</td></tr>
-            <tr><td>Grouping signals</td><td>EXIF time to cluster, ALPR plate to split — no GPS, see <a href="#why-distance-went"><em>Why distance went</em></a></td></tr>
-            <tr><td>Thresholds</td><td class="num">Δt ≤ 60 s, on time alone — see <a href="#why-distance-went"><em>Why distance went</em></a></td></tr>
-            <tr><td>Plate's role</td><td>May <strong>split</strong> a time cluster</td></tr>
+            <tr><td>Grouping signals</td><td>ALPR plate only — one photo starts as one violation; no time and no GPS, see <a href="#why-time-and-place-went"><em>Why time and place went</em></a></td></tr>
+            <tr><td>Time and place</td><td>Order the queue and give a report its time and place; they never group photos</td></tr>
+            <tr><td>Plate's role</td><td>The only signal that <strong>merges</strong> rows</td></tr>
             <tr><td>OCR variants</td><td>Folded via ALPR <code>candidates</code> sets</td></tr>
+            <tr><td>Multi-plate photo</td><td>One row, for the plate nearest the frame centre; it joins no row when another plate it reads is also read by a different photo</td></tr>
             <tr><td>Violation time</td><td>From the <strong>earliest</strong> photo in the group</td></tr>
             <tr><td>Violation location</td><td>From the <strong>latest</strong> photo that has a fix — see <a href="#which-photo-gives-the-place"><em>Which photo gives the place</em></a></td></tr>
             <tr><td>More than 3 photos</td><td>Split into reports within 3 pictures and 3 videos; a hand-merged row keeps the checkbox picker</td></tr>
             <tr><td>Reload mid-batch</td><td>The queue is lost — in-memory only; the server's ALPR and geosearch caches keep their answers</td></tr>
-            <tr><td>Publishing</td><td>All rows at once, after the dates-and-places pass and before the first plate read; reads divide rows as they land</td></tr>
+            <tr><td>Publishing</td><td>All rows at once, after the dates-and-places pass and before the first plate read; reads merge rows as they land</td></tr>
             <tr><td>First violation</td><td>Loaded into the form automatically, with no click</td></tr>
           </tbody>
         </table>
@@ -563,12 +566,12 @@
             <tr><th>Case</th><th>Behaviour</th></tr>
           </thead>
           <tbody>
-            <tr><td>Photo with no GPS</td><td>Links on time alone — Android strips GPS (<a href="https://github.com/josephfrazier/reported-web/issues/751">issue&nbsp;#751</a>)</td></tr>
+            <tr><td>Photo with no GPS</td><td>Does not matter — place never groups photos</td></tr>
             <tr><td>Photo with no EXIF time</td><td>Falls back to file last-modified, sorts last</td></tr>
-            <tr><td>Group with no plate read</td><td>Still created, flagged for manual entry</td></tr>
+            <tr><td>Photo with no plate read</td><td>Its own violation, flagged for manual entry</td></tr>
             <tr><td>After Submit</td><td>Auto-advances to the next violation</td></tr>
             <tr><td>ALPR concurrency</td><td>Capped at 3 in flight</td></tr>
-            <tr><td>Queue controls</td><td>Load any group, delete it, or tick two and merge them</td></tr>
+            <tr><td>Queue controls</td><td>Load any row, delete it, tick two and merge them, or drop a photo on a row to move it</td></tr>
             <tr><td>Input</td><td>Every pick, drop and paste feeds the batch; there is no single-violation flow</td></tr>
             <tr><td>Order photos are read in</td><td>EXIF capture time; file last-modified only when a photo has none — see <a href="#dates-first-then-plates"><em>Dates first, then plates</em></a></td></tr>
             <tr><td>Submitted photos</td><td>Only the photos that were submitted leave the batch; a group's leftovers appear again at once as a group of their own</td></tr>
@@ -593,65 +596,63 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
       <h3 id="the-five-passes">The five passes</h3>
       <ol class="sequence">
         <li>
-          <strong>Sort</strong> photos by capture time, so everything downstream can assume
-          chronological order. Missing timestamps fall back to file last-modified and sort last.
+          <strong>Sort</strong> photos by capture time, so the queue walks the batch in the order
+          it was shot. Missing timestamps fall back to file last-modified and sort last.
         </li>
         <li>
-          <strong>Cluster by time.</strong> Union two photos when
-          <span class="mono">Δt ≤ 60 s</span>. Place plays no part; see <a href="#why-distance-went"><em>Why distance went</em></a>.
-          Connected components become candidate violations.
+          <strong>Fold the plate strings.</strong> Plate Recognizer ranks its own alternatives in
+          <code>candidates</code>, so the four ways it reads one medallion are one plate. Folding
+          is a union-find over strings, with an edge for every pair a single result offers.
         </li>
         <li>
-          <strong>Vote the plate, then split on it.</strong> Fold OCR variants together, count how
-          many photos contain each plate, and take the winner. The photos that plate is
-          <em>of</em> become a violation — the ones whose nearest box to the centre of the frame is
-          that plate's — and the remainder is recursed on. A photo that read two plates therefore
-          goes to the car it was taken for, not to whichever car won the vote; without that, one
-          wide shot of several cars would take every car in it into a single report and leave the
-          others with no photo to be reported from at all.
+          <strong>Give each photo its own plate.</strong> A photo can read several plates — a
+          closeup of one car with another parked behind it — and it is a photo of the car whose
+          box sits nearest the centre of the frame. The medallion pattern and the read's score are
+          the tie-breaks after centrality.
         </li>
         <li>
-          <strong>Adopt orphans.</strong> Photos with no plate read at all join whichever
-          sub-cluster is nearest in capture time, so a blurry shot still rides along with its
-          violation.
+          <strong>Merge photos that name the same plate.</strong> Every photo starts as a
+          violation of its own. A photo joins the row of every other photo whose folded plate
+          group it names, unless it reads another plate that a different photo also reads. That
+          photo is evidence for two cars, and giving it to one row would take it from the other,
+          so it stays a row of its own.
         </li>
         <li>
           <strong>Split on the report's cap.</strong> A report carries three pictures and three
           videos at most, so a violation over either count becomes consecutive groups, in capture
-          order, that fit. It is the rule for a block that nothing else divides: a dark street with
-          cars parked along it can give one stale fix and no plate reads, and the block is several
-          reports even though the data cannot separate them. Each group is grouped by its own
-          photos, so the plate a violation read stays with the group that holds that photo. A row
-          the user merged by hand is not split. Finally, sort the violations earliest-first.
+          order, that fit. Every photo of a violation reads the plate it reports, so each part
+          keeps that plate. A row the user merged by hand is not split. Finally, sort the
+          violations earliest-first.
         </li>
       </ol>
+      <p>
+        A photo ALPR read nothing in is a violation of its own, flagged for manual entry. The user
+        can merge it with its car by hand, or a second-chance read can merge it later.
+      </p>
 
-      <h3 id="why-distance-went">Why distance went</h3>
+      <h3 id="why-time-and-place-went">Why time and place went</h3>
       <p>
-        Distance was the second half of the rule until it was measured against the reports
-        themselves. Two numbers came out of that, and neither supports it.
+        Capture time and place were the first grouping signals. The reports themselves show that
+        neither can tell two cars apart.
       </p>
       <p>
-        Of 385 gaps between two photos of one violation, <strong>328 were at identical
-        coordinates</strong>. A phone reuses one location fix for shots taken seconds apart. Most
-        violations therefore carry a single coordinate, and distance has nothing to compare.
+        The ordinary case is two cars at one kerb: <strong>0 m and a few seconds apart</strong>. Of
+        385 gaps between two photos of one violation, <strong>328 were at identical
+        coordinates</strong>, because a phone reuses one location fix for shots taken seconds
+        apart. The rest cannot be told from GPS error. The photos are taken from a bike, so long
+        distances inside one violation are real: 713&nbsp;m over 180&nbsp;s is 14&nbsp;km/h, and
+        1,130&nbsp;m over 96&nbsp;s is 42&nbsp;km/h on an e-bike. But the same population holds
+        4,739&nbsp;m in 2&nbsp;s and 1,798&nbsp;m in 2&nbsp;s, which no bike covers. A threshold
+        low enough to separate two violations splits the real ones. One high enough to keep them
+        together separates nothing.
       </p>
       <p>
-        The rest cannot be told from GPS error. The photos are taken from a bike, so long distances
-        inside one violation are real: 713&nbsp;m over 180&nbsp;s is 14&nbsp;km/h, and 1,130&nbsp;m
-        over 96&nbsp;s is 42&nbsp;km/h on an e-bike. But the same population holds 4,739&nbsp;m in
-        2&nbsp;s and 1,798&nbsp;m in 2&nbsp;s, which no bike covers. A threshold low enough to
-        separate two violations splits the real ones. One high enough to keep them together
-        separates nothing.
-      </p>
-      <p>
-        So the plate does that job instead. It has to: the pairs a threshold cannot divide are the
-        ordinary case, not the awkward one.
-      </p>
-      <p>
-        The <span class="mono">60 s</span> window comes from the same measurement. Across 399 gaps
-        inside one violation, <span class="mono">5 s</span> split 33 of them and
-        <span class="mono">60 s</span> splits 2. The largest real gap was 180&nbsp;s.
+        Time fails the same way. Across 399 gaps inside one violation, a
+        <span class="mono">5 s</span> window split 33 and a <span class="mono">60 s</span> window
+        split 2. The largest real gap inside one violation was 180&nbsp;s. A window short enough
+        to keep two cars apart splits the photos of one car; a window long enough to keep one car
+        together pulls two cars in. The plate is the only signal that names the car, so it is the
+        only signal that groups.
       </p>
 
       <h3 id="which-photo-gives-the-place">Which photo gives the place</h3>
@@ -678,7 +679,10 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
       </p>
 
       <h3>Choosing the plate</h3>
-      <p>Each tie-break is applied only if the one before it is still tied:</p>
+      <p>
+        The same vote answers two questions: which plate a photo is of, and which spelling a
+        merged row prints. Each tie-break is applied only if the one before it is still tied:
+      </p>
       <ol class="chain">
         <li>Most photos</li>
         <li>Most central</li>
@@ -687,6 +691,13 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         <li>The group the earliest photo voted for</li>
         <li>Alphabetically first, so the same batch always groups the same way</li>
       </ol>
+      <p>
+        For one photo every group counts the same, so <em>most central</em> decides: it takes the
+        folded group whose box sits nearest the centre of the frame. That is why a closeup of one
+        car with another parked behind it belongs to the car in front. In a merged row the plate
+        every photo reads wins on the first tie-break, and the remaining tie-breaks choose the
+        spelling the row prints.
+      </p>
       <p>
         <em>Most central</em> means the smallest mean normalised distance between the plate's box
         centre and the frame centre, across the photos it appears in. Boxes arrive in the uploaded
@@ -700,9 +711,8 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         <span class="note__label">Why variants must be folded</span>
         <p>
           The checked-in ALPR snapshot reads one medallion four different ways in a single image.
-          Counting exact strings, that is four plates with one photo each — so a two-photo
-          violation would look like two violations sharing no plate, and the vote that picks the
-          plate would have nothing to pick.
+          Counting exact strings, that is four plates with one photo each — so two photos of the
+          car would never name the same plate, and each would stay a row of its own.
         </p>
         <p style="margin-top:0.6rem">
           <span class="plate plate--win">t696817c</span>
@@ -712,8 +722,8 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         </p>
         <p style="margin-top:0.6rem">
           Plate Recognizer hands back its own ranked alternatives in <code>candidates</code>, so
-          folding is a union-find over plate strings whose edges come from candidate-set
-          intersection — no invented edit distance. Note only the clean read matches
+          folding is a union-find over plate strings whose edges come from one result's own
+          candidate set — no invented edit distance. Note only the clean read matches
           <span class="mono">^T\d{6}C$</span>, which is exactly why that pattern cannot be the
           primary signal.
         </p>
@@ -722,7 +732,8 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
       <h3>Worked example</h3>
       <p>
         Six photos from one walk down a block. Photos&nbsp;1–3 are the same medallion read three
-        ways; 4–5 are a second car; 6 is a shot where ALPR failed.
+        ways; 4–5 are a second car; 6 is a shot where ALPR failed. Photo&nbsp;1 also catches the
+        second car, which is why its row stands alone.
       </p>
 
       <div class="scroll">
@@ -743,96 +754,91 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
               <td><span class="plate plate--win">t696817c</span></td>
               <td><span class="chip chip--1">V1</span></td>
             </tr>
-            <tr data-v="1">
+            <tr data-v="2">
               <td class="num">2</td><td class="num">08:14:06</td><td class="num">4 s</td><td class="num">3 m</td>
               <td><span class="plate plate--var">t6968i7c</span></td>
-              <td><span class="chip chip--1">V1</span></td>
-            </tr>
-            <tr data-v="1">
-              <td class="num">3</td><td class="num">08:14:11</td><td class="num">5 s</td><td class="num">2 m</td>
-              <td><span class="plate plate--win">t696817c</span></td>
-              <td><span class="chip chip--1">V1</span></td>
-            </tr>
-            <tr data-v="2">
-              <td class="num">4</td><td class="num">08:14:29</td><td class="num">18 s</td><td class="num">144 m</td>
-              <td><span class="plate plate--win">lda8765</span></td>
               <td><span class="chip chip--2">V2</span></td>
             </tr>
             <tr data-v="2">
-              <td class="num">5</td><td class="num">08:14:33</td><td class="num">4 s</td><td class="num">2 m</td>
-              <td><span class="plate plate--win">lda8765</span></td>
+              <td class="num">3</td><td class="num">08:14:11</td><td class="num">5 s</td><td class="num">2 m</td>
+              <td><span class="plate plate--win">t696817c</span></td>
               <td><span class="chip chip--2">V2</span></td>
             </tr>
             <tr data-v="3">
+              <td class="num">4</td><td class="num">08:14:29</td><td class="num">18 s</td><td class="num">144 m</td>
+              <td><span class="plate plate--win">lda8765</span></td>
+              <td><span class="chip chip--3">V3</span></td>
+            </tr>
+            <tr data-v="3">
+              <td class="num">5</td><td class="num">08:14:33</td><td class="num">4 s</td><td class="num">2 m</td>
+              <td><span class="plate plate--win">lda8765</span></td>
+              <td><span class="chip chip--3">V3</span></td>
+            </tr>
+            <tr data-v="4">
               <td class="num">6</td><td class="num">08:16:40</td><td class="num">127 s</td><td class="num">154 m</td>
               <td><span class="chip chip--none">none</span></td>
-              <td><span class="chip chip--3">V3</span></td>
+              <td><span class="chip chip--4">V4</span></td>
             </tr>
           </tbody>
         </table>
       </div>
 
       <p>
-        Photo&nbsp;6 → V3 breaks on time: 127&nbsp;s is past the window, and a photo with no plate
-        at all is flagged rather than discarded. Photos&nbsp;3 → 4 do <em>not</em> break — 18&nbsp;s
-        is inside the window — so both cars sit in one cluster, and the plate vote is what divides
-        them. That is the ordinary case rather than the awkward one: two cars at one kerb are 0&nbsp;m
-        and a few seconds apart, and nothing but the plate can tell them apart. Within V1 the three
-        readings fold into one plate with three photos — the majority it wins is
+        Photo&nbsp;1 reads the medallion, the <span class="mono">lda8765</span> car and a third
+        car. Its own plate is the medallion — the read nearest the centre of the frame — but the
+        <span class="mono">lda8765</span> read is shared with photos&nbsp;4–5, so the frame is
+        evidence for two cars and stays a row of its own. Photos&nbsp;2–3 name the same folded
+        medallion group, and the spelling their row prints is
         <span class="mono">t696817c</span>, the clean read and the only one matching the medallion
-        pattern.
+        pattern. Photos&nbsp;4–5 name the second car. Photo&nbsp;6 reads nothing, so it is a row
+        of its own with no plate, flagged for manual entry.
       </p>
 
       <div class="note">
-        <span class="note__label">A photo can be in more than one violation</span>
+        <span class="note__label">One photo starts one row</span>
         <p>
-          Photo&nbsp;1's frame read two other cars as well — <span class="mono">k73jau</span> and
-          <span class="mono">lda8765</span> — and each of them is a violation of its own, holding
-          that frame. A round of the split takes the winning car's plate <em>strings</em> out of the
-          pool rather than its photos, so the frame is still there for the next car's round; a
-          second pass gives it to any car that won no photo of its own. A photo is evidence for
-          every car in it, and a car whose only photo is a wide shot that another car's row claimed
-          would otherwise never be reported at all.
+          Photo&nbsp;1's frame reads three cars, but a photo is one violation until a plate joins
+          it to another. When two of its plates have closeups of their own, as here, the frame
+          belongs to neither row: it is evidence for both, so it stays a row of its own. The user
+          can merge it into either car's report by hand.
         </p>
       </div>
 
       <div class="note note--warn">
-        <span class="note__label">Order of operations matters</span>
+        <span class="note__label">One shared plate per photo</span>
         <p>
-          Clustering runs <em>before</em> the plate vote, and the plate vote runs <em>before</em>
-          the split. The plate cannot merge two clusters that time kept apart — it only ever
-          divides. That keeps the rule one-directional and avoids the obvious circularity of
-          using a plate both to define a group and to be chosen from it.
+          A photo merges only when its own plate is the one plate it shares with another photo. A
+          second shared plate means the photo shows two cars, and giving it to one row would take
+          it from the other. That guard is what keeps a wide shot from chaining two cars into one
+          report. The plate both defines the row and labels it, and the guard is what makes that
+          safe.
         </p>
       </div>
 
       <h3 id="when-the-rows-appear">When the rows appear, and what changes them</h3>
       <p>
-        The dates and places pass is local and it covers the whole batch, so once it is done the
-        rows are already decided: the plate only ever splits a time-cluster, never merges two, so
-        with nothing read yet the grouping is the time-clusters, each split to the report's cap.
-        The queue is published there and then — a second or so after the folder is picked,
-        whatever the batch size and whatever the rate limit is doing.
+        The dates and places pass is local and it covers the whole batch, so once it is done every
+        photo can be a row: one photo is one violation until a plate says otherwise. The queue is
+        published there and then — a second or so after the folder is picked, whatever the batch
+        size and whatever the rate limit is doing.
       </p>
       <p>
-        The plate reads fill the rows in behind it. Each read replaces its photo's record, the row
-        that holds it takes the reading into account, and a row whose photos now read
-        <strong>two</strong> plates divides into the rows the grouping makes of it. That is the
-        same grouping the batch has always run, applied as soon as it can be: two cars at one kerb
-        are inside the linking window, so a time-cluster is often several cars, and waiting for a
-        person to press something would leave a whole batch of different cars as one row.
+        The plate reads merge the rows in behind it. Each read replaces its photo's record and the
+        whole batch regroups: photos whose folded plates agree become one row, and a photo that
+        turns out to read two shared plates leaves the row it was in. That is the same grouping
+        applied as soon as it can be, so a car's photos join up as its readings arrive.
       </p>
       <p>
         The form waits a little longer than the queue. The first row is loaded once its own photos
-        have been read, so the report cannot divide underneath it while it is being filled in; a row
-        the user opened earlier and that divides later is loaded again onto the group holding the
-        photos it had attached.
+        have been read; a row that a later read merges into it is loaded again with the merged
+        row's photos, so the report is not left short of its own car's evidence. A row that
+        divides under the form is loaded again onto the row holding the photos it had attached.
       </p>
       <p>
         What this replaced was a rule for when a violation had stopped changing — the frontier and
         <code>isViolationSettled</code>, published one violation at a time only once nothing still
-        to come could reach back and join it. For a batch shot inside the linking window that moment
-        was the end of the whole pass, so the queue appeared only after the last plate was read.
+        to come could reach back and join it. Every row now starts as one photo, so the queue can
+        appear at once and settle as the reads merge it.
       </p>
 
       <h3 id="dates-first-then-plates">Dates first, then plates</h3>
@@ -843,11 +849,10 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
       </p>
       <p>
         That order cannot come from the files' modification times. They stand in for capture time
-        only where the two agree, and on the batch that prompted this they did not: two photos of
-        one car were read either side of a photo from a different violation, so the car became two
-        reports. Sorting the batch by the date each photo actually carries is also what lets the
-        rows be published before any plate is read: the time-clusters only need the dates, and a
-        photo's own date is what puts it in its cluster.
+        only where the two agree, and on the batch that prompted this they did not. Sorting by the
+        date each photo actually carries gives the queue its order and gives each report its time.
+        It also lets the rows be published before any plate is read: every photo is a row at that
+        point, and the date is what orders it.
       </p>
     </section>
 
@@ -1042,7 +1047,7 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
       </p>
       <p>
         Picks accumulate, so a folder and then a few stragglers make up one batch. Selection order
-        does not matter: grouping sorts by EXIF time, never by the order files arrived in.
+        does not matter: the queue is ordered by EXIF time, never by the order files arrived in.
       </p>
 
       <div class="note">
@@ -1063,7 +1068,8 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         The bar names the two passes over the files themselves — dates and places, then plates.
         Grouping happens with the first of them, and the queue appearing is that progress. The
         batch's places are geocoded while the plate reads run, and publishing asks for each row's
-        place as it publishes the row. The bar's second pass is the plate labels filling in.
+        place as it publishes the row. The bar's second pass is the plate labels filling in and the
+        rows merging.
       </p>
 
       <h3>The queue</h3>
@@ -1077,21 +1083,18 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         Submit already advances to the next violation and any row is one click away.
       </p>
       <p>
-        Deleting a row takes its photos out of the batch with it, except the ones another row
-        still holds: one frame can be the evidence of several cars, and each of their rows holds
-        it, so the frame stays for the rows that are left. The deleted row itself is remembered,
-        because a row with no photo of its own has none to leave the batch with — without that,
-        the regrouping a later reading does would make it again.
+        Deleting a row takes its photos out of the batch with it, except a photo another row still
+        holds. The deleted row itself is remembered, so a later regrouping cannot make it again.
       </p>
       <p>
         The <strong>Merge</strong> button sits on the queue's heading whenever two or more rows are
         shown, and is enabled once two of them are ticked. It makes one report of them, which the
-        grouping cannot do for itself: it splits on time, and the photo that establishes where a
-        car is can sit minutes before the closeups that read its plate, so the wide shot becomes a
-        violation of its own. Only the user knows the two are one report, and merging takes their
-        word rather than re-running the clusterer, which would split them apart again. The merged
-        report keeps the plate of the group with the most photos, and takes its time and place from
-        all of the photos it now holds.
+        grouping cannot do for itself: it merges only what the plates agree on, and a far shot
+        taken to establish where a car is can read no plate, while a read can fail. One car can
+        therefore stand as two rows. Only the user knows the two are one report, and merging takes
+        their word rather than re-running the grouping, which has no signal that says so. The
+        merged report keeps the plate of the group with the most photos, and takes its time and
+        place from all of the photos it now holds.
       </p>
       <p>
         Opening a row with nothing ticked ticks that row, so putting it together with the row
@@ -1101,9 +1104,8 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
       </p>
       <p>
         A row's identity — what a tick names, and what the list's own keys are made of — is its
-        time, its plate and the photo it opens with. A row does not own its photos: one frame of a
-        street is the first photo of every car read from it, so several rows can hold one photo and
-        one time between them, and their plates are what tell them apart.
+        time, its plate and the photo it opens with. A batch shot at one kerb gives several rows
+        the same second, so the time alone does not name one; the first photo and the plate do.
       </p>
       <p>
         The first violation loads itself, so the form is ready to submit without a click. Loading
@@ -1119,11 +1121,16 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
       <p>
         The grouping splits a violation that is over the report's cap before it reaches the queue
         (see <a href="#the-five-passes"><em>The five passes</em></a>), so an ordinary row already
-        fits. Every loaded row's photos carry a checkbox, whatever the count, so a photo can be
-        left out of the report without leaving the batch; the first three pictures and the first
-        three videos are ticked. A row the user merged by hand can hold more: a fourth picture or
-        video can be ticked so that its thumbnail can be seen, and the warning says to uncheck one
-        to swap it in. Submit stays off until the report is back within
+        fits. A violation is one photo unless its plate joins it to others, so only a car with more
+        than three pictures or three videos reaches the cap; its photos then become consecutive
+        reports that fit, all under the same plate.
+      </p>
+      <p>
+        Every loaded row's photos carry a checkbox, whatever the count, so a photo can be left out
+        of the report without leaving the batch; the first three pictures and the first three
+        videos are ticked. A row the user merged by hand can hold more: a fourth picture or video
+        can be ticked so that its thumbnail can be seen, and the warning says to uncheck one to
+        swap it in. Submit stays off until the report is back within
         <strong>3 images <em>and</em> 3 videos</strong>, which is the server's real limit —
         <code>createSubmission.js</code> takes <code>images.slice(0, 3)</code> and
         <code>videos.slice(0, 3)</code> and drops the rest <em>without an error</em>, so the
@@ -1147,13 +1154,14 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
       <ul>
         <li>
           <code>groupAttachmentsByViolation.test.js</code> — variant folding, plate-driven
-          splitting, the 60-second window, each fallback (no GPS, no time, no plate), and the
-          report cap, including a row the user merged.
+          merging, the one-shared-plate guard, each fallback (no GPS, no time, no plate), the
+          report cap, and a row the user merged.
         </li>
         <li>
           <code>Home.test.js</code> — driving the rendered batch UI to assert that violations are
           found, that the rows are on screen before a plate is read, that the first row loads itself
-          once its own photos have been read, that loading one fills the fields from cache, that
+          once its own photos have been read, that a read merges a row into its car and reloads the
+          form with the row's photos, that loading one fills the fields from cache, that
           <strong>no second <code>/platerecognizer</code> call fires</strong>, and that Submit
           advances.
         </li>
@@ -1218,6 +1226,12 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
           queue rather than discovered at Submit.
         </li>
         <li>
+          <b>Cars visible only in a wide shot</b>
+          One photo is one row, so a frame that reads several cars reports the car nearest its
+          centre. The other cars need a photo of their own, or the user must merge the frame into
+          one of their rows by hand. A batch shot as closeups per car is unaffected.
+        </li>
+        <li>
           <b>Repeated duplicate warnings</b>
           Reports from one batch resemble each other, so the existing duplicate-submission warning
           will likely fire over and over as the queue is walked.
@@ -1256,6 +1270,11 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         are the place to start a review.
       </p>
       <p>
+        The grouping changed after the feature was built. It used to cluster by capture time and
+        split on the plate; it now starts from one photo per row and merges on the plate. That
+        change has its own commit, so the two rules can be reviewed against each other.
+      </p>
+      <p>
         Per the repo's conventions: run <code>yarn fix</code> before committing, create new commits
         rather than amending, and use markdown backticks around identifiers in commit messages.
       </p>
@@ -1264,10 +1283,10 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
     <footer>
       <p>
         Written 2026-09-23 against <span class="mono">ba141241</span>, revised 2026-09-28 to match
-        what was actually built, and again on 2026-11-10 to match the code as it now stands. Line
-        references are to <code>src/routes/home/Home.js</code> unless another path is given, and are
-        anchors from that commit rather than current ones — the file has moved on since, so check
-        them against the code rather than trusting them.
+        what was actually built, again on 2026-11-10, and again on 2026-11-22 for the plate-only
+        grouping. Line references are to <code>src/routes/home/Home.js</code> unless another path
+        is given, and are anchors from that commit rather than current ones — the file has moved
+        on since, so check them against the code rather than trusting them.
       </p>
       <p>
         Regenerate by re-reading that file, <code>src/alpr.js</code>,

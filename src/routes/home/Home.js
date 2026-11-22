@@ -6922,23 +6922,14 @@ class Home extends React.Component {
                           if (batchWasActive) {
                             this.advanceBatchAfterSubmit(submittedFiles);
                           }
-                          Home.notifySubmissionThanks(
-                            <React.Fragment>
-                              {queueIsDone && (
-                                <p>
-                                  Have more photos? Add a folder and we will go
-                                  through them one at a time.
-                                </p>
-                              )}
-                              {batchWasActive && !queueIsDone && (
-                                <p>Filed. Opening the next violation.</p>
-                              )}
-
-                              {/*
-                        <p>objectId: {data.submission.objectId}</p>
-                        */}
-                            </React.Fragment>,
-                          );
+                          // A report filed from the queue says that the next
+                          // one is opening. When it was the last, there is
+                          // nothing left to say and no toast to say it in.
+                          if (batchWasActive && !queueIsDone) {
+                            Home.notifySubmissionThanks(
+                              <p>Filed. Opening the next violation.</p>,
+                            );
+                          }
                         })
                         .catch(Home.handleAxiosError)
                         .then(() => {

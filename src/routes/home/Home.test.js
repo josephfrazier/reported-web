@@ -2574,7 +2574,9 @@ describe('Home', () => {
 
     expect(toastWarn).toHaveBeenCalled();
     expect(axiosPost.mock.calls.some(([url]) => url === '/submit')).toBe(true);
-    expect(toastSuccess).toHaveBeenCalled();
+    // A report filed without a queue row has nothing to announce, so no
+    // success toast follows it.
+    expect(toastSuccess).not.toHaveBeenCalled();
 
     jest.useRealTimers();
     axiosGet.mockRestore();
@@ -4330,45 +4332,6 @@ describe('Home', () => {
       // The success path cleared the submitted files.
       expect(homeRef.current.state.attachmentData).toEqual([]);
 
-      cleanup();
-    });
-
-    // A second report can go through while the last thanks is still on
-    // screen. One thanks at a time is enough.
-    test('shows one thanks toast at a time', async () => {
-      const photo = new File(['photo'], 'photo.jpg', { type: 'image/jpeg' });
-      const { homeRef, submit, toastSuccess, cleanup } = await renderWithFiles({
-        files: [photo],
-      });
-      const toastIsActive = jest
-        .spyOn(toast, 'isActive')
-        .mockReturnValue(false);
-
-      const submitAnother = async name => {
-        renderer.act(() => {
-          homeRef.current.setState({
-            attachmentData: [new File(['photo'], name, { type: 'image/jpeg' })],
-            latitude: 40.7129,
-            longitude: -74.0061,
-          });
-        });
-        await submit();
-      };
-
-      await submit();
-      expect(toastSuccess).toHaveBeenCalledTimes(1);
-
-      // The next report goes through while that toast is still open.
-      toastIsActive.mockReturnValue(true);
-      await submitAnother('photo2.jpg');
-      expect(toastSuccess).toHaveBeenCalledTimes(1);
-
-      // Once it closes, the next report gets its own.
-      toastIsActive.mockReturnValue(false);
-      await submitAnother('photo3.jpg');
-      expect(toastSuccess).toHaveBeenCalledTimes(2);
-
-      toastIsActive.mockRestore();
       cleanup();
     });
 
@@ -8054,13 +8017,9 @@ describe('Home', () => {
       return { ...rendered, violation };
     };
 
-    // The queue can come by its first row without a read landing to notice it:
-    // the photos a report left behind are published as a row of their own, and
-    // with the form sitting empty the row has to open itself, or the user is
-    // left looking at a queue they have to click into.
-    // When the last report is filed, the toast says where the next photos
-    // can come from.
-    test('points at the folder picker when the queue is done', async () => {
+    // When the last report is filed, the queue is done and there is nothing
+    // left to say: no toast over an empty queue.
+    test('shows no toast when the queue is done', async () => {
       const photos = ['p1', 'p2'].map((name, index) => {
         const file = new File(['picture'], `${name}.jpg`, {
           type: 'image/jpeg',
@@ -8087,12 +8046,7 @@ describe('Home', () => {
       });
 
       expect(homeRef.current.state.batchViolations).toEqual([]);
-      expect(elementText(toastSuccess.mock.calls[0][0])).toContain(
-        'Have more photos? Add a folder',
-      );
-      expect(elementText(toastSuccess.mock.calls[0][0])).not.toContain(
-        'Filed. Opening the next violation.',
-      );
+      expect(toastSuccess).not.toHaveBeenCalled();
 
       cleanup();
     });
@@ -8137,13 +8091,16 @@ describe('Home', () => {
     });
 
     // The last report's toast can still be on screen when the next violation
-    // goes through, a second later. One thanks at a time is enough.
+    // goes through, a second later. One thanks at a time is enough. The batch
+    // has four rows, so the third submission still has a row after it and
+    // opens it.
     test('shows one thanks toast at a time', async () => {
       const photos = [
         jpeg({ name: 'a.jpg', size: 4 }),
         jpeg({ name: 'b.jpg', size: 5 }),
         jpeg({ name: 'c.jpg', size: 6 }),
         jpeg({ name: 'd.jpg', size: 7 }),
+        jpeg({ name: 'e.jpg', size: 10 }),
       ];
 
       exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
@@ -8188,6 +8145,10 @@ describe('Home', () => {
       cleanup();
     });
 
+    // The queue can come by its first row without a read landing to notice it:
+    // the photos a report left behind are published as a row of their own, and
+    // with the form sitting empty the row has to open itself, or the user is
+    // left looking at a queue they have to click into.
     test('opens on the violation a submit leaves behind', async () => {
       const photos = ['p1', 'p2', 'p3', 'p4'].map((name, index) => {
         const file = new File(['picture'], `${name}.jpg`, {

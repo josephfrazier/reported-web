@@ -7,6 +7,7 @@ import {
   writeCachedGeosearch,
 } from './geosearchCache.js';
 import normalizeAddress from './normalizeAddress.js';
+import selectGeosearchFeature from './selectGeosearchFeature.js';
 
 const GEOSEARCH_URL = 'https://geosearch.planninglabs.nyc/v2/reverse';
 const PAD_URL = 'https://data.cityofnewyork.us/resource/64uk-42ks.json';
@@ -67,7 +68,10 @@ const selectFeatureMatchingAddress = (features, selectedAddress) => {
 // names are misspelled (BERGAN vs BERGEN). When the user selected a search
 // result, prefer the feature matching the selected address, since the user
 // explicitly chose it; otherwise prefer the result matching the PAD's
-// official address for the top result's BBL. Fall back to the top result.
+// official address for the top result's BBL. When neither applies, prefer
+// the first result with a housenumber, since the 311 address picker cannot
+// resolve a venue name, and fall back to the top result when no result has
+// one.
 export async function selectCanonicalFeature(
   features,
   getPadAddressForBbl,
@@ -90,19 +94,20 @@ export async function selectCanonicalFeature(
 
   const bbl = firstFeature.properties.addendum?.pad?.bbl;
   if (!bbl) {
-    return firstFeature;
+    return selectGeosearchFeature(features);
   }
 
   let padAddress;
   try {
     padAddress = await getPadAddressForBbl(bbl);
   } catch (error) {
-    // PAD is best-effort: fall back to the top result if it's unavailable
+    // PAD is best-effort: fall back to an address-bearing result if it's
+    // unavailable
     console.error(error);
-    return firstFeature;
+    return selectGeosearchFeature(features);
   }
   if (!padAddress) {
-    return firstFeature;
+    return selectGeosearchFeature(features);
   }
 
   return (
@@ -110,7 +115,7 @@ export async function selectCanonicalFeature(
       feature =>
         feature.properties.addendum?.pad?.bbl === bbl &&
         feature.properties.name?.toUpperCase() === padAddress.toUpperCase(),
-    ) || firstFeature
+    ) || selectGeosearchFeature(features)
   );
 }
 

@@ -860,8 +860,13 @@ function batchRowPlateLabel({ violation, isReading }) {
 // alone does not name one. The first photo and the plate do: the photo is what
 // the form follows through a regrouping, and the plate tells two cars read from
 // the same frame apart.
+//
+// A duplicated row agrees with its source on every one of those parts, so it
+// carries a `copyKey` and the key names it.
 function batchViolationIdentity(violation) {
-  return `${violation.createDateMs}-${violation.plate}-${violation.photos[0]?.name}`;
+  const copy =
+    violation.copyKey === undefined ? '' : `-copy-${violation.copyKey}`;
+  return `${violation.createDateMs}-${violation.plate}-${violation.photos[0]?.name}${copy}`;
 }
 
 // What a photo's date read gave, in the field names the grouping uses. A read
@@ -1545,6 +1550,10 @@ class Home extends React.Component {
     // starts. Kept by identity rather than index, because the queue is
     // re-sorted and rows change as their reads land.
     this.batchMergeAnchor = null;
+    // The next number a duplicated row takes. A copy agrees with its source on
+    // the time, plate and first photo, so this is what tells them apart. See
+    // `batchViolationIdentity`.
+    this.nextCopyKey = 1;
     // The rows the user has deleted, by identity. Deleting a row usually takes
     // its photos out of the batch, and that is what keeps it from coming back;
     // a row whose photo another row still holds has none to take, so it is
@@ -2618,6 +2627,11 @@ class Home extends React.Component {
   // all does not start in every browser.
   startPhotoDrag = ({ photo, event }) => {
     this.draggedPhoto = photo;
+    // The row the tile is drawn for. A photo can name more than one row, so
+    // the drop must act on the row it was dragged from, not on the first row
+    // that happens to hold the file.
+    this.draggedPhotoRow =
+      this.state.batchViolations[this.state.currentViolationIndex] || null;
     this.setState({ photoDragInProgress: true });
     // A tile sits inside a row, and the row is draggable too: without this,
     // the row would take the photo's drag for its own.
@@ -2643,6 +2657,7 @@ class Home extends React.Component {
 
   endDrag = () => {
     this.draggedPhoto = null;
+    this.draggedPhotoRow = null;
     this.draggedRow = null;
     this.setState({
       dropTargetIdentity: null,
@@ -2687,12 +2702,18 @@ class Home extends React.Component {
 
     const photo = this.draggedPhoto;
     const row = this.draggedRow;
+    const photoRow = this.draggedPhotoRow;
     this.endDrag();
 
     if (row) {
       this.mergeDraggedRows({ row, violation });
     } else if (photo) {
-      this.movePhotoToViolation({ photo, violation, control: 'drag' });
+      this.movePhotoToViolation({
+        photo,
+        violation,
+        control: 'drag',
+        source: photoRow,
+      });
     }
   };
 
@@ -2717,25 +2738,42 @@ class Home extends React.Component {
   // user is saying it does not belong to the violation it was in. The row is
   // built from the photo itself -- its time, its place, the plate it read --
   // and marked as the user's own, so a later read does not fold it back.
+  //
+  // When the photo is the only one of its row, the target duplicates the row
+  // instead: one frame can be the evidence for more than one report, and
+  // taking it out of the row would take it out of the report it already
+  // makes. See `movePhotoToNewViolation`.
   dropOnNewViolation = event => {
     event.preventDefault();
     event.stopPropagation();
 
     const photo = this.draggedPhoto;
+    const row = this.draggedPhotoRow;
     this.endDrag();
     if (!photo) {
       return;
     }
 
-    this.movePhotoToNewViolation(photo, 'drag');
+    this.movePhotoToNewViolation(photo, 'drag', row);
   };
 
-  movePhotoToNewViolation = (photo, control = 'drag') => {
+  // Move a photo to a new violation, or copy it when it is the only photo of
+  // its row.
+  //
+  // A row is named by its photos, so a drop on the target normally takes the
+  // photo out of its old row and builds a row from it. A row of one photo has
+  // no other photo to be named by: taking the photo out would delete the
+  // report. The target then makes a copy of the row and leaves the source as
+  // it was. The copy carries a `copyKey`, because it agrees with its source on
+  // the time, plate and first photo.
+  movePhotoToNewViolation = (photo, control = 'drag', draggedFrom = null) => {
     const { attachmentData, batchViolations, currentViolationIndex } =
       this.state;
 
-    const source = batchViolations.find(row =>
-      row.photos.some(candidate => candidate.file === photo.file),
+    // The row the photo was dragged from comes first: a duplicated photo names
+    // more than one row, and the drop is about the one on screen.
+    const source = [draggedFrom, ...batchViolations].find(
+      row => row && row.photos.some(candidate => candidate.file === photo.file),
     );
 
     if (!source) {
@@ -2746,6 +2784,40 @@ class Home extends React.Component {
 
     const previousPhotos = attachmentData;
     const loaded = batchViolations[currentViolationIndex];
+
+    if (source.photos.length === 1) {
+      const created = {
+        ...source,
+        copyKey: this.nextCopyKey,
+        mergedByUser: true,
+      };
+      this.nextCopyKey += 1;
+
+      // Oldest first, the way the queue is kept. The copy has the source's
+      // time, so it sits next to it.
+      const rows = batchViolations
+        .concat(created)
+        .sort((a, b) => a.createDateMs - b.createDateMs);
+
+      this.setState(
+        {
+          batchViolations: rows,
+          currentViolationIndex: loaded
+            ? rows.indexOf(loaded)
+            : currentViolationIndex,
+        },
+        () => {
+          this.recordBatchGrouping({
+            event: 'duplicate',
+            source: control,
+            before,
+          });
+        },
+      );
+
+      return;
+    }
+
     const sourceIndex = batchViolations.indexOf(source);
 
     const [built] = this.withNycFlags(groupAttachmentsByViolation([photo]));
@@ -2840,12 +2912,21 @@ class Home extends React.Component {
   // marked as the user's own, and no later read takes it apart again (see
   // `rowsAfterRead`). The photo leaves the report with its old row: the form
   // holds the photos of the violation it shows.
-  movePhotoToViolation = ({ photo, violation: target, control = 'drag' }) => {
+  //
+  // `source` is the row the photo was dragged from or the menu was opened on.
+  // A duplicated photo names more than one row, so the caller names the one
+  // the user meant; without it, the first row holding the file is used.
+  movePhotoToViolation = ({
+    photo,
+    violation: target,
+    control = 'drag',
+    source: draggedFrom = null,
+  }) => {
     const { attachmentData, batchViolations, currentViolationIndex } =
       this.state;
 
-    const source = batchViolations.find(row =>
-      row.photos.some(candidate => candidate.file === photo.file),
+    const source = [draggedFrom, ...batchViolations].find(
+      row => row && row.photos.some(candidate => candidate.file === photo.file),
     );
 
     if (!source || source === target) {
@@ -3348,8 +3429,14 @@ class Home extends React.Component {
     const userMadeRows = state.batchViolations.filter(
       violation => violation.mergedByUser && violation.photos.length > 0,
     );
+    // A copy is the user's row, but its photo still belongs to the row it was
+    // copied from: the source row is not the user's, and has to stay in the
+    // grouping. Only the rows with no copy key take their photos out of it.
+    const frozenRows = userMadeRows.filter(
+      violation => violation.copyKey === undefined,
+    );
     const spokenFor = new Set(
-      userMadeRows.flatMap(violation =>
+      frozenRows.flatMap(violation =>
         violation.photos.map(candidate => candidate.file),
       ),
     );
@@ -3360,6 +3447,7 @@ class Home extends React.Component {
           { ...violation, photos: violation.photos.map(replace) },
         ]),
         mergedByUser: true,
+        copyKey: violation.copyKey,
       })),
     );
 
@@ -3407,13 +3495,23 @@ class Home extends React.Component {
 
       // A shared frame is the first photo of every row read from it, so the
       // row the form is on is not the first row holding the file it opened
-      // with. Count the loaded row's photos each rebuilt row holds, then the
-      // form's own attachments, and follow the row those point at.
+      // with. Keep the row whose identity survives the regrouping; a row that
+      // merges or divides gets a new identity, and the counts below follow
+      // that. Then count the loaded row's photos each rebuilt row holds, then
+      // the form's own attachments, and follow the row those point at.
+      const loadedIdentity = loaded
+        ? batchViolationIdentity(loaded)
+        : undefined;
       const loadedFiles = new Set(
         (loaded?.photos || []).map(candidate => candidate.file),
       );
       const attachedFiles = new Set(state.attachmentData);
       const followed =
+        batchViolations.find(
+          row =>
+            loadedIdentity !== undefined &&
+            batchViolationIdentity(row) === loadedIdentity,
+        ) ||
         batchViolations
           .map(row => ({
             row,
@@ -3516,7 +3614,11 @@ class Home extends React.Component {
 
     const next = this.rowsAfterRead(this.state, { photo, read });
     const [firstAttached] = attachmentData;
+    // The row whose identity survives is the one the form is on, even when a
+    // duplicated photo names it and its neighbour alike.
+    const loadedIdentity = batchViolationIdentity(loaded);
     const followed =
+      next.find(row => batchViolationIdentity(row) === loadedIdentity) ||
       rowHoldingFile(next, firstAttached?.file) ||
       rowHoldingFile(next, loaded.photos[0]?.file);
 
@@ -4266,9 +4368,16 @@ class Home extends React.Component {
     const loadedWasMerged = loaded && chosenIdentities.has(identityOf(loaded));
 
     // Marked as the user's own work: rowsAfterRead keeps a merged row whole,
-    // whatever the reads say about the cars in it.
+    // whatever the reads say about the cars in it. A copy among the chosen
+    // rows keeps its key, so the merged row does not share its source's
+    // identity.
     const [merged] = this.withNycFlags([
-      { ...mergeViolations(chosen), mergedByUser: true },
+      {
+        ...mergeViolations(chosen),
+        mergedByUser: true,
+        copyKey: chosen.find(violation => violation.copyKey !== undefined)
+          ?.copyKey,
+      },
     ]);
     const remaining = batchViolations.filter(
       violation => !chosenIdentities.has(identityOf(violation)),
@@ -5506,6 +5615,7 @@ class Home extends React.Component {
                                   photo,
                                   violation: row,
                                   control: 'menu',
+                                  source: loadedViolation,
                                 })
                               }
                             >
@@ -5517,7 +5627,11 @@ class Home extends React.Component {
                         type="button"
                         aria-label={`Split ${name} into a new violation`}
                         onClick={() =>
-                          this.movePhotoToNewViolation(photo, 'menu')
+                          this.movePhotoToNewViolation(
+                            photo,
+                            'menu',
+                            loadedViolation,
+                          )
                         }
                       >
                         New violation

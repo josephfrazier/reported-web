@@ -549,6 +549,7 @@
             <tr><td>Plate's role</td><td>The only signal that <strong>merges</strong> rows</td></tr>
             <tr><td>OCR variants</td><td>Folded via ALPR <code>candidates</code> sets</td></tr>
             <tr><td>Multi-plate photo</td><td>One row, for the plate nearest the frame centre; it joins no row when another plate it reads is also read by a different photo</td></tr>
+            <tr><td>One photo, several reports</td><td>Dropping a one-photo row's photo on New violation copies the row and leaves the source as it was; the copy carries a copy key</td></tr>
             <tr><td>Violation time</td><td>From the <strong>earliest</strong> photo in the group</td></tr>
             <tr><td>Violation location</td><td>From the <strong>latest</strong> photo that has a fix — see <a href="#which-photo-gives-the-place"><em>Which photo gives the place</em></a></td></tr>
             <tr><td>More than 3 photos</td><td>Split into reports within 3 pictures and 3 videos; a hand-merged row keeps the checkbox picker</td></tr>
@@ -571,7 +572,7 @@
             <tr><td>Photo with no plate read</td><td>Its own violation, flagged for manual entry</td></tr>
             <tr><td>After Submit</td><td>Auto-advances to the next violation</td></tr>
             <tr><td>ALPR concurrency</td><td>Capped at 3 in flight</td></tr>
-            <tr><td>Queue controls</td><td>Load any row, delete it, tick two and merge them, or drop a photo on a row to move it</td></tr>
+            <tr><td>Queue controls</td><td>Load any row, delete it, tick two and merge them, or drop a photo on a row to move it; on New violation a one-photo row is copied</td></tr>
             <tr><td>Input</td><td>Every pick, drop and paste feeds the batch; there is no single-violation flow</td></tr>
             <tr><td>Order photos are read in</td><td>EXIF capture time; file last-modified only when a photo has none — see <a href="#dates-first-then-plates"><em>Dates first, then plates</em></a></td></tr>
             <tr><td>Submitted photos</td><td>Only the photos that were submitted leave the batch; a group's leftovers appear again at once as a group of their own</td></tr>
@@ -960,7 +961,7 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
             <tr><td><code>batchViolations</code></td><td>Grouped output, in earliest-first order</td></tr>
             <tr><td><code>batchProgress</code></td><td><code>{ stage, completed, total }</code></td></tr>
             <tr><td><code>currentViolationIndex</code></td><td>Where the walk-through has reached</td></tr>
-            <tr><td><code>batchMergeSelection</code></td><td>The rows ticked for a merge, by identity (a row's time, plate and first photo)</td></tr>
+            <tr><td><code>batchMergeSelection</code></td><td>The rows ticked for a merge, by identity (a row's time, plate, first photo and copy key)</td></tr>
           </tbody>
         </table>
       </div>
@@ -1084,7 +1085,9 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
       </p>
       <p>
         Deleting a row takes its photos out of the batch with it, except a photo another row still
-        holds. The deleted row itself is remembered, so a later regrouping cannot make it again.
+        holds: a copied row shares its photo with its source, so deleting one leaves the photo for
+        the other. The deleted row itself is remembered, so a later regrouping cannot make it
+        again.
       </p>
       <p>
         The <strong>Merge</strong> button sits on the queue's heading whenever two or more rows are
@@ -1105,7 +1108,16 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
       <p>
         A row's identity — what a tick names, and what the list's own keys are made of — is its
         time, its plate and the photo it opens with. A batch shot at one kerb gives several rows
-        the same second, so the time alone does not name one; the first photo and the plate do.
+        the same second, so the time alone does not name one; the first photo and the plate do. A
+        copy agrees with its source on all three, so it carries a copy key as well, and the key is
+        what names it.
+      </p>
+      <p>
+        A photo dragged to the <strong>New violation</strong> target normally leaves its old row
+        and becomes a violation of its own. A row of one photo has no other photo to be named by,
+        so the target copies the row instead and leaves the source as it was: the same photo then
+        backs two reports. The copy is marked as the user's own, so a later read leaves it whole,
+        and both rows show the <em>shares a photo</em> badge.
       </p>
       <p>
         The first violation loads itself, so the form is ready to submit without a click. Loading
@@ -1161,7 +1173,8 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
           <code>Home.test.js</code> — driving the rendered batch UI to assert that violations are
           found, that the rows are on screen before a plate is read, that the first row loads itself
           once its own photos have been read, that a read merges a row into its car and reloads the
-          form with the row's photos, that loading one fills the fields from cache, that
+          form with the row's photos, that dropping a one-photo row's photo on New violation copies
+          the row, that loading one fills the fields from cache, that
           <strong>no second <code>/platerecognizer</code> call fires</strong>, and that Submit
           advances.
         </li>
@@ -1234,7 +1247,8 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         <li>
           <b>Repeated duplicate warnings</b>
           Reports from one batch resemble each other, so the existing duplicate-submission warning
-          will likely fire over and over as the queue is walked.
+          will likely fire over and over as the queue is walked. A copied row is a deliberate
+          duplicate of its source, so its report warns the same way.
         </li>
         <li>
           <b>Videos in scope</b>
@@ -1275,6 +1289,11 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         change has its own commit, so the two rules can be reviewed against each other.
       </p>
       <p>
+        Dropping a one-photo row's photo on the New violation target copies the row rather than
+        moving its last photo out of it. That change is a separate commit on top of the grouping
+        change.
+      </p>
+      <p>
         Per the repo's conventions: run <code>yarn fix</code> before committing, create new commits
         rather than amending, and use markdown backticks around identifiers in commit messages.
       </p>
@@ -1284,9 +1303,10 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
       <p>
         Written 2026-09-23 against <span class="mono">ba141241</span>, revised 2026-09-28 to match
         what was actually built, again on 2026-11-10, and again on 2026-11-22 for the plate-only
-        grouping. Line references are to <code>src/routes/home/Home.js</code> unless another path
-        is given, and are anchors from that commit rather than current ones — the file has moved
-        on since, so check them against the code rather than trusting them.
+        grouping and the one-photo copy on the New violation target. Line references are to
+        <code>src/routes/home/Home.js</code> unless another path is given, and are anchors from
+        that commit rather than current ones — the file has moved on since, so check them against
+        the code rather than trusting them.
       </p>
       <p>
         Regenerate by re-reading that file, <code>src/alpr.js</code>,

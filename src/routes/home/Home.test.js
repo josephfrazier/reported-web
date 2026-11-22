@@ -7511,6 +7511,189 @@ describe('Home', () => {
       cleanup();
     });
 
+    // A loaded one-photo violation, for the copy tests below.
+    const onePhotoRow = async () => {
+      const photo = {
+        file: new File(['picture'], 'only.jpg', { type: 'image/jpeg' }),
+        name: 'only.jpg',
+        createDateMs: 1704110400000,
+        createDateOffset: 0,
+        latitude: 40.7129,
+        longitude: -74.0061,
+      };
+      const row = {
+        photos: [photo],
+        plate: 'AAA111',
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs: 1704110400000,
+      };
+
+      const rendered = await renderBatchWithFiles([]);
+      renderer.act(() => {
+        rendered.homeRef.current.setState({
+          batchPhotos: [photo],
+          batchViolations: [row],
+        });
+      });
+      rendered.clickQueueLoad('AAA111');
+
+      return { ...rendered, photo, row };
+    };
+
+    // Drag `name` from the form's grid to the new-violation target.
+    const dropOnNewViolation = (tree, name) => {
+      const tile = tree.root
+        .findAll(node => node.props.draggable === true)
+        .find(node =>
+          node.findAllByType('img').some(img => img.props.alt === name),
+        );
+
+      renderer.act(() => {
+        tile.props.onDragStart({
+          dataTransfer: { setData: jest.fn(), effectAllowed: '' },
+          stopPropagation: jest.fn(),
+        });
+      });
+
+      const target = tree.root
+        .findAll(node =>
+          String(node.props.className || '').includes(
+            'batch-new-violation-drop',
+          ),
+        )
+        .find(node => typeof node.props.onDrop === 'function');
+
+      renderer.act(() => {
+        target.props.onDrop({
+          preventDefault: jest.fn(),
+          stopPropagation: jest.fn(),
+          dataTransfer: {},
+        });
+      });
+    };
+
+    // A row of one photo has no other photo to be named by, so the target
+    // copies the row instead of taking the photo out of it.
+    test('copies a one-photo violation dropped on the new-violation target', async () => {
+      const { homeRef, tree, photo, cleanup } = await onePhotoRow();
+
+      dropOnNewViolation(tree, 'only.jpg');
+
+      const { batchViolations, currentViolationIndex, attachmentData } =
+        homeRef.current.state;
+
+      expect(
+        batchViolations.map(violation => [
+          violation.plate,
+          violation.photos.map(each => each.name),
+          Boolean(violation.mergedByUser),
+        ]),
+      ).toEqual([
+        ['AAA111', ['only.jpg'], false],
+        ['AAA111', ['only.jpg'], true],
+      ]);
+      // The copy agrees with its source on the time, plate and photo, so its
+      // key is what tells them apart.
+      expect(batchViolations[0].copyKey).toBeUndefined();
+      expect(batchViolations[1].copyKey).toBeDefined();
+
+      // The report on screen did not change: its row is still the source.
+      expect(currentViolationIndex).toBe(0);
+      expect(attachmentData).toEqual([photo.file]);
+
+      // Both rows carry the photo, and both say so.
+      expect(renderedText(tree.toJSON()).match(/shares a photo/g)).toHaveLength(
+        2,
+      );
+
+      cleanup();
+    });
+
+    // A read replaces the photo in every row that holds it. The source keeps
+    // grouping with its car; the copy is the user's own report and stays
+    // whole, and the form stays on the row it was on.
+    test('keeps a copy and its source apart when a reading lands', async () => {
+      const { homeRef, tree, photo, cleanup } = await onePhotoRow();
+
+      dropOnNewViolation(tree, 'only.jpg');
+
+      const source = homeRef.current.state.batchViolations.find(
+        violation => violation.copyKey === undefined,
+      );
+      const read = {
+        ...source.photos[0],
+        plateResults: {
+          results: [plateResult({ plate: 'aaa111' })],
+          uploadWidth: 1000,
+          uploadHeight: 1000,
+        },
+      };
+
+      renderer.act(() => {
+        homeRef.current.setState(
+          homeRef.current.applyPlateRead({ photo: source.photos[0], read }),
+        );
+      });
+
+      const { batchViolations, currentViolationIndex, attachmentData } =
+        homeRef.current.state;
+
+      expect(batchViolations).toHaveLength(2);
+      expect(
+        batchViolations.map(violation => [
+          violation.plate,
+          violation.photos.map(each => each.name),
+          Boolean(violation.mergedByUser),
+        ]),
+      ).toEqual([
+        ['AAA111', ['only.jpg'], true],
+        ['AAA111', ['only.jpg'], false],
+      ]);
+      // The form stayed on the source, not on the copy that comes first in
+      // the queue.
+      expect(batchViolations[currentViolationIndex].copyKey).toBeUndefined();
+      expect(attachmentData).toEqual([photo.file]);
+
+      cleanup();
+    });
+
+    // The tick names a row by its identity, so the copy must not answer to
+    // the source's name. A merge of the two is one row, and keeps the copy's
+    // key.
+    test('ticks a copy and its source as two rows', async () => {
+      const { homeRef, tree, clickButton, cleanup } = await onePhotoRow();
+
+      dropOnNewViolation(tree, 'only.jpg');
+
+      const boxes = tree.root
+        .findAllByType('input')
+        .filter(({ props }) =>
+          String(props['aria-label']).startsWith('Merge '),
+        );
+      expect(boxes).toHaveLength(2);
+
+      // The loaded row is ticked already; tick the copy as well.
+      const [unchecked] = boxes.filter(({ props }) => !props.checked);
+      renderer.act(() => {
+        unchecked.props.onChange({});
+      });
+
+      const { batchMergeSelection } = homeRef.current.state;
+      expect(batchMergeSelection).toHaveLength(2);
+      expect(new Set(batchMergeSelection).size).toBe(2);
+
+      clickButton('Merge');
+
+      const rows = homeRef.current.state.batchViolations;
+      expect(rows).toHaveLength(1);
+      expect(rows[0].photos.map(each => each.name)).toEqual(['only.jpg']);
+      expect(rows[0].copyKey).toBeDefined();
+
+      cleanup();
+    });
+
     // The drag is not the only way. Each photo's tile carries a menu, so the
     // same moves work from the keyboard: open the menu, choose the row or the
     // new violation.

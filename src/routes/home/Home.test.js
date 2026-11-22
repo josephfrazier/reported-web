@@ -131,7 +131,7 @@ const videoBytes = () =>
     ]),
   );
 
-function renderHome({ initialState, homeRef, ...props } = {}) {
+function renderHome({ initialState, homeRef, createNodeMock, ...props } = {}) {
   let tree;
   // ToastContainer's mount effect updates its own state. Without act, that
   // update lands outside a test render and React warns about it. The act
@@ -152,6 +152,7 @@ function renderHome({ initialState, homeRef, ...props } = {}) {
           />
         </App>
       </StyleContext.Provider>,
+      createNodeMock ? { createNodeMock } : undefined,
     );
   });
   return tree;
@@ -695,6 +696,109 @@ describe('Home', () => {
 
     tree.unmount();
     global.URL.createObjectURL = originalCreateObjectURL;
+  });
+
+  // The Submit button answers a click with the form's submit handler, so the
+  // shortcut clicks the button the form rendered. The button renders only
+  // with a photo attached, and `createNodeMock` gives its ref a stand-in the
+  // test can inspect.
+  function renderSubmitButton({ disabled }) {
+    const submitButtonNode = { disabled, click: jest.fn() };
+    const createNodeMock = element =>
+      element.type === 'button' && element.props.type === 'submit'
+        ? submitButtonNode
+        : null;
+
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+    const homeRef = React.createRef();
+    let tree;
+    renderer.act(() => {
+      tree = renderHome({
+        initialState: {
+          email: 'test@example.com',
+          loginSuccessful: true,
+        },
+        homeRef,
+        createNodeMock,
+      });
+    });
+    renderer.act(() => {
+      homeRef.current.setState({
+        attachmentData: [
+          new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }),
+        ],
+      });
+    });
+
+    return {
+      homeRef,
+      submitButtonNode,
+      cleanup: () => {
+        tree.unmount();
+        global.URL.createObjectURL = originalCreateObjectURL;
+      },
+    };
+  }
+
+  test('presses the Submit button on Command-Enter', () => {
+    const { homeRef, submitButtonNode, cleanup } = renderSubmitButton({
+      disabled: false,
+    });
+
+    // Pointing the ref at any other node would make this test pass without
+    // the shortcut reaching the Submit button.
+    expect(homeRef.current.submitButtonRef.current).toBe(submitButtonNode);
+
+    const keydown = new KeyboardEvent('keydown', {
+      key: 'Enter',
+      metaKey: true,
+      cancelable: true,
+    });
+    renderer.act(() => {
+      document.dispatchEvent(keydown);
+    });
+
+    expect(submitButtonNode.click).toHaveBeenCalledTimes(1);
+    // The keypress itself must not also act on the page.
+    expect(keydown.defaultPrevented).toBe(true);
+
+    cleanup();
+  });
+
+  test('does nothing on Command-Enter while Submit is disabled', () => {
+    const { submitButtonNode, cleanup } = renderSubmitButton({
+      disabled: true,
+    });
+
+    const keydown = new KeyboardEvent('keydown', {
+      key: 'Enter',
+      metaKey: true,
+      cancelable: true,
+    });
+    renderer.act(() => {
+      document.dispatchEvent(keydown);
+    });
+
+    expect(submitButtonNode.click).not.toHaveBeenCalled();
+    expect(keydown.defaultPrevented).toBe(false);
+
+    cleanup();
+  });
+
+  test('ignores Enter without the Command key', () => {
+    const { submitButtonNode, cleanup } = renderSubmitButton({
+      disabled: false,
+    });
+
+    renderer.act(() => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+    });
+
+    expect(submitButtonNode.click).not.toHaveBeenCalled();
+
+    cleanup();
   });
 
   test('focuses the map search input once it is in the document', () => {

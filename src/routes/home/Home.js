@@ -1292,6 +1292,7 @@ class Home extends React.Component {
     this.loginEmailRef = React.createRef();
     this.signupEmailRef = React.createRef();
     this.scrollContainerRef = React.createRef();
+    this.submitButtonRef = React.createRef();
   }
 
   componentDidMount() {
@@ -2826,6 +2827,16 @@ class Home extends React.Component {
   handleDocumentKeyDown = event => {
     if (event.key === 'Escape' && this.state.isMapOpen) {
       this.setState({ isMapOpen: false });
+    }
+
+    // `Command-Enter` does what the Submit button does. The button reports
+    // whether it is enabled, so the shortcut follows the same rules.
+    if (event.metaKey && event.key === 'Enter') {
+      const submitButton = this.submitButtonRef.current;
+      if (submitButton && !submitButton.disabled) {
+        event.preventDefault();
+        submitButton.click();
+      }
     }
   };
 
@@ -4533,6 +4544,7 @@ class Home extends React.Component {
                                 this.state.attachmentData,
                               ) && <p>{TOO_MANY_ATTACHMENTS_MESSAGE}</p>}
                               <button
+                                ref={this.submitButtonRef}
                                 type="submit"
                                 disabled={
                                   this.state.isSubmitting ||

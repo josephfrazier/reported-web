@@ -6288,8 +6288,9 @@ class Home extends React.Component {
                           onChange={this.handleInputChange}
                         />{' '}
                         I&apos;m willing to testify at a hearing, which can be
-                        done by phone. This is required if you want cabbies to
-                        get fined for their violations.
+                        done by phone. Selecting this is required if you want
+                        cabbies to get fined for their violations, but you
+                        likely won&apos;t have to testify.
                       </label>
 
                       <label htmlFor="can_be_shared_publicly">
@@ -6671,8 +6672,9 @@ class Home extends React.Component {
                           onChange={this.handleInputChange}
                         />{' '}
                         I&apos;m willing to testify at a hearing, which can be
-                        done by phone. This is required if you want cabbies to
-                        get fined for their violations.
+                        done by phone. Selecting this is required if you want
+                        cabbies to get fined for their violations, but you
+                        likely won&apos;t have to testify.
                       </label>
                       <button
                         type="submit"

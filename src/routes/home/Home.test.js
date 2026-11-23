@@ -5050,6 +5050,8 @@ describe('Home', () => {
           }),
         geosearchCalls: () =>
           axiosPost.mock.calls.filter(([url]) => url === '/api/geosearch'),
+        // Every request the batch made, in the order it made them.
+        requestOrder: () => axiosPost.mock.calls.map(([url]) => url),
         uploadAttachmentCalls: () =>
           axiosPost.mock.calls.filter(
             ([url]) => url === '/api/uploadAttachment',
@@ -5353,6 +5355,35 @@ describe('Home', () => {
       expect(selected[0].props['aria-label']).toBe(
         'Select license plate LHM4874',
       );
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    // The plate reads own the scarce quota, and the grouping needs them; the
+    // free address lookups start behind the first read.
+    test('starts the plate reads before the address lookups', async () => {
+      const photos = [
+        jpeg({ name: 'a.jpg', size: 4 }),
+        jpeg({ name: 'b.jpg', size: 5 }),
+      ];
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { requestOrder, cleanup } = await renderBatchWithFiles(photos);
+
+      const urls = requestOrder();
+      const firstPlateRead = urls.indexOf('/platerecognizer');
+      const firstAddressLookup = urls.indexOf('/api/geosearch');
+
+      expect(firstPlateRead).toBeGreaterThanOrEqual(0);
+      expect(firstAddressLookup).toBeGreaterThanOrEqual(0);
+      expect(firstPlateRead).toBeLessThan(firstAddressLookup);
 
       exifr.gps.mockReset();
       exifr.parse.mockReset();

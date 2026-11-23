@@ -620,7 +620,12 @@ axios.interceptors.response.use(undefined, error => {
   return Promise.reject(error);
 });
 
-async function fetchPlateResults({ attachmentFile, attachmentBuffer, ext }) {
+async function fetchPlateResults({
+  attachmentFile,
+  attachmentBuffer,
+  ext,
+  onFetch,
+}) {
   if (attachmentPlateCache.has(attachmentFile)) {
     console.info(`found cached plate results for ${attachmentFile.name}!`);
     return attachmentPlateCache.get(attachmentFile);
@@ -646,9 +651,14 @@ async function fetchPlateResults({ attachmentFile, attachmentBuffer, ext }) {
   // read and a photo the user has to type in by hand. What a repeat is worth is
   // in `plateReadRetry`; this asks for it for this request alone.
   console.time(`/platerecognizer round trip (${attachmentFile.name})`); // eslint-disable-line no-console
-  const { data } = await axios.post('/platerecognizer', formData, {
+  const request = axios.post('/platerecognizer', formData, {
     'axios-retry': plateReadRetry,
   });
+  // The read is on the wire before the caller starts anything else. The
+  // batch's address lookups use this to stay behind the plate reads, which
+  // own the scarce quota.
+  onFetch?.();
+  const { data } = await request;
   console.timeEnd(`/platerecognizer round trip (${attachmentFile.name})`); // eslint-disable-line no-console
   // The server keeps its own clock and sends the breakdown with the reading,
   // so the round trip above splits into what the dyno did and what the network
@@ -3316,12 +3326,20 @@ class Home extends React.Component {
     // its time and place, and the plate reads have only to merge the rows that
     // turn out to name the same car.
     this.setState({ batchPhotos: inCaptureOrder });
-    // Every place the batch knows about, looked up while the plate reads run.
-    // A row made later -- by a read that divides one -- takes its place from
-    // one of these photos, and the form is meant to open with the address
-    // already in hand rather than on "Finding Address...". Nothing waits for
-    // this: the queue is the thing that has to be quick.
-    this.geocodePlaces(inCaptureOrder);
+
+    // The plate reads own the scarce quota, and the grouping and the form need
+    // them before they need an address. They start first; the address lookups
+    // start once the first read is on the wire, so they fill the memo behind
+    // the reads instead of in front of them.
+    let addressesStarted = false;
+    const startAddressLookups = () => {
+      if (addressesStarted) {
+        return;
+      }
+      addressesStarted = true;
+      this.geocodePlaces(inCaptureOrder);
+    };
+
     await this.publishBatchViolations();
 
     await mapWithConcurrency({
@@ -3358,7 +3376,9 @@ class Home extends React.Component {
           return undefined;
         }
 
-        const result = await this.readBatchPhotoPlate(photo);
+        const result = await this.readBatchPhotoPlate(photo, {
+          onFetch: startAddressLookups,
+        });
         const changes = this.readChangesFormReport({ photo, read: result });
         completed += 1;
         this.setState(
@@ -3375,6 +3395,10 @@ class Home extends React.Component {
         return result;
       },
     });
+
+    // No read went out -- ALPR is off, every photo is cached, or every photo
+    // was deleted -- so the addresses still have to start.
+    startAddressLookups();
 
     this.setState({ batchProgress: null }, () => {
       this.loadFirstViolationIfNoneLoaded();
@@ -3582,9 +3606,9 @@ class Home extends React.Component {
   // Look up every place the batch's photos were taken, once each.
   //
   // The memo is what makes this cheap -- a batch shot at one kerb is one
-  // lookup, not one per photo or per row -- and filling it before any row can
-  // be loaded is what keeps the form from opening on "Finding Address..." for
-  // a place the batch already had.
+  // lookup, not one per photo or per row. The lookups run behind the plate
+  // reads, so a row can open before its address is in; the form then asks for
+  // the same place, and its answer fills the memo for the rows after it.
   geocodePlaces = async photos => {
     const places = new Map();
 
@@ -3744,8 +3768,11 @@ class Home extends React.Component {
   // each and their labels and merges arrive behind them; the leftovers after a
   // submit call it with their readings already in.
   //
-  // Each violation is geocoded before it is published, so loading one finds
-  // the batch's lookup in the memo instead of starting its own.
+  // The rows are published without waiting for their addresses. The plate
+  // reads own the scarce quota and the grouping needs them; the address
+  // lookups start behind the first read (see `processBatchFiles`) and fill the
+  // memo before most rows open. A row that opens earlier asks for its own
+  // address, and the form's lookup fills the same memo.
   // `afterPublish` runs once the rows are in state, whether or not any were
   // added: a caller that opens a row after a submit has to know the queue is
   // final, and one that was waiting for a row that never came still has a row
@@ -3772,14 +3799,6 @@ class Home extends React.Component {
     const flagged = this.withoutDismissedRows(
       this.withNycFlags(groupAttachmentsByViolation(unpublished)),
     );
-
-    // One lookup at a time, and one per violation rather than per photo: a
-    // batch shot at one curb is dozens of identical lookups, and the memo
-    // serves every repeat after the first.
-    for (const violation of flagged) {
-      // eslint-disable-next-line no-await-in-loop -- sequential on purpose: see geocodeBatchViolation.
-      await this.geocodeBatchViolation(violation);
-    }
 
     this.setState(
       state => {
@@ -3900,8 +3919,9 @@ class Home extends React.Component {
     );
 
   // One photo's plate read: the network call, made once the metadata pass has
-  // settled what order the batch is in.
-  readBatchPhotoPlate = async photo => {
+  // settled what order the batch is in. `onFetch` runs once the request is on
+  // the wire; the batch uses it to start the address lookups behind the reads.
+  readBatchPhotoPlate = async (photo, { onFetch } = {}) => {
     const { file: attachmentFile } = photo;
 
     let attachmentBuffer;
@@ -3923,6 +3943,7 @@ class Home extends React.Component {
       attachmentFile,
       attachmentBuffer,
       ext,
+      onFetch,
     });
 
     return {
@@ -3942,7 +3963,12 @@ class Home extends React.Component {
   // every `results[]` entry and the `candidates` that fold OCR variants
   // together. Collapsing to one plate discards exactly those, and prefers the
   // medallion, which is a tie-break here rather than a filter.
-  batchPlateResults = async ({ attachmentFile, attachmentBuffer, ext }) => {
+  batchPlateResults = async ({
+    attachmentFile,
+    attachmentBuffer,
+    ext,
+    onFetch,
+  }) => {
     if (this.state.isAlprEnabled === false) {
       console.info('ALPR is disabled, skipping');
       return undefined;
@@ -3953,6 +3979,7 @@ class Home extends React.Component {
         attachmentFile,
         attachmentBuffer,
         ext,
+        onFetch,
       });
     } catch (err) {
       console.error(err);

@@ -555,6 +555,7 @@
             <tr><td>More than 3 photos</td><td>Split into reports within 3 pictures and 3 videos; a hand-merged row keeps the checkbox picker</td></tr>
             <tr><td>Reload mid-batch</td><td>The queue is lost — in-memory only; the server's ALPR and geosearch caches keep their answers</td></tr>
             <tr><td>Publishing</td><td>All rows at once, after the dates-and-places pass and before the first plate read; reads merge rows as they land</td></tr>
+            <tr><td>Address lookups</td><td>Start behind the first plate read, so no free geosearch request runs in front of a plate read; a row that opens before its address is in asks for it itself</td></tr>
             <tr><td>First violation</td><td>Loaded into the form automatically, with no click</td></tr>
           </tbody>
         </table>
@@ -822,7 +823,9 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         The dates and places pass is local and it covers the whole batch, so once it is done every
         photo can be a row: one photo is one violation until a plate says otherwise. The queue is
         published there and then — a second or so after the folder is picked, whatever the batch
-        size and whatever the rate limit is doing.
+        size and whatever the rate limit is doing. The plate reads start as soon as the rows are
+        out; the address lookups wait for the first read to be on the wire, so the free lookups
+        follow the scarce plate calls.
       </p>
       <p>
         The plate reads merge the rows in behind it. Each read replaces its photo's record and the
@@ -907,14 +910,16 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
       <h3>Geocode once per violation, not per photo</h3>
       <p>
         An address is a function of coordinates alone. A batch taken at one curb used to cost one
-        identical lookup per photo, and the memo brings that down to one. Publishing asks for each
-        row's place as it publishes the row, one place at a time, so the form opens with its
-        address already in hand; the memo and the in-flight set keep a repeated place from being
-        fetched twice. A reload clears the page's memo, and the server's disk cache answers a
-        place it has seen before without calling geosearch. An answer that fell back to the top
-        result because the address directory was down is shown but not kept, in the page's memo or
-        on disk. <code>geocodePlaces</code> warms the memo for every distinct place while the plate
-        reads run.
+        identical lookup per photo, and the memo brings that down to one. The lookups start once
+        the first plate read is on the wire, so no free geosearch request runs in front of a plate
+        read — the reads own the scarce quota and supply the grouping. A row that opens before its
+        address is in asks for the same place itself, and that answer fills the memo for the rows
+        after it; the memo and the in-flight set keep a repeated place from being fetched twice. A
+        reload clears the page's memo, and the server's disk cache answers a place it has seen
+        before without calling geosearch. An answer that fell back to the top result because the
+        address directory was down is shown but not kept, in the page's memo or on disk.
+        <code>geocodePlaces</code> warms the memo for every distinct place while the plate reads
+        run.
       </p>
 
       <div class="note">
@@ -1069,9 +1074,9 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
       <p>
         The bar names the two passes over the files themselves — dates and places, then plates.
         Grouping happens with the first of them, and the queue appearing is that progress. The
-        batch's places are geocoded while the plate reads run, and publishing asks for each row's
-        place as it publishes the row. The bar's second pass is the plate labels filling in and the
-        rows merging.
+        plate reads start as soon as the rows are published; the batch's places are geocoded behind
+        them, so a row can open before its address is in. The bar's second pass is the plate labels
+        filling in and the rows merging.
       </p>
 
       <h3>The queue</h3>
@@ -1309,10 +1314,10 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         Written 2026-09-23 against <span class="mono">ba141241</span>, revised 2026-09-28 to match
         what was actually built, again on 2026-11-10, again on 2026-11-22 for the plate-only
         grouping and the one-photo copy on the New violation target, and again on 2026-11-23 for
-        the first-result plate rule and the deleted-photo skip. Line references are to
-        <code>src/routes/home/Home.js</code> unless another path is given, and are anchors from
-        that commit rather than current ones — the file has moved on since, so check them against
-        the code rather than trusting them.
+        the first-result plate rule, the deleted-photo skip, and the address lookups behind the
+        plate reads. Line references are to <code>src/routes/home/Home.js</code> unless another
+        path is given, and are anchors from that commit rather than current ones — the file has
+        moved on since, so check them against the code rather than trusting them.
       </p>
       <p>
         Regenerate by re-reading that file, <code>src/alpr.js</code>,

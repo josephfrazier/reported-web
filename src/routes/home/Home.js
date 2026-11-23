@@ -1502,8 +1502,9 @@ class Home extends React.Component {
       batchViolations: [],
       batchProgress: null,
       currentViolationIndex: -1,
-      // The identities (first photo names) of the violations ticked for
-      // merging. Two at a time, which is all the queue offers a button for.
+      // The identities of the violations ticked for merging: a row's time,
+      // plate, first photo and copy key. Any number can be ticked; the Merge
+      // button appears once two are.
       batchMergeSelection: [],
 
       isPasswordRevealed: false,

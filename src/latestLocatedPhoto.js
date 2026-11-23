@@ -15,9 +15,9 @@
  * coordinates still wins, and it is the newest one that said where it was.
  *
  * Capture order is defined here, for everything that sorts photos by it. The
- * batch groups and clusters by the same order, and reads it from these two
- * rather than keeping its own, so that the two cannot disagree about which
- * photo is the newest.
+ * batch orders the queue, the plate reads and each report by it, and reads it
+ * from these two rather than keeping its own, so the two cannot disagree about
+ * which photo is the newest.
  */
 
 // A photo, a violation or a summary has coordinates only when both are real

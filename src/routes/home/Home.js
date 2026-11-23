@@ -59,6 +59,7 @@ import createGeosearchAddressCache from '../../geosearchAddressCache.js';
 import groupAttachmentsByViolation, {
   mergeViolations,
   plateCropFor,
+  plateForPhotos,
 } from '../../groupAttachmentsByViolation.js';
 import { captureBatchGroupingEvent } from '../../batchGroupingEvents.js';
 import { isImage, isVideo } from '../../isImage.js';
@@ -2113,7 +2114,7 @@ class Home extends React.Component {
   renderPlateOverlays = ({ attachmentPlateData, attachmentFile }) =>
     attachmentPlateData?.results?.map(result => {
       const { box } = result;
-      const plate = result.plate?.toUpperCase();
+      const plate = result.plate?.trim().toUpperCase();
       // `box` is in pixels of the image src/alpr.js uploaded to Plate
       // Recognizer, so `uploadWidth`/`uploadHeight` are the denominators that
       // turn it into a fraction of the picture. Percentages are
@@ -2140,10 +2141,19 @@ class Home extends React.Component {
       const licenseState = getLicenseStateFromPlateResult(result);
 
       // The overlay for the plate in the License/Medallion field is marked as
-      // selected, whether it was typed or clicked. The state is left out of
-      // the comparison: it can be hard to tell apart in a photo, and the user
-      // chose the plate.
-      const isSelected = plate === this.state.plate?.toUpperCase();
+      // selected, whether it was typed or clicked. A folded group can be
+      // spelled several ways, so any string the result offers counts: the
+      // field may hold the clean medallion while this box read a variant. The
+      // state is left out of the comparison: it can be hard to tell apart in a
+      // photo, and the user chose the plate.
+      const selectedPlate = this.state.plate?.toUpperCase();
+      const resultPlates = [
+        plate,
+        ...(result.candidates || []).map(candidate =>
+          candidate?.plate?.trim().toUpperCase(),
+        ),
+      ].filter(Boolean);
+      const isSelected = resultPlates.includes(selectedPlate);
       const className = isSelected
         ? `${homeStyles['plate-overlay']} ${homeStyles['plate-overlay-selected']}`
         : homeStyles['plate-overlay'];
@@ -2437,34 +2447,31 @@ class Home extends React.Component {
     return earliest ? createDateValue(momentOf(earliest)) : undefined;
   };
 
-  // The plate a set of photos reads: the first of them, in the order they are
-  // attached, whose read named one. What each photo read is kept by name --
-  // `plateDataByAttachmentName` is what the overlays are drawn from, and it
-  // loses a photo's entry when that photo goes, so a plate cannot outlive the
-  // picture it was read from by being looked up here.
+  // The plate a set of photos gives, by the rule the grouping uses for the
+  // row: a medallion result if one was offered, otherwise the first result,
+  // and the folded group's best spelling.
   //
-  // The result the reading named is chosen the same way the reading was: a
-  // medallion's T######C plate if the read offered one, and its first result
-  // otherwise, so the field a recompute lands on is the field the reading
-  // would have filled.
+  // The whole batch folds the strings, so a variant read by one photo and its
+  // clean spelling read by another answer the same group. The chosen group
+  // comes from the attached photos, in their order, so the field follows the
+  // set the report actually holds.
   plateFromPhotos = photos => {
-    for (const file of photos) {
-      const results =
-        this.state.plateDataByAttachmentName[file.name]?.results || [];
-      const preferred = results.find(result =>
-        result.plate?.toUpperCase().match(/^T\d{6}C$/),
-      );
-      const result = preferred || results[0];
+    const byFile = new Map();
+    this.state.batchViolations.forEach(violation => {
+      violation.photos.forEach(photo => byFile.set(photo.file, photo));
+    });
 
-      if (result?.plate) {
-        return {
-          plate: result.plate.toUpperCase(),
-          licenseState: getLicenseStateFromPlateResult(result),
-        };
-      }
+    const chooseFrom = photos.map(file => byFile.get(file)).filter(Boolean);
+
+    if (chooseFrom.length === 0) {
+      return null;
     }
 
-    return null;
+    const { plate, licenseState } = plateForPhotos(chooseFrom, {
+      foldFrom: [...byFile.values()],
+    });
+
+    return plate ? { plate, licenseState } : null;
   };
 
   // The plate follows the photos the way the time and the place do, with one

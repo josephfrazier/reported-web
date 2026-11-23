@@ -649,6 +649,76 @@ describe('groupAttachmentsByViolation', () => {
     expect(violation.plate).toBe('T696817C');
   });
 
+  test('takes the first result as the photo’s plate, not the most central one', () => {
+    const photo = buildPhoto({
+      name: 'two-cars.jpg',
+      createDateMs: 1000,
+      ...SQUARE,
+      plateResults: alprResponse({
+        ...SQUARE,
+        results: [
+          // The read named this plate first. A box nearer the middle of the
+          // frame read the other car, and that does not make it the subject.
+          alprResult({ plate: 'aaa111', box: CORNER_BOX }),
+          alprResult({ plate: 'bbb222', box: CENTRED_BOX }),
+        ],
+      }),
+    });
+
+    const [violation] = groupAttachmentsByViolation([photo]);
+
+    expect(violation.plate).toBe('AAA111');
+  });
+
+  test('merges on the first result rather than the most central plate', () => {
+    const first = buildPhoto({
+      name: 'first.jpg',
+      createDateMs: 1000,
+      ...SQUARE,
+      plateResults: alprResponse({
+        ...SQUARE,
+        results: [
+          alprResult({ plate: 'aaa111', box: CORNER_BOX }),
+          alprResult({ plate: 'bbb222', box: CENTRED_BOX }),
+        ],
+      }),
+    });
+    const second = buildPhoto({
+      name: 'second.jpg',
+      createDateMs: 2000,
+      ...SQUARE,
+      plateResults: alprResponse({
+        ...SQUARE,
+        results: [alprResult({ plate: 'aaa111', box: CENTRED_BOX })],
+      }),
+    });
+
+    const violations = groupAttachmentsByViolation([first, second]);
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0].plate).toBe('AAA111');
+    expect(violations[0].photos).toEqual([first, second]);
+  });
+
+  test('prefers a medallion result over the first result', () => {
+    const photo = buildPhoto({
+      name: 'medallion.jpg',
+      createDateMs: 1000,
+      ...SQUARE,
+      plateResults: alprResponse({
+        ...SQUARE,
+        results: [
+          alprResult({ plate: 'aaa111', box: CENTRED_BOX }),
+          alprResult({ plate: 't696817c', box: CORNER_BOX }),
+        ],
+      }),
+    });
+
+    const [violation] = groupAttachmentsByViolation([photo]);
+
+    expect(violation.plate).toBe('T696817C');
+  });
+
   // Boxes across one 1000x1000 frame, from the centre outwards. A wide shot's
   // cars sit at different distances from the middle, which is what tells the
   // car the photo is of from the cars behind it.

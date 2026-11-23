@@ -4767,11 +4767,11 @@ describe('Home', () => {
         { type: 'image/jpeg' },
       );
 
-    const plateResult = ({ plate, candidates = [] }) => ({
+    const plateResult = ({ plate, candidates = [], box }) => ({
       plate,
       score: 0.9,
       candidates,
-      box: { xmin: 400, ymin: 400, xmax: 500, ymax: 500 },
+      box: box ?? { xmin: 400, ymin: 400, xmax: 500, ymax: 500 },
       // The overlay's box is in the pixel space of the uploaded image, so the
       // frame's own dimensions come back with the results.
       region: { code: 'us-ny' },
@@ -4807,12 +4807,22 @@ describe('Home', () => {
           }),
         ],
         9: [plateResult({ plate: 'lda8765' })],
-        // Two cars in the one frame, read where they are rather than from a
-        // closeup: the frame is the only photo of each of them, and the two
-        // readings sit in the same response.
+        // Two cars in one frame. The first result is the corner box; a box in
+        // the middle of the frame read the other car. The first result is the
+        // photo's own plate, and the row and the form have to agree on it.
         10: [
           plateResult({ plate: 'aaa111' }),
           plateResult({ plate: 'bbb222' }),
+        ],
+        11: [
+          plateResult({
+            plate: 'lhm4874',
+            box: { xmin: 0, ymin: 0, xmax: 100, ymax: 50 },
+          }),
+          plateResult({
+            plate: '16778nh',
+            box: { xmin: 450, ymin: 450, xmax: 550, ymax: 550 },
+          }),
         ],
       };
 
@@ -4834,6 +4844,7 @@ describe('Home', () => {
       8: '2016-01-01T12:00:03.000Z',
       9: '2016-01-01T12:00:04.000Z',
       10: '2016-01-01T12:02:00.000Z',
+      11: '2016-01-01T12:00:05.000Z',
     };
 
     // Renders the form as a logged-in user with semi-automatic mode on, adds
@@ -5311,6 +5322,37 @@ describe('Home', () => {
       expect(afterSubmit.plate).toBe('LDA8765');
       expect(afterSubmit.attachmentData).toHaveLength(1);
       expect(afterSubmit.attachmentData[0]).toBe(photos[2]);
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    // The row and the form must name the same plate. The read's first result
+    // is the photo's own plate; a box nearer the middle of the frame does not
+    // make the other car the subject.
+    test('shows the row’s own plate in the queue and in the form', async () => {
+      const photo = jpeg({ name: 'two-cars.jpg', size: 11 });
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, tree, cleanup } = await renderBatchWithFiles([photo]);
+
+      const [violation] = homeRef.current.state.batchViolations;
+      expect(violation.plate).toBe('LHM4874');
+      expect(homeRef.current.state.plate).toBe('LHM4874');
+
+      const selected = tree.root.findAll(node =>
+        String(node.props.className || '').includes('plate-overlay-selected'),
+      );
+      expect(selected).toHaveLength(1);
+      expect(selected[0].props['aria-label']).toBe(
+        'Select license plate LHM4874',
+      );
 
       exifr.gps.mockReset();
       exifr.parse.mockReset();

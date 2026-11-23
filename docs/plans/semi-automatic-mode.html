@@ -548,7 +548,7 @@
             <tr><td>Time and place</td><td>Order the queue and give a report its time and place; they never group photos</td></tr>
             <tr><td>Plate's role</td><td>The only signal that <strong>merges</strong> rows</td></tr>
             <tr><td>OCR variants</td><td>Folded via ALPR <code>candidates</code> sets</td></tr>
-            <tr><td>Multi-plate photo</td><td>One row, for the plate nearest the frame centre; it joins no row when another plate it reads is also read by a different photo</td></tr>
+            <tr><td>Multi-plate photo</td><td>One row, for the result the read named — a medallion result first, otherwise the first result; it joins no row when another plate it reads is also read by a different photo</td></tr>
             <tr><td>One photo, several reports</td><td>Dropping a one-photo row's photo on New violation copies the row and leaves the source as it was; the copy carries a copy key</td></tr>
             <tr><td>Violation time</td><td>From the <strong>earliest</strong> photo in the group</td></tr>
             <tr><td>Violation location</td><td>From the <strong>latest</strong> photo that has a fix — see <a href="#which-photo-gives-the-place"><em>Which photo gives the place</em></a></td></tr>
@@ -607,9 +607,10 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         </li>
         <li>
           <strong>Give each photo its own plate.</strong> A photo can read several plates — a
-          closeup of one car with another parked behind it — and it is a photo of the car whose
-          box sits nearest the centre of the frame. The medallion pattern and the read's score are
-          the tie-breaks after centrality.
+          closeup of one car with another parked behind it. Its own plate is the result the read
+          named: a medallion result if the read offered one, and the first result otherwise. That
+          is the rule the form applies to the same read, so the queue row and the field agree. The
+          folded group of that result is the photo's plate group.
         </li>
         <li>
           <strong>Merge photos that name the same plate.</strong> Every photo starts as a
@@ -681,8 +682,9 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
 
       <h3>Choosing the plate</h3>
       <p>
-        The same vote answers two questions: which plate a photo is of, and which spelling a
-        merged row prints. Each tie-break is applied only if the one before it is still tied:
+        The tie-breaks below choose the spelling a row prints inside its plate group, and which
+        group wins when more than one is offered. Each is applied only if the one before it is
+        still tied:
       </p>
       <ol class="chain">
         <li>Most photos</li>
@@ -693,11 +695,10 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         <li>Alphabetically first, so the same batch always groups the same way</li>
       </ol>
       <p>
-        For one photo every group counts the same, so <em>most central</em> decides: it takes the
-        folded group whose box sits nearest the centre of the frame. That is why a closeup of one
-        car with another parked behind it belongs to the car in front. In a merged row the plate
-        every photo reads wins on the first tie-break, and the remaining tie-breaks choose the
-        spelling the row prints.
+        The photo's own group is not chosen by this list: the read's result order decides it, with
+        a medallion result first. The list chooses the string within that group. The spelling read
+        by more photos comes first, then the spelling whose boxes are most central, then the clean
+        medallion read, then the highest score.
       </p>
       <p>
         <em>Most central</em> means the smallest mean normalised distance between the plate's box
@@ -786,7 +787,7 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
 
       <p>
         Photo&nbsp;1 reads the medallion, the <span class="mono">lda8765</span> car and a third
-        car. Its own plate is the medallion — the read nearest the centre of the frame — but the
+        car. Its own plate is the medallion — the read's medallion result — but the
         <span class="mono">lda8765</span> read is shared with photos&nbsp;4–5, so the frame is
         evidence for two cars and stays a row of its own. Photos&nbsp;2–3 name the same folded
         medallion group, and the spelling their row prints is
@@ -808,11 +809,11 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
       <div class="note note--warn">
         <span class="note__label">One shared plate per photo</span>
         <p>
-          A photo merges only when its own plate is the one plate it shares with another photo. A
-          second shared plate means the photo shows two cars, and giving it to one row would take
-          it from the other. That guard is what keeps a wide shot from chaining two cars into one
-          report. The plate both defines the row and labels it, and the guard is what makes that
-          safe.
+          A photo merges only when its own plate — the read's first result, or its medallion
+          result — is the one plate it shares with another photo. A second shared plate means the
+          photo shows two cars, and giving it to one row would take it from the other. That guard
+          is what keeps a wide shot from chaining two cars into one report. The plate both defines
+          the row and labels it, and the guard is what makes that safe.
         </p>
       </div>
 
@@ -1080,8 +1081,10 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         photos are still being read. Each row shows its time, its plate or whether it is still
         being read, its photo count and flags, and clicking a
         row's own text opens that violation; <strong>Delete</strong> drops a row, and a row's
-        checkbox ticks it for a merge. There is no button to walk the queue in order, because
-        Submit already advances to the next violation and any row is one click away.
+        checkbox ticks it for a merge. The plate a row names is the plate the form opens with, and
+        the overlay selected in the photo is that same plate. There is no button to walk the queue
+        in order, because Submit already advances to the next violation and any row is one click
+        away.
       </p>
       <p>
         Deleting a row takes its photos out of the batch with it, except a photo another row still
@@ -1165,9 +1168,9 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
       </p>
       <ul>
         <li>
-          <code>groupAttachmentsByViolation.test.js</code> — variant folding, plate-driven
-          merging, the one-shared-plate guard, each fallback (no GPS, no time, no plate), the
-          report cap, and a row the user merged.
+          <code>groupAttachmentsByViolation.test.js</code> — variant folding, the first-result
+          plate rule, plate-driven merging, the one-shared-plate guard, each fallback (no GPS, no
+          time, no plate), the report cap, and a row the user merged.
         </li>
         <li>
           <code>Home.test.js</code> — driving the rendered batch UI to assert that violations are
@@ -1302,11 +1305,11 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
     <footer>
       <p>
         Written 2026-09-23 against <span class="mono">ba141241</span>, revised 2026-09-28 to match
-        what was actually built, again on 2026-11-10, and again on 2026-11-22 for the plate-only
-        grouping and the one-photo copy on the New violation target. Line references are to
-        <code>src/routes/home/Home.js</code> unless another path is given, and are anchors from
-        that commit rather than current ones — the file has moved on since, so check them against
-        the code rather than trusting them.
+        what was actually built, again on 2026-11-10, again on 2026-11-22 for the plate-only
+        grouping and the one-photo copy on the New violation target, and again on 2026-11-23 for
+        the first-result plate rule. Line references are to <code>src/routes/home/Home.js</code>
+        unless another path is given, and are anchors from that commit rather than current ones —
+        the file has moved on since, so check them against the code rather than trusting them.
       </p>
       <p>
         Regenerate by re-reading that file, <code>src/alpr.js</code>,

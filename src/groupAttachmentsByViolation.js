@@ -21,10 +21,10 @@
  *      not four. Folding is a union-find over strings, with an edge for every
  *      pair a single result offers.
  *   3. Pick each photo's own plate. A photo can read several plates -- a
- *      closeup of one car with another parked behind it -- and it is a photo
- *      of the car whose box sits nearest the centre of the frame. The
- *      medallion pattern and the read's score are the tie-breaks after
- *      centrality.
+ *      closeup of one car with another parked behind it. The result the read
+ *      named is the answer: a medallion result if the read offered one, and
+ *      the first result otherwise, which is the rule the form applies to the
+ *      same read.
  *   4. Merge photos that name the same plate, unless one of them reads
  *      another plate that a different photo also read. Such a photo is
  *      evidence for two cars, and giving it to one row takes it from the
@@ -265,7 +265,8 @@ function buildPlateGroups({ stats, find }) {
   }));
 }
 
-// Which plate the photos vote for. Ties that survive all four tie-breaks fall
+// Which spelling a row prints for its plate, and which group wins when the
+// caller offers more than one. Ties that survive all four tie-breaks fall
 // back to the group the earliest photo voted for, then to the alphabetically
 // first reading, so the same batch always groups the same way.
 function pickWinner({ groups, cluster, stats }) {
@@ -353,24 +354,21 @@ export function plateCropFor({ photos, plate }) {
   return null;
 }
 
-// The plate group each photo is a photo *of*: the one whose box sits nearest
-// the centre of the frame, with the same tie-breaks the plate vote uses. The
-// group is answered as the union-find root, so two spellings that fold
-// together answer the same group.
-function plateGroupOf({ photo, find }) {
-  const { stats, find: localFind } = buildPlateStats([photo]);
+// The plate group a photo is a photo *of*: the result the read named, chosen
+// the way the form chooses one -- a medallion result if the read offered one,
+// and the first result otherwise. The group is answered as the union-find
+// root, so two spellings that fold together answer the same group.
+function chosenPlateGroupOf({ photo, find }) {
+  const results = photo.plateResults?.results || [];
+  const result =
+    results.find(each =>
+      MEDALLION_PLATE.test(each.plate?.toUpperCase() || ''),
+    ) || results[0];
+  const plate =
+    typeof result?.plate === 'string' ? result.plate.trim().toUpperCase() : '';
+  const root = plate ? find(plate) : undefined;
 
-  if (stats.size === 0) {
-    return null;
-  }
-
-  const { plate } = pickWinner({
-    groups: buildPlateGroups({ stats, find: localFind }),
-    cluster: [photo],
-    stats,
-  });
-
-  return find(plate);
+  return root === undefined ? null : root;
 }
 
 // The plate groups a photo read that another photo also read. A photo with two
@@ -412,7 +410,7 @@ function buildPlateReadings(photos) {
 // and stays a violation of its own. If its own plate is shared with nobody,
 // there is nothing to merge with.
 function mergeRootOf({ photo, find, photosByRoot }) {
-  const primary = plateGroupOf({ photo, find });
+  const primary = chosenPlateGroupOf({ photo, find });
 
   if (primary === null) {
     return null;
@@ -449,19 +447,43 @@ function rowsOfPhotos(sorted) {
   return rows;
 }
 
-// The plate a violation reports and the state its region code names. The vote
-// runs over the violation's own photos: a merged row reads one plate on every
-// photo, so that plate wins on the first tie-break; a row of one photo falls
-// through to the plate nearest the centre of its frame.
-function plateFor(photos) {
-  const { stats, find } = buildPlateStats(photos);
+// The plate a violation reports, and the state its region code names.
+//
+// The rule is the form's, and both read it from here so the queue row and the
+// field cannot disagree: the first photo in order that named a plate gives the
+// group, and a medallion result wins over the result order. The vote then
+// chooses the spelling the row prints within that group.
+//
+// `foldFrom` is the set of photos whose `candidates` fold the strings: the
+// whole batch for a row, so a variant read by one photo and its clean spelling
+// read by another answer the same group. The chosen group still comes from
+// `photos`, so a row with fewer photos than the batch prints its own plate.
+export function plateForPhotos(photos, { foldFrom = photos } = {}) {
+  const { stats, find: localFind } = buildPlateStats(photos);
 
   if (stats.size === 0) {
     return { plate: '', licenseState: '' };
   }
 
+  const { find } = buildPlateStats(foldFrom);
+  const chosenRoot = photos
+    .map(photo => chosenPlateGroupOf({ photo, find }))
+    .find(root => root !== null);
+
+  if (chosenRoot === undefined) {
+    return { plate: '', licenseState: '' };
+  }
+
+  const groups = buildPlateGroups({ stats, find: localFind }).filter(
+    group => find(group.members[0]) === chosenRoot,
+  );
+
+  if (groups.length === 0) {
+    return { plate: '', licenseState: '' };
+  }
+
   const { plate } = pickWinner({
-    groups: buildPlateGroups({ stats, find }),
+    groups,
     cluster: photos,
     stats,
   });
@@ -629,7 +651,10 @@ export default function groupAttachmentsByViolation(photos) {
   const sorted = [...photos].sort(compareByCaptureTime);
 
   const violations = rowsOfPhotos(sorted).map(rowPhotos =>
-    buildViolation({ photos: rowPhotos, ...plateFor(rowPhotos) }),
+    buildViolation({
+      photos: rowPhotos,
+      ...plateForPhotos(rowPhotos, { foldFrom: sorted }),
+    }),
   );
 
   // Earliest-first, so the queue walks the batch in the order it was shot.

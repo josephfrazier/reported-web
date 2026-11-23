@@ -3328,7 +3328,36 @@ class Home extends React.Component {
       items: inCaptureOrder,
       limit: BATCH_ALPR_CONCURRENCY,
       worker: async photo => {
+        // The user can delete a photo while its read waits its turn. The
+        // deleted photo is in no row and in no batch list, and reading it
+        // would spend a call on a report nobody can file. Count the skip as
+        // progress, so the bar still reaches its total.
+        const skipDeletedPhoto = () => {
+          completed += 1;
+          this.setState({
+            batchProgress: {
+              stage: 'alpr',
+              completed,
+              total: inCaptureOrder.length,
+            },
+          });
+        };
+
+        // Checked before the wait as well as after it: a photo already gone
+        // spends no throttle slot, and the wait gives the user another chance
+        // to delete the one that is still queued.
+        if (!this.photoIsInBatch(photo)) {
+          skipDeletedPhoto();
+          return undefined;
+        }
+
         await waitForReadSlot();
+
+        if (!this.photoIsInBatch(photo)) {
+          skipDeletedPhoto();
+          return undefined;
+        }
+
         const result = await this.readBatchPhotoPlate(photo);
         const changes = this.readChangesFormReport({ photo, read: result });
         completed += 1;
@@ -3860,6 +3889,15 @@ class Home extends React.Component {
       })),
     }));
   };
+
+  // Whether the batch still holds a photo. The user can delete one while its
+  // plate read waits its turn; a read for a deleted photo spends a call on a
+  // report nobody can file.
+  photoIsInBatch = photo =>
+    this.state.batchPhotos.some(candidate => candidate.file === photo.file) ||
+    this.state.batchViolations.some(violation =>
+      violation.photos.some(candidate => candidate.file === photo.file),
+    );
 
   // One photo's plate read: the network call, made once the metadata pass has
   // settled what order the batch is in.

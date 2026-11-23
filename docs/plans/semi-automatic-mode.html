@@ -1177,7 +1177,8 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
           found, that the rows are on screen before a plate is read, that the first row loads itself
           once its own photos have been read, that a read merges a row into its car and reloads the
           form with the row's photos, that dropping a one-photo row's photo on New violation copies
-          the row, that loading one fills the fields from cache, that
+          the row, that a photo deleted while its plate read waits is not read, that loading one
+          fills the fields from cache, that
           <strong>no second <code>/platerecognizer</code> call fires</strong>, and that Submit
           advances.
         </li>
@@ -1219,7 +1220,8 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
           second token straight after the first is refused. Reads are spaced now: nothing waits
           until one is refused, and after that each read waits out the second the API asked for
           (<code>ALPR_THROTTLE_WAIT_MS</code>). A read the retry still loses is read again when its
-          violation is loaded. Check the account's own quota before running a large batch.
+          violation is loaded. A photo deleted while its read waits for a slot is skipped, so the
+          batch spends no call on it. Check the account's own quota before running a large batch.
           <code>/api/uploadAttachment</code> is the opposite — capped at
           <strong>a quarter of a gigabyte of unsubmitted attachments per IP</strong>, which a
           submission releases as it consumes them (<code>attachmentBudget.js</code>). A client that
@@ -1307,9 +1309,10 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         Written 2026-09-23 against <span class="mono">ba141241</span>, revised 2026-09-28 to match
         what was actually built, again on 2026-11-10, again on 2026-11-22 for the plate-only
         grouping and the one-photo copy on the New violation target, and again on 2026-11-23 for
-        the first-result plate rule. Line references are to <code>src/routes/home/Home.js</code>
-        unless another path is given, and are anchors from that commit rather than current ones —
-        the file has moved on since, so check them against the code rather than trusting them.
+        the first-result plate rule and the deleted-photo skip. Line references are to
+        <code>src/routes/home/Home.js</code> unless another path is given, and are anchors from
+        that commit rather than current ones — the file has moved on since, so check them against
+        the code rather than trusting them.
       </p>
       <p>
         Regenerate by re-reading that file, <code>src/alpr.js</code>,

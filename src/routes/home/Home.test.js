@@ -5798,6 +5798,65 @@ describe('Home', () => {
       cleanup();
     });
 
+    // A photo can be deleted while its read waits for a concurrency slot. The
+    // read is skipped rather than spent on a report nobody can file.
+    test('skips a photo deleted while its plate read waits its turn', async () => {
+      const photos = [
+        jpeg({ name: 'a.jpg', size: 4 }),
+        jpeg({ name: 'b.jpg', size: 5 }),
+        jpeg({ name: 'c.jpg', size: 6 }),
+        jpeg({ name: 'd.jpg', size: 7 }),
+      ];
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      // Three reads at a time, all held back, so the fourth one waits.
+      const { homeRef, platerecognizerCalls, settle, cleanup } =
+        await renderBatchWithFiles([], {
+          alprDelayMsBySize: { 4: 800, 5: 800, 6: 800 },
+        });
+
+      let batch;
+      renderer.act(() => {
+        batch = homeRef.current.addFilesToBatch(photos);
+      });
+
+      // Wait for the three slots to be taken. The fourth photo has not
+      // started, and it cannot while the other three are out.
+      for (let i = 0; i < 24 && platerecognizerCalls().length < 3; i += 1) {
+        // eslint-disable-next-line no-await-in-loop -- one turn per pending read; the wait is the point.
+        await renderer.act(async () => {
+          await new Promise(resolve => setTimeout(resolve, 25));
+        });
+      }
+      expect(platerecognizerCalls()).toHaveLength(3);
+
+      const deleted = photos[3];
+      renderer.act(() => {
+        homeRef.current.deletePhoto({ file: deleted, name: deleted.name });
+      });
+
+      await renderer.act(async () => {
+        await batch;
+      });
+      await settle();
+
+      // The fourth read is never sent, and the queue holds the two cars whose
+      // photos were read.
+      expect(platerecognizerCalls()).toHaveLength(3);
+      expect(
+        homeRef.current.state.batchViolations.map(violation => violation.plate),
+      ).toEqual(['T696817C', 'LDA8765']);
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
     test('reads a plate again when the violation is loaded, after a read the 429 refused', async () => {
       const photos = [jpeg({ name: 'a.jpg', size: 4 })];
 

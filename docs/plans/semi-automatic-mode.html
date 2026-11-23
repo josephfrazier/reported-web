@@ -524,7 +524,8 @@
     <dl class="meta">
       <div><dt>Status</dt><dd>built</dd></div>
       <div><dt>Written</dt><dd>2026-09-23</dd></div>
-      <div><dt>Revised</dt><dd>2026-11-22</dd></div>
+      <!-- Provenance: 665bfe0f (first-result plate rule), 5e1d368b (deleted-photo skip), 21fea9b3 (address lookups behind the plate reads) -->
+      <div><dt>Revised</dt><dd>2026-11-23</dd></div>
       <div><dt>Base</dt><dd>ba141241</dd></div>
     </dl>
 
@@ -908,18 +909,20 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
       </p>
 
       <h3>Geocode once per violation, not per photo</h3>
+      <!-- Provenance: 21fea9b3 "perf: start the plate reads before the address lookups"; 198b8287 "feat: show the queue's rows before the plate reads finish" (geosearchesInFlight) -->
       <p>
         An address is a function of coordinates alone. A batch taken at one curb used to cost one
         identical lookup per photo, and the memo brings that down to one. The lookups start once
         the first plate read is on the wire, so no free geosearch request runs in front of a plate
         read — the reads own the scarce quota and supply the grouping. A row that opens before its
         address is in asks for the same place itself, and that answer fills the memo for the rows
-        after it; the memo and the in-flight set keep a repeated place from being fetched twice. A
-        reload clears the page's memo, and the server's disk cache answers a place it has seen
-        before without calling geosearch. An answer that fell back to the top result because the
-        address directory was down is shown but not kept, in the page's memo or on disk.
-        <code>geocodePlaces</code> warms the memo for every distinct place while the plate reads
-        run.
+        after it. The memo and the batch's in-flight set keep its own repeated places from being
+        fetched twice; the form's debounced lookup is separate, so a row opened before the batch's
+        lookup answers can ask for the same place once more. A reload clears the page's memo, and
+        the server's disk cache answers a place it has seen before without calling geosearch. An
+        answer that fell back to the top result because the address directory was down is shown
+        but not kept, in the page's memo or on disk. <code>geocodePlaces</code> warms the memo for
+        every distinct place while the plate reads run.
       </p>
 
       <div class="note">
@@ -944,9 +947,13 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         <code>src/groupAttachmentsByViolation.test.js</code>, following the repo's habit of
         extracting logic into small pure modules with direct tests.
       </p>
-      <p>One helper lives alongside it:</p>
+      <!-- Provenance: 1a242f97 (module and normalizedCenterDistance), 665bfe0f (plateForPhotos), 29d5640d (plateCropFor), adb926fc (mergeViolations) -->
+      <p>It exports the grouping itself and four helpers:</p>
       <ul>
         <li><code>normalizedCenterDistance(box, uploadWidth, uploadHeight)</code> — how far a plate sits from the frame centre</li>
+        <li><code>plateForPhotos(photos, { foldFrom })</code> — the plate a set of photos reports; the queue row and the form both call it</li>
+        <li><code>plateCropFor({ photos, plate })</code> — the photo, box and frame size the queue draws the plate crop from</li>
+        <li><code>mergeViolations(violations)</code> — the hand merge the queue's Merge button performs</li>
       </ul>
       <p>
         Capture order, and the two rules that read it, live in
@@ -963,7 +970,8 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
             <tr><th>Key</th><th>Holds</th></tr>
           </thead>
           <tbody>
-            <tr><td><code>batchPhotos</code></td><td>One record per photo, with its extraction results</td></tr>
+            <!-- Provenance: 198b8287 "feat: show the queue's rows before the plate reads finish"; e0fe159d "fix: weigh every plate read against the whole batch" -->
+            <tr><td><code>batchPhotos</code></td><td>The photos of the pass in hand, with their extraction results; the rows hold the batch's full set</td></tr>
             <tr><td><code>batchViolations</code></td><td>Grouped output, in earliest-first order</td></tr>
             <tr><td><code>batchProgress</code></td><td><code>{ stage, completed, total }</code></td></tr>
             <tr><td><code>currentViolationIndex</code></td><td>Where the walk-through has reached</td></tr>
@@ -971,6 +979,22 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
           </tbody>
         </table>
       </div>
+
+      <!-- Provenance: 46527fe3 "feat: report grouping corrections to Sentry"; eeedf207 (duplicate event) -->
+      <h3>Grouping telemetry</h3>
+      <p>
+        The batch records what the user corrects: a hand merge, a deleted row, a photo split into a
+        new violation, a photo moved to another row, a discarded queue, a duplicated row, and a
+        sampled batch-done event. Each event carries the raw photo records and the rows before and
+        after.
+      </p>
+      <p>
+        <code>src/batchGroupingEvents.js</code> is the seam. The browser entry registers a Sentry
+        sender, and <code>Home</code> reaches it through <code>captureBatchGroupingEvent</code>.
+        The module imports no Sentry code, so the server bundle can import it too; with no sender —
+        the server, tests, or a build without a DSN — the calls do nothing. The sender attaches the
+        payload as <code>batch.json</code>, because the event's own field limits would trim it.
+      </p>
 
       <h3>The function to get right</h3>
       <ul>
@@ -987,12 +1011,15 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
       </p>
 
       <h3>Submitting a violation</h3>
+      <!-- Provenance: 25375d08 "fix: take the plate with the photo it was read from" (plateProvenance); email/FirstName/LastName/Phone are the existing profile fields -->
       <p>
-        <code>getPerSubmissionState()</code> already returns precisely the per-submission fields —
-        <code>plate</code>, <code>licenseState</code>, <code>latitude</code>, <code>longitude</code>,
-        <code>coordsAreInNyc</code>, <code>formatted_address</code>, <code>CreateDate</code>,
-        <code>typeofcomplaint</code>, <code>reportDescription</code>,
-        <code>can_be_shared_publicly</code>, <code>withhold_contact_info_from_nypd</code>,
+        <code>getPerSubmissionState()</code> already returns the per-submission fields —
+        <code>email</code>, <code>FirstName</code>, <code>LastName</code>, <code>Phone</code>,
+        <code>plate</code>, <code>plateProvenance</code>, <code>licenseState</code>,
+        <code>latitude</code>, <code>longitude</code>, <code>coordsAreInNyc</code>,
+        <code>formatted_address</code>, <code>CreateDate</code>, <code>typeofcomplaint</code>,
+        <code>reportDescription</code>, <code>can_be_shared_publicly</code>,
+        <code>withhold_contact_info_from_nypd</code>,
         <code>receive_nypd_sr_updates_by_email</code>, <code>testify</code> — and is already wired
         into the submit payload. Loading a violation sets them through the existing
         <code>setLicensePlate</code>, <code>setCreateDate</code> and <code>setCoords</code>.
@@ -1043,14 +1070,15 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         holds. The app says how many it found, or why it could not read the archive; a zip that
         holds nothing usable adds nothing to the batch.
       </p>
+      <!-- Provenance: 04929b86 "refactor: pick files with a plain input (#1151)" -->
       <p>
-        The two file inputs read <code>event.target.files</code> directly rather than going through
-        the existing <code>FileReaderInput</code>. That component is used with
-        <code>as="buffer"</code>, which reads every selected file's contents into memory; across a
-        whole folder that is a great deal of buffering before ALPR has even started. (For the
-        record it <em>would</em> accept <code>webkitdirectory</code> — it spreads unknown props
-        onto the real input — it is the buffering that rules it out.) The drop and paste routes
-        hand over <code>File</code> objects the same way.
+        The two file inputs read <code>event.target.files</code> directly rather than through a
+        buffering reader. (<code>FileReaderInput</code>, which the app used before, reads with
+        <code>as="buffer"</code> and so loads every selected file's contents into memory; across a
+        whole folder that is a great deal of buffering before ALPR has even started. It would have
+        accepted <code>webkitdirectory</code> — it spreads unknown props onto the real input — but
+        the buffering is what ruled it out.) The drop and paste routes hand over
+        <code>File</code> objects the same way.
       </p>
       <p>
         Picks accumulate, so a folder and then a few stragglers make up one batch. Selection order
@@ -1067,9 +1095,10 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
       </div>
 
       <h3>During the batch</h3>
+      <!-- Provenance: 9fc7fc9e "feat: add semi-automatic batch mode to `Home`" (progress bar and queue UI) -->
       <p>
-        An inline <code>&lt;progress&gt;</code> bar on the form, counting photos read. No modal: the
-        batch is long-running and the user should be able to see the page while it works.
+        An inline <code>&lt;progress&gt;</code> bar above the queue, counting photos read. No modal:
+        the batch is long-running and the user should be able to see the page while it works.
       </p>
       <p>
         The bar names the two passes over the files themselves — dates and places, then plates.
@@ -1097,6 +1126,7 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         the other. The deleted row itself is remembered, so a later regrouping cannot make it
         again.
       </p>
+      <!-- Provenance: adb926fc "feat: merge queue violations the user says are one report"; carried through a49077b7 -->
       <p>
         The <strong>Merge</strong> button sits on the queue's heading whenever two or more rows are
         shown, and is enabled once two of them are ticked. It makes one report of them, which the
@@ -1104,8 +1134,8 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         taken to establish where a car is can read no plate, while a read can fail. One car can
         therefore stand as two rows. Only the user knows the two are one report, and merging takes
         their word rather than re-running the grouping, which has no signal that says so. The
-        merged report keeps the plate of the group with the most photos, and takes its time and
-        place from all of the photos it now holds.
+        merged report keeps the plate of the row with the most photos among those that read a
+        plate, and takes its time and place from all of the photos it now holds.
       </p>
       <p>
         Opening a row with nothing ticked ticks that row, so putting it together with the row
@@ -1127,6 +1157,7 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         backs two reports. The copy is marked as the user's own, so a later read leaves it whole,
         and both rows show the <em>shares a photo</em> badge.
       </p>
+      <!-- Provenance: 48609466 "feat: show the report's photos as one grid of tiles"; 6da2f656 "refactor: give the photo trash its own button" -->
       <p>
         The first violation loads itself, so the form is ready to submit without a click. Loading
         one puts its photos in the form as thumbnails with the usual plate overlays, and fills the
@@ -1134,7 +1165,8 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         the violation already loaded is a no-op rather than a reload, because loading resets the
         attachment selection to the group's default and would discard a swap made with the picker.
         Only the photos that went into the report leave the batch when it is submitted: a group's
-        leftovers appear at once as a row of their own, so a photo left out with the X is not lost.
+        leftovers appear at once as a row of their own, so a photo left out of the picker is not
+        lost. The X on a thumbnail is the other action: it deletes the photo from the batch.
       </p>
 
       <h3>Groups over three photos</h3>

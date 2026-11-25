@@ -2152,19 +2152,15 @@ class Home extends React.Component {
       const licenseState = getLicenseStateFromPlateResult(result);
 
       // The overlay for the plate in the License/Medallion field is marked as
-      // selected, whether it was typed or clicked. A folded group can be
-      // spelled several ways, so any string the result offers counts: the
-      // field may hold the clean medallion while this box read a variant. The
-      // state is left out of the comparison: it can be hard to tell apart in a
-      // photo, and the user chose the plate.
+      // selected, whether it was typed or clicked. The comparison is against
+      // the string the overlay shows, not the candidates ALPR offered with
+      // it: a candidate is another value this box may have read, and marking
+      // the overlay selected would claim the field holds what the box shows
+      // when it holds a different plate. The state is left out of the
+      // comparison: it can be hard to tell apart in a photo, and the user
+      // chose the plate.
       const selectedPlate = this.state.plate?.toUpperCase();
-      const resultPlates = [
-        plate,
-        ...(result.candidates || []).map(candidate =>
-          candidate?.plate?.trim().toUpperCase(),
-        ),
-      ].filter(Boolean);
-      const isSelected = resultPlates.includes(selectedPlate);
+      const isSelected = plate === selectedPlate;
       const className = isSelected
         ? `${homeStyles['plate-overlay']} ${homeStyles['plate-overlay-selected']}`
         : homeStyles['plate-overlay'];

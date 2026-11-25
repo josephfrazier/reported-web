@@ -5428,6 +5428,107 @@ describe('Home', () => {
       cleanup();
     });
 
+    // The car moves down the block between violations, and the locked
+    // address would file every one of them at the first place. Loading the
+    // next violation warns that its photos give somewhere else, so the user
+    // can uncheck the box and file it there.
+    test('warns to uncheck the box when the next violation is at another address', async () => {
+      const photos = [
+        jpeg({ name: 'first.jpg', size: 4 }),
+        jpeg({ name: 'second.jpg', size: 6 }),
+      ];
+
+      exifr.gps.mockImplementation(async arrayBuffer =>
+        arrayBuffer.byteLength === 4
+          ? { latitude: 40.73, longitude: -74.01 }
+          : { latitude: 40.75, longitude: -73.95 },
+      );
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, toastWarn, clickQueueLoad, cleanup } =
+        await renderBatchWithFiles(photos, {
+          addressAt: ({ lat }) => ({
+            housenumber: '1',
+            street: lat === 40.73 ? 'First St' : 'Second St',
+          }),
+        });
+
+      // The first violation is loaded; lock the address it stands at.
+      expect(homeRef.current.state.plate).toBe('T696817C');
+      renderer.act(() => {
+        homeRef.current.handleInputChange({
+          target: {
+            name: 'isLocationLocked',
+            type: 'checkbox',
+            checked: true,
+          },
+        });
+      });
+
+      // The next row stands somewhere else, so the box would file it at the
+      // first address. The queue row's own text is the control that loads it.
+      await clickQueueLoad('LDA8765');
+      await renderer.act(async () => {});
+
+      const warning = toastWarn.mock.calls
+        .map(([message]) => String(message))
+        .find(message => message.includes('Reuse this address'));
+      expect(warning).toBeDefined();
+      expect(warning).toContain('1 Second St, Manhattan');
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    // Two places the city writes the same way are one address to file the
+    // report at, so the box has nothing to warn about.
+    test('does not warn when the next violation is at the same address', async () => {
+      const photos = [
+        jpeg({ name: 'first.jpg', size: 4 }),
+        jpeg({ name: 'second.jpg', size: 6 }),
+      ];
+
+      exifr.gps.mockImplementation(async arrayBuffer =>
+        arrayBuffer.byteLength === 4
+          ? { latitude: 40.73, longitude: -74.01 }
+          : { latitude: 40.75, longitude: -73.95 },
+      );
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, toastWarn, clickQueueLoad, cleanup } =
+        await renderBatchWithFiles(photos);
+
+      renderer.act(() => {
+        homeRef.current.handleInputChange({
+          target: {
+            name: 'isLocationLocked',
+            type: 'checkbox',
+            checked: true,
+          },
+        });
+      });
+
+      await clickQueueLoad('LDA8765');
+      await renderer.act(async () => {});
+
+      expect(
+        toastWarn.mock.calls.some(([message]) =>
+          String(message).includes('Reuse this address'),
+        ),
+      ).toBe(false);
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
     // The plate reads own the scarce quota, and the grouping needs them; the
     // free address lookups start behind the first read.
     test('starts the plate reads before the address lookups', async () => {
@@ -11305,6 +11406,104 @@ describe('a locked address', () => {
 
     restoreObjectUrls();
     axiosPost.mockRestore();
+    consoleError.mockRestore();
+    tree.unmount();
+  });
+
+  // A box restored from the last session was checked at a place this page
+  // never saw, so the first report it sees is the place it is holding -- not
+  // a place the camera has left. The report after it can still move.
+  test('takes the first report a restored lock sees as its place', async () => {
+    const homeRef = React.createRef();
+    const tree = renderHome({ homeRef });
+
+    const restoreObjectUrls = stubObjectUrls();
+    const toastWarn = jest.spyOn(toast, 'warn').mockImplementation(() => null);
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    const axiosPost = jest
+      .spyOn(axios, 'post')
+      .mockImplementation((url, body) => {
+        if (url === '/api/geosearch') {
+          return Promise.resolve({
+            data: {
+              features: [
+                {
+                  properties: {
+                    housenumber: '1',
+                    street: body.lat === 40.73 ? 'First St' : 'Second St',
+                    borough: 'Manhattan',
+                  },
+                },
+              ],
+            },
+          });
+        }
+        return Promise.resolve({ data: {} });
+      });
+
+    const first = new File(['first'], 'first.jpg', { type: 'image/jpeg' });
+    const second = new File(['second'], 'second.jpg', { type: 'image/jpeg' });
+    const firstReading = {
+      latitude: 40.73,
+      longitude: -74.01,
+      createDateMs: 1000,
+    };
+    const secondReading = {
+      latitude: 40.75,
+      longitude: -73.95,
+      createDateMs: 2000,
+    };
+    const firstFiles = [first];
+
+    renderer.act(() => {
+      homeRef.current.setState({
+        ...chosenPlace,
+        isLocationLocked: true,
+        attachmentData: firstFiles,
+      });
+    });
+
+    await renderer.act(async () => {
+      await homeRef.current.warnIfLockedAddressMoved({
+        files: firstFiles,
+        readings: [firstReading],
+      });
+    });
+
+    // Nothing has moved since the box was restored, so there is nothing to
+    // say -- only a place to remember.
+    expect(homeRef.current.lockedUnlockPlace).toEqual({
+      latitude: 40.73,
+      longitude: -74.01,
+    });
+    expect(toastWarn).not.toHaveBeenCalled();
+
+    // The next report stands elsewhere, and now the box has somewhere to
+    // point the user.
+    const secondFiles = [second];
+    renderer.act(() => {
+      homeRef.current.setState({ attachmentData: secondFiles });
+    });
+    await renderer.act(async () => {
+      await homeRef.current.warnIfLockedAddressMoved({
+        files: secondFiles,
+        readings: [secondReading],
+      });
+    });
+
+    expect(
+      toastWarn.mock.calls.some(
+        ([message]) =>
+          String(message).includes('Reuse this address') &&
+          String(message).includes('1 Second St, Manhattan'),
+      ),
+    ).toBe(true);
+
+    restoreObjectUrls();
+    axiosPost.mockRestore();
+    toastWarn.mockRestore();
     consoleError.mockRestore();
     tree.unmount();
   });

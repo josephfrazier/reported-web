@@ -1006,6 +1006,11 @@ const SUBMISSION_TOAST_ID = 'submission-thanks';
 // screen, so a new report replaces its words rather than stacking a copy.
 const MISSING_VALUES_TOAST_ID = 'missing-photo-values';
 
+// The id of the toast that says the camera's GPS has moved since the address
+// was locked. A toast with this id stays one at a time: the next report may
+// be at the same new place, and a second copy of it says nothing new.
+const LOCKED_ADDRESS_MOVED_TOAST_ID = 'locked-address-moved';
+
 // What a location read that found nothing says. Android strips GPS from media
 // shared through some apps, and issue 751 has the details: the warning links
 // to it, as the single-report flow's warning did.
@@ -1554,8 +1559,14 @@ class Home extends React.Component {
     this.geosearchAddressCache = createGeosearchAddressCache();
     // Places with an address lookup in flight; see geocodeBatchViolation.
     this.geosearchesInFlight = new Set();
-    // Places with a hint lookup in flight; see `refreshUnlockPlace`.
-    this.unlockAddressLookups = new Set();
+    // Places with an address lookup in flight, and the lookup itself, so the
+    // hint and the lock's reminder share one request; see `addressForPlace`.
+    this.unlockAddressLookups = new Map();
+    // The place unchecking the box would have returned the report to when the
+    // box was checked, or the first report that loaded while it was already
+    // on. `undefined` means there is none to compare against; see
+    // `rememberLockedUnlockPlace` and `warnIfLockedAddressMoved`.
+    this.lockedUnlockPlace = undefined;
     // Serialises batch passes: picks accumulate, and each pass must see the
     // results of the one before it (see addFilesToBatch).
     this.batchQueue = Promise.resolve();
@@ -4089,6 +4100,7 @@ class Home extends React.Component {
     const attached = attachedFiles
       ? violation.photos.filter(photo => attachedFiles.includes(photo.file))
       : batchSelectionFor({ photos: violation.photos });
+    const reportFiles = attached.map(photo => photo.file);
 
     // Upload this report's photos, so submitting can send attachment IDs rather
     // than the bytes. Doing it here rather than when the folder is picked is
@@ -4100,7 +4112,7 @@ class Home extends React.Component {
     // unsubmitted attachments at a time, so a picked folder can spend the whole
     // budget in one go. Every upload past it is refused, quietly, leaving the
     // submit to send the file itself.
-    startBackgroundUploads(attached.map(photo => photo.file));
+    startBackgroundUploads(reportFiles);
 
     // Opening a row ticks it, so that putting it together with the row beside
     // it is one tick rather than two. One tick is what opening a row leaves
@@ -4114,7 +4126,7 @@ class Home extends React.Component {
     this.setState(
       {
         currentViolationIndex: index,
-        attachmentData: attached.map(photo => photo.file),
+        attachmentData: reportFiles,
         allPlateData:
           violation.photos.find(photo => photo.plateResults)?.plateResults ||
           null,
@@ -4140,12 +4152,9 @@ class Home extends React.Component {
         // From the callback rather than after the call, because the plate is
         // worked out from the readings of the photos now attached, and those
         // readings are what this very update is putting into state.
-        this.applyPhotosToForm(
-          attached.map(photo => photo.file),
-          {
-            previousPhotos,
-          },
-        );
+        this.applyPhotosToForm(reportFiles, {
+          previousPhotos,
+        });
 
         if (!sameReport) {
           // The report starts from its own photos, not from the one before
@@ -4192,6 +4201,15 @@ class Home extends React.Component {
 
         if (this.state.batchProgress === null) {
           this.plateReread = this.rereadFailedPlates({ violation });
+        }
+
+        if (!sameReport) {
+          // The report is a new one, so it may stand anywhere: warn when the
+          // box would file it at a place the camera has left.
+          this.warnIfLockedAddressMoved({
+            files: reportFiles,
+            readings: attached,
+          });
         }
       },
     );
@@ -5014,8 +5032,12 @@ class Home extends React.Component {
     this.setState(stateChange, () => {
       debouncedSavePersistentStateToCookie(this);
 
-      if (name === 'isLocationLocked' && value === false) {
-        this.unlockLocation();
+      if (name === 'isLocationLocked') {
+        if (value) {
+          this.rememberLockedUnlockPlace();
+        } else {
+          this.unlockLocation();
+        }
       }
     });
   };
@@ -5032,15 +5054,14 @@ class Home extends React.Component {
   refreshUnlockPlace = async () => {
     const { attachmentData, isLocationLocked } = this.state;
 
-    const located = isLocationLocked
-      ? latestLocatedPhoto(this.readingsOf(attachmentData))
+    const place = isLocationLocked
+      ? this.unlockPlaceFor(this.readingsOf(attachmentData))
       : null;
 
     if (
-      !located ||
-      !this.placeIsInNyc(located) ||
-      (located.latitude === this.state.latitude &&
-        located.longitude === this.state.longitude)
+      !place ||
+      (place.latitude === this.state.latitude &&
+        place.longitude === this.state.longitude)
     ) {
       if (this.state.unlockPlace !== null) {
         this.setState({ unlockPlace: null });
@@ -5048,57 +5069,165 @@ class Home extends React.Component {
       return;
     }
 
-    const { latitude, longitude } = located;
-
     // The photos, the lock or the place may have moved while a lookup was
     // out, so an answer is shown only for the place the box would still
     // return to.
     const showIfCurrent = address => {
       const current = this.state.isLocationLocked
-        ? latestLocatedPhoto(this.readingsOf(this.state.attachmentData))
+        ? this.unlockPlaceFor(this.readingsOf(this.state.attachmentData))
         : null;
 
-      if (current?.latitude !== latitude || current?.longitude !== longitude) {
+      if (
+        current?.latitude !== place.latitude ||
+        current?.longitude !== place.longitude
+      ) {
         return;
       }
 
       this.setState({
-        unlockPlace: address ? { latitude, longitude, address } : null,
+        unlockPlace: address ? { ...place, address } : null,
       });
     };
 
+    const address = await this.addressForPlace(place);
+
+    // A failed lookup leaves the hint as it was: it is only a hint, and the
+    // report can still be submitted.
+    if (address !== null) {
+      showIfCurrent(address);
+    }
+  };
+
+  // The place unchecking the box would return a report to: the newest of its
+  // photos that knows where it was, when the city can name that place. Null
+  // when no photo knows one, or when the place is outside the city -- the
+  // form would only show an error for that place.
+  unlockPlaceFor = readings => {
+    const located = latestLocatedPhoto(readings);
+    return located && this.placeIsInNyc(located)
+      ? { latitude: located.latitude, longitude: located.longitude }
+      : null;
+  };
+
+  // The short address geosearch gives a place, from the memo when it has one.
+  // Callers asking for the same place share one request. Null means the
+  // lookup failed, which is not an address: the hint leaves itself out, and
+  // the lock's reminder has nothing to compare.
+  addressForPlace = async ({ latitude, longitude }) => {
     const cached = this.geosearchAddressCache.get({ latitude, longitude });
     if (cached !== undefined) {
-      showIfCurrent(shortAddress(cached));
-      return;
+      return shortAddress(cached);
     }
 
     const key = `${latitude},${longitude}`;
-    if (this.unlockAddressLookups.has(key)) {
+    let lookup = this.unlockAddressLookups.get(key);
+
+    if (!lookup) {
+      // Not debouncedGeosearch: debounce() resolves every pending call with
+      // the last call's response, and these lookups are not the user moving
+      // the map.
+      lookup = fetchGeosearchAddress({ latitude, longitude })
+        .then(data => {
+          const { properties } = selectGeosearchFeature(data.features);
+          const address = formatGeosearchAddress(properties);
+          // A fallback says the city's address directory was unavailable, so
+          // the address may change once it answers: show it, but do not keep
+          // it.
+          if (!data.fellBackToTopResult) {
+            this.geosearchAddressCache.set({ latitude, longitude, address });
+          }
+          return shortAddress(address);
+        })
+        .catch(err => {
+          // A hint is only a hint: a failed lookup leaves it out, and the
+          // report can still be submitted.
+          console.error(err);
+          return null;
+        })
+        .finally(() => this.unlockAddressLookups.delete(key));
+      this.unlockAddressLookups.set(key, lookup);
+    }
+
+    return lookup;
+  };
+
+  // Remember the place unchecking the box would return the report to, as of
+  // the moment the box was checked. A report that loads later at another
+  // address is the camera's GPS having moved, which
+  // `warnIfLockedAddressMoved` says out loud.
+  rememberLockedUnlockPlace = () => {
+    this.lockedUnlockPlace = this.unlockPlaceFor(
+      this.readingsOf(this.state.attachmentData),
+    );
+  };
+
+  // Loaded reports can stand at different places: the camera moves down the
+  // block while the box holds the first one. When a report that loads gives
+  // another address than the one the box was checked at, say so and point at
+  // the box, whose unchecking moves the report to the place its photos give.
+  //
+  // The comparison is between addresses, not coordinates: a camera that has
+  // barely moved still names the same block, and the address is what the
+  // toast can tell the user to file the report at.
+  //
+  // `files` is the report's attachments and `readings` what its photos read;
+  // the files are how the answer is checked against the report still on
+  // screen when the lookup lands.
+  warnIfLockedAddressMoved = async ({ files, readings }) => {
+    if (!this.state.isLocationLocked) {
       return;
     }
-    this.unlockAddressLookups.add(key);
 
-    try {
-      // Not debouncedGeosearch: debounce() resolves every pending call with
-      // the last call's response, and this lookup is not the user moving the
-      // map.
-      const data = await fetchGeosearchAddress({ latitude, longitude });
-      const { properties } = selectGeosearchFeature(data.features);
-      const address = formatGeosearchAddress(properties);
-      // A fallback says the city's address directory was unavailable, so the
-      // address may change once it answers: show it, but do not keep it.
-      if (!data.fellBackToTopResult) {
-        this.geosearchAddressCache.set({ latitude, longitude, address });
-      }
-      showIfCurrent(shortAddress(address));
-    } catch (err) {
-      // The hint is only a hint: a failed lookup leaves it out, and the
-      // report can still be submitted.
-      console.error(err);
-    } finally {
-      this.unlockAddressLookups.delete(key);
+    const place = this.unlockPlaceFor(readings);
+
+    // The box was already on when the page loaded, so there is no place it
+    // was checked at this session. This report is the place to remember, not
+    // a change from it.
+    if (this.lockedUnlockPlace === undefined) {
+      this.lockedUnlockPlace = place;
+      return;
     }
+
+    // Unchecking would leave the report where the box holds it, so there is
+    // no other place to send the user to.
+    if (!place) {
+      return;
+    }
+
+    const remembered = this.lockedUnlockPlace;
+    if (
+      remembered &&
+      remembered.latitude === place.latitude &&
+      remembered.longitude === place.longitude
+    ) {
+      return;
+    }
+
+    const [address, rememberedAddress] = await Promise.all([
+      this.addressForPlace(place),
+      remembered ? this.addressForPlace(remembered) : '',
+    ]);
+
+    // The lock, the report or the place may have changed while a lookup was
+    // out, and the toast is only about the report that just loaded.
+    if (
+      !this.state.isLocationLocked ||
+      this.state.attachmentData !== files ||
+      !address
+    ) {
+      return;
+    }
+
+    // A lookup that failed, or two places the city writes the same way,
+    // leaves nothing to warn about.
+    if (rememberedAddress === null || rememberedAddress === address) {
+      return;
+    }
+
+    Home.notifyWarning(
+      `The camera's GPS has moved since "Reuse this address" was checked: these photos give ${address}. Uncheck the box to file this report there.`,
+      { toastId: LOCKED_ADDRESS_MOVED_TOAST_ID },
+    );
   };
 
   // Whether `setCoords` would name a place at these coordinates. A place

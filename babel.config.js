@@ -19,7 +19,6 @@ module.exports = {
         },
       },
     ],
-    '@babel/preset-flow',
     '@babel/preset-react',
   ],
   plugins: ['@babel/plugin-transform-class-properties'],

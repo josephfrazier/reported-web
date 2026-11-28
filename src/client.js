@@ -16,6 +16,7 @@ import { createPath } from 'history';
 import StyleContext from 'isomorphic-style-loader/StyleContext';
 import cookie from 'cookie';
 import * as Sentry from '@sentry/browser';
+import { setBatchGroupingSender } from './batchGroupingEvents.js';
 import App from './components/App.js';
 import createFetch from './createFetch.js';
 import history from './history.js';
@@ -39,6 +40,27 @@ if (window.App.sentryDsn) {
         levels: ['log', 'info', 'warn', 'error'],
       }),
     ],
+  });
+
+  // The batch's grouping events: the raw data behind a correction, sent as an
+  // attachment so the event's own field limits do not trim it. `Home` reaches
+  // this through `captureBatchGroupingEvent`.
+  setBatchGroupingSender(payload => {
+    Sentry.captureEvent({
+      message: `batch grouping: ${payload.event}`,
+      level: 'info',
+      tags: {
+        batchEvent: payload.event,
+        ...(payload.source ? { batchSource: payload.source } : {}),
+      },
+      attachments: [
+        {
+          filename: 'batch.json',
+          data: JSON.stringify(payload),
+          contentType: 'application/json',
+        },
+      ],
+    });
   });
 }
 

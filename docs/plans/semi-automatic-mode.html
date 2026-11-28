@@ -513,8 +513,8 @@
     <p class="eyebrow">Implementation plan · reported-web</p>
     <h1>Semi-Automatic Mode</h1>
     <p class="standfirst">
-      A queue row can be opened into the form, and reads that merge or divide rows follow the
-      form. The queue itself follows.
+      The queue and its photo inputs are on screen. The controls for merging, moving,
+      splitting and deleting rows follow.
     </p>
 
     <dl class="meta">
@@ -815,6 +815,34 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         </p>
       </div>
 
+      <h3 id="when-the-rows-appear">When the rows appear, and what changes them</h3>
+      <p>
+        The dates and places pass is local and it covers the whole batch, so once it is done every
+        photo can be a row: one photo is one violation until a plate says otherwise. The queue is
+        published there and then — a second or so after the folder is picked, whatever the batch
+        size and whatever the rate limit is doing. The plate reads start as soon as the rows are
+        out; the address lookups wait for the first read to be on the wire, so the free lookups
+        follow the scarce plate calls.
+      </p>
+      <p>
+        The plate reads merge the rows in behind it. Each read replaces its photo's record and the
+        whole batch regroups: photos whose folded plates agree become one row, and a photo that
+        turns out to read two shared plates leaves the row it was in. That is the same grouping
+        applied as soon as it can be, so a car's photos join up as its readings arrive.
+      </p>
+      <p>
+        The form waits a little longer than the queue. The first row is loaded once its own photos
+        have been read; a row that a later read merges into it is loaded again with the merged
+        row's photos, so the report is not left short of its own car's evidence. A row that
+        divides under the form is loaded again onto the row holding the photos it had attached.
+      </p>
+      <p>
+        What this replaced was a rule for when a violation had stopped changing — the frontier and
+        <code>isViolationSettled</code>, published one violation at a time only once nothing still
+        to come could reach back and join it. Every row now starts as one photo, so the queue can
+        appear at once and settle as the reads merge it.
+      </p>
+
       <h3 id="dates-first-then-plates">Dates first, then plates</h3>
       <p>
         The batch reads each photo twice. The first pass takes the date and the place out of the
@@ -951,6 +979,25 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
       <!-- Provenance: 46527fe3 "feat: report grouping corrections to Sentry"; eeedf207 (duplicate event) -->
     </section>
 
+    <!-- ============================ UI ============================ -->
+    <section id="ui">
+      <h2>Interface</h2>
+
+      <h3>During the batch</h3>
+      <!-- Provenance: 9fc7fc9e "feat: add semi-automatic batch mode to `Home`" (progress bar and queue UI) -->
+      <p>
+        An inline <code>&lt;progress&gt;</code> bar above the queue, counting photos read. No modal:
+        the batch is long-running and the user should be able to see the page while it works.
+      </p>
+      <p>
+        The bar names the two passes over the files themselves — dates and places, then plates.
+        Grouping happens with the first of them, and the queue appearing is that progress. The
+        plate reads start as soon as the rows are published; the batch's places are geocoded behind
+        them, so a row can open before its address is in. The bar's second pass is the plate labels
+        filling in and the rows merging.
+      </p>
+
+    </section>
 
 
 

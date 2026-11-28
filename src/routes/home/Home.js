@@ -42,7 +42,6 @@ import { ToastContainer, toast } from 'react-toastify';
 import toastifyStyles from 'react-toastify/dist/ReactToastify.css';
 import { zip } from 'zip-array';
 import PolygonLookup from 'polygon-lookup';
-import CircularProgress from '@mui/material/CircularProgress';
 
 import marx from 'marx-css/css/marx.css';
 import usStateNames, { licenseStateName } from '../../usStateNames.js';
@@ -60,6 +59,7 @@ import earliestTakenPhoto from '../../earliestTakenPhoto.js';
 import createGeosearchAddressCache from '../../geosearchAddressCache.js';
 import groupAttachmentsByViolation, {
   mergeViolations,
+  plateCropFor,
   plateForPhotos,
 } from '../../groupAttachmentsByViolation.js';
 import { captureBatchGroupingEvent } from '../../batchGroupingEvents.js';
@@ -957,6 +957,29 @@ async function mapWithConcurrency({ items, limit, worker }) {
   return results;
 }
 
+// Whether a photo's reading is still to come: its turn has not arrived (its
+// `plateRead` is unset while the pass runs) or a second chance is reading it
+// now, which the pass's own reads mark as `reading` before they start.
+//
+// A photo that has been through a reading says `read` or `failed` and stays
+// that way until another reading starts, so the row it is in can say whether
+// what it shows is settled.
+function photoIsBeingRead({ photo, isPassRunning }) {
+  return photo.plateRead === 'reading' || (isPassRunning && !photo.plateRead);
+}
+
+// What a row says about its plates. A row with a read still outstanding says
+// so rather than looking like a row that read nothing: a refusal and a photo
+// with no readable plate leave the same `plateResults` behind, and the two
+// mean different things to the person reading the queue.
+function batchRowPlateLabel({ violation, isReading }) {
+  if (violation.plate) {
+    return violation.plate;
+  }
+
+  return isReading ? 'reading plates…' : 'nothing readable';
+}
+
 // What names a row, for the merge tick and for the list's own keys: the time it
 // reports, its plate, and the photo it opens with.
 //
@@ -1105,10 +1128,28 @@ function tooManyAttachments(attachmentData) {
   return pictures > 3 || attachmentData.length - pictures > 3;
 }
 
+// Grouping and geocoding happen per violation as it is published, so the queue
+// appearing underneath is the progress for those. The bar names the two passes
+// over the files themselves.
+const BATCH_STAGE_LABELS = {
+  metadata: 'Reading dates and places',
+  alpr: 'Reading license plates',
+};
+
+// What the new-violation drop target is called in `dropTargetIdentity`. Row
+// identities are a time, a plate and a photo name, so this cannot collide
+// with one.
+const NEW_VIOLATION_DROP = 'new-violation';
+
 // How many untouched batches report their grouping data. Corrections alone
 // show the mistakes; an untouched batch is the denominator that says how often
 // the grouping is right.
 const BATCH_GROUPING_SAMPLE_RATE = 0.05;
+
+const formatBatchViolationTime = createDateMs =>
+  Number.isFinite(createDateMs)
+    ? new Date(createDateMs).toLocaleString()
+    : 'unknown time';
 
 // The trash that deletes a photo. It sits in the corner of the photo's tile.
 //
@@ -1141,6 +1182,87 @@ TrashButton.propTypes = {
 };
 
 TrashButton.defaultProps = {
+  style: undefined,
+};
+
+// A plate as its photo shows it: the box ALPR found it in, cut out of the
+// picture. The queue shows this in place of the plate's text while the row's
+// plate is the read's own -- a character the read got wrong is easier to see
+// against the picture than in a string of letters.
+//
+// The crop is drawn by scaling the whole photo until the box fills the
+// element, and moving it so the box sits at the corner. The offsets are
+// percentages of the box's own width and height, so the crop is right
+// whatever size the browser gives the element.
+const PlateCrop = ({ file, box, width, height }) => {
+  const cropWidth = box.xmax - box.xmin;
+  const cropHeight = box.ymax - box.ymin;
+
+  return (
+    <span
+      className={homeStyles['plate-crop']}
+      // The crop keeps the box's own shape: the element is its width across
+      // and one line tall, so a wide plate is a wide thumbnail.
+      style={{ width: `${(cropWidth / cropHeight) * 1.3}em` }}
+    >
+      <img
+        src={getBlobUrl(file)}
+        // The row says the plate in its text, so the picture says nothing a
+        // screen reader needs to hear twice.
+        alt=""
+        className={homeStyles['plate-crop-image']}
+        style={{
+          width: `${(width / cropWidth) * 100}%`,
+          height: `${(height / cropHeight) * 100}%`,
+          left: `${(-box.xmin / cropWidth) * 100}%`,
+          top: `${(-box.ymin / cropHeight) * 100}%`,
+        }}
+      />
+    </span>
+  );
+};
+
+PlateCrop.propTypes = {
+  file: PropTypes.object.isRequired,
+  box: PropTypes.shape({
+    xmin: PropTypes.number.isRequired,
+    ymin: PropTypes.number.isRequired,
+    xmax: PropTypes.number.isRequired,
+    ymax: PropTypes.number.isRequired,
+  }).isRequired,
+  // The uploaded frame's size, which the box is measured in.
+  width: PropTypes.number.isRequired,
+  height: PropTypes.number.isRequired,
+};
+
+// The X that discards a violation from the queue. A row's own control, so it
+// lives only in the batch's queue.
+const RemoveXButton = ({ label, onClick, style }) => (
+  <button
+    type="button"
+    aria-label={label}
+    style={{
+      padding: 0,
+      // Ubuntu Chrome shows the glyph black without this.
+      color: 'red',
+      background: 'white',
+      ...style,
+    }}
+    onClick={onClick}
+  >
+    <span aria-hidden="true">❌</span>
+  </button>
+);
+
+RemoveXButton.propTypes = {
+  label: PropTypes.string.isRequired,
+  onClick: PropTypes.func.isRequired,
+  style: PropTypes.objectOf(
+    PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  ),
+};
+
+RemoveXButton.defaultProps = {
   style: undefined,
 };
 
@@ -4856,6 +4978,501 @@ class Home extends React.Component {
     }
   }
 
+  // The report's photos as one grid, and in the batch the violation's photos
+  // it is not using with them: every photo the violation holds is on screen
+  // once, ticked when the report holds it, with a trash that deletes the photo
+  // rather than leaving it out of one report.
+  //
+  // The batch's grid is the violation's photos because a tick has to be able
+  // to take a photo the load did not attach; the single-report form has only
+  // the report's own photos, so there the grid is those.
+  renderAttachmentGrid() {
+    const {
+      attachmentData,
+      batchViolations,
+      currentViolationIndex,
+      plateDataByAttachmentName,
+    } = this.state;
+
+    const loadedViolation = batchViolations[currentViolationIndex];
+
+    const photos = loadedViolation
+      ? loadedViolation.photos
+      : attachmentData.map(file => ({ file, name: file.name }));
+
+    if (photos.length === 0) {
+      return null;
+    }
+
+    return (
+      <React.Fragment>
+        {loadedViolation && photos.length > 3 && (
+          <p>
+            Pick up to 3 pictures and 3 videos to attach to this report (the
+            rest stay in the batch):
+          </p>
+        )}
+        <div className={homeStyles['attachment-grid']}>
+          {photos.map((photo, index) => {
+            const { file, name } = photo;
+            const attached = attachmentData.includes(file);
+            const src = getBlobUrl(file);
+
+            return (
+              <div
+                key={name}
+                className={`${homeStyles['attachment-tile']}${
+                  loadedViolation && attached
+                    ? ` ${homeStyles['attachment-tile-selected']}`
+                    : ''
+                }`}
+                // A photo drags into a queue row to say which violation it
+                // belongs to. The plain form has no rows, so nothing is added
+                // to its tiles.
+                {...(loadedViolation
+                  ? {
+                      draggable: true,
+                      onDragStart: event =>
+                        this.startPhotoDrag({ photo, event }),
+                      onDragEnd: this.endDrag,
+                    }
+                  : {})}
+              >
+                {loadedViolation && (
+                  <input
+                    id={`batch-photo-${index}`}
+                    className={homeStyles['attachment-choice']}
+                    type="checkbox"
+                    checked={attached}
+                    onChange={event =>
+                      this.toggleBatchPhoto({
+                        violation: loadedViolation,
+                        photo,
+                        checked: event.target.checked,
+                      })
+                    }
+                    aria-label={`Attach ${name}`}
+                  />
+                )}
+                <a
+                  href={src}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={name}
+                  style={{ display: 'block' }}
+                >
+                  {isImage({ ext: fileExtension(name) }) ? (
+                    <img src={src} alt={name} />
+                  ) : (
+                    /* eslint-disable-next-line jsx-a11y/media-has-caption */
+                    <video src={src} aria-label={name} />
+                  )}
+                </a>
+                {attached &&
+                  this.renderPlateOverlays({
+                    attachmentPlateData: plateDataByAttachmentName[name],
+                    attachmentFile: file,
+                  })}
+                <TrashButton
+                  label={`Delete ${name}`}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    right: 0,
+                    margin: '1px',
+                    fontSize: '2em',
+                  }}
+                  onClick={() => this.deletePhoto(photo)}
+                />
+                {loadedViolation && (
+                  <details
+                    className={homeStyles['batch-photo-actions']}
+                    // The tile itself drags the photo, so the menu must not
+                    // start a drag when it is used.
+                    onDragStart={event => event.stopPropagation()}
+                  >
+                    <summary aria-label={`Actions for ${name}`}>⋯</summary>
+                    <div className={homeStyles['batch-photo-actions-menu']}>
+                      {batchViolations
+                        .filter(row => row !== loadedViolation)
+                        .map(row => {
+                          const targetLabel = `${formatBatchViolationTime(
+                            row.createDateMs,
+                          )} — ${row.plate || 'nothing readable'}`;
+
+                          return (
+                            <button
+                              type="button"
+                              key={batchViolationIdentity(row)}
+                              aria-label={`Move ${name} to ${targetLabel}`}
+                              onClick={() =>
+                                this.movePhotoToViolation({
+                                  photo,
+                                  violation: row,
+                                  control: 'menu',
+                                  source: loadedViolation,
+                                })
+                              }
+                            >
+                              Move to {targetLabel}
+                            </button>
+                          );
+                        })}
+                      <button
+                        type="button"
+                        aria-label={`Split ${name} into a new violation`}
+                        onClick={() =>
+                          this.movePhotoToNewViolation(
+                            photo,
+                            'menu',
+                            loadedViolation,
+                          )
+                        }
+                      >
+                        New violation
+                      </button>
+                    </div>
+                  </details>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* The cap is a report's, and the photos over it are here: say so
+            where they are, not only beside Submit. */}
+        {tooManyAttachments(attachmentData) && (
+          <p>{TOO_MANY_ATTACHMENTS_MESSAGE}</p>
+        )}
+      </React.Fragment>
+    );
+  }
+
+  // The batch's own UI: which stage it is working through, and the violations
+  // it found.
+  renderBatchStatus() {
+    const {
+      batchMergeSelection,
+      batchPhotos,
+      batchProgress,
+      batchViolations,
+      currentViolationIndex,
+      dropTargetIdentity,
+      photoDragInProgress,
+      plate,
+      plateProvenance,
+    } = this.state;
+
+    // The queue is its rows, not the photos behind them. A photo leaves the
+    // batch when a report takes it, and a row can still hold it -- a photo can
+    // name more than one row -- so `batchPhotos` being empty says nothing
+    // about whether the batch has anything left to report.
+    if (
+      batchPhotos.length === 0 &&
+      batchViolations.length === 0 &&
+      !batchProgress
+    ) {
+      return null;
+    }
+
+    // A photo can name more than one violation. A row whose photo appears in
+    // another row says so.
+    const rowsByFile = new Map();
+    batchViolations.forEach(violation => {
+      violation.photos.forEach(photo => {
+        rowsByFile.set(photo.file, (rowsByFile.get(photo.file) || 0) + 1);
+      });
+    });
+
+    return (
+      <React.Fragment>
+        {batchProgress && (
+          <div>
+            <progress
+              max={batchProgress.total}
+              value={batchProgress.completed}
+              style={{
+                width: '100%',
+              }}
+            >
+              {batchProgress.completed}/{batchProgress.total}
+            </progress>
+            <p>
+              {BATCH_STAGE_LABELS[batchProgress.stage]} (
+              {batchProgress.completed}/{batchProgress.total})
+            </p>
+          </div>
+        )}
+
+        {batchViolations.length > 0 && (
+          <div className={homeStyles['batch-queue']}>
+            {/* One violation is a line and a form: the merge controls need a
+                second row, so they arrive with it. Keeping the count shows a
+                user who adds one report's photos that the app grouped them,
+                and that a bigger batch is possible. */}
+            <div className={homeStyles['batch-queue-heading']}>
+              <h3>
+                Found {batchViolations.length} violation
+                {batchViolations.length === 1 ? '' : 's'}
+              </h3>
+              {/* A photo dragged here gets a violation of its own, for a
+                  picture that does not belong to the row it is in. It shows
+                  only while a photo is being dragged, so the heading keeps
+                  its line the rest of the time. */}
+              {photoDragInProgress && (
+                <div
+                  className={`${homeStyles['batch-new-violation-drop']}${
+                    dropTargetIdentity === NEW_VIOLATION_DROP
+                      ? ` ${homeStyles['batch-new-violation-drop-over']}`
+                      : ''
+                  }`}
+                  onDragEnter={() => this.enterRowWithDrag(NEW_VIOLATION_DROP)}
+                  onDragLeave={() => this.leaveRowWithDrag(NEW_VIOLATION_DROP)}
+                  onDragOver={this.rowAllowsDrop}
+                  onDrop={this.dropOnNewViolation}
+                >
+                  New violation
+                </div>
+              )}
+              {batchViolations.length > 1 && (
+                <button
+                  type="button"
+                  className={homeStyles['batch-queue-merge']}
+                  disabled={batchMergeSelection.length < 2}
+                  onClick={() =>
+                    this.mergeSelectedBatchViolations({ source: 'tick' })
+                  }
+                >
+                  Merge
+                </button>
+              )}
+            </div>
+            {/* With one row there is nothing to combine, and the count alone
+                says the app grouped the photos. From two rows on, say what a
+                row is and how two become one. */}
+            {batchViolations.length > 1 && (
+              <p className={homeStyles['batch-queue-note']}>
+                Each row becomes one report. Tick two rows to combine them.
+              </p>
+            )}
+            {/* The list grows while the batch is still being read, and a list
+                that lengthens pushes everything under it -- the form for the
+                violation being reported -- down the page. Capping its height
+                and scrolling it inside keeps the form where the user left it
+                as violations arrive. */}
+            <ul
+              style={{
+                maxHeight: '16rem',
+                overflowY: 'auto',
+                // The rows are highlighted as whole rows, so they run the full
+                // width rather than sitting behind marx's list indent.
+                listStyle: 'none',
+                paddingLeft: 0,
+              }}
+            >
+              {batchViolations.map((violation, index) => {
+                const flags = [];
+                if (!hasCoordinates(violation)) {
+                  flags.push('no location — set it on the map');
+                } else if (violation.coordsAreInNyc === false) {
+                  flags.push('outside NYC');
+                }
+                if (violation.photos.length > 3) {
+                  flags.push('choose up to 3 to attach');
+                }
+
+                const sharesPhoto = violation.photos.some(
+                  photo => (rowsByFile.get(photo.file) || 0) > 1,
+                );
+
+                const identity = batchViolationIdentity(violation);
+
+                const isLoaded = index === currentViolationIndex;
+
+                // A row still waiting on a read says so, rather than looking
+                // like one that read nothing: see `batchRowPlateLabel`. Once
+                // the pass is over, a photo with no `plateRead` is one whose
+                // read was refused, and that is reported as nothing readable
+                // -- the load's second chance is what reads those again.
+                const isReading = violation.photos.some(photo =>
+                  photoIsBeingRead({
+                    photo,
+                    isPassRunning: batchProgress !== null,
+                  }),
+                );
+                const plateLabel = batchRowPlateLabel({
+                  violation,
+                  isReading,
+                });
+
+                // The row for the violation in the form follows a plate the
+                // user gave the License/Medallion field -- typed, or picked
+                // off a photo's overlay -- because that plate is what the
+                // report sends: typing over a wrong reading is how the reading
+                // is corrected, and the row should name the car the report now
+                // names. A plate the app filled in is not the user's: one
+                // frame read as two cars gives the row its own plate while the
+                // field names the other, and the row keeps its own name then.
+                // An empty field leaves the row saying what it read.
+                const rowPlateLabel =
+                  isLoaded && plate && plateProvenance !== undefined
+                    ? plate
+                    : plateLabel;
+
+                // The crop stands in for the plate's text only while the row
+                // shows the plate its photos gave it. A plate the user typed
+                // or picked is shown as text, because the picture says
+                // something else -- and a row with no box to cut out (a video,
+                // a cached read without one) keeps its text as well.
+                const crop =
+                  rowPlateLabel === plateLabel && violation.plate
+                    ? plateCropFor({
+                        photos: violation.photos,
+                        plate: violation.plate,
+                      })
+                    : null;
+                const cropFile =
+                  crop && isImage({ ext: fileExtension(crop.photo.name) })
+                    ? crop.photo.file
+                    : null;
+
+                return (
+                  <li
+                    key={identity}
+                    className={`${homeStyles['batch-violation-row']}${
+                      isLoaded ? ` ${homeStyles['batch-violation-loaded']}` : ''
+                    }${
+                      dropTargetIdentity === identity
+                        ? ` ${homeStyles['batch-violation-row-drop']}`
+                        : ''
+                    }`}
+                    // The highlight is the visible marker; this is the one a
+                    // screen reader gets.
+                    aria-current={isLoaded ? 'true' : undefined}
+                    // The row drags onto another row to merge the two, the
+                    // way ticking both and pressing Merge does.
+                    draggable
+                    onDragStart={event =>
+                      this.startRowDrag({ violation, event })
+                    }
+                    onDragEnd={this.endDrag}
+                    onDragOver={this.rowAllowsDrop}
+                    onDragEnter={() => this.enterRowWithDrag(identity)}
+                    onDragLeave={() => this.leaveRowWithDrag(identity)}
+                    onDrop={event => this.dropOnRow({ event, violation })}
+                  >
+                    {/* Ticking two of these is how a report the grouping split
+                        in two is put back together; see
+                        mergeSelectedBatchViolations. A single row has nothing
+                        to combine with, so its box is left out. */}
+                    {batchViolations.length > 1 && (
+                      <input
+                        type="checkbox"
+                        checked={batchMergeSelection.includes(identity)}
+                        onChange={event =>
+                          this.toggleBatchMergeSelection(identity, {
+                            extend: event?.nativeEvent?.shiftKey === true,
+                          })
+                        }
+                        aria-label={`Merge ${formatBatchViolationTime(
+                          violation.createDateMs,
+                        )} — ${rowPlateLabel}`}
+                      />
+                    )}
+                    {/* The description is the control that loads this
+                        violation, so the thing you read is the thing you
+                        click. Delete and the merge box are siblings rather
+                        than children, which is what keeps a click on either
+                        from loading the row as well. */}
+                    <button
+                      type="button"
+                      className={homeStyles['batch-violation-description']}
+                      onClick={event => {
+                        // Shift-clicking a row ticks a range for merging
+                        // rather than loading it, the way its merge box does.
+                        if (event?.shiftKey && batchViolations.length > 1) {
+                          this.toggleBatchMergeSelection(identity, {
+                            extend: true,
+                          });
+                          return;
+                        }
+
+                        this.selectBatchViolation(index);
+                      }}
+                    >
+                      {formatBatchViolationTime(violation.createDateMs)} —{' '}
+                      {rowPlateLabel}
+                      {cropFile && (
+                        <PlateCrop
+                          file={cropFile}
+                          box={crop.box}
+                          width={crop.width}
+                          height={crop.height}
+                        />
+                      )}{' '}
+                      ({violation.photos.length} photo
+                      {violation.photos.length === 1 ? '' : 's'})
+                      {flags.length > 0 && ` — ${flags.join(', ')}`}
+                      {/* Only beside a plate. A row with no plate already
+                          says "reading plates…", and this says what the wait
+                          costs -- which matters most on a row that carries a
+                          plate, because that one looks settled. */}
+                      {violation.plate && isReading && (
+                        <span
+                          className={homeStyles['batch-violation-pending']}
+                          // The words carry the state; the sentence behind
+                          // them says what it costs, for whoever hovers.
+                          title="This row has photos still to read. A reading that turns out to be another car takes that photo, and the ones with it, into a row of their own."
+                        >
+                          may split
+                        </span>
+                      )}
+                      {/* A shared frame is the most confusing split in the
+                          queue: the photo is in two rows because it shows two
+                          cars, and reporting either one carries it. */}
+                      {sharesPhoto && (
+                        <span
+                          className={homeStyles['batch-violation-shared']}
+                          title="One of this violation's photos also appears in another violation: the frame shows more than one car, and both reports can carry it."
+                        >
+                          shares a photo
+                        </span>
+                      )}
+                    </button>
+                    <RemoveXButton
+                      label={`Delete ${formatBatchViolationTime(
+                        violation.createDateMs,
+                      )} — ${rowPlateLabel}`}
+                      // The row is a flex line, so this pushes the X to the
+                      // far end of it. It takes no background of its own
+                      // either, so the highlight of the loaded row runs behind
+                      // it instead of stopping at a white square.
+                      style={{ marginLeft: 'auto', background: 'transparent' }}
+                      onClick={() => this.deleteBatchViolation(index)}
+                    />
+                  </li>
+                );
+              })}
+            </ul>
+            {batchViolations.length > 1 && (
+              <button
+                type="button"
+                className={homeStyles['batch-discard']}
+                onClick={this.discardRemainingViolations}
+              >
+                Discard the remaining violations
+              </button>
+            )}
+          </div>
+        )}
+
+        {!batchProgress && batchViolations.length === 0 && (
+          <p>No violations left in the batch.</p>
+        )}
+      </React.Fragment>
+    );
+  }
+
   render() {
     const matchingPlateThumbnail = this.findMatchingPlateThumbnail();
     const previousSubmissionsSummary = this.getPreviousSubmissionsSummary();
@@ -4865,7 +5482,10 @@ class Home extends React.Component {
     return (
       <Dropzone
         className={homeStyles.root}
-        onDrop={attachmentData => this.handleAttachmentFiles(attachmentData)}
+        onDrop={attachmentData => {
+          // Every drop feeds the batch, like a pick does.
+          this.addFilesToBatch(attachmentData);
+        }}
         style={{
           position: 'fixed',
           top: 0,
@@ -5581,6 +6201,14 @@ class Home extends React.Component {
                         return;
                       }
 
+                      // The button is off while this is true, and this catches the
+                      // submit a keyboard makes without it; the server keeps only
+                      // the first three of each kind either way.
+                      if (tooManyAttachments(this.state.attachmentData)) {
+                        Home.notifyError(TOO_MANY_ATTACHMENTS_MESSAGE);
+                        return;
+                      }
+
                       this.setState({
                         isSubmitting: true,
                       });
@@ -5605,9 +6233,9 @@ class Home extends React.Component {
                         attachmentIds.length > 0 &&
                         attachmentIds.every(id => id !== null);
 
-                      // Falling back to the files themselves means sending them
-                      // again, so read them here rather than handing the network
-                      // the Files that came from the file input (see
+                      // Sending the files themselves means sending them again, so
+                      // they are read here rather than handed to the network as the
+                      // Files that came from the file input (see
                       // inMemoryAttachment).
                       const filesForSubmit = () =>
                         Promise.all(
@@ -5622,19 +6250,6 @@ class Home extends React.Component {
                       const attachmentsToSubmit = hasAllIds
                         ? null
                         : await filesForSubmit();
-
-                      // The report's own fields, without the attachments: the
-                      // two ways of sending those are what differ.
-                      const reportFields = {
-                        ...this.getPerSubmissionState(),
-                        // The server requires a plate, and the field may be
-                        // empty: the report files as UNKNOWN, which is what
-                        // the field's placeholder promises.
-                        plate: this.state.plate || UNKNOWN_PLATE,
-                        CreateDate: new Date(
-                          this.state.CreateDate,
-                        ).toISOString(),
-                      };
 
                       const postSubmit = body =>
                         axios.post(
@@ -5666,6 +6281,19 @@ class Home extends React.Component {
                             },
                           },
                         );
+
+                      // The report's own fields, without the attachments: the two
+                      // ways of sending those are what differ between attempts.
+                      const reportFields = {
+                        ...this.getPerSubmissionState(),
+                        // The server requires a plate, and the field may be
+                        // empty: the report files as UNKNOWN, which is what
+                        // the field's placeholder promises.
+                        plate: this.state.plate || UNKNOWN_PLATE,
+                        CreateDate: new Date(
+                          this.state.CreateDate,
+                        ).toISOString(),
+                      };
 
                       const submitReport = () =>
                         hasAllIds
@@ -5711,7 +6339,23 @@ class Home extends React.Component {
                           // full fetch of previous submissions to finish.
                           addCachedSubmission(submission);
 
-                          const submittedPhotos = this.state.attachmentData;
+                          // Captured before the state is cleared below, because
+                          // the queue needs to know which photos this report used.
+                          const submittedFiles = this.state.attachmentData;
+
+                          // The server dropped these attachments as it took them
+                          // for the report, so the ids this page holds for them
+                          // name nothing now. A photo the report used can be in
+                          // another row as well -- one frame, several cars -- and
+                          // that row's own submit would otherwise send an id for a
+                          // file that is gone. Forget it, so the photo is uploaded
+                          // again when it is next needed.
+                          if (hasAllIds) {
+                            submittedFiles.forEach(file =>
+                              fileUploadPromises.delete(file),
+                            );
+                          }
+
                           this.setState(
                             state => ({
                               attachmentData: [],
@@ -5728,8 +6372,8 @@ class Home extends React.Component {
                               // The report has the photos now: nothing on the
                               // page shows them, so their bytes can go, and so
                               // can the readings that described them.
-                              submittedPhotos.forEach(releaseBlobUrl);
-                              submittedPhotos.forEach(file =>
+                              submittedFiles.forEach(releaseBlobUrl);
+                              submittedFiles.forEach(file =>
                                 this.photoReadings.delete(file),
                               );
                             },
@@ -5751,20 +6395,38 @@ class Home extends React.Component {
                           this.setCreateDate({
                             millisecondsSinceEpoch: Date.now(),
                           });
-                          Home.notifySubmissionThanks(
-                            <React.Fragment>
-                              <p>Thanks for your submission!</p>
-                              <p>
-                                Your information has been submitted to Reported.
-                                It may take up to 24 hours for it to be
-                                processed.
-                              </p>
+                          // Batch mode reports one violation at a time, so take
+                          // the submitted one out of the queue and load the next
+                          // rather than leaving the user at an empty form.
+                          // The report is the queue's last one, and it takes
+                          // all its photos: nothing is left to go through.
+                          const reported =
+                            this.state.batchViolations[
+                              this.state.currentViolationIndex
+                            ];
+                          const queueIsDone =
+                            Boolean(reported) &&
+                            this.state.batchViolations.length === 1 &&
+                            reported.photos.every(photo =>
+                              submittedFiles.includes(photo.file),
+                            );
 
-                              {/*
-                        <p>objectId: {data.submission.objectId}</p>
-                        */}
-                            </React.Fragment>,
-                          );
+                          // Whether this report was one of the batch's rows,
+                          // read before the advance moves the queue on.
+                          const batchWasActive =
+                            this.state.currentViolationIndex >= 0;
+
+                          if (batchWasActive) {
+                            this.advanceBatchAfterSubmit(submittedFiles);
+                          }
+                          // A report filed from the queue says that the next
+                          // one is opening. When it was the last, there is
+                          // nothing left to say and no toast to say it in.
+                          if (batchWasActive && !queueIsDone) {
+                            Home.notifySubmissionThanks(
+                              <p>Filed. Opening the next violation.</p>,
+                            );
+                          }
                         })
                         .catch(Home.handleAxiosError)
                         .then(() => {
@@ -5780,163 +6442,81 @@ class Home extends React.Component {
                     }}
                   >
                     <fieldset disabled={this.state.isSubmitting}>
-                      <button
-                        type="button"
-                        style={{
-                          float: 'left',
-                          margin: '1px',
-                        }}
-                        onClick={() => this.attachmentInputRef.current?.click()}
-                      >
-                        Add pictures/videos or a zip file
-                      </button>
-                      <input
-                        ref={this.attachmentInputRef}
-                        type="file"
-                        multiple
-                        accept="image/*,video/*,.zip,application/zip,application/x-zip-compressed"
-                        style={{ display: 'none' }}
-                        onChange={this.handleAttachmentFileInput}
-                      />
+                      <React.Fragment>
+                        {/* Both inputs read `event.target.files` directly,
+                        rather than reading every selected file's contents into
+                        memory first: across a forty-photo folder that is a
+                        great deal of buffering before ALPR has even started. */}
+                        <button
+                          type="button"
+                          style={{ float: 'left', margin: '1px' }}
+                          onClick={() =>
+                            this.batchPhotosInputRef.current?.click()
+                          }
+                        >
+                          Add pictures/videos or a zip file
+                        </button>
+                        <input
+                          ref={this.batchPhotosInputRef}
+                          type="file"
+                          multiple
+                          accept="image/*,video/*,.zip,application/zip,application/x-zip-compressed"
+                          style={{ display: 'none' }}
+                          onChange={this.handleBatchFileInput}
+                        />
 
-                      <button
-                        type="button"
-                        style={{
-                          float: 'left',
-                          margin: '1px',
-                        }}
-                        onClick={() => this.folderInputRef.current?.click()}
-                      >
-                        Add a folder of photos and videos
-                      </button>
-                      <input
-                        ref={this.folderInputRef}
-                        type="file"
-                        multiple
-                        webkitdirectory=""
-                        style={{ display: 'none' }}
-                        onChange={this.handleFolderInput}
-                      />
+                        <button
+                          type="button"
+                          style={{ float: 'left', margin: '1px' }}
+                          onClick={() =>
+                            this.batchFolderInputRef.current?.click()
+                          }
+                        >
+                          Add a folder of photos and videos
+                        </button>
+                        <input
+                          ref={this.batchFolderInputRef}
+                          type="file"
+                          multiple
+                          webkitdirectory=""
+                          style={{ display: 'none' }}
+                          onChange={this.handleBatchFileInput}
+                        />
+                      </React.Fragment>
 
                       <div style={{ clear: 'both' }} />
+
+                      {/* What the picker takes, and what the queue does with
+                          it. One line, shown only while nothing has been
+                          added, so it never sits over a form in progress. */}
+                      {this.state.batchPhotos.length === 0 &&
+                        this.state.attachmentData.length === 0 && (
+                          <p className={homeStyles['batch-hint']}>
+                            Photos and videos, a folder, or a zip file: we split
+                            them into violations and open them one at a time.
+                          </p>
+                        )}
+
+                      {this.renderBatchStatus()}
+
+                      {this.renderAttachmentGrid()}
 
                       {/* The 20MB limit is a file's, and a zip is a file that
                           is unpacked before any of this applies: say what the
                           limit is on, rather than putting it on the button
                           where it reads as the zip's too. */}
-                      {this.state.attachmentData.length === 0 && (
-                        <p className={homeStyles['upload-hint']}>
-                          Each photo or video can be up to 20MB. A zip file is
-                          unpacked into photos and videos first.
-                        </p>
-                      )}
+                      {this.state.attachmentData.length === 0 &&
+                        this.state.batchPhotos.length === 0 && (
+                          <p className={homeStyles['upload-hint']}>
+                            Each photo or video can be up to 20MB. A zip file is
+                            unpacked into photos and videos first.
+                          </p>
+                        )}
 
                       {this.state.attachmentData.length > 0 && (
                         <React.Fragment>
-                          <div
-                            style={{
-                              display: 'flex',
-                              flexWrap: 'wrap',
-                            }}
-                          >
-                            {this.state.attachmentData.map(attachmentFile => {
-                              const { name } = attachmentFile;
-                              const ext = fileExtension(name);
-                              const isImg = isImage({ ext });
-                              const src = getBlobUrl(attachmentFile);
-                              const attachmentPlateData =
-                                this.state.plateDataByAttachmentName[name];
-
-                              return (
-                                <div
-                                  key={name}
-                                  style={{
-                                    width: '33%',
-                                    margin: '0.1%',
-                                    flexGrow: 1,
-                                    position: 'relative',
-                                  }}
-                                >
-                                  <div
-                                    style={{
-                                      position: 'relative',
-                                      display: 'inline-block',
-                                      maxWidth: '100%',
-                                      // The plate overlays stack inside this
-                                      // wrapper, not against the page. Their
-                                      // z-index would otherwise paint over the
-                                      // map modal, whose overlay has none.
-                                      isolation: 'isolate',
-                                    }}
-                                  >
-                                    <a
-                                      href={src}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      style={{ display: 'block' }}
-                                    >
-                                      {isImg ? (
-                                        <img
-                                          src={src}
-                                          alt={name}
-                                          style={{ display: 'block' }}
-                                        />
-                                      ) : (
-                                        /* eslint-disable-next-line jsx-a11y/media-has-caption */
-                                        <video
-                                          src={src}
-                                          alt={name}
-                                          // The position:relative wrapper shrink-
-                                          // wraps its content, and plate overlays
-                                          // are percentage-positioned against that
-                                          // wrapper, so the video must fill it
-                                          // exactly like the img above does:
-                                          // display:block closes the inline
-                                          // baseline gap, and max-width:100%
-                                          // (which marx-css gives img but not
-                                          // video) keeps the video from
-                                          // overflowing the wrapper when it is
-                                          // wider than the container.
-                                          style={{
-                                            display: 'block',
-                                            maxWidth: '100%',
-                                          }}
-                                        />
-                                      )}
-                                    </a>
-                                    {this.renderPlateOverlays({
-                                      attachmentPlateData,
-                                      attachmentFile,
-                                    })}
-                                  </div>
-
-                                  <TrashButton
-                                    label={`Delete ${name}`}
-                                    style={{
-                                      position: 'absolute',
-                                      top: 0,
-                                      right: 0,
-                                      margin: '1px',
-                                    }}
-                                    onClick={() => this.removeAttachment(name)}
-                                  />
-                                </div>
-                              );
-                            })}
-                          </div>
-
-                          {/* The cap is a report's, and the photos over it are
-                              here: say so where they are, not only beside
-                              Submit. */}
-                          {tooManyAttachments(this.state.attachmentData) && (
-                            <p>{TOO_MANY_ATTACHMENTS_MESSAGE}</p>
-                          )}
-
                           <label htmlFor="plate" ref={this.plateLabelRef}>
                             License/Medallion:
-                            {this.state.isAlprLoading && (
-                              <CircularProgress size="1em" />
-                            )}
                             <div
                               style={{
                                 display: 'flex',
@@ -5998,6 +6578,7 @@ class Home extends React.Component {
                                   }}
                                   value={this.state.licenseState}
                                   name="licenseState"
+                                  ref={this.licenseStateRef}
                                   list="stateSuggestion"
                                   autoComplete="off"
                                   placeholder="State"
@@ -6112,8 +6693,8 @@ class Home extends React.Component {
                             }
                             style={{
                               // The portal lives in the scroll area below the
-                              // banner, so anchor the overlay to that area
-                              // instead of the viewport.
+                              // banner, so anchor the overlay to that area instead
+                              // of the viewport.
                               overlay: {
                                 position: 'absolute',
                               },

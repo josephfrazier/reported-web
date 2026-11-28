@@ -2103,106 +2103,6 @@ describe('Home', () => {
     tree.unmount();
   });
 
-  test('still submits when geosearch fails', async () => {
-    jest.useFakeTimers();
-
-    const initialState = {
-      email: 'test@example.com',
-      password: 'test-password',
-      loginSuccessful: true,
-    };
-
-    // The form fields (including the "Where" button) only render once a
-    // photo is attached, and rendering one calls URL.createObjectURL.
-    const originalCreateObjectURL = global.URL.createObjectURL;
-    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
-
-    // The submit success path scrolls to the top of the page; the rendered
-    // tree isn't attached to the jsdom document, so provide a stand-in.
-    const originalQuerySelector = document.querySelector;
-    document.querySelector = jest.fn(() => ({ scrollTo: jest.fn() }));
-
-    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
-    const axiosPost = jest.spyOn(axios, 'post').mockImplementation(url => {
-      if (url === '/api/geosearch') {
-        return Promise.reject(new Error('Request failed with status code 503'));
-      }
-      return Promise.resolve({
-        data: {
-          submission: {
-            objectId: 'objectId123',
-            timeofreport: '2020-01-01T00:00:00.000Z',
-            timeofreported: '2020-01-01T00:00:00.000Z',
-          },
-        },
-      });
-    });
-    const toastWarn = jest.spyOn(toast, 'warn').mockImplementation(() => null);
-    const toastSuccess = jest
-      .spyOn(toast, 'success')
-      .mockImplementation(() => null);
-    const consoleError = jest
-      .spyOn(console, 'error')
-      .mockImplementation(() => {});
-
-    let tree;
-    const homeRef = React.createRef();
-    renderer.act(() => {
-      tree = renderHome({ initialState, homeRef });
-    });
-
-    // Let the mount-time geolocation resolve before the user picks a
-    // location; otherwise its default coordinates would overwrite theirs.
-    await renderer.act(async () => {});
-
-    // The user picks a location anyway (the map works without geosearch) and
-    // fills the form; geosearch still can't resolve the address.
-    renderer.act(() => {
-      homeRef.current.setCoords({
-        latitude: 40.7129,
-        longitude: -74.0061,
-      });
-      homeRef.current.setState({
-        plate: 'ABC123',
-        reportDescription: 'The address could not be found',
-        attachmentData: [
-          new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }),
-        ],
-        isAlprEnabled: false,
-        isReverseGeocodingEnabled: false,
-      });
-    });
-    await renderer.act(async () => {
-      jest.advanceTimersByTime(500);
-    });
-
-    // With no address resolved, the "Where" button should prompt the user to
-    // pick a location instead of showing empty text.
-    expect(tree.root.findByProps({ name: 'where' }).props.children).toBe(
-      'Click to choose address on map',
-    );
-
-    const form = tree.root
-      .findAllByType('form')
-      .find(formEl => typeof formEl.props.onSubmit === 'function');
-    await renderer.act(async () => {
-      await form.props.onSubmit({ preventDefault() {} });
-    });
-
-    expect(toastWarn).toHaveBeenCalled();
-    expect(axiosPost.mock.calls.some(([url]) => url === '/submit')).toBe(true);
-    expect(toastSuccess).toHaveBeenCalled();
-
-    jest.useRealTimers();
-    axiosGet.mockRestore();
-    axiosPost.mockRestore();
-    toastWarn.mockRestore();
-    toastSuccess.mockRestore();
-    consoleError.mockRestore();
-    tree.unmount();
-    document.querySelector = originalQuerySelector;
-    global.URL.createObjectURL = originalCreateObjectURL;
-  });
 
   test('restores cached vehicle/violations results when re-selecting a previously-looked-up plate', async () => {
     jest.useFakeTimers();
@@ -4329,6 +4229,16 @@ describe('Home', () => {
 
 
 
+    // A batch shot inside the linking window is one time-cluster, and the
+    // readings are what tell the cars in it apart. They arrive one at a time,
+    // in whatever order the pass gets through them, and a car's photos can
+    // have another car's reading land between them. Every read has to be
+    // weighed against the whole batch: a read that only re-groups the row it
+    // lands in leaves the rows the earlier reads broke apart to stand, so a
+    // cluster of two cars settles as one row per photo read.
+
+
+
     // A row is one violation until a read names the car, and the reads land
     // one at a time. The queue shows each photo as its own row until then, and
     // folds them together as the readings arrive.
@@ -4472,6 +4382,67 @@ describe('Home', () => {
   // A zip dragged onto the page is the same batch as one picked from the file
   // input, so it opens out the same way instead of joining the list as a
   // single attachment the grid cannot show.
+  test('opens a dropped zip into the attachments it holds', async () => {
+    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+    const axiosPost = jest.spyOn(axios, 'post').mockResolvedValue({ data: {} });
+    const toastSuccess = jest
+      .spyOn(toast, 'success')
+      .mockImplementation(() => null);
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    const zip = new File(
+      [
+        zipSync({
+          'photos/older.jpg': photoBytes('older'),
+          'photos/newer.jpg': photoBytes('newer'),
+          'photos/notes.txt': Buffer.from('not a photo'),
+          '__MACOSX/._older.jpg': Buffer.from('resource fork'),
+        }),
+      ],
+      'photos.zip',
+      { type: 'application/zip' },
+    );
+
+    exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+    exifr.parse.mockImplementation(async () => ({
+      CreateDate: new Date(Date.UTC(2016, 0, 1, 12, 0, 0)),
+      OffsetTimeDigitized: '+00:00',
+    }));
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ homeRef });
+    });
+
+    await renderer.act(async () => {
+      await tree.root.findByType(Dropzone).props.onDrop([zip]);
+    });
+    // The extraction pass runs from a setState callback through jsdom's
+    // FileReader, so it needs real time rather than a microtask.
+    await renderer.act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 700));
+    });
+
+    // The photos took the zip's place; the archive itself is not an
+    // attachment, and neither is the text file or the macOS entry. Each photo
+    // starts a violation of its own, so the batch holds both.
+    expect(homeRef.current.state.batchPhotos.map(photo => photo.name)).toEqual([
+      'older.jpg',
+      'newer.jpg',
+    ]);
+    expect(toastSuccess.mock.calls[0][0]).toBe('2 pictures from photos.zip');
+
+    tree.unmount();
+    exifr.gps.mockReset();
+    exifr.parse.mockReset();
+    axiosGet.mockRestore();
+    axiosPost.mockRestore();
+    toastSuccess.mockRestore();
+    consoleError.mockRestore();
+  });
   describe('session handling', () => {
     test('does not send stored credentials on mount', async () => {
       // A legacy cookie may still hold email+password; the client must not

@@ -513,9 +513,8 @@
     <p class="eyebrow">Implementation plan · reported-web</p>
     <h1>Semi-Automatic Mode</h1>
     <p class="standfirst">
-      The batch pipeline is in place: dates and places are read locally, the rows are
-      published before any plate read, and the plate reads refine them. The queue and form
-      wiring follow.
+      A queue row can be opened into the form, and reads that merge or divide rows follow the
+      form. The queue itself follows.
     </p>
 
     <dl class="meta">
@@ -654,6 +653,29 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         to keep two cars apart splits the photos of one car; a window long enough to keep one car
         together pulls two cars in. The plate is the only signal that names the car, so it is the
         only signal that groups.
+      </p>
+
+      <h3 id="which-photo-gives-the-place">Which photo gives the place</h3>
+      <p>
+        A report needs one time and one place, and they come from opposite ends of the group.
+      </p>
+      <p>
+        The <strong>time</strong> is the earliest photo's, because that is the moment the report
+        describes.
+      </p>
+      <p>
+        The <strong>place</strong> is the last photo's that carries a fix. A camera woken up for
+        the shot can still be reporting the fix from wherever it was last used, so the first
+        reading of a group is the one most likely to be stale, and the last is the one taken once
+        the GPS had caught up with the car. The time cannot follow the same way: a report is of
+        when the violation happened, not of when its last photo was taken.
+      </p>
+      <p>
+        Both rules hold for any set of photos rather than for a whole violation only, so neither
+        lives in the grouping. The place is <code>latestLocatedPhoto</code> and the time is
+        <code>earliestTakenPhoto</code>, one small module each. The grouping asks them once, to
+        record what a violation is, and the form asks the same two whenever the photos a report
+        holds change — so a violation means the same thing in the queue as it does in the form.
       </p>
 
       <h3>Choosing the plate</h3>

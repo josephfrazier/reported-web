@@ -1055,6 +1055,73 @@ describe('Home', () => {
     global.URL.createObjectURL = originalCreateObjectURL;
   });
 
+  // A candidate is another string the box may have read, not the one it
+  // shows. Matching it would mark a box selected while its label names a
+  // different plate -- a TZ77581C box lit up while the field holds T777581C.
+  test('does not highlight an overlay that only read the selected plate as a candidate', () => {
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+    };
+
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ initialState, homeRef });
+    });
+    renderer.act(() => {
+      homeRef.current.setState({
+        attachmentData: [
+          new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }),
+        ],
+        plateDataByAttachmentName: {
+          'photo.jpg': {
+            results: [
+              {
+                plate: 'tz77581c',
+                candidates: [{ plate: 't777581c', score: 0.6 }],
+                region: { code: 'us-ny' },
+                box: { xmin: 100, ymin: 200, xmax: 300, ymax: 250 },
+              },
+              {
+                plate: 't777581c',
+                region: { code: 'us-ny' },
+                box: { xmin: 400, ymin: 200, xmax: 600, ymax: 250 },
+              },
+            ],
+            uploadWidth: 1000,
+            uploadHeight: 500,
+          },
+        },
+      });
+    });
+
+    const overlayFor = plate =>
+      tree.root.findByProps({
+        'aria-label': `Select license plate ${plate}`,
+      });
+
+    renderer.act(() => {
+      tree.root.findByProps({ name: 'plate' }).props.onChange({
+        target: createFakeInput({ value: 'T777581C', caret: 7 }),
+      });
+    });
+
+    expect(overlayFor('T777581C').props.className).toBe(
+      'plate-overlay plate-overlay-selected',
+    );
+    expect(overlayFor('TZ77581C').props.className).toBe('plate-overlay');
+    expect(overlayFor('TZ77581C').props.children.props.children).toBe(
+      'TZ77581C (NY)',
+    );
+
+    tree.unmount();
+    global.URL.createObjectURL = originalCreateObjectURL;
+  });
+
   test('renders plate overlays on uploaded videos and selects plate on click', () => {
     const initialState = {
       email: 'test@example.com',

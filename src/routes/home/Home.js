@@ -2136,7 +2136,7 @@ class Home extends React.Component {
   renderPlateOverlays = ({ attachmentPlateData, attachmentFile }) =>
     attachmentPlateData?.results?.map(result => {
       const { box } = result;
-      const plate = result.plate?.toUpperCase();
+      const plate = result.plate?.trim().toUpperCase();
       // `box` is in pixels of the image src/alpr.js uploaded to Plate
       // Recognizer, so `uploadWidth`/`uploadHeight` are the denominators that
       // turn it into a fraction of the picture. Percentages are
@@ -2163,10 +2163,15 @@ class Home extends React.Component {
       const licenseState = getLicenseStateFromPlateResult(result);
 
       // The overlay for the plate in the License/Medallion field is marked as
-      // selected, whether it was typed or clicked. The state is left out of
-      // the comparison: it can be hard to tell apart in a photo, and the user
+      // selected, whether it was typed or clicked. The comparison is against
+      // the string the overlay shows, not the candidates ALPR offered with
+      // it: a candidate is another value this box may have read, and marking
+      // the overlay selected would claim the field holds what the box shows
+      // when it holds a different plate. The state is left out of the
+      // comparison: it can be hard to tell apart in a photo, and the user
       // chose the plate.
-      const isSelected = plate === this.state.plate?.toUpperCase();
+      const selectedPlate = this.state.plate?.toUpperCase();
+      const isSelected = plate === selectedPlate;
       const className = isSelected
         ? `${homeStyles['plate-overlay']} ${homeStyles['plate-overlay-selected']}`
         : homeStyles['plate-overlay'];

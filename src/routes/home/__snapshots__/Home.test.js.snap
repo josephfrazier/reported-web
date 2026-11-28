@@ -1970,7 +1970,9 @@ exports[`Home renders submission form and Previous Submissions when logged in wi
                         src="blob:mock"
                         style={
                           {
+                            "borderRadius": 0,
                             "display": "block",
+                            "marginTop": 0,
                           }
                         }
                       />
@@ -2837,7 +2839,9 @@ exports[`Home renders with allPlateResults entry missing plate and photos 1`] = 
                         src="blob:mock"
                         style={
                           {
+                            "borderRadius": 0,
                             "display": "block",
+                            "marginTop": 0,
                           }
                         }
                       />
@@ -3704,7 +3708,9 @@ exports[`Home renders with undefined allPlateResults and photos 1`] = `
                         src="blob:mock"
                         style={
                           {
+                            "borderRadius": 0,
                             "display": "block",
+                            "marginTop": 0,
                           }
                         }
                       />

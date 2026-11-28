@@ -5180,6 +5180,40 @@ describe('Home', () => {
       };
     }
 
+    // The line under the Add buttons says what the picker takes and what the
+    // queue does with it. It needs no dismissal: it goes away with the first
+    // files and comes back when the form is empty again.
+    test('says under the buttons what a folder of photos will do', async () => {
+      const { tree, cleanup } = await renderBatchWithFiles([]);
+
+      expect(renderedText(tree.toJSON())).toContain(
+        'Photos and videos, a folder, or a zip file: we split them into violations and open them one at a time.',
+      );
+
+      cleanup();
+    });
+
+    test('drops the line once photos arrive', async () => {
+      const photo = jpeg({ name: 'a.jpg', size: 4 });
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { tree, cleanup } = await renderBatchWithFiles([photo]);
+
+      // The photos are the point: the line is not needed once they are in.
+      expect(renderedText(tree.toJSON())).not.toContain(
+        'Photos and videos, a folder, or a zip file',
+      );
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
     test('uploads the violation it loads, not the folder it came from', async () => {
       const photos = [
         jpeg({ name: 'a.jpg', size: 4 }),
@@ -8863,6 +8897,55 @@ describe('Home', () => {
       ).toEqual(['p2.jpg']);
       // It is only out of the report; the batch still holds it.
       expect(homeRef.current.state.batchPhotos).toHaveLength(2);
+
+      cleanup();
+    });
+
+    // The picker shows the violation's photos rather than their names: a name
+    // is hard to tell one photo from another by, and the picture is what the
+    // report is about. Each carries its own box at the top-left, so ticking
+    // one is a click on the picture.
+    test('shows the violation photos as pictures, one box each', async () => {
+      const photos = ['p1', 'p2', 'p3', 'p4'].map((name, index) => {
+        const file = new File(['picture'], `${name}.jpg`, {
+          type: 'image/jpeg',
+        });
+        return {
+          file,
+          name: file.name,
+          createDateMs: 1704110400000 + index * 1000,
+          createDateOffset: 0,
+          latitude: 40.7129,
+          longitude: -74.0061,
+        };
+      });
+
+      const { tree, cleanup } = await oneRowOf(photos);
+
+      // One choice per photo the violation holds, each its own picture, and
+      // each with the trash that deletes it rather than leaving it out.
+      const choices = tree.root
+        .findAllByType('input')
+        .filter(({ props }) => String(props.id).startsWith('batch-photo-'));
+      expect(choices).toHaveLength(photos.length);
+
+      choices.forEach((choice, index) => {
+        const tile = choice.parent;
+        const [picture] = tile.findAllByType('img');
+        expect(picture.props.alt).toBe(photos[index].name);
+        expect(picture.props.src).toBe('blob:mock');
+        // The box, ticked for the three the violation loaded with: a picture
+        // with three is what fits in a report.
+        expect(choice.props.checked).toBe(index < 3);
+        expect(
+          tile
+            .findAllByType('button')
+            .some(
+              ({ props }) =>
+                props['aria-label'] === `Delete ${photos[index].name}`,
+            ),
+        ).toBe(true);
+      });
 
       cleanup();
     });

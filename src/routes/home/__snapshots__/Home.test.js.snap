@@ -163,11 +163,6 @@ exports[`Home hides form fields when logged in with no photos uploaded 1`] = `
                 }
               />
               <p
-                className="batch-hint"
-              >
-                Photos and videos, a folder, or a zip file: we split them into violations and open them one at a time.
-              </p>
-              <p
                 className="upload-hint"
               >
                 Each photo or video can be up to 20MB. A zip file is unpacked into photos and videos first.
@@ -1933,27 +1928,54 @@ exports[`Home renders submission form and Previous Submissions when logged in wi
                 }
               />
               <div
-                className="attachment-grid"
+                style={
+                  {
+                    "display": "flex",
+                    "flexWrap": "wrap",
+                  }
+                }
               >
                 <div
-                  className="attachment-tile"
+                  style={
+                    {
+                      "flexGrow": 1,
+                      "margin": "0.1%",
+                      "position": "relative",
+                      "width": "33%",
+                    }
+                  }
                 >
-                  <a
-                    href="blob:mock"
-                    rel="noopener noreferrer"
+                  <div
                     style={
                       {
-                        "display": "block",
+                        "display": "inline-block",
+                        "isolation": "isolate",
+                        "maxWidth": "100%",
+                        "position": "relative",
                       }
                     }
-                    target="_blank"
-                    title="photo.jpg"
                   >
-                    <img
-                      alt="photo.jpg"
-                      src="blob:mock"
-                    />
-                  </a>
+                    <a
+                      href="blob:mock"
+                      rel="noopener noreferrer"
+                      style={
+                        {
+                          "display": "block",
+                        }
+                      }
+                      target="_blank"
+                    >
+                      <img
+                        alt="photo.jpg"
+                        src="blob:mock"
+                        style={
+                          {
+                            "display": "block",
+                          }
+                        }
+                      />
+                    </a>
+                  </div>
                   <button
                     aria-label="Delete photo.jpg"
                     onClick={[Function]}
@@ -1961,7 +1983,6 @@ exports[`Home renders submission form and Previous Submissions when logged in wi
                       {
                         "background": "white",
                         "color": "red",
-                        "fontSize": "2em",
                         "margin": "1px",
                         "padding": 0,
                         "position": "absolute",
@@ -2774,27 +2795,54 @@ exports[`Home renders with allPlateResults entry missing plate and photos 1`] = 
                 }
               />
               <div
-                className="attachment-grid"
+                style={
+                  {
+                    "display": "flex",
+                    "flexWrap": "wrap",
+                  }
+                }
               >
                 <div
-                  className="attachment-tile"
+                  style={
+                    {
+                      "flexGrow": 1,
+                      "margin": "0.1%",
+                      "position": "relative",
+                      "width": "33%",
+                    }
+                  }
                 >
-                  <a
-                    href="blob:mock"
-                    rel="noopener noreferrer"
+                  <div
                     style={
                       {
-                        "display": "block",
+                        "display": "inline-block",
+                        "isolation": "isolate",
+                        "maxWidth": "100%",
+                        "position": "relative",
                       }
                     }
-                    target="_blank"
-                    title="photo.jpg"
                   >
-                    <img
-                      alt="photo.jpg"
-                      src="blob:mock"
-                    />
-                  </a>
+                    <a
+                      href="blob:mock"
+                      rel="noopener noreferrer"
+                      style={
+                        {
+                          "display": "block",
+                        }
+                      }
+                      target="_blank"
+                    >
+                      <img
+                        alt="photo.jpg"
+                        src="blob:mock"
+                        style={
+                          {
+                            "display": "block",
+                          }
+                        }
+                      />
+                    </a>
+                  </div>
                   <button
                     aria-label="Delete photo.jpg"
                     onClick={[Function]}
@@ -2802,7 +2850,6 @@ exports[`Home renders with allPlateResults entry missing plate and photos 1`] = 
                       {
                         "background": "white",
                         "color": "red",
-                        "fontSize": "2em",
                         "margin": "1px",
                         "padding": 0,
                         "position": "absolute",
@@ -3615,27 +3662,54 @@ exports[`Home renders with undefined allPlateResults and photos 1`] = `
                 }
               />
               <div
-                className="attachment-grid"
+                style={
+                  {
+                    "display": "flex",
+                    "flexWrap": "wrap",
+                  }
+                }
               >
                 <div
-                  className="attachment-tile"
+                  style={
+                    {
+                      "flexGrow": 1,
+                      "margin": "0.1%",
+                      "position": "relative",
+                      "width": "33%",
+                    }
+                  }
                 >
-                  <a
-                    href="blob:mock"
-                    rel="noopener noreferrer"
+                  <div
                     style={
                       {
-                        "display": "block",
+                        "display": "inline-block",
+                        "isolation": "isolate",
+                        "maxWidth": "100%",
+                        "position": "relative",
                       }
                     }
-                    target="_blank"
-                    title="photo.jpg"
                   >
-                    <img
-                      alt="photo.jpg"
-                      src="blob:mock"
-                    />
-                  </a>
+                    <a
+                      href="blob:mock"
+                      rel="noopener noreferrer"
+                      style={
+                        {
+                          "display": "block",
+                        }
+                      }
+                      target="_blank"
+                    >
+                      <img
+                        alt="photo.jpg"
+                        src="blob:mock"
+                        style={
+                          {
+                            "display": "block",
+                          }
+                        }
+                      />
+                    </a>
+                  </div>
                   <button
                     aria-label="Delete photo.jpg"
                     onClick={[Function]}
@@ -3643,7 +3717,6 @@ exports[`Home renders with undefined allPlateResults and photos 1`] = `
                       {
                         "background": "white",
                         "color": "red",
-                        "fontSize": "2em",
                         "margin": "1px",
                         "padding": 0,
                         "position": "absolute",

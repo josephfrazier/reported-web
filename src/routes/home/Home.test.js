@@ -306,20 +306,6 @@ async function renderWithPlateReads(files, { platesBySize = {} } = {}) {
 const labelledPhoto = label =>
   new File([photoBytes(label)], `${label}.jpg`, { type: 'image/jpeg' });
 
-// A button inside a toast's content, which is an element tree rather than
-// rendered markup.
-const findToastButton = (element, text) => {
-  if (!element || typeof element !== 'object') {
-    return null;
-  }
-  if (element.type === 'button' && element.props?.children === text) {
-    return element;
-  }
-  const children = element.props?.children;
-  const list = Array.isArray(children) ? children : [children];
-  return list.map(child => findToastButton(child, text)).find(Boolean) || null;
-};
-
 // Stand-in for a text <input> DOM node: reading/writing `value` works, and
 // writing it moves the caret to the end of the field, just like the real thing.
 function createFakeInput({ value, caret }) {
@@ -2171,15 +2157,27 @@ describe('Home', () => {
   };
 
   const dropPhoto = async (homeRef, settle, name) => {
+    const photo = {
+      file: homeRef.current.state.attachmentData.find(
+        file => file.name === name,
+      ),
+      name,
+    };
     await renderer.act(async () => {
-      homeRef.current.removeAttachment(name);
+      homeRef.current.deletePhoto(photo);
     });
     await settle();
   };
 
   test('moves the time and place onto the photos left when one is dropped', async () => {
-    const { homeRef, settle, cleanup } =
-      await renderAndExtract(threePhotosApart());
+    const photos = threePhotosApart();
+    // One plate on every photo, so the three are one violation.
+    const platesBySize = Object.fromEntries(
+      photos.map(file => [file.size, 'AAA111']),
+    );
+    const { homeRef, settle, cleanup } = await renderWithPlateReads(photos, {
+      platesBySize,
+    });
 
     // The submission is as old as its earliest photo, and sits where the last
     // photo that knows where it was was taken.
@@ -2201,8 +2199,14 @@ describe('Home', () => {
   });
 
   test('leaves a place the user set alone when a photo is dropped', async () => {
-    const { homeRef, settle, cleanup } =
-      await renderAndExtract(threePhotosApart());
+    const photos = threePhotosApart();
+    // One plate on every photo, so the three are one violation.
+    const platesBySize = Object.fromEntries(
+      photos.map(file => [file.size, 'AAA111']),
+    );
+    const { homeRef, settle, cleanup } = await renderWithPlateReads(photos, {
+      platesBySize,
+    });
 
     // The user moves the pin. Every photo in the set can be wrong about where
     // the car was -- a camera that has just woken up reports its last fix --
@@ -2226,8 +2230,14 @@ describe('Home', () => {
   });
 
   test('leaves a time the user typed alone when a photo is dropped', async () => {
-    const { homeRef, settle, cleanup } =
-      await renderAndExtract(threePhotosApart());
+    const photos = threePhotosApart();
+    // One plate on every photo, so the three are one violation.
+    const platesBySize = Object.fromEntries(
+      photos.map(file => [file.size, 'AAA111']),
+    );
+    const { homeRef, settle, cleanup } = await renderWithPlateReads(photos, {
+      platesBySize,
+    });
 
     renderer.act(() => {
       homeRef.current.setCreateDate({
@@ -2275,7 +2285,7 @@ describe('Home', () => {
     expect(url).toBeTruthy();
 
     renderer.act(() => {
-      homeRef.current.removeAttachment('photo.jpg');
+      homeRef.current.deletePhoto({ file: photo, name: 'photo.jpg' });
     });
     expect(global.URL.revokeObjectURL).toHaveBeenCalledWith(url);
 
@@ -2290,63 +2300,6 @@ describe('Home', () => {
 
     global.URL.createObjectURL = originalCreateObjectURL;
     global.URL.revokeObjectURL = originalRevokeObjectURL;
-  });
-
-  // The X on a photo takes it out of the report, and the toast holds the whole
-  // form -- attachments, time and place -- for a few seconds.
-  test('takes back a deleted photo', async () => {
-    const toastInfo = jest.spyOn(toast, 'info').mockImplementation(() => null);
-    const { homeRef, settle, cleanup } =
-      await renderAndExtract(threePhotosApart());
-
-    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:10');
-    expect(homeRef.current.state.latitude).toBe(40.74);
-
-    // The submission is as old as its earliest photo, so the time moves with
-    // it; the undo has to put both the file and the form back.
-    await dropPhoto(homeRef, settle, 'early.jpg');
-    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:20');
-
-    const undo = findToastButton(toastInfo.mock.calls[0][0], 'Undo');
-    expect(undo).not.toBeNull();
-    renderer.act(() => undo.props.onClick());
-
-    expect(homeRef.current.state.attachmentData.map(file => file.name)).toEqual(
-      ['early.jpg', 'middle.jpg', 'late.jpg'],
-    );
-    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:10');
-    expect(homeRef.current.state.latitude).toBe(40.74);
-
-    toastInfo.mockRestore();
-    cleanup();
-  });
-
-  test('takes back the last photo, and the form it reset', async () => {
-    const toastInfo = jest.spyOn(toast, 'info').mockImplementation(() => null);
-    const [only] = threePhotosApart();
-    const { homeRef, settle, cleanup } = await renderAndExtract([only]);
-
-    expect(homeRef.current.state.latitude).toBe(40.7);
-    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:10');
-
-    await dropPhoto(homeRef, settle, 'early.jpg');
-
-    // Nothing is left to take a time or a place from, so the form resets.
-    expect(homeRef.current.state.attachmentData).toEqual([]);
-    expect(homeRef.current.state.plate).toBe('');
-
-    const undo = findToastButton(toastInfo.mock.calls[0][0], 'Undo');
-    expect(undo).not.toBeNull();
-    renderer.act(() => undo.props.onClick());
-
-    expect(homeRef.current.state.attachmentData.map(file => file.name)).toEqual(
-      ['early.jpg'],
-    );
-    expect(homeRef.current.state.latitude).toBe(40.7);
-    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:10');
-
-    toastInfo.mockRestore();
-    cleanup();
   });
 
   test('takes the plate with the photo that read it', async () => {
@@ -6421,6 +6374,702 @@ describe('Home', () => {
       cleanup();
     });
 
+    test('merges the violations the user ticks together', async () => {
+      // The shape this exists for: a far shot with no plate read, three
+      // minutes before the closeup that names the car. The time window keeps
+      // them apart, and only the user knows they are one report.
+      const farAt = 1704108600000;
+      const nearAt = 1704110400000;
+      const photoAt = (name, createDateMs) => ({
+        file: new File(['picture'], name, { type: 'image/jpeg' }),
+        name,
+        createDateMs,
+        createDateOffset: 0,
+      });
+      const farPhoto = photoAt('far.jpg', farAt);
+      const nearPhoto = photoAt('near.jpg', nearAt);
+      const photos = [farPhoto, nearPhoto];
+      const far = {
+        photos: [farPhoto],
+        plate: '',
+        licenseState: '',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs: farAt,
+      };
+      const near = {
+        photos: [nearPhoto],
+        plate: 'T696817C',
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs: nearAt,
+      };
+
+      const { homeRef, tickMerge, clickButton, mergeButton, cleanup } =
+        await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchPhotos: photos,
+          batchViolations: [far, near],
+        });
+      });
+
+      expect(homeRef.current.state.batchViolations).toHaveLength(2);
+
+      // The button holds its place on the heading's line from the start, so
+      // that ticking a row cannot move the list. It is disabled until there
+      // are two rows to combine.
+      expect(mergeButton().props.disabled).toBe(true);
+
+      tickMerge('nothing readable');
+
+      // One is not a merge.
+      expect(mergeButton().props.disabled).toBe(true);
+
+      tickMerge('T696817C');
+      expect(mergeButton().props.disabled).toBe(false);
+      clickButton('Merge');
+
+      const { batchViolations, batchMergeSelection } = homeRef.current.state;
+
+      expect(batchViolations).toHaveLength(1);
+      // The plate survives: the far shot had none to offer.
+      expect(batchViolations[0].plate).toBe('T696817C');
+      // Both photos, oldest first, and the earlier one's time.
+      expect(batchViolations[0].photos.map(photo => photo.name)).toEqual([
+        'far.jpg',
+        'near.jpg',
+      ]);
+      expect(batchViolations[0].createDateMs).toBe(farAt);
+      expect(batchMergeSelection).toEqual([]);
+
+      cleanup();
+    });
+
+    // A queue of single-photo violations, one per plate, oldest first: the
+    // shape the tick-range tests need, with no reads to wait for.
+    const rowsOf = (plates, firstAt = 1704110400000) =>
+      plates.map((plate, index) => {
+        const name = `${plate}.jpg`;
+        const createDateMs = firstAt + index * 60 * 1000;
+        return {
+          photos: [
+            {
+              file: new File(['picture'], name, { type: 'image/jpeg' }),
+              name,
+              createDateMs,
+              createDateOffset: 0,
+            },
+          ],
+          plate,
+          licenseState: 'NY',
+          latitude: 40.7129,
+          longitude: -74.0061,
+          createDateMs,
+        };
+      });
+
+    const showRows = (homeRef, rows) => {
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchPhotos: rows.flatMap(violation => violation.photos),
+          batchViolations: rows,
+        });
+      });
+    };
+
+    // Give a row made by `rowsOf` more photos, in capture order after its
+    // first.
+    const addPhotos = (row, names) => {
+      names.forEach((name, index) => {
+        row.photos.push({
+          file: new File(['picture'], name, { type: 'image/jpeg' }),
+          name,
+          createDateMs: row.createDateMs + (index + 1) * 1000,
+          createDateOffset: 0,
+        });
+      });
+    };
+
+    test('shift-clicking a row ticks every row between it and the last ticked row', async () => {
+      const rows = rowsOf(['AAA1111', 'BBB2222', 'CCC3333', 'DDD4444']);
+      const { homeRef, tickMerge, shiftTickMerge, isMergeTicked, cleanup } =
+        await renderBatchWithFiles([]);
+
+      showRows(homeRef, rows);
+
+      tickMerge('AAA1111');
+      shiftTickMerge('CCC3333');
+
+      expect(isMergeTicked('AAA1111')).toBe(true);
+      expect(isMergeTicked('BBB2222')).toBe(true);
+      expect(isMergeTicked('CCC3333')).toBe(true);
+      // The range stops at the row clicked: rows past it stay unticked.
+      expect(isMergeTicked('DDD4444')).toBe(false);
+
+      cleanup();
+    });
+
+    test('shift-clicking a row next to the last ticked one ticks just that row', async () => {
+      const rows = rowsOf(['AAA1111', 'BBB2222', 'CCC3333']);
+      const { homeRef, tickMerge, shiftTickMerge, isMergeTicked, cleanup } =
+        await renderBatchWithFiles([]);
+
+      showRows(homeRef, rows);
+
+      tickMerge('AAA1111');
+      shiftTickMerge('BBB2222');
+
+      expect(isMergeTicked('AAA1111')).toBe(true);
+      expect(isMergeTicked('BBB2222')).toBe(true);
+      expect(isMergeTicked('CCC3333')).toBe(false);
+
+      cleanup();
+    });
+
+    test('shift-clicking with nothing ticked ticks just that row', async () => {
+      const rows = rowsOf(['AAA1111', 'BBB2222', 'CCC3333']);
+      const { homeRef, shiftTickMerge, isMergeTicked, cleanup } =
+        await renderBatchWithFiles([]);
+
+      showRows(homeRef, rows);
+
+      shiftTickMerge('BBB2222');
+
+      expect(isMergeTicked('AAA1111')).toBe(false);
+      expect(isMergeTicked('BBB2222')).toBe(true);
+      expect(isMergeTicked('CCC3333')).toBe(false);
+
+      cleanup();
+    });
+
+    test('shift-clicking a row’s text ticks a range instead of loading it', async () => {
+      const rows = rowsOf(['AAA1111', 'BBB2222', 'CCC3333', 'DDD4444']);
+      const { homeRef, tickMerge, shiftClickRow, isMergeTicked, cleanup } =
+        await renderBatchWithFiles([]);
+
+      showRows(homeRef, rows);
+
+      // The last ticked row is further down the list, so the range runs
+      // backwards to the row clicked.
+      tickMerge('DDD4444');
+      shiftClickRow('BBB2222');
+
+      expect(isMergeTicked('AAA1111')).toBe(false);
+      expect(isMergeTicked('BBB2222')).toBe(true);
+      expect(isMergeTicked('CCC3333')).toBe(true);
+      expect(isMergeTicked('DDD4444')).toBe(true);
+      // A shift-click ticks; it does not load the row into the form.
+      expect(homeRef.current.state.currentViolationIndex).toBe(-1);
+
+      cleanup();
+    });
+
+    // Press a key on the page, the way the document's keydown listener sees
+    // it.
+    const pressKey = key =>
+      renderer.act(() => {
+        document.dispatchEvent(new KeyboardEvent('keydown', { key }));
+      });
+
+    test('deletes the loaded violation’s only photo with Delete', async () => {
+      const rows = rowsOf(['AAA1111', 'BBB2222']);
+      const { homeRef, cleanup } = await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchPhotos: rows.flatMap(violation => violation.photos),
+          batchViolations: rows,
+          currentViolationIndex: 0,
+        });
+      });
+
+      pressKey('Delete');
+
+      // The photo was the whole row, so the row goes with it, and the next
+      // row loads in its place.
+      expect(
+        homeRef.current.state.batchViolations.map(violation => violation.plate),
+      ).toEqual(['BBB2222']);
+      expect(
+        homeRef.current.state.batchPhotos.map(photo => photo.name),
+      ).toEqual(['BBB2222.jpg']);
+      expect(homeRef.current.state.currentViolationIndex).toBe(0);
+
+      cleanup();
+    });
+
+    test('deletes the only photo with Backspace too', async () => {
+      const rows = rowsOf(['AAA1111']);
+      const { homeRef, cleanup } = await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchPhotos: rows.flatMap(violation => violation.photos),
+          batchViolations: rows,
+          currentViolationIndex: 0,
+        });
+      });
+
+      pressKey('Backspace');
+
+      expect(homeRef.current.state.batchViolations).toEqual([]);
+      expect(homeRef.current.state.batchPhotos).toEqual([]);
+
+      cleanup();
+    });
+
+    test('leaves a violation with several photos alone on Delete', async () => {
+      const [row] = rowsOf(['AAA1111']);
+      row.photos.push({
+        file: new File(['picture'], 'AAA1111-2.jpg', { type: 'image/jpeg' }),
+        name: 'AAA1111-2.jpg',
+        createDateMs: row.createDateMs + 1000,
+        createDateOffset: 0,
+      });
+
+      const { homeRef, cleanup } = await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchPhotos: row.photos,
+          batchViolations: [row],
+          currentViolationIndex: 0,
+        });
+      });
+
+      pressKey('Delete');
+
+      expect(homeRef.current.state.batchViolations).toHaveLength(1);
+      expect(homeRef.current.state.batchViolations[0].photos).toHaveLength(2);
+
+      cleanup();
+    });
+
+    test('leaves the photos alone when Delete is pressed in a field', async () => {
+      const rows = rowsOf(['AAA1111']);
+      const { homeRef, cleanup } = await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchPhotos: rows.flatMap(violation => violation.photos),
+          batchViolations: rows,
+          currentViolationIndex: 0,
+        });
+      });
+
+      // The form's own inputs are not in the page under the test renderer,
+      // so a stand-in element is the focused field.
+      const input = document.createElement('input');
+      document.body.appendChild(input);
+
+      renderer.act(() => {
+        input.dispatchEvent(
+          new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true }),
+        );
+      });
+
+      expect(homeRef.current.state.batchViolations).toHaveLength(1);
+      expect(homeRef.current.state.batchViolations[0].photos).toHaveLength(1);
+
+      input.remove();
+      cleanup();
+    });
+
+    test('ticks the first photo when a removal leaves the report with none', async () => {
+      const [row] = rowsOf(['AAA1111']);
+      addPhotos(row, ['AAA1111-2.jpg', 'AAA1111-3.jpg']);
+
+      const {
+        homeRef,
+        clickQueueLoad,
+        toggleAttachment,
+        clickAttachmentDelete,
+        cleanup,
+      } = await renderBatchWithFiles([]);
+
+      showRows(homeRef, [row]);
+      clickQueueLoad('AAA1111');
+
+      // The report opens with every photo ticked; leave only the first.
+      toggleAttachment('AAA1111-2.jpg', false);
+      toggleAttachment('AAA1111-3.jpg', false);
+      expect(homeRef.current.state.attachmentData).toEqual([
+        row.photos[0].file,
+      ]);
+
+      clickAttachmentDelete('AAA1111.jpg');
+
+      // The photo was the only one ticked, so the first one left is ticked in
+      // its place rather than leaving Submit free to send no photos.
+      expect(
+        homeRef.current.state.batchViolations[0].photos.map(
+          photo => photo.name,
+        ),
+      ).toEqual(['AAA1111-2.jpg', 'AAA1111-3.jpg']);
+      expect(homeRef.current.state.attachmentData).toEqual([
+        row.photos[1].file,
+      ]);
+
+      cleanup();
+    });
+
+    test('leaves the attached photos alone when one of them remains', async () => {
+      const [row] = rowsOf(['AAA1111']);
+      addPhotos(row, ['AAA1111-2.jpg', 'AAA1111-3.jpg']);
+
+      const {
+        homeRef,
+        clickQueueLoad,
+        toggleAttachment,
+        clickAttachmentDelete,
+        cleanup,
+      } = await renderBatchWithFiles([]);
+
+      showRows(homeRef, [row]);
+      clickQueueLoad('AAA1111');
+
+      // Only the last photo stays ticked; the one removed is not.
+      toggleAttachment('AAA1111.jpg', false);
+      toggleAttachment('AAA1111-2.jpg', false);
+      expect(homeRef.current.state.attachmentData).toEqual([
+        row.photos[2].file,
+      ]);
+
+      clickAttachmentDelete('AAA1111.jpg');
+
+      // The report still holds a photo, so the first one left is not ticked.
+      expect(homeRef.current.state.attachmentData).toEqual([
+        row.photos[2].file,
+      ]);
+
+      cleanup();
+    });
+
+    test('ticks the first photo when the last ticked one moves to another row', async () => {
+      const [row, target] = rowsOf(['AAA1111', 'BBB2222']);
+      addPhotos(row, ['AAA1111-2.jpg']);
+
+      const { homeRef, clickQueueLoad, toggleAttachment, cleanup } =
+        await renderBatchWithFiles([]);
+
+      showRows(homeRef, [row, target]);
+      clickQueueLoad('AAA1111');
+      toggleAttachment('AAA1111-2.jpg', false);
+      expect(homeRef.current.state.attachmentData).toEqual([
+        row.photos[0].file,
+      ]);
+
+      renderer.act(() => {
+        homeRef.current.movePhotoToViolation({
+          photo: row.photos[0],
+          violation: target,
+        });
+      });
+
+      const [sourceAfter, targetAfter] = homeRef.current.state.batchViolations;
+      expect(sourceAfter.photos.map(photo => photo.name)).toEqual([
+        'AAA1111-2.jpg',
+      ]);
+      // The row on screen keeps a photo for its report.
+      expect(homeRef.current.state.attachmentData).toEqual([
+        row.photos[1].file,
+      ]);
+      expect(targetAfter.photos.map(photo => photo.name)).toEqual([
+        'BBB2222.jpg',
+        'AAA1111.jpg',
+      ]);
+
+      cleanup();
+    });
+
+    // A hand-merge is the grouping being wrong, and the event carries the raw
+    // data behind it: the photos' own capture times and places, and the ALPR
+    // responses, so the algorithm can be tried against the same batch later.
+    test('records a hand-merge with the raw batch data', async () => {
+      const first = jpeg({ name: 'first.jpg', size: 4 });
+      const other = jpeg({ name: 'other.jpg', size: 6 });
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { tickMerge, clickButton, batchGroupingEvents, cleanup } =
+        await renderBatchWithFiles([first, other]);
+
+      tickMerge('T696817C');
+      tickMerge('LDA8765');
+      clickButton('Merge');
+
+      const merges = batchGroupingEvents.mock.calls
+        .map(([payload]) => payload)
+        .filter(payload => payload.event === 'merge');
+      expect(merges).toHaveLength(1);
+      const [merge] = merges;
+      expect(merge.schema).toBe(1);
+      expect(merge.source).toBe('tick');
+      expect(merge.rowsBefore).toHaveLength(2);
+      expect(merge.rowsAfter).toHaveLength(1);
+      expect(merge.rowsAfter[0].photos).toEqual(['first.jpg', 'other.jpg']);
+
+      // Raw, not rounded: the capture time, the place, the ALPR response.
+      const photo = merge.photos.find(each => each.name === 'first.jpg');
+      expect(photo.createDateMs).toBe(Date.parse('2016-01-01T12:00:00.000Z'));
+      expect(photo.latitude).toBe(40.7129);
+      expect(photo.longitude).toBe(-74.0061);
+      expect(photo.plateResults.results[0].plate).toBe('t696817c');
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    // A report the user typed a time for keeps it when the row merges with
+    // another: the merge adds photos to the report on screen, it does not
+    // start a new one.
+    test('keeps a time the user set when the loaded row merges', async () => {
+      const first = jpeg({ name: 'first.jpg', size: 4 });
+      const other = jpeg({ name: 'other.jpg', size: 6 });
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, tickMerge, clickButton, cleanup } =
+        await renderBatchWithFiles([first, other]);
+
+      // The loaded report came with 12:00:00Z, which the field reads as 7:00.
+      expect(homeRef.current.state.CreateDate).toBe('2016-01-01T07:00:00');
+
+      // The user sets a time of their own.
+      renderer.act(() => {
+        homeRef.current.handleInputChange({
+          target: {
+            name: 'CreateDate',
+            type: 'datetime-local',
+            value: '2016-01-01T09:00',
+          },
+        });
+      });
+
+      tickMerge('T696817C');
+      tickMerge('LDA8765');
+      clickButton('Merge');
+
+      expect(homeRef.current.state.CreateDate).toBe('2016-01-01T09:00');
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    // A row deleted from the queue takes the report with it: the row that
+    // takes its place is a new report, so a time or place its photos do not
+    // give goes back to the default.
+    test('resets the fields when the deleted row was the loaded one', async () => {
+      const early = jpeg({ name: 'early.jpg', size: 4 });
+      const late = jpeg({ name: 'late.jpg', size: 7 });
+
+      exifr.parse.mockImplementation(async arrayBuffer => {
+        if (arrayBuffer.byteLength !== 4) {
+          return {};
+        }
+        return {
+          CreateDate: new Date(Date.UTC(2016, 0, 1, 12, 0, 10)),
+          OffsetTimeDigitized: '-05:00',
+        };
+      });
+      exifr.gps.mockImplementation(async arrayBuffer =>
+        arrayBuffer.byteLength === 4
+          ? { latitude: 40.7129, longitude: -74.0061 }
+          : {},
+      );
+
+      const { homeRef, clickRowDelete, cleanup } = await renderBatchWithFiles([
+        early,
+        late,
+      ]);
+
+      expect(homeRef.current.state.CreateDate).toBe('2016-01-01T07:00:10');
+      expect(homeRef.current.state.latitude).toBe(40.7129);
+
+      clickRowDelete('T696817C');
+
+      // The row that took its place gives neither.
+      expect(homeRef.current.state.CreateDate).toBe('2016-11-17T19:00:00');
+      expect(homeRef.current.state.latitude).toBe(40.7128);
+      expect(homeRef.current.state.longitude).toBe(-74.006);
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    // A sample of untouched batches is the denominator: how often the
+    // grouping is right without a hand.
+    test('samples an untouched batch for grouping data', async () => {
+      const random = jest.spyOn(Math, 'random').mockReturnValue(0);
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { batchGroupingEvents, cleanup } = await renderBatchWithFiles([
+        jpeg({ name: 'a.jpg', size: 4 }),
+      ]);
+
+      const done = batchGroupingEvents.mock.calls
+        .map(([payload]) => payload)
+        .find(payload => payload.event === 'batch-done');
+      expect(done).toBeDefined();
+      expect(done.schema).toBe(1);
+      expect(done.rowsAfter).toHaveLength(1);
+      expect(done.photos.map(photo => photo.name)).toEqual(['a.jpg']);
+
+      random.mockRestore();
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    // A later pick is grouped with the batch, not with itself: the photos
+    // land where they would have if they had come with the first pick, and
+    // the row being reported does not silently take them.
+    test('groups photos added while a row is open as if they came with the first pick', async () => {
+      const first = jpeg({ name: 'a.jpg', size: 4 });
+      const second = jpeg({ name: 'b.jpg', size: 5 });
+      const other = jpeg({ name: 'c.jpg', size: 6 });
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, cleanup } = await renderBatchWithFiles([first]);
+
+      // The first row opened on its own.
+      expect(homeRef.current.state.batchViolations).toHaveLength(1);
+      expect(homeRef.current.state.currentViolationIndex).toBe(0);
+      expect(
+        homeRef.current.state.attachmentData.map(file => file.name),
+      ).toEqual(['a.jpg']);
+
+      await renderer.act(async () => {
+        await homeRef.current.addFilesToBatch([second, other]);
+        await new Promise(resolve => setImmediate(resolve));
+        await new Promise(resolve => setImmediate(resolve));
+      });
+
+      const { batchViolations, attachmentData, currentViolationIndex } =
+        homeRef.current.state;
+
+      // The photo of the open row's car joined that row; the other car made
+      // a row of its own, exactly as one pick of all three would have done.
+      expect(
+        batchViolations.map(violation => [
+          violation.plate,
+          violation.photos.map(photo => photo.name),
+        ]),
+      ).toEqual([
+        ['T696817C', ['a.jpg', 'b.jpg']],
+        ['LDA8765', ['c.jpg']],
+      ]);
+      // The open report gained the photo of its car: a merge reloads the form
+      // with the row's photos, so the report is the whole car rather than the
+      // one photo that happened to be read first.
+      expect(attachmentData.map(file => file.name)).toEqual(['a.jpg', 'b.jpg']);
+      expect(currentViolationIndex).toBe(0);
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    // A button inside a toast's content, which is an element tree rather than
+    // rendered markup.
+    const findButtonElement = (element, text) => {
+      if (!element || typeof element !== 'object') {
+        return null;
+      }
+      if (element.type === 'button' && element.props?.children === text) {
+        return element;
+      }
+      const children = element.props?.children;
+      const list = Array.isArray(children) ? children : [children];
+      return (
+        list.map(child => findButtonElement(child, text)).find(Boolean) || null
+      );
+    };
+
+    // One violation is a line and a form: the merge controls would have
+    // nothing to do, so they arrive with the second row. The count stays,
+    // because it is what tells a user who adds one report's photos that the
+    // app grouped them, and that a bigger batch is possible.
+    test('keeps the count line, but no merge controls, for one violation', async () => {
+      const oneCar = [
+        jpeg({ name: 'a.jpg', size: 4 }),
+        jpeg({ name: 'b.jpg', size: 5 }),
+      ];
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const mergeBoxes = tree =>
+        tree.root
+          .findAllByType('input')
+          .filter(
+            ({ props }) =>
+              typeof props['aria-label'] === 'string' &&
+              props['aria-label'].startsWith('Merge '),
+          );
+
+      const discardButton = tree =>
+        tree.root
+          .findAllByType('button')
+          .find(({ children }) =>
+            children.includes('Discard the remaining violations'),
+          );
+
+      const alone = await renderBatchWithFiles(oneCar);
+      expect(alone.homeRef.current.state.batchViolations).toHaveLength(1);
+      expect(renderedText(alone.tree.toJSON())).toContain('Found 1 violation');
+      expect(alone.mergeButton()).toBeUndefined();
+      expect(mergeBoxes(alone.tree)).toHaveLength(0);
+      expect(discardButton(alone.tree)).toBeUndefined();
+      expect(renderedText(alone.tree.toJSON())).not.toContain(
+        'Each row becomes one report',
+      );
+      alone.cleanup();
+
+      // A second row brings the controls back, and with them the sentence
+      // that says what they are for.
+      const twoCars = [...oneCar, jpeg({ name: 'c.jpg', size: 6 })];
+      const together = await renderBatchWithFiles(twoCars);
+      expect(together.homeRef.current.state.batchViolations).toHaveLength(2);
+      expect(together.mergeButton()).toBeDefined();
+      expect(mergeBoxes(together.tree)).toHaveLength(2);
+      expect(discardButton(together.tree)).toBeDefined();
+      expect(renderedText(together.tree.toJSON())).toContain(
+        'Each row becomes one report. Tick two rows to combine them.',
+      );
+      together.cleanup();
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+    });
+
     test('keeps a row the user merged when a read lands on it afterwards', async () => {
       // Two cars at one kerb, read apart by the grouping and put together by
       // the user: their report, for whatever reason they have.
@@ -6529,6 +7178,42 @@ describe('Home', () => {
       cleanup();
     });
 
+    // A photo can be in more than one row, and the rows say so. The batch
+    // gives each photo one row, so the second is built here; the badge is what
+    // a row shows when a photo of it is also another row's.
+    test('says when a row shares a photo with another violation', async () => {
+      const frame = jpeg({ name: 'frame.jpg', size: 10 });
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, tree, cleanup } = await renderBatchWithFiles([frame]);
+
+      const [first] = homeRef.current.state.batchViolations;
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchViolations: [first, { ...first, plate: 'BBB222' }],
+        });
+      });
+
+      expect(
+        homeRef.current.state.batchViolations.map(violation =>
+          violation.photos.map(photo => photo.name),
+        ),
+      ).toEqual([['frame.jpg'], ['frame.jpg']]);
+
+      const text = renderedText(tree.toJSON());
+      expect(text).toContain('shares a photo');
+      expect(text.match(/shares a photo/g)).toHaveLength(2);
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
     test('says a row is still reading while a reading it lost is tried again', async () => {
       const photo = jpeg({ name: 'a.jpg', size: 4 });
 
@@ -6564,6 +7249,1683 @@ describe('Home', () => {
 
       exifr.gps.mockReset();
       exifr.parse.mockReset();
+      cleanup();
+    });
+
+    // A row's tick is for merging it with another row, and one open row is not
+    // a merge: the tick moves with the row the form shows, so a merge starts
+    // from the row in front of the user. Two or more ticked are a selection
+    // the user is building, and opening another row leaves it alone.
+    test('moves the tick with the row the form shows, until a merge is under way', async () => {
+      const photos = ['a', 'b'].map(name => {
+        const file = new File(['picture'], `${name}.jpg`, {
+          type: 'image/jpeg',
+        });
+        return {
+          file,
+          name: file.name,
+          createDateMs: 1704110400000,
+          createDateOffset: 0,
+        };
+      });
+      const row = (photo, plate, createDateMs) => ({
+        photos: [photo],
+        plate,
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs,
+      });
+      // What a tick names: the row's time, its plate, and the photo it opens
+      // with. See `batchViolationIdentity`.
+      const identity = (photo, plate, createDateMs) =>
+        `${createDateMs}-${plate}-${photo.name}`;
+
+      const { homeRef, clickQueueLoad, tickMerge, untickMerge, cleanup } =
+        await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        homeRef.current.geosearchAddressCache.set({
+          latitude: 40.7129,
+          longitude: -74.0061,
+          address: '123 Main St, Manhattan',
+        });
+        homeRef.current.setState({
+          batchPhotos: photos,
+          batchViolations: [
+            row(photos[0], 'AAA111', 1704110400000),
+            row(photos[1], 'BBB222', 1704110500000),
+          ],
+        });
+      });
+
+      // Nothing is opened yet, so nothing is ticked.
+      expect(homeRef.current.state.batchMergeSelection).toEqual([]);
+
+      // The first row opened ticks itself: nothing was ticked when it was
+      // clicked.
+      clickQueueLoad('AAA111');
+      expect(homeRef.current.state.batchMergeSelection).toEqual([
+        identity(photos[0], 'AAA111', 1704110400000),
+      ]);
+
+      // One tick is the row the form showed, not a merge: opening another row
+      // moves the tick to it.
+      clickQueueLoad('BBB222');
+      expect(homeRef.current.state.batchMergeSelection).toEqual([
+        identity(photos[1], 'BBB222', 1704110500000),
+      ]);
+
+      // A second tick is a merge the user is building, and opening another row
+      // leaves the two alone.
+      tickMerge('AAA111');
+      expect(homeRef.current.state.batchMergeSelection).toEqual([
+        identity(photos[1], 'BBB222', 1704110500000),
+        identity(photos[0], 'AAA111', 1704110400000),
+      ]);
+
+      clickQueueLoad('AAA111');
+      expect(homeRef.current.state.batchMergeSelection).toEqual([
+        identity(photos[1], 'BBB222', 1704110500000),
+        identity(photos[0], 'AAA111', 1704110400000),
+      ]);
+
+      // Back to one tick, and the tick follows the form again.
+      untickMerge('BBB222');
+      clickQueueLoad('BBB222');
+      expect(homeRef.current.state.batchMergeSelection).toEqual([
+        identity(photos[1], 'BBB222', 1704110500000),
+      ]);
+
+      cleanup();
+    });
+
+    // One frame can hold several cars, and the row of each of them opens with
+    // that same picture: what tells those rows apart, to the queue and to the
+    // person reading it, is the plate.
+    test('ticks the row a plate names, not every row showing its picture', async () => {
+      const frame = new File(['picture'], 'wide.jpg', { type: 'image/jpeg' });
+      const photo = {
+        file: frame,
+        name: frame.name,
+        createDateMs: 1704110400000,
+        createDateOffset: 0,
+      };
+      const row = plate => ({
+        photos: [photo],
+        plate,
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs: 1704110400000,
+        createDateOffset: 0,
+      });
+
+      const { homeRef, tickMerge, clickButton, cleanup } =
+        await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchPhotos: [photo],
+          batchViolations: [row('AAA111'), row('BBB222'), row('CCC333')],
+        });
+      });
+
+      tickMerge('BBB222');
+      expect(homeRef.current.state.batchMergeSelection).toEqual([
+        '1704110400000-BBB222-wide.jpg',
+      ]);
+
+      // Two ticks are two rows, so the merge has something to combine.
+      tickMerge('AAA111');
+      clickButton('Merge');
+      expect(homeRef.current.state.batchViolations).toHaveLength(2);
+      expect(
+        homeRef.current.state.batchViolations.map(violation => violation.plate),
+      ).toContain('CCC333');
+
+      cleanup();
+    });
+
+    // A photo can be dragged into another row: that is the user saying which
+    // violation it belongs to. It leaves the report it came from, and the row
+    // it lands in is marked as the user's own, so a later read does not take
+    // it apart.
+    test('moves a photo into the row it is dropped on', async () => {
+      const photos = ['a', 'b', 'c'].map(name => {
+        const file = new File(['picture'], `${name}.jpg`, {
+          type: 'image/jpeg',
+        });
+        return {
+          file,
+          name: file.name,
+          createDateMs: 1704110400000,
+          createDateOffset: 0,
+        };
+      });
+      const row = (photoList, plate, createDateMs) => ({
+        photos: photoList,
+        plate,
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs,
+      });
+
+      const { homeRef, tree, clickQueueLoad, cleanup } =
+        await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchPhotos: photos,
+          batchViolations: [
+            row(photos.slice(0, 2), 'AAA111', 1704110400000),
+            row([photos[2]], 'BBB222', 1704110500000),
+          ],
+        });
+      });
+
+      // Open the first row: its photos are the ones on screen, and the ones a
+      // drag can start from.
+      clickQueueLoad('AAA111');
+      expect(homeRef.current.state.currentViolationIndex).toBe(0);
+
+      const tileFor = name =>
+        tree.root
+          .findAll(node => node.props.draggable === true)
+          .find(tile =>
+            tile.findAllByType('img').some(img => img.props.alt === name),
+          );
+
+      renderer.act(() => {
+        tileFor('b.jpg').props.onDragStart({
+          dataTransfer: { setData: jest.fn(), effectAllowed: '' },
+          stopPropagation: jest.fn(),
+        });
+      });
+
+      const rowFor = plate =>
+        tree.root
+          .findAllByType('li')
+          .find(item =>
+            item
+              .findAllByType('button')
+              .some(button =>
+                String(button.props['aria-label']).includes(plate),
+              ),
+          );
+
+      const event = {
+        preventDefault: jest.fn(),
+        stopPropagation: jest.fn(),
+        dataTransfer: {},
+      };
+      renderer.act(() => {
+        rowFor('BBB222').props.onDrop(event);
+      });
+
+      const { batchViolations, attachmentData } = homeRef.current.state;
+      expect(
+        batchViolations.map(violation => [
+          violation.plate,
+          violation.photos.map(photo => photo.name),
+          Boolean(violation.mergedByUser),
+        ]),
+      ).toEqual([
+        ['AAA111', ['a.jpg'], false],
+        ['BBB222', ['c.jpg', 'b.jpg'], true],
+      ]);
+
+      // The photo left the report with its old row.
+      expect(attachmentData.map(file => file.name)).toEqual(['a.jpg']);
+      expect(event.preventDefault).toHaveBeenCalled();
+
+      cleanup();
+    });
+
+    // Dragging a row onto another is the merge the tick and the Merge button
+    // do: the two are one violation, and a later read leaves it whole.
+    test('merges the row it is dropped on', async () => {
+      const photos = ['a', 'b'].map(name => {
+        const file = new File(['picture'], `${name}.jpg`, {
+          type: 'image/jpeg',
+        });
+        return {
+          file,
+          name: file.name,
+          createDateMs: 1704110400000,
+          createDateOffset: 0,
+        };
+      });
+      const row = (photoList, plate, createDateMs) => ({
+        photos: photoList,
+        plate,
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs,
+      });
+
+      const { homeRef, tree, cleanup } = await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchPhotos: photos,
+          batchViolations: [
+            row([photos[0]], 'AAA111', 1704110400000),
+            row([photos[1]], 'BBB222', 1704110500000),
+          ],
+        });
+      });
+
+      const rowFor = plate =>
+        tree.root
+          .findAllByType('li')
+          .find(item =>
+            item
+              .findAllByType('button')
+              .some(button =>
+                String(button.props['aria-label']).includes(plate),
+              ),
+          );
+
+      const dragFrom = plate => {
+        renderer.act(() => {
+          rowFor(plate).props.onDragStart({
+            dataTransfer: { setData: jest.fn(), effectAllowed: '' },
+            stopPropagation: jest.fn(),
+          });
+        });
+      };
+
+      const dropOn = plate => {
+        const event = {
+          preventDefault: jest.fn(),
+          stopPropagation: jest.fn(),
+          dataTransfer: {},
+        };
+        renderer.act(() => {
+          rowFor(plate).props.onDrop(event);
+        });
+      };
+
+      // A row dropped on itself says nothing.
+      dragFrom('AAA111');
+      dropOn('AAA111');
+      expect(homeRef.current.state.batchViolations).toHaveLength(2);
+
+      // The drop ends the drag, so the second one starts a new drag.
+      dragFrom('AAA111');
+      dropOn('BBB222');
+
+      const { batchViolations } = homeRef.current.state;
+      expect(batchViolations).toHaveLength(1);
+      expect(batchViolations[0].photos.map(photo => photo.name)).toEqual([
+        'b.jpg',
+        'a.jpg',
+      ]);
+      // The row dropped on keeps its plate when the two are as large, and the
+      // row is the user's own from then on.
+      expect(batchViolations[0].plate).toBe('BBB222');
+      expect(batchViolations[0].mergedByUser).toBe(true);
+
+      cleanup();
+    });
+
+    // The target for a photo that is a violation of its own: it shows while a
+    // photo is dragged, and only then.
+    test('shows the new-violation target while a photo is dragged', async () => {
+      const photos = ['a'].map(name => {
+        const file = new File(['picture'], `${name}.jpg`, {
+          type: 'image/jpeg',
+        });
+        return {
+          file,
+          name: file.name,
+          createDateMs: 1704110400000,
+          createDateOffset: 0,
+        };
+      });
+      const row = {
+        photos,
+        plate: 'AAA111',
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs: 1704110400000,
+        createDateOffset: 0,
+      };
+
+      const { homeRef, tree, cleanup } = await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchPhotos: photos,
+          batchViolations: [row],
+        });
+      });
+
+      const targets = () =>
+        tree.root.findAll(node =>
+          String(node.props.className || '').includes(
+            'batch-new-violation-drop',
+          ),
+        ).length;
+
+      expect(targets()).toBe(0);
+
+      renderer.act(() => {
+        homeRef.current.startPhotoDrag({
+          photo: photos[0],
+          event: {
+            stopPropagation: jest.fn(),
+            dataTransfer: { setData: jest.fn() },
+          },
+        });
+      });
+      expect(targets()).toBe(1);
+
+      renderer.act(() => {
+        homeRef.current.endDrag();
+      });
+      expect(targets()).toBe(0);
+
+      // A row drag is not a photo, so there is no photo to put in a new row.
+      renderer.act(() => {
+        homeRef.current.startRowDrag({
+          violation: row,
+          event: { dataTransfer: { setData: jest.fn() } },
+        });
+      });
+      expect(targets()).toBe(0);
+      renderer.act(() => {
+        homeRef.current.endDrag();
+      });
+
+      cleanup();
+    });
+
+    // A photo dropped there gets a row of its own, built from what the photo
+    // itself read.
+    test('gives a dropped photo a violation of its own', async () => {
+      const photos = ['a', 'b', 'c'].map(name => {
+        const file = new File(['picture'], `${name}.jpg`, {
+          type: 'image/jpeg',
+        });
+        return {
+          file,
+          name: file.name,
+          createDateMs: 1704110400000,
+          createDateOffset: 0,
+          latitude: 40.7129,
+          longitude: -74.0061,
+        };
+      });
+      // The first photo's own read names a car.
+      photos[0].plateResults = {
+        results: [
+          {
+            plate: 'ccc333',
+            score: 1,
+            candidates: [{ plate: 'ccc333', score: 1 }],
+            box: { xmin: 0, ymin: 0, xmax: 10, ymax: 10 },
+            region: { code: 'us-ny' },
+          },
+        ],
+        uploadWidth: 100,
+        uploadHeight: 100,
+      };
+      const row = (photoList, plate, createDateMs) => ({
+        photos: photoList,
+        plate,
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs,
+      });
+
+      const { homeRef, tree, clickQueueLoad, cleanup } =
+        await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchPhotos: photos,
+          batchViolations: [
+            row(photos.slice(0, 2), 'AAA111', 1704110400000),
+            row([photos[2]], 'BBB222', 1704110500000),
+          ],
+        });
+      });
+
+      clickQueueLoad('AAA111');
+
+      const tileFor = name =>
+        tree.root
+          .findAll(node => node.props.draggable === true)
+          .find(tile =>
+            tile.findAllByType('img').some(img => img.props.alt === name),
+          );
+
+      renderer.act(() => {
+        tileFor('a.jpg').props.onDragStart({
+          dataTransfer: { setData: jest.fn(), effectAllowed: '' },
+          stopPropagation: jest.fn(),
+        });
+      });
+
+      const target = tree.root
+        .findAll(node =>
+          String(node.props.className || '').includes(
+            'batch-new-violation-drop',
+          ),
+        )
+        .find(node => typeof node.props.onDrop === 'function');
+
+      renderer.act(() => {
+        target.props.onDrop({
+          preventDefault: jest.fn(),
+          stopPropagation: jest.fn(),
+          dataTransfer: {},
+        });
+      });
+
+      const { batchViolations, currentViolationIndex, attachmentData } =
+        homeRef.current.state;
+
+      expect(
+        batchViolations.map(violation => [
+          violation.plate,
+          violation.photos.map(photo => photo.name),
+          Boolean(violation.mergedByUser),
+        ]),
+      ).toEqual([
+        ['AAA111', ['b.jpg'], false],
+        // Built from the photo's own read, and kept as the user's row.
+        ['CCC333', ['a.jpg'], true],
+        ['BBB222', ['c.jpg'], false],
+      ]);
+      expect(currentViolationIndex).toBe(0);
+      expect(attachmentData.map(file => file.name)).toEqual(['b.jpg']);
+
+      // The moved photo was the row's first, so the row is named by a new
+      // photo now: the tick follows the row, not the new violation that took
+      // the photo's old name.
+      expect(homeRef.current.state.batchMergeSelection).toEqual([
+        '1704110400000-AAA111-b.jpg',
+      ]);
+
+      cleanup();
+    });
+
+    // A loaded one-photo violation, for the copy tests below.
+    const onePhotoRow = async () => {
+      const photo = {
+        file: new File(['picture'], 'only.jpg', { type: 'image/jpeg' }),
+        name: 'only.jpg',
+        createDateMs: 1704110400000,
+        createDateOffset: 0,
+        latitude: 40.7129,
+        longitude: -74.0061,
+      };
+      const row = {
+        photos: [photo],
+        plate: 'AAA111',
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs: 1704110400000,
+      };
+
+      const rendered = await renderBatchWithFiles([]);
+      renderer.act(() => {
+        rendered.homeRef.current.setState({
+          batchPhotos: [photo],
+          batchViolations: [row],
+        });
+      });
+      rendered.clickQueueLoad('AAA111');
+
+      return { ...rendered, photo, row };
+    };
+
+    // Drag `name` from the form's grid to the new-violation target.
+    const dropOnNewViolation = (tree, name) => {
+      const tile = tree.root
+        .findAll(node => node.props.draggable === true)
+        .find(node =>
+          node.findAllByType('img').some(img => img.props.alt === name),
+        );
+
+      renderer.act(() => {
+        tile.props.onDragStart({
+          dataTransfer: { setData: jest.fn(), effectAllowed: '' },
+          stopPropagation: jest.fn(),
+        });
+      });
+
+      const target = tree.root
+        .findAll(node =>
+          String(node.props.className || '').includes(
+            'batch-new-violation-drop',
+          ),
+        )
+        .find(node => typeof node.props.onDrop === 'function');
+
+      renderer.act(() => {
+        target.props.onDrop({
+          preventDefault: jest.fn(),
+          stopPropagation: jest.fn(),
+          dataTransfer: {},
+        });
+      });
+    };
+
+    // A row of one photo has no other photo to be named by, so the target
+    // copies the row instead of taking the photo out of it.
+    test('copies a one-photo violation dropped on the new-violation target', async () => {
+      const { homeRef, tree, photo, cleanup } = await onePhotoRow();
+
+      dropOnNewViolation(tree, 'only.jpg');
+
+      const { batchViolations, currentViolationIndex, attachmentData } =
+        homeRef.current.state;
+
+      expect(
+        batchViolations.map(violation => [
+          violation.plate,
+          violation.photos.map(each => each.name),
+          Boolean(violation.mergedByUser),
+        ]),
+      ).toEqual([
+        ['AAA111', ['only.jpg'], false],
+        ['AAA111', ['only.jpg'], true],
+      ]);
+      // The copy agrees with its source on the time, plate and photo, so its
+      // key is what tells them apart.
+      expect(batchViolations[0].copyKey).toBeUndefined();
+      expect(batchViolations[1].copyKey).toBeDefined();
+
+      // The report on screen did not change: its row is still the source.
+      expect(currentViolationIndex).toBe(0);
+      expect(attachmentData).toEqual([photo.file]);
+
+      // Both rows carry the photo, and both say so.
+      expect(renderedText(tree.toJSON()).match(/shares a photo/g)).toHaveLength(
+        2,
+      );
+
+      cleanup();
+    });
+
+    // A read replaces the photo in every row that holds it. The source keeps
+    // grouping with its car; the copy is the user's own report and stays
+    // whole, and the form stays on the row it was on.
+    test('keeps a copy and its source apart when a reading lands', async () => {
+      const { homeRef, tree, photo, cleanup } = await onePhotoRow();
+
+      dropOnNewViolation(tree, 'only.jpg');
+
+      const source = homeRef.current.state.batchViolations.find(
+        violation => violation.copyKey === undefined,
+      );
+      const read = {
+        ...source.photos[0],
+        plateResults: {
+          results: [plateResult({ plate: 'aaa111' })],
+          uploadWidth: 1000,
+          uploadHeight: 1000,
+        },
+      };
+
+      renderer.act(() => {
+        homeRef.current.setState(
+          homeRef.current.applyPlateRead({ photo: source.photos[0], read }),
+        );
+      });
+
+      const { batchViolations, currentViolationIndex, attachmentData } =
+        homeRef.current.state;
+
+      expect(batchViolations).toHaveLength(2);
+      expect(
+        batchViolations.map(violation => [
+          violation.plate,
+          violation.photos.map(each => each.name),
+          Boolean(violation.mergedByUser),
+        ]),
+      ).toEqual([
+        ['AAA111', ['only.jpg'], true],
+        ['AAA111', ['only.jpg'], false],
+      ]);
+      // The form stayed on the source, not on the copy that comes first in
+      // the queue.
+      expect(batchViolations[currentViolationIndex].copyKey).toBeUndefined();
+      expect(attachmentData).toEqual([photo.file]);
+
+      cleanup();
+    });
+
+    // The tick names a row by its identity, so the copy must not answer to
+    // the source's name. A merge of the two is one row, and keeps the copy's
+    // key.
+    test('ticks a copy and its source as two rows', async () => {
+      const { homeRef, tree, clickButton, cleanup } = await onePhotoRow();
+
+      dropOnNewViolation(tree, 'only.jpg');
+
+      const boxes = tree.root
+        .findAllByType('input')
+        .filter(({ props }) =>
+          String(props['aria-label']).startsWith('Merge '),
+        );
+      expect(boxes).toHaveLength(2);
+
+      // The loaded row is ticked already; tick the copy as well.
+      const [unchecked] = boxes.filter(({ props }) => !props.checked);
+      renderer.act(() => {
+        unchecked.props.onChange({});
+      });
+
+      const { batchMergeSelection } = homeRef.current.state;
+      expect(batchMergeSelection).toHaveLength(2);
+      expect(new Set(batchMergeSelection).size).toBe(2);
+
+      clickButton('Merge');
+
+      const rows = homeRef.current.state.batchViolations;
+      expect(rows).toHaveLength(1);
+      expect(rows[0].photos.map(each => each.name)).toEqual(['only.jpg']);
+      expect(rows[0].copyKey).toBeDefined();
+
+      cleanup();
+    });
+
+    // The drag is not the only way. Each photo's tile carries a menu, so the
+    // same moves work from the keyboard: open the menu, choose the row or the
+    // new violation.
+    const photoMenu = (tree, name) =>
+      tree.root
+        .findAllByType('summary')
+        .find(node => node.props['aria-label'] === `Actions for ${name}`);
+
+    const menuAction = (tree, prefix) =>
+      tree.root
+        .findAllByType('button')
+        .find(node => String(node.props['aria-label']).startsWith(prefix));
+
+    test('moves a photo to another violation from its menu', async () => {
+      const photos = ['a', 'b', 'c'].map(name => {
+        const file = new File(['picture'], `${name}.jpg`, {
+          type: 'image/jpeg',
+        });
+        return {
+          file,
+          name: file.name,
+          createDateMs: 1704110400000,
+          createDateOffset: 0,
+        };
+      });
+      const row = (photoList, plate, createDateMs) => ({
+        photos: photoList,
+        plate,
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs,
+      });
+
+      const { homeRef, tree, clickQueueLoad, batchGroupingEvents, cleanup } =
+        await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchPhotos: photos,
+          batchViolations: [
+            row(photos.slice(0, 2), 'AAA111', 1704110400000),
+            row([photos[2]], 'BBB222', 1704110500000),
+          ],
+        });
+      });
+
+      clickQueueLoad('AAA111');
+
+      // The menu is on the photo's tile, and names the other row.
+      expect(photoMenu(tree, 'b.jpg')).toBeDefined();
+      const moveButton = menuAction(tree, 'Move b.jpg to ');
+      expect(String(moveButton.props['aria-label'])).toContain('BBB222');
+
+      renderer.act(() => {
+        moveButton.props.onClick();
+      });
+
+      const { batchViolations, attachmentData } = homeRef.current.state;
+      expect(
+        batchViolations.map(violation => [
+          violation.plate,
+          violation.photos.map(photo => photo.name),
+          Boolean(violation.mergedByUser),
+        ]),
+      ).toEqual([
+        ['AAA111', ['a.jpg'], false],
+        ['BBB222', ['c.jpg', 'b.jpg'], true],
+      ]);
+      expect(attachmentData.map(file => file.name)).toEqual(['a.jpg']);
+
+      // The event names the control that did it: the menu, not a drag.
+      const move = batchGroupingEvents.mock.calls
+        .map(([payload]) => payload)
+        .find(payload => payload.event === 'move');
+      expect(move).toBeDefined();
+      expect(move.source).toBe('menu');
+      expect(move.rowsBefore).toHaveLength(2);
+      // Both rows remain; the photo changed rows.
+      expect(move.rowsAfter).toHaveLength(2);
+      expect(
+        move.rowsAfter.map(violationRow => [
+          violationRow.plate,
+          violationRow.photos,
+        ]),
+      ).toEqual([
+        ['AAA111', ['a.jpg']],
+        ['BBB222', ['c.jpg', 'b.jpg']],
+      ]);
+
+      cleanup();
+    });
+
+    test('splits a photo into a new violation from its menu', async () => {
+      const photos = ['a', 'b'].map(name => {
+        const file = new File(['picture'], `${name}.jpg`, {
+          type: 'image/jpeg',
+        });
+        return {
+          file,
+          name: file.name,
+          createDateMs: 1704110400000,
+          createDateOffset: 0,
+        };
+      });
+      const row = {
+        photos,
+        plate: 'AAA111',
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs: 1704110400000,
+        createDateOffset: 0,
+      };
+
+      const { homeRef, tree, clickQueueLoad, cleanup } =
+        await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchPhotos: photos,
+          batchViolations: [row],
+        });
+      });
+
+      clickQueueLoad('AAA111');
+
+      // One row has nowhere to move a photo to, so the menu offers the split
+      // alone.
+      expect(photoMenu(tree, 'b.jpg')).toBeDefined();
+      expect(menuAction(tree, 'Move b.jpg to ')).toBeUndefined();
+
+      const splitButton = menuAction(tree, 'Split b.jpg into a new violation');
+      expect(splitButton).toBeDefined();
+      renderer.act(() => {
+        splitButton.props.onClick();
+      });
+
+      const { batchViolations, attachmentData } = homeRef.current.state;
+      expect(
+        batchViolations.map(violation => [
+          violation.photos.map(photo => photo.name),
+          Boolean(violation.mergedByUser),
+        ]),
+      ).toEqual([
+        [['a.jpg'], false],
+        [['b.jpg'], true],
+      ]);
+      expect(attachmentData.map(file => file.name)).toEqual(['a.jpg']);
+
+      cleanup();
+    });
+
+    test('closes the row a moved photo leaves empty, and opens the next', async () => {
+      const photos = ['a', 'b'].map(name => {
+        const file = new File(['picture'], `${name}.jpg`, {
+          type: 'image/jpeg',
+        });
+        return {
+          file,
+          name: file.name,
+          createDateMs: 1704110400000,
+          createDateOffset: 0,
+        };
+      });
+      const row = (photoList, plate, createDateMs) => ({
+        photos: photoList,
+        plate,
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs,
+      });
+
+      const { homeRef, clickQueueLoad, cleanup } = await renderBatchWithFiles(
+        [],
+      );
+
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchPhotos: photos,
+          batchViolations: [
+            row([photos[0]], 'AAA111', 1704110400000),
+            row([photos[1]], 'BBB222', 1704110500000),
+          ],
+        });
+      });
+
+      clickQueueLoad('AAA111');
+
+      // Its only photo goes to the other row, so the row goes with it.
+      renderer.act(() => {
+        homeRef.current.movePhotoToViolation({
+          photo: photos[0],
+          violation: homeRef.current.state.batchViolations[1],
+        });
+      });
+
+      const { batchViolations, currentViolationIndex, attachmentData } =
+        homeRef.current.state;
+      expect(
+        batchViolations.map(violation => [
+          violation.plate,
+          violation.photos.map(photo => photo.name),
+        ]),
+      ).toEqual([['BBB222', ['b.jpg', 'a.jpg']]]);
+      expect(currentViolationIndex).toBe(0);
+      expect(attachmentData.map(file => file.name)).toEqual(['b.jpg', 'a.jpg']);
+
+      cleanup();
+    });
+
+    test('keeps the record of an empty row when a photo is dropped on it', async () => {
+      const file = new File(['picture'], 'a.jpg', { type: 'image/jpeg' });
+      const photo = {
+        file,
+        name: file.name,
+        createDateMs: 1704110400000,
+        createDateOffset: 0,
+        latitude: 40.7129,
+        longitude: -74.0061,
+      };
+      const sourceRow = {
+        photos: [photo],
+        plate: 'BBB222',
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs: 1704110400000,
+      };
+      // An edited submission with no media: its record has no photo behind it.
+      const emptyRow = {
+        photos: [],
+        plate: 'AAA111',
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs: 1704110300000,
+        mergedByUser: true,
+      };
+
+      const { homeRef, cleanup } = await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchPhotos: [photo],
+          batchViolations: [sourceRow, emptyRow],
+          currentViolationIndex: 0,
+        });
+      });
+
+      renderer.act(() => {
+        homeRef.current.movePhotoToViolation({
+          photo,
+          violation: homeRef.current.state.batchViolations[1],
+        });
+      });
+
+      const { batchViolations, currentViolationIndex, attachmentData } =
+        homeRef.current.state;
+
+      // The photo joins the empty row, and the time, place and plate it was
+      // made with stay.
+      expect(batchViolations).toHaveLength(1);
+      expect(batchViolations[0]).toMatchObject({
+        plate: 'AAA111',
+        licenseState: 'NY',
+        createDateMs: 1704110300000,
+        latitude: 40.7129,
+        longitude: -74.0061,
+      });
+      expect(batchViolations[0].photos).toEqual([photo]);
+      expect(currentViolationIndex).toBe(0);
+      expect(attachmentData.map(candidate => candidate.name)).toEqual([
+        'a.jpg',
+      ]);
+
+      cleanup();
+    });
+
+    test('does not load a violation when its delete or merge control is used', async () => {
+      const photos = ['a', 'b'].map(name => {
+        const file = new File(['picture'], `${name}.jpg`, {
+          type: 'image/jpeg',
+        });
+        return {
+          file,
+          name: file.name,
+          createDateMs: 1704110400000,
+          createDateOffset: 0,
+        };
+      });
+      const violation = (photo, plate, createDateMs) => ({
+        photos: [photo],
+        plate,
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs,
+      });
+
+      const { homeRef, tickMerge, clickRowDelete, cleanup } =
+        await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchPhotos: photos,
+          batchViolations: [
+            violation(photos[0], 'AAA111', 1704110400000),
+            violation(photos[1], 'BBB222', 1704110500000),
+          ],
+        });
+      });
+
+      // Nothing is loaded, and neither control beside the description may
+      // load one: they are siblings of it, not children.
+      expect(homeRef.current.state.currentViolationIndex).toBe(-1);
+
+      tickMerge('AAA111');
+      expect(homeRef.current.state.batchMergeSelection).toHaveLength(1);
+      expect(homeRef.current.state.currentViolationIndex).toBe(-1);
+
+      clickRowDelete('AAA111');
+      expect(homeRef.current.state.batchViolations).toHaveLength(1);
+      expect(homeRef.current.state.currentViolationIndex).toBe(-1);
+
+      cleanup();
+    });
+
+    // The row is the report: with nothing attached there is nothing to file,
+    // so the violation goes rather than sitting there as an empty shell.
+    const oneRowOf = async photos => {
+      const violation = {
+        photos,
+        plate: 'T696817C',
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs: 1704110400000,
+        createDateOffset: 0,
+      };
+
+      const rendered = await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        rendered.homeRef.current.geosearchAddressCache.set({
+          latitude: 40.7129,
+          longitude: -74.0061,
+          address: '123 Main St, Manhattan',
+        });
+        rendered.homeRef.current.setState({
+          batchPhotos: photos,
+          batchViolations: [violation],
+        });
+      });
+      rendered.clickQueueLoad('T696817C');
+
+      return { ...rendered, violation };
+    };
+
+    // A deleted row's photos, the ones no other row holds, are out of the
+    // batch for good. Their object URLs are what keep their bytes in memory,
+    // so they go with the row.
+    test('releases the photos a deleted row no longer needs', async () => {
+      const photos = [
+        jpeg({ name: 'a.jpg', size: 4 }),
+        jpeg({ name: 'b.jpg', size: 5 }),
+        jpeg({ name: 'c.jpg', size: 6 }),
+      ];
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, clickRowDelete, cleanup } =
+        await renderBatchWithFiles(photos);
+
+      const originalRevokeObjectURL = global.URL.revokeObjectURL;
+      global.URL.revokeObjectURL = jest.fn();
+
+      // The loaded row holds the first two photos; deleting it takes both out
+      // of the batch, because no other row holds them.
+      clickRowDelete('T696817C');
+      expect(global.URL.revokeObjectURL).toHaveBeenCalled();
+      expect(homeRef.current.state.batchViolations).toHaveLength(1);
+
+      global.URL.revokeObjectURL = originalRevokeObjectURL;
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    test('removes the violation when the X takes its last photo', async () => {
+      const photos = ['p1', 'p2'].map((name, index) => {
+        const file = new File(['picture'], `${name}.jpg`, {
+          type: 'image/jpeg',
+        });
+        return {
+          file,
+          name: file.name,
+          createDateMs: 1704110400000 + index * 1000,
+          createDateOffset: 0,
+          latitude: 40.7129,
+          longitude: -74.0061,
+        };
+      });
+
+      const { homeRef, clickAttachmentDelete, cleanup } =
+        await oneRowOf(photos);
+
+      clickAttachmentDelete('p1.jpg');
+
+      // One photo is still a report, so the row stays.
+      expect(homeRef.current.state.batchViolations).toHaveLength(1);
+      expect(
+        homeRef.current.state.attachmentData.map(file => file.name),
+      ).toEqual(['p2.jpg']);
+
+      clickAttachmentDelete('p2.jpg');
+
+      expect(homeRef.current.state.batchViolations).toEqual([]);
+      // The photos went with the row: nothing is left to report from them.
+      expect(homeRef.current.state.batchPhotos).toEqual([]);
+
+      cleanup();
+    });
+
+    // A removed photo can be taken back: the toast holds the batch as it was
+    // for a moment, instead of a confirm dialog before every delete.
+    test('takes back a deleted photo', async () => {
+      const photos = ['p1', 'p2'].map((name, index) => ({
+        file: new File(['picture'], `${name}.jpg`, { type: 'image/jpeg' }),
+        name: `${name}.jpg`,
+        createDateMs: 1704110400000 + index * 1000,
+        createDateOffset: 0,
+        latitude: 40.7129,
+        longitude: -74.0061,
+      }));
+
+      const { homeRef, toastInfo, clickAttachmentDelete, cleanup } =
+        await oneRowOf(photos);
+
+      clickAttachmentDelete('p2.jpg');
+
+      expect(
+        homeRef.current.state.attachmentData.map(file => file.name),
+      ).toEqual(['p1.jpg']);
+      expect(elementText(toastInfo.mock.calls[0][0])).toContain(
+        'Photo removed.',
+      );
+
+      const undo = findButtonElement(toastInfo.mock.calls[0][0], 'Undo');
+      expect(undo).not.toBeNull();
+      renderer.act(() => undo.props.onClick());
+
+      expect(
+        homeRef.current.state.attachmentData.map(file => file.name),
+      ).toEqual(['p1.jpg', 'p2.jpg']);
+      expect(
+        homeRef.current.state.batchViolations[0].photos.map(
+          photo => photo.name,
+        ),
+      ).toEqual(['p1.jpg', 'p2.jpg']);
+
+      cleanup();
+    });
+
+    // The row's X can be taken back the same way.
+    test('takes back a deleted violation', async () => {
+      const photos = ['a', 'b'].map(name => {
+        const file = new File(['picture'], `${name}.jpg`, {
+          type: 'image/jpeg',
+        });
+        return {
+          file,
+          name: file.name,
+          createDateMs: 1704110400000,
+          createDateOffset: 0,
+        };
+      });
+      const row = (photoList, plate) => ({
+        photos: photoList,
+        plate,
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs: 1704110400000,
+        createDateOffset: 0,
+      });
+
+      const { homeRef, tree, toastInfo, cleanup } = await renderBatchWithFiles(
+        [],
+      );
+
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchPhotos: photos,
+          batchViolations: [
+            row([photos[0]], 'AAA111'),
+            row([photos[1]], 'BBB222'),
+          ],
+        });
+      });
+
+      const remove = tree.root.findAllByType('button').find(({ props }) => {
+        const label = props['aria-label'];
+        return (
+          typeof label === 'string' &&
+          label.startsWith('Delete ') &&
+          label.includes('BBB222')
+        );
+      });
+      renderer.act(() => remove.props.onClick());
+
+      expect(
+        homeRef.current.state.batchViolations.map(violation => violation.plate),
+      ).toEqual(['AAA111']);
+      expect(elementText(toastInfo.mock.calls[0][0])).toContain(
+        'Violation removed.',
+      );
+
+      const undo = findButtonElement(toastInfo.mock.calls[0][0], 'Undo');
+      expect(undo).not.toBeNull();
+      renderer.act(() => undo.props.onClick());
+
+      expect(
+        homeRef.current.state.batchViolations.map(violation => violation.plate),
+      ).toEqual(['AAA111', 'BBB222']);
+
+      cleanup();
+    });
+
+    // The trash deletes the photo, and a photo is the batch's, not a row's:
+    // one frame is evidence for every car in it, so deleting it takes it from
+    // every row that holds it, and a row that was only that photo goes.
+    test('deletes a shared photo from every row that holds it', async () => {
+      const photo = name => ({
+        file: new File(['picture'], name, { type: 'image/jpeg' }),
+        name,
+        createDateMs: 1704110400000,
+        createDateOffset: 0,
+        latitude: 40.7129,
+        longitude: -74.0061,
+      });
+      const wide = photo('wide.jpg');
+      const closeup = photo('closeup.jpg');
+      const row = (plate, photos) => ({
+        photos,
+        plate,
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs: 1704110400000,
+        createDateOffset: 0,
+      });
+
+      const rendered = await renderBatchWithFiles([]);
+      const { homeRef, clickQueueLoad, clickAttachmentDelete, cleanup } =
+        rendered;
+
+      renderer.act(() => {
+        homeRef.current.geosearchAddressCache.set({
+          latitude: 40.7129,
+          longitude: -74.0061,
+          address: '123 Main St, Manhattan',
+        });
+        homeRef.current.setState({
+          batchPhotos: [wide, closeup],
+          batchViolations: [
+            row('AAA111', [wide, closeup]),
+            row('BBB222', [wide]),
+          ],
+        });
+      });
+      clickQueueLoad('AAA111');
+
+      clickAttachmentDelete('wide.jpg');
+
+      // The row that held only the frame goes with it. The row that is left
+      // keeps the photo of its own, and the frame is in neither the rows nor
+      // the batch, so nothing can put it back.
+      expect(
+        homeRef.current.state.batchViolations.map(violation => violation.plate),
+      ).toEqual(['AAA111']);
+      expect(homeRef.current.state.batchViolations[0].photos).toEqual([
+        closeup,
+      ]);
+      expect(homeRef.current.state.batchPhotos).toEqual([closeup]);
+
+      // Nor can a reading that lands afterwards build it back into the rows:
+      // the regrouping works from the photos the rows hold, and no row holds
+      // it any more.
+      renderer.act(() => {
+        const [remaining] = homeRef.current.state.batchPhotos;
+        homeRef.current.setState(
+          homeRef.current.applyPlateRead({
+            photo: remaining,
+            read: { ...remaining },
+          }),
+        );
+      });
+
+      expect(
+        homeRef.current.state.batchViolations.map(violation =>
+          violation.photos.map(each => each.name),
+        ),
+      ).toEqual([['closeup.jpg']]);
+
+      cleanup();
+    });
+
+    // A violation's time and place come from its earliest photo, so which
+    // photos the report holds decides both. These two tests are the pair: the
+    // form follows the photos until the user sets either by hand.
+    // Four photos ten minutes apart, each somewhere new, so that which of them
+    // a value came from is readable off the value itself.
+    const fourPhotosApart = () =>
+      [
+        ['p1.jpg', 40.7, -74.0],
+        ['p2.jpg', 40.71, -74.01],
+        ['p3.jpg', 40.72, -74.02],
+        ['p4.jpg', 40.73, -74.03],
+      ].map(([name, latitude, longitude], index) => {
+        const file = new File(['picture'], name, { type: 'image/jpeg' });
+        return {
+          file,
+          name,
+          createDateMs: Date.UTC(2024, 0, 1, 12, index * 10, 0),
+          // The offset the camera recorded, so what the field shows is a
+          // plain UTC time rather than one shifted by this machine's zone.
+          createDateOffset: 0,
+          latitude,
+          longitude,
+        };
+      });
+
+    // The address each photo's coordinates resolve to, so that following the
+    // photos never asks the network.
+    const cacheAddresses = (homeRef, photos) => {
+      photos.forEach(photo => {
+        homeRef.current.geosearchAddressCache.set({
+          latitude: photo.latitude,
+          longitude: photo.longitude,
+          address: `where ${photo.name} was taken`,
+        });
+      });
+    };
+
+    test('moves the time and place when the X takes a photo out', async () => {
+      const photos = fourPhotosApart();
+      const violation = {
+        photos,
+        plate: 'T696817C',
+        licenseState: 'NY',
+        latitude: photos[0].latitude,
+        longitude: photos[0].longitude,
+        createDateMs: photos[0].createDateMs,
+      };
+
+      const {
+        homeRef,
+        clickQueueLoad,
+        clickAttachmentDelete,
+        createDateInputValue,
+        cleanup,
+      } = await renderBatchWithFiles([]);
+
+      renderer.act(() => {
+        cacheAddresses(homeRef, photos);
+        homeRef.current.setState({
+          batchPhotos: photos,
+          batchViolations: [violation],
+        });
+      });
+      clickQueueLoad('T696817C');
+
+      expect(homeRef.current.state.latitude).toBe(40.72);
+      expect(createDateInputValue()).toBe('2024-01-01T12:00');
+
+      // The X is the only way out of a report of three or fewer, and it makes
+      // the picker's promise: the report describes the photos that are left.
+      // Dropping the newest moves the place back a photo...
+      clickAttachmentDelete('p3.jpg');
+
+      expect(homeRef.current.state.latitude).toBe(40.71);
+      expect(createDateInputValue()).toBe('2024-01-01T12:00');
+
+      // ...and dropping the oldest moves the time forward.
+      clickAttachmentDelete('p1.jpg');
+
+      expect(homeRef.current.state.latitude).toBe(40.71);
+      expect(createDateInputValue()).toBe('2024-01-01T12:10');
+
+      cleanup();
+    });
+
+    // The trash deletes a photo outright: it is not left behind to become a
+    // violation of its own, and a submit afterwards has nothing of it to
+    // publish.
+    test.each([
+      [['p1.jpg', 'p2.jpg'], 'p2.jpg'],
+      [['p1.jpg', 'p2.jpg', 'p3.jpg'], 'p2.jpg'],
+    ])(
+      'does not bring a deleted photo back as a violation of its own (%s)',
+      async (names, deleted) => {
+        const photos = names.map((name, index) => {
+          const file = new File(['picture'], name, { type: 'image/jpeg' });
+          return {
+            file,
+            name,
+            createDateMs: 1704110400000 + index * 1000,
+            createDateOffset: 0,
+            latitude: 40.7129,
+            longitude: -74.0061,
+          };
+        });
+        const violation = {
+          photos,
+          plate: 'T696817C',
+          licenseState: 'NY',
+          latitude: 40.7129,
+          longitude: -74.0061,
+          createDateMs: 1704110400000,
+          createDateOffset: 0,
+        };
+        const kept = names.filter(name => name !== deleted);
+
+        const {
+          homeRef,
+          clickQueueLoad,
+          clickAttachmentDelete,
+          submit,
+          cleanup,
+        } = await renderBatchWithFiles([]);
+
+        renderer.act(() => {
+          homeRef.current.geosearchAddressCache.set({
+            latitude: 40.7129,
+            longitude: -74.0061,
+            address: '123 Main St, Manhattan',
+          });
+          homeRef.current.setState({
+            batchPhotos: photos,
+            batchViolations: [violation],
+          });
+        });
+        clickQueueLoad('T696817C');
+
+        // Every one of them fits, so every one starts attached.
+        expect(
+          homeRef.current.state.attachmentData.map(file => file.name),
+        ).toEqual(names);
+
+        // The trash deletes one, from the report and from the violation.
+        clickAttachmentDelete(deleted);
+        expect(
+          homeRef.current.state.attachmentData.map(file => file.name),
+        ).toEqual(kept);
+        expect(
+          homeRef.current.state.batchPhotos.map(photo => photo.name),
+        ).toEqual(kept);
+
+        await submit();
+
+        await renderer.act(async () => {
+          for (let i = 0; i < 3; i += 1) {
+            // eslint-disable-next-line no-await-in-loop -- one round per pending promise chain.
+            await new Promise(resolve => setImmediate(resolve));
+          }
+        });
+
+        const { batchPhotos, batchViolations } = homeRef.current.state;
+
+        // The submitted photos have left the batch, and the deleted one is
+        // nowhere: no photo, and no row made from it.
+        expect(batchPhotos).toEqual([]);
+        expect(batchViolations).toEqual([]);
+
+        cleanup();
+      },
+    );
+
+    // One wide shot of several cars is evidence for every car in it, so the
+    // rows share the photo: it is in each of their reports, and what happens
+    // to one row must not take it from the others.
+    const sharedPhotoRows = async () => {
+      const photo = (name, createDateMs) => ({
+        file: new File(['picture'], name, { type: 'image/jpeg' }),
+        name,
+        createDateMs,
+        latitude: 40.7129,
+        longitude: -74.0061,
+      });
+      const wide = photo('wide.jpg', 1704110400000);
+      const later = photo('later.jpg', 1704110600000);
+      const row = (plate, photos, createDateMs) => ({
+        photos,
+        plate,
+        licenseState: 'NY',
+        latitude: 40.7129,
+        longitude: -74.0061,
+        createDateMs,
+      });
+
+      const rendered = await renderBatchWithFiles([]);
+      const { homeRef } = rendered;
+
+      renderer.act(() => {
+        homeRef.current.geosearchAddressCache.set({
+          latitude: 40.7129,
+          longitude: -74.0061,
+          address: '123 Main St, Manhattan',
+        });
+        homeRef.current.setState({
+          batchPhotos: [wide, later],
+          batchViolations: [
+            row('AAA111', [wide], 1704110400000),
+            row('BBB222', [wide], 1704110400000),
+            row('FFF666', [later], 1704110600000),
+          ],
+        });
+      });
+
+      return { ...rendered, wide, later };
+    };
+
+    // Two rows that hold one frame. The batch gives each photo one row, so the
+    // second is built here; both are marked as the user's own, so the reads
+    // that follow leave them whole.
+    const twoCarsInOneFrame = async () => {
+      const frame = jpeg({ name: 'frame.jpg', size: 10 });
+      const rendered = await renderBatchWithFiles([frame]);
+
+      const { homeRef } = rendered;
+      const [batched] = homeRef.current.state.batchViolations;
+      const [framePhoto] = batched.photos;
+      const sharedRow = plate => ({
+        ...batched,
+        photos: [framePhoto],
+        plate,
+        mergedByUser: true,
+      });
+      renderer.act(() => {
+        homeRef.current.setState({
+          batchPhotos: [framePhoto],
+          batchViolations: [sharedRow('AAA111'), sharedRow('BBB222')],
+        });
+      });
+
+      const plates = () =>
+        homeRef.current.state.batchViolations.map(violation => violation.plate);
+
+      expect(plates()).toEqual(['AAA111', 'BBB222']);
+      expect(
+        homeRef.current.state.batchViolations[0].photos.map(
+          photo => photo.name,
+        ),
+      ).toEqual([frame.name]);
+
+      return { ...rendered, frame, plates };
+    };
+
+    test('keeps a deleted row deleted when the frame it was read from stays', async () => {
+      const { homeRef, frame, plates, clickRowDelete, cleanup } =
+        await twoCarsInOneFrame();
+
+      clickRowDelete('AAA111');
+      expect(plates()).toEqual(['BBB222']);
+
+      // The frame stays for the row that is left, and the row that went must
+      // not come back with it: the reading landing here regroups the batch,
+      // the way the pass's own readings do.
+      expect(
+        homeRef.current.state.batchPhotos.map(photo => photo.name),
+      ).toEqual([frame.name]);
+
+      renderer.act(() => {
+        const [photo] = homeRef.current.state.batchPhotos;
+        homeRef.current.setState(
+          homeRef.current.applyPlateRead({ photo, read: { ...photo } }),
+        );
+      });
+
+      expect(plates()).toEqual(['BBB222']);
+
+      // The second row takes the frame out of the batch with it, so the image
+      // leaves rather than staying as a row the user cannot get rid of.
+      clickRowDelete('BBB222');
+      expect(plates()).toEqual([]);
+      expect(homeRef.current.state.batchPhotos).toEqual([]);
+
+      cleanup();
+    });
+
+    test('ticks the row whose box was clicked, not the row beside it', async () => {
+      const { homeRef, clickButton, tickMerge, cleanup } =
+        await twoCarsInOneFrame();
+
+      // The form opened on the first row, so that one is ticked already.
+      tickMerge('AAA111');
+      tickMerge('BBB222');
+
+      const { batchMergeSelection } = homeRef.current.state;
+      expect(batchMergeSelection).toHaveLength(2);
+      expect(batchMergeSelection[0]).toMatch(/AAA111-frame\.jpg$/);
+      expect(batchMergeSelection[1]).toMatch(/BBB222-frame\.jpg$/);
+
+      // Two ticks have to be two rows for the merge to have anything to
+      // combine. Both rows hold the one frame, so a merge that took both ticks
+      // for the same row would leave the queue as it was.
+      clickButton('Merge');
+      expect(homeRef.current.state.batchViolations).toHaveLength(1);
+
+      cleanup();
+    });
+
+    test('leaves the other rows their shared photo when one row is deleted', async () => {
+      const { homeRef, clickRowDelete, wide, cleanup } =
+        await sharedPhotoRows();
+
+      clickRowDelete('AAA111');
+
+      const { batchViolations } = homeRef.current.state;
+      expect(batchViolations.map(violation => violation.plate)).toEqual([
+        'BBB222',
+        'FFF666',
+      ]);
+      // The photo itself stays in the batch, and in the row that still needs
+      // it: the row that went was one of the two that held it.
+      expect(batchViolations[0].photos).toEqual([wide]);
+      expect(
+        homeRef.current.state.batchPhotos.map(photo => photo.name),
+      ).toEqual(['wide.jpg', 'later.jpg']);
+
+      cleanup();
+    });
+
+    // A submission consumes the attachments it sent, so the ids the page holds
+    // for them are spent. The photo of one row can be the photo of another --
+    // one frame, several cars -- and the next row's submit has to be able to
+    // use it, which means uploading it again rather than sending an id for a
+    // file the server has deleted.
+    test('uploads a shared photo again once a report has used it', async () => {
+      const {
+        homeRef,
+        clickQueueLoad,
+        uploadAttachmentCalls,
+        submit,
+        cleanup,
+      } = await sharedPhotoRows();
+
+      clickQueueLoad('AAA111');
+      const uploadsOfWide = () =>
+        uploadAttachmentCalls().filter(
+          ([, body]) => body.get('attachmentData').name === 'wide.jpg',
+        ).length;
+
+      // The upload reads the file before it goes out, so it lands a turn
+      // after the row is opened.
+      await renderer.act(async () => {
+        for (let i = 0; i < 3; i += 1) {
+          // eslint-disable-next-line no-await-in-loop -- one round per pending promise chain.
+          await new Promise(resolve => setImmediate(resolve));
+        }
+      });
+
+      expect(uploadsOfWide()).toBe(1);
+
+      await submit();
+      await renderer.act(async () => {
+        for (let i = 0; i < 3; i += 1) {
+          // eslint-disable-next-line no-await-in-loop -- one round per pending promise chain.
+          await new Promise(resolve => setImmediate(resolve));
+        }
+      });
+
+      // The queue loaded the row that is left, and that row holds the same
+      // frame: it goes up again rather than being sent as the spent id.
+      expect(
+        homeRef.current.state.attachmentData.map(file => file.name),
+      ).toEqual(['wide.jpg']);
+      expect(uploadsOfWide()).toBe(2);
+
       cleanup();
     });
 

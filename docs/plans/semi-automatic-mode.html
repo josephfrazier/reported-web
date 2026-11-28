@@ -513,12 +513,16 @@
     <p class="eyebrow">Implementation plan · reported-web</p>
     <h1>Semi-Automatic Mode</h1>
     <p class="standfirst">
-      An edited previous submission now opens as its own queue row. Removing the old
-      single-report path completes the plan.
+      Upload a folder of photos — or just a pile of loose files — covering many violations at
+      once. The app takes each photo's date and place, puts the whole batch on screen as one row
+      per photo as soon as it has them, and reads plates behind the queue: each row's label fills
+      in as its photo is read, and rows merge when their photos name the same car. The first row
+      loads itself into the form once its own photos have been read — form pre-filled, ready to
+      submit, while the rest of the batch is still being read.
     </p>
 
     <dl class="meta">
-      <div><dt>Status</dt><dd>in progress</dd></div>
+      <div><dt>Status</dt><dd>built</dd></div>
       <div><dt>Written</dt><dd>2026-09-23</dd></div>
       <!-- Provenance: 665bfe0f (first-result plate rule), 5e1d368b (deleted-photo skip), 21fea9b3 (address lookups behind the plate reads) -->
       <div><dt>Revised</dt><dd>2026-11-23</dd></div>
@@ -992,6 +996,20 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         payload as <code>batch.json</code>, because the event's own field limits would trim it.
       </p>
 
+      <h3>The function to get right</h3>
+      <ul>
+        <li>
+          <strong><code>fetchPlateResults</code></strong> — the batch must use this, because it
+          returns the <em>full</em> response including every <code>results[]</code> entry and is the
+          function the <code>WeakMap</code> already wraps.
+        </li>
+      </ul>
+      <p>
+        The deleted single-report path had an <code>extractPlate</code> that collapsed each photo to
+        one plate and preferred the medallion pattern. That discards the multi-plate data the
+        grouping needs, and the path that used it is gone.
+      </p>
+
       <h3>Submitting a violation</h3>
       <!-- Provenance: 25375d08 "fix: take the plate with the photo it was read from" (plateProvenance); email/FirstName/LastName/Phone are the existing profile fields -->
       <p>
@@ -1022,6 +1040,59 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
     <!-- ============================ UI ============================ -->
     <section id="ui">
       <h2>Interface</h2>
+
+      <h3>Ways in</h3>
+      <p>
+        Four inputs feed the same batch, so photos can arrive however they happen to be sitting on
+        disk — in a directory of their own, loose in a camera roll, packed in a zip file, dragged
+        straight from a file manager, or copied to the clipboard:
+      </p>
+      <ul>
+        <li>
+          <strong>Add a folder</strong> —
+          <code>&lt;input type="file" multiple webkitdirectory&gt;</code>
+        </li>
+        <li>
+          <strong>Add photos</strong> — a plain <code>&lt;input type="file" multiple&gt;</code>, with
+          no parent directory required
+        </li>
+        <li>
+          <strong>Drag and drop</strong> — the page is already wrapped in a <code>Dropzone</code>,
+          so dropped files can feed the batch too
+        </li>
+        <li>
+          <strong>Paste</strong> — an image copied to the clipboard joins the batch like any other
+          file
+        </li>
+      </ul>
+      <p>
+        A zip picked through the loose-file input is opened out into the photos and videos it
+        holds. The app says how many it found, or why it could not read the archive; a zip that
+        holds nothing usable adds nothing to the batch.
+      </p>
+      <!-- Provenance: 04929b86 "refactor: pick files with a plain input (#1151)" -->
+      <p>
+        The two file inputs read <code>event.target.files</code> directly rather than through a
+        buffering reader. (<code>FileReaderInput</code>, which the app used before, reads with
+        <code>as="buffer"</code> and so loads every selected file's contents into memory; across a
+        whole folder that is a great deal of buffering before ALPR has even started. It would have
+        accepted <code>webkitdirectory</code> — it spreads unknown props onto the real input — but
+        the buffering is what ruled it out.) The drop and paste routes hand over
+        <code>File</code> objects the same way.
+      </p>
+      <p>
+        Picks accumulate, so a folder and then a few stragglers make up one batch. Selection order
+        does not matter: the queue is ordered by EXIF time, never by the order files arrived in.
+      </p>
+
+      <div class="note">
+        <span class="note__label">One flow</span>
+        <p>
+          Every one of these routes feeds the batch, a paste included. There is no toggle and no
+          single-violation flow: a folder pick, a loose multi-select, a drop and a paste all take
+          the same path, so there is never a question of which flow a given pick lands in.
+        </p>
+      </div>
 
       <h3>During the batch</h3>
       <!-- Provenance: 9fc7fc9e "feat: add semi-automatic batch mode to `Home`" (progress bar and queue UI) -->
@@ -1125,8 +1196,150 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
       </p>
     </section>
 
+    <!-- ============================ TESTS ============================ -->
+    <section id="tests">
+      <h2>Tests</h2>
+      <p>
+        The algorithm gets direct unit tests; the flow is exercised through the existing Home
+        harness.
+      </p>
+      <ul>
+        <li>
+          <code>groupAttachmentsByViolation.test.js</code> — variant folding, the first-result
+          plate rule, plate-driven merging, the one-shared-plate guard, each fallback (no GPS, no
+          time, no plate), the report cap, and a row the user merged.
+        </li>
+        <li>
+          <code>Home.test.js</code> — driving the rendered batch UI to assert that violations are
+          found, that the rows are on screen before a plate is read, that the first row loads itself
+          once its own photos have been read, that a read merges a row into its car and reloads the
+          form with the row's photos, that dropping a one-photo row's photo on New violation copies
+          the row, that a photo deleted while its plate read waits is not read, that loading one
+          fills the fields from cache, that
+          <strong>no second <code>/platerecognizer</code> call fires</strong>, and that Submit
+          advances.
+        </li>
+        <li>
+          Publishing — what matters is what the publish pass left in state, and when: the rows,
+          the plates still unread and the reads still in flight are what a test watches, since a
+          queue that is complete before the first read is the whole feature.
+        </li>
+      </ul>
+      <p>
+        The best fixture is already checked in. The ALPR snapshot holds exactly the variant case that
+        would break a naive exact-match vote, so a test built on it fails loudly if folding
+        regresses.
+      </p>
+      <div class="note">
+        <span class="note__label">Running them</span>
+        <p>
+          Use <code>yarn test:no-flaky</code> for the suite CI runs. It leaves out only
+          <code>alpr.test.js</code> and <code>getVehicleType.test.js</code>, so
+          <code>geoclient.test.js</code> and <code>srlookup.test.js</code> still call live services
+          and need a network. Run those deliberately, and always through <code>yarn test</code>,
+          never <code>npx jest</code> — the <code>-r dotenv/config</code> in the yarn script is the
+          only thing loading credentials, so under <code>npx</code> they fail misleadingly.
+        </p>
+      </div>
+    </section>
 
+    <!-- ============================ RISKS ============================ -->
+    <section id="risks">
+      <h2>Risks</h2>
+      <ul class="risk">
+        <li>
+          <b>Rate limits and quota</b>
+          Two different limits, pulling in opposite directions.
+          Plate Recognizer throttles by the second, and a refused read comes back
+          <span class="mono">429</span> with <em>Request was throttled. Expected available in 1
+          second.</em> The batch used to start three reads at once, which tripped it on about a
+          third of a batch's reads — and a refusal costs two calls, because the server tries its
+          second token straight after the first is refused. Reads are spaced now: nothing waits
+          until one is refused, and after that each read waits out the second the API asked for
+          (<code>ALPR_THROTTLE_WAIT_MS</code>). A read the retry still loses is read again when its
+          violation is loaded. A photo deleted while its read waits for a slot is skipped, so the
+          batch spends no call on it. Check the account's own quota before running a large batch.
+          <code>/api/uploadAttachment</code> is the opposite — capped at
+          <strong>a quarter of a gigabyte of unsubmitted attachments per IP</strong>, which a
+          submission releases as it consumes them (<code>attachmentBudget.js</code>). A client that
+          uploaded every file it picked would exceed that at once, and every upload past it would
+          be refused quietly, leaving the submit to send those files itself. That fallback is
+          correct, but it means the pre-upload optimisation stops helping exactly when
+          a batch is large enough to need it — so the queue uploads a report's photos when it loads
+          that report, not the folder it was picked from.
+        </li>
+        <li>
+          <b>Silent 3 + 3 truncation</b>
+          Extras past three images and three videos vanish in <code>createSubmission.js</code>
+          with no error. The picker warns when a fourth of either kind is ticked, and Submit
+          refuses until the report is back within the caps, so nothing disappears between review
+          and submission.
+        </li>
+        <li>
+          <b>Violations outside NYC</b>
+          <code>coordsAreInNyc</code> gates the submit button. Those groups should be flagged in the
+          queue rather than discovered at Submit.
+        </li>
+        <li>
+          <b>Cars visible only in a wide shot</b>
+          One photo is one row, so a frame that reads several cars reports the car nearest its
+          centre. The other cars need a photo of their own, or the user must merge the frame into
+          one of their rows by hand. A batch shot as closeups per car is unaffected.
+        </li>
+        <li>
+          <b>Repeated duplicate warnings</b>
+          Reports from one batch resemble each other, so the existing duplicate-submission warning
+          will likely fire over and over as the queue is walked. A copied row is a deliberate
+          duplicate of its source, so its report warns the same way.
+        </li>
+        <li>
+          <b>Videos in scope</b>
+          Supported today (frame-0 grab for ALPR) and assumed included. Say so if they should be
+          excluded from the batch.
+        </li>
+      </ul>
+    </section>
 
+    <!-- ============================ COMMITS ============================ -->
+    <section id="commits">
+      <h2>Implementation</h2>
+      <p>The work started with three commits, in this order — the algorithm is pure and independently reviewable before any UI touches it.</p>
+      <ol class="sequence">
+        <li>
+          <strong>The module.</strong> <code>groupAttachmentsByViolation.js</code> and its tests.
+          Pure, no React, no UI.
+        </li>
+        <li>
+          <strong>The geocode memo.</strong> A <span class="mono">"lat,long" → address</span> cache,
+          with its own test, so repeated lookups stop re-hitting NYC Planning Labs.
+        </li>
+        <li>
+          <strong>The wiring.</strong> Batch state, the four ways in, the early publish and the
+          reads that refine it, the queue, load-next, the picker and auto-advance in
+          <code>Home.js</code>, plus the <code>Home.test.js</code> coverage.
+        </li>
+      </ol>
+      <p>
+        The feature grew past that sequence. The batch became the only attachment flow, the
+        single-report path was deleted, and <a href="https://github.com/josephfrazier/reported-web/tree/main">main</a>'s server-side ALPR and geosearch
+        caches arrived in merges. The grouping module and its tests still stand on their own and
+        are the place to start a review.
+      </p>
+      <p>
+        The grouping changed after the feature was built. It used to cluster by capture time and
+        split on the plate; it now starts from one photo per row and merges on the plate. That
+        change has its own commit, so the two rules can be reviewed against each other.
+      </p>
+      <p>
+        Dropping a one-photo row's photo on the New violation target copies the row rather than
+        moving its last photo out of it. That change is a separate commit on top of the grouping
+        change.
+      </p>
+      <p>
+        Per the repo's conventions: run <code>yarn fix</code> before committing, create new commits
+        rather than amending, and use markdown backticks around identifiers in commit messages.
+      </p>
+    </section>
 
     <section id="locked-address">
       <h2>The locked address</h2>

@@ -1,0 +1,611 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Semi-Automatic Mode</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=Public+Sans:wght@400;500;600&amp;display=swap">
+<style>
+  /* ---------------------------------------------------------------
+     Tokens — light palette is the base; dark redefines only tokens.
+     --------------------------------------------------------------- */
+  :root {
+    --paper:      #fbfcfd;
+    --surface:    #ffffff;
+    --surface-2:  #f2f6fa;
+    --ink:        #141920;
+    --ink-soft:   #3d4855;
+    --muted:      #5b6878;
+    --line:       #dde4ec;
+    --line-soft:  #eaf0f6;
+
+    --accent:      #0074c2;
+    --accent-deep: #005a97;
+    --accent-tint: #e8f2fb;
+    --accent-line: #b6d8f2;
+
+    --warn:      #9a5b00;
+    --warn-tint: #fdf4e3;
+    --warn-line: #f0d9ae;
+    --crit:      #b3261e;
+    --crit-tint: #fdeceb;
+    --good:      #1a7f4b;
+    --good-tint: #e9f6ee;
+
+    --font-display: 'Archivo', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    --font-body: 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+    --step--1: 0.8125rem;
+    --step-0:  1rem;
+    --step-1:  1.125rem;
+    --step-2:  1.375rem;
+    --step-3:  1.75rem;
+    --step-4:  2.25rem;
+
+    --radius: 6px;
+    --rail: 13.5rem;
+    color-scheme: light;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:      #10141a;
+      --surface:    #161b23;
+      --surface-2:  #1c222c;
+      --ink:        #e7edf4;
+      --ink-soft:   #c2ccd8;
+      --muted:      #8e9aa9;
+      --line:       #2a323d;
+      --line-soft:  #222933;
+
+      --accent:      #5eb0e8;
+      --accent-deep: #8cc8f2;
+      --accent-tint: #14293a;
+      --accent-line: #2c4f6d;
+
+      --warn:      #e0a94a;
+      --warn-tint: #2b2313;
+      --warn-line: #55431f;
+      --crit:      #f08c85;
+      --crit-tint: #2e1917;
+      --good:      #6cc48f;
+      --good-tint: #14271c;
+
+      color-scheme: dark;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper:      #10141a;
+    --surface:    #161b23;
+    --surface-2:  #1c222c;
+    --ink:        #e7edf4;
+    --ink-soft:   #c2ccd8;
+    --muted:      #8e9aa9;
+    --line:       #2a323d;
+    --line-soft:  #222933;
+
+    --accent:      #5eb0e8;
+    --accent-deep: #8cc8f2;
+    --accent-tint: #14293a;
+    --accent-line: #2c4f6d;
+
+    --warn:      #e0a94a;
+    --warn-tint: #2b2313;
+    --warn-line: #55431f;
+    --crit:      #f08c85;
+    --crit-tint: #2e1917;
+    --good:      #6cc48f;
+    --good-tint: #14271c;
+
+    color-scheme: dark;
+  }
+
+  /* ---------------------------------------------------------------
+     Base
+     --------------------------------------------------------------- */
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding-inline: max(16px, env(safe-area-inset-left), env(safe-area-inset-right));
+    padding-block: 0 max(3rem, env(safe-area-inset-bottom));
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: var(--step-0);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: var(--accent-deep); }
+  a:focus-visible,
+  summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+
+  code, kbd, .mono { font-family: var(--font-mono); }
+
+  code {
+    font-size: 0.86em;
+    background: var(--surface-2);
+    border: 1px solid var(--line-soft);
+    border-radius: 4px;
+    padding: 0.08em 0.34em;
+    /* Inline identifiers must be free to wrap: a long one like
+       normalizedCenterDistance(box, uploadWidth, uploadHeight) with nowrap
+       pushes the line box past the gutter and scrolls the whole page. */
+    overflow-wrap: break-word;
+  }
+
+  pre {
+    margin: 0 0 1.25rem;
+    padding: 0.9rem 1rem;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    font-size: 0.8rem;
+    line-height: 1.55;
+  }
+
+  pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: inherit;
+    white-space: pre;
+  }
+
+  /* A plate string: the subject's own material. */
+  .plate {
+    font-family: var(--font-mono);
+    font-size: 0.84em;
+    letter-spacing: 0.03em;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    padding: 0.1em 0.4em;
+    white-space: nowrap;
+  }
+  .plate--win { border-color: var(--accent-line); color: var(--accent-deep); font-weight: 500; }
+  .plate--var { color: var(--muted); border-style: dashed; }
+
+  /* ---------------------------------------------------------------
+     Shell
+     --------------------------------------------------------------- */
+  .shell {
+    max-width: 76rem;
+    margin-inline: auto;
+    display: grid;
+    grid-template-columns: var(--rail) minmax(0, 1fr);
+    gap: 3.5rem;
+    align-items: start;
+    padding-block-start: 2.5rem;
+  }
+
+  .rail { position: sticky; top: 2rem; }
+
+  .rail__label {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.11em;
+    color: var(--muted);
+    font-weight: 600;
+    margin: 0 0 0.7rem;
+  }
+
+  .rail ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-left: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+  }
+
+  .rail a {
+    display: block;
+    padding: 0.24rem 0 0.24rem 0.85rem;
+    margin-left: -1px;
+    border-left: 2px solid transparent;
+    color: var(--muted);
+    text-decoration: none;
+    font-size: var(--step--1);
+    line-height: 1.35;
+  }
+  .rail a:hover { color: var(--ink); border-left-color: var(--line); }
+
+  .doc { min-width: 0; max-width: 68ch; }
+
+  /* ---------------------------------------------------------------
+     Masthead
+     --------------------------------------------------------------- */
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent-deep);
+    margin: 0 0 0.75rem;
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-size: var(--step-4);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+    margin: 0 0 0.85rem;
+    text-wrap: balance;
+  }
+
+  .standfirst {
+    font-size: var(--step-1);
+    color: var(--ink-soft);
+    margin: 0 0 1.5rem;
+    max-width: 60ch;
+  }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1.5rem;
+    padding-block: 0.85rem;
+    border-block: 1px solid var(--line);
+    margin-bottom: 2.75rem;
+    font-size: var(--step--1);
+  }
+  .meta div { display: flex; gap: 0.5rem; align-items: baseline; }
+  .meta dt {
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    font-size: 0.66rem;
+    font-weight: 600;
+  }
+  .meta dd { margin: 0; font-family: var(--font-mono); font-size: 0.78rem; }
+
+  /* ---------------------------------------------------------------
+     Sections
+     --------------------------------------------------------------- */
+  section { margin-block-end: 3rem; scroll-margin-top: 1.5rem; }
+
+  h2 {
+    font-family: var(--font-display);
+    font-size: var(--step-3);
+    line-height: 1.2;
+    letter-spacing: -0.015em;
+    font-weight: 600;
+    margin: 0 0 1rem;
+    padding-block-start: 1.6rem;
+    border-top: 1px solid var(--line);
+    text-wrap: balance;
+  }
+
+  h3 {
+    font-family: var(--font-display);
+    font-size: var(--step-1);
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    margin: 2rem 0 0.6rem;
+    text-wrap: balance;
+  }
+
+  h4 {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin: 1.6rem 0 0.5rem;
+  }
+
+  p { margin: 0 0 1rem; }
+  p:last-child { margin-bottom: 0; }
+
+  ul, ol { margin: 0 0 1rem; padding-left: 1.3rem; }
+  li { margin-bottom: 0.35rem; }
+  li:last-child { margin-bottom: 0; }
+
+  strong { font-weight: 600; }
+
+  /* ---------------------------------------------------------------
+     Tables
+     --------------------------------------------------------------- */
+  .scroll { overflow-x: auto; margin: 0 0 1.25rem; }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: var(--step--1);
+  }
+
+  th, td {
+    text-align: left;
+    padding: 0.55rem 0.8rem;
+    border-bottom: 1px solid var(--line-soft);
+    vertical-align: top;
+  }
+
+  thead th {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+  }
+
+  tbody tr:last-child td { border-bottom: none; }
+
+  td.num, th.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* Grouped-rows worked example: tint + a chip carry the grouping. */
+  tr[data-v] td { background: var(--surface); }
+  tr[data-v="1"] td:first-child { box-shadow: inset 3px 0 var(--accent); }
+  tr[data-v="2"] td:first-child { box-shadow: inset 3px 0 var(--good); }
+  tr[data-v="3"] td:first-child { box-shadow: inset 3px 0 var(--warn); }
+  tr[data-v="4"] td:first-child { box-shadow: inset 3px 0 var(--muted); }
+  tr[data-v] + tr[data-v] td { border-top: none; }
+
+  .chip {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    padding: 0.1rem 0.42rem;
+    border-radius: 100px;
+    border: 1px solid transparent;
+    white-space: nowrap;
+  }
+  .chip--1 { background: var(--accent-tint); border-color: var(--accent-line); color: var(--accent-deep); }
+  .chip--2 { background: var(--good-tint); border-color: var(--good); color: var(--good); }
+  .chip--3 { background: var(--warn-tint); border-color: var(--warn-line); color: var(--warn); }
+  .chip--4 { background: var(--surface-2); border-color: var(--line); color: var(--muted); }
+  .chip--none { background: var(--surface-2); border-color: var(--line); color: var(--muted); }
+
+  /* ---------------------------------------------------------------
+     Callouts & lists
+     --------------------------------------------------------------- */
+  .note {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius);
+    padding: 1rem 1.15rem;
+    margin: 0 0 1.25rem;
+    font-size: var(--step--1);
+  }
+  .note > :last-child { margin-bottom: 0; }
+  .note__label {
+    display: block;
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    color: var(--accent-deep);
+    margin-bottom: 0.45rem;
+  }
+
+  .note--warn { border-left-color: var(--warn); background: var(--warn-tint); }
+  .note--warn .note__label { color: var(--warn); }
+
+  /* Numbered passes / commits: the content genuinely is a sequence. */
+  .sequence { list-style: none; padding: 0; margin: 0 0 1.25rem; counter-reset: seq; }
+  .sequence > li {
+    counter-increment: seq;
+    position: relative;
+    padding-left: 2.4rem;
+    margin-bottom: 0.9rem;
+  }
+  .sequence > li::before {
+    content: counter(seq, decimal-leading-zero);
+    position: absolute;
+    left: 0;
+    top: 0.05rem;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--accent-deep);
+    background: var(--accent-tint);
+    border: 1px solid var(--accent-line);
+    border-radius: 4px;
+    padding: 0.1rem 0.34rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .sequence > li :last-child { margin-bottom: 0; }
+
+  .chain {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1.25rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    align-items: center;
+    font-size: var(--step--1);
+  }
+  .chain li {
+    margin: 0;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 100px;
+    padding: 0.22rem 0.7rem;
+  }
+  .chain li:not(:last-child)::after {
+    content: "→";
+    color: var(--muted);
+    margin-left: 0.7rem;
+    margin-right: -0.35rem;
+  }
+  .chain li:last-child { border-color: var(--accent-line); background: var(--accent-tint); }
+
+  .risk { list-style: none; padding: 0; margin: 0 0 1.25rem; }
+  .risk > li {
+    border-top: 1px solid var(--line-soft);
+    padding: 0.75rem 0;
+    margin: 0;
+    font-size: var(--step--1);
+  }
+  .risk > li:first-child { border-top: none; padding-top: 0; }
+  .risk b { display: block; color: var(--ink); font-size: var(--step-0); font-weight: 600; margin-bottom: 0.15rem; }
+
+  footer {
+    border-top: 1px solid var(--line);
+    padding-top: 1.25rem;
+    margin-top: 1rem;
+    font-size: var(--step--1);
+    color: var(--muted);
+  }
+  footer p { margin-bottom: 0.4rem; }
+
+  /* ---------------------------------------------------------------
+     Narrow
+     --------------------------------------------------------------- */
+  @media (max-width: 860px) {
+    .shell { grid-template-columns: minmax(0, 1fr); gap: 0; padding-block-start: 1.75rem; }
+    .rail { position: static; margin-bottom: 2rem; }
+    .rail ol { flex-direction: row; flex-wrap: wrap; border-left: none; gap: 0.4rem; }
+    .rail a {
+      border-left: none;
+      border: 1px solid var(--line);
+      border-radius: 100px;
+      padding: 0.2rem 0.7rem;
+      background: var(--surface);
+    }
+    .doc { max-width: none; }
+    h1 { font-size: var(--step-3); }
+    h2 { font-size: var(--step-2); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <nav class="rail" aria-label="Contents">
+    <p class="rail__label">Contents</p>
+    <ol>
+      <li><a href="#decisions">Decisions</a></li>
+      <li><a href="#grouping">Grouping algorithm</a></li>
+      <li><a href="#caching">Caching</a></li>
+      <li><a href="#module">Module &amp; state</a></li>
+      <li><a href="#ui">Interface</a></li>
+      <li><a href="#tests">Tests</a></li>
+      <li><a href="#risks">Risks</a></li>
+      <li><a href="#commits">Implementation</a></li>
+    </ol>
+  </nav>
+
+  <main class="doc">
+
+    <p class="eyebrow">Implementation plan · reported-web</p>
+    <h1>Semi-Automatic Mode</h1>
+    <p class="standfirst">
+      The plan for a batch flow. The commits on this branch add the sections below as they
+      implement them; the design decisions are settled from the start, and a section appears
+      with the code it describes.
+    </p>
+
+    <dl class="meta">
+      <div><dt>Status</dt><dd>in progress</dd></div>
+      <div><dt>Written</dt><dd>2026-09-23</dd></div>
+      <!-- Provenance: 665bfe0f (first-result plate rule), 5e1d368b (deleted-photo skip), 21fea9b3 (address lookups behind the plate reads) -->
+      <div><dt>Revised</dt><dd>2026-11-23</dd></div>
+      <div><dt>Base</dt><dd>ba141241</dd></div>
+    </dl>
+
+    <!-- ============================ DECISIONS ============================ -->
+    <section id="decisions">
+      <h2>Decisions</h2>
+      <p>
+        Every choice below was settled explicitly. The last group is a set of defaults that
+        have not been challenged — flag any that look wrong before building.
+      </p>
+
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr><th>Decision</th><th>Choice</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Entry point</td><td>None — every pick, drop and paste feeds the batch; the batch is the only attachment flow</td></tr>
+            <tr><td>Photo input</td><td>A folder pick, a loose multi-file pick (zips included), a drag-and-drop, or a paste — all equally supported</td></tr>
+            <tr><td>Grouping signals</td><td>ALPR plate only — one photo starts as one violation; no time and no GPS, see <a href="#why-time-and-place-went"><em>Why time and place went</em></a></td></tr>
+            <tr><td>Time and place</td><td>Order the queue and give a report its time and place; they never group photos</td></tr>
+            <tr><td>Plate's role</td><td>The only signal that <strong>merges</strong> rows</td></tr>
+            <tr><td>OCR variants</td><td>Folded via ALPR <code>candidates</code> sets</td></tr>
+            <tr><td>Multi-plate photo</td><td>One row, for the result the read named — a medallion result first, otherwise the first result; it joins no row when another plate it reads is also read by a different photo</td></tr>
+            <tr><td>One photo, several reports</td><td>Dropping a one-photo row's photo on New violation copies the row and leaves the source as it was; the copy carries a copy key</td></tr>
+            <tr><td>Violation time</td><td>From the <strong>earliest</strong> photo in the group</td></tr>
+            <tr><td>Violation location</td><td>From the <strong>latest</strong> photo that has a fix — see <a href="#which-photo-gives-the-place"><em>Which photo gives the place</em></a></td></tr>
+            <tr><td>More than 3 photos</td><td>Split into reports within 3 pictures and 3 videos; a hand-merged row keeps the checkbox picker</td></tr>
+            <tr><td>Reload mid-batch</td><td>The queue is lost — in-memory only; the server's ALPR and geosearch caches keep their answers</td></tr>
+            <tr><td>Publishing</td><td>All rows at once, after the dates-and-places pass and before the first plate read; reads merge rows as they land</td></tr>
+            <tr><td>Address lookups</td><td>Start behind the first plate read, so no free geosearch request runs in front of a plate read; a row that opens before its address is in asks for it itself</td></tr>
+            <tr><td>First violation</td><td>Loaded into the form automatically, with no click</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h4>Assumed defaults</h4>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr><th>Case</th><th>Behaviour</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Photo with no GPS</td><td>Does not matter — place never groups photos</td></tr>
+            <tr><td>Photo with no EXIF time</td><td>Falls back to file last-modified, sorts last</td></tr>
+            <tr><td>Photo with no plate read</td><td>Its own violation, flagged for manual entry</td></tr>
+            <tr><td>After Submit</td><td>Auto-advances to the next violation</td></tr>
+            <tr><td>ALPR concurrency</td><td>Capped at 3 in flight</td></tr>
+            <tr><td>Queue controls</td><td>Load any row, delete it, tick two and merge them, or drop a photo on a row to move it; on New violation a one-photo row is copied</td></tr>
+            <tr><td>Input</td><td>Every pick, drop and paste feeds the batch; there is no single-violation flow</td></tr>
+            <tr><td>Order photos are read in</td><td>EXIF capture time; file last-modified only when a photo has none — see <a href="#dates-first-then-plates"><em>Dates first, then plates</em></a></td></tr>
+            <tr><td>Submitted photos</td><td>Only the photos that were submitted leave the batch; a group's leftovers appear again at once as a group of their own</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+
+
+
+
+
+
+
+    <footer>
+      <p>
+        Written 2026-09-23 against <span class="mono">ba141241</span>, revised 2026-09-28 to match
+        what was actually built, again on 2026-11-10, again on 2026-11-22 for the plate-only
+        grouping and the one-photo copy on the New violation target, and again on 2026-11-23 for
+        the first-result plate rule, the deleted-photo skip, and the address lookups behind the
+        plate reads. Line references are to <code>src/routes/home/Home.js</code> unless another
+        path is given, and are anchors from that commit rather than current ones — the file has
+        moved on since, so check them against the code rather than trusting them.
+      </p>
+      <p>
+        Regenerate by re-reading that file, <code>src/alpr.js</code>,
+        <code>src/alprCache.js</code>, <code>src/geosearchCache.js</code>,
+        <code>src/createSubmission.js</code> and <code>src/attachmentStore.js</code>.
+      </p>
+    </footer>
+
+  </main>
+</div>
+
+</body>
+</html>

@@ -513,8 +513,9 @@
     <p class="eyebrow">Implementation plan · reported-web</p>
     <h1>Semi-Automatic Mode</h1>
     <p class="standfirst">
-      The grouping module and its tests are in place. The pipeline, queue and form wiring
-      follow; their sections arrive with their commits.
+      The batch pipeline is in place: dates and places are read locally, the rows are
+      published before any plate read, and the plate reads refine them. The queue and form
+      wiring follow.
     </p>
 
     <dl class="meta">
@@ -792,8 +793,95 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         </p>
       </div>
 
+      <h3 id="dates-first-then-plates">Dates first, then plates</h3>
+      <p>
+        The batch reads each photo twice. The first pass takes the date and the place out of the
+        file's own metadata: local work, no requests, so it is quick. The second reads plates, and
+        it runs in the order the first pass established.
+      </p>
+      <p>
+        That order cannot come from the files' modification times. They stand in for capture time
+        only where the two agree, and on the batch that prompted this they did not. Sorting by the
+        date each photo actually carries gives the queue its order and gives each report its time.
+        It also lets the rows be published before any plate is read: every photo is a row at that
+        point, and the date is what orders it.
+      </p>
     </section>
 
+    <!-- ============================ CACHING ============================ -->
+    <section id="caching">
+      <h2>Caching</h2>
+      <p>
+        ALPR results are cached twice: a <code>WeakMap</code> in the page, and a disk cache on the
+        server. Geosearch answers have two layers as well: the page's coordinate memo, and a disk
+        cache on the server. Each layer answers a repeated request without another call.
+      </p>
+
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr><th>Result</th><th>Today</th><th>Needed</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>ALPR</td>
+              <td><code>attachmentPlateCache</code>, a <code>WeakMap</code> keyed on the <code>File</code> object</td>
+              <td><strong>Nothing new.</strong> The queue holds the same <code>File</code> objects, so hits are automatic</td>
+            </tr>
+            <tr>
+              <td>Reverse geocode</td>
+              <td>A memo keyed on the coordinates (<code>geosearchAddressCache.js</code>), which <code>setCoords</code> reads before asking. A fallback is shown but not kept</td>
+              <td>Nothing new — the batch geocodes each violation through the same memo, and does not keep a fallback either</td>
+            </tr>
+            <tr>
+              <td>ALPR, server side</td>
+              <td><code>alprCache.js</code>, keyed by the SHA-256 of the uploaded bytes; on by default, and off when <code>ALPR_CACHE_DIR</code> is set to nothing</td>
+              <td>Nothing new</td>
+            </tr>
+            <tr>
+              <td>Geosearch, server side</td>
+              <td><code>geosearchCache.js</code>, keyed by the coordinates and the selected address, normalized; on by default, and off when <code>GEOSEARCH_CACHE_DIR</code> is set to nothing</td>
+              <td>Nothing new</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>
+        The page's cache keys on object identity rather than content, so it only helps while the
+        same <code>File</code> objects are alive. A batch queue holds them for its whole run. A page
+        reload loses the queue, but the server's disk cache still answers the same bytes without
+        another call while it is enabled.
+      </p>
+
+      <h3>Geocode once per violation, not per photo</h3>
+      <!-- Provenance: 21fea9b3 "perf: start the plate reads before the address lookups"; 198b8287 "feat: show the queue's rows before the plate reads finish" (geosearchesInFlight) -->
+      <p>
+        An address is a function of coordinates alone. A batch taken at one curb used to cost one
+        identical lookup per photo, and the memo brings that down to one. The lookups start once
+        the first plate read is on the wire, so no free geosearch request runs in front of a plate
+        read — the reads own the scarce quota and supply the grouping. A row that opens before its
+        address is in asks for the same place itself, and that answer fills the memo for the rows
+        after it. The memo and the batch's in-flight set keep its own repeated places from being
+        fetched twice; the form's debounced lookup is separate, so a row opened before the batch's
+        lookup answers can ask for the same place once more. A reload clears the page's memo, and
+        the server's disk cache answers a place it has seen before without calling geosearch. An
+        answer that fell back to the top result because the address directory was down is shown
+        but not kept, in the page's memo or on disk. <code>geocodePlaces</code> warms the memo for
+        every distinct place while the plate reads run.
+      </p>
+
+      <div class="note">
+        <span class="note__label">The hash is the key</span>
+        <p>
+          Every upload gets a SHA-256 of its bytes (<code>attachmentId</code>), and identical
+          uploads share a temp file. The ALPR disk cache uses the same trick:
+          <code>alprCacheKey</code> hashes the bytes the request carries, so a repeated photo is
+          answered without calling Plate Recognizer. The cache is on by default outside tests;
+          <code>ALPR_CACHE_DIR</code> moves it, and an empty value turns it off.
+        </p>
+      </div>
+    </section>
 
     <!-- ============================ MODULE ============================ -->
     <section id="module">
@@ -821,6 +909,24 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         and so does the form, so both sort and read a set of photos the same way.
       </p>
 
+      <h3>New state on <code>Home</code></h3>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr><th>Key</th><th>Holds</th></tr>
+          </thead>
+          <tbody>
+            <!-- Provenance: 198b8287 "feat: show the queue's rows before the plate reads finish"; e0fe159d "fix: weigh every plate read against the whole batch" -->
+            <tr><td><code>batchPhotos</code></td><td>The photos of the pass in hand, with their extraction results; the rows hold the batch's full set</td></tr>
+            <tr><td><code>batchViolations</code></td><td>Grouped output, in earliest-first order</td></tr>
+            <tr><td><code>batchProgress</code></td><td><code>{ stage, completed, total }</code></td></tr>
+            <tr><td><code>currentViolationIndex</code></td><td>Where the walk-through has reached</td></tr>
+            <tr><td><code>batchMergeSelection</code></td><td>The rows ticked for a merge, by identity (a row's time, plate, first photo and copy key)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Provenance: 46527fe3 "feat: report grouping corrections to Sentry"; eeedf207 (duplicate event) -->
     </section>
 
 

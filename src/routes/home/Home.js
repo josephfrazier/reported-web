@@ -58,9 +58,16 @@ import formatGeosearchAddress from '../../formatGeosearchAddress.js';
 import selectGeosearchFeature from '../../selectGeosearchFeature.js';
 import earliestTakenPhoto from '../../earliestTakenPhoto.js';
 import createGeosearchAddressCache from '../../geosearchAddressCache.js';
+import groupAttachmentsByViolation, {
+  mergeViolations,
+} from '../../groupAttachmentsByViolation.js';
+import { captureBatchGroupingEvent } from '../../batchGroupingEvents.js';
 import { isImage, isVideo } from '../../isImage.js';
-import { expandZipFiles } from '../../zipAttachments.js';
-import latestLocatedPhoto from '../../latestLocatedPhoto.js';
+import { expandZipFiles, isZip } from '../../zipAttachments.js';
+import latestLocatedPhoto, {
+  effectiveTimeMs,
+  hasCoordinates,
+} from '../../latestLocatedPhoto.js';
 import plateReadRetry from '../../plateReadRetry.js';
 import getNycTimezoneOffset from '../../timezone.js';
 import { isPointInNycMemoized } from '../../isPointInNyc.js';
@@ -195,7 +202,9 @@ const inMemoryAttachment = async ({ attachmentFile }) => {
 };
 
 // Start (or reuse) each file's background upload to /api/uploadAttachment, so
-// that submitting sends attachment IDs instead of re-sending the bytes.
+// that submitting sends attachment IDs instead of re-sending the bytes. The
+// single-violation flow calls this for every pick; the batch calls it for the
+// files it is about to process, so a violation can be submitted the same way.
 function startBackgroundUploads(attachmentData) {
   attachmentData.forEach(attachmentFile => {
     if (!fileUploadPromises.has(attachmentFile)) {
@@ -674,7 +683,12 @@ axios.interceptors.response.use(undefined, error => {
   return Promise.reject(error);
 });
 
-async function fetchPlateResults({ attachmentFile, attachmentBuffer, ext }) {
+async function fetchPlateResults({
+  attachmentFile,
+  attachmentBuffer,
+  ext,
+  onFetch,
+}) {
   if (attachmentPlateCache.has(attachmentFile)) {
     console.info(`found cached plate results for ${attachmentFile.name}!`);
     return attachmentPlateCache.get(attachmentFile);
@@ -700,9 +714,14 @@ async function fetchPlateResults({ attachmentFile, attachmentBuffer, ext }) {
   // read and a photo the user has to type in by hand. What a repeat is worth is
   // in `plateReadRetry`; this asks for it for this request alone.
   console.time(`/platerecognizer round trip (${attachmentFile.name})`); // eslint-disable-line no-console
-  const { data } = await axios.post('/platerecognizer', formData, {
+  const request = axios.post('/platerecognizer', formData, {
     'axios-retry': plateReadRetry,
   });
+  // The read is on the wire before the caller starts anything else. The
+  // batch's address lookups use this to stay behind the plate reads, which
+  // own the scarce quota.
+  onFetch?.();
+  const { data } = await request;
   console.timeEnd(`/platerecognizer round trip (${attachmentFile.name})`); // eslint-disable-line no-console
   // The server keeps its own clock and sends the breakdown with the reading,
   // so the round trip above splits into what the dyno did and what the network
@@ -892,6 +911,92 @@ async function extractDate({ attachmentFile, attachmentArrayBuffer, ext }) {
   }
 }
 
+// Batch mode's ALPR calls run through a pool of this size, so that a
+// forty-photo folder does not become forty simultaneous uploads, each holding
+// its own copies of the image buffers.
+//
+// The pool is not what keeps the reads under Plate Recognizer's rate limit:
+// that is the wait below, and the limit is real -- a third of a batch's reads
+// came back refused before it (see ALPR_THROTTLE_WAIT_MS).
+const BATCH_ALPR_CONCURRENCY = 3;
+
+// What one refused read costs the reads that follow it.
+//
+// Plate Recognizer throttles by the second and says so in the refusal:
+// "Request was throttled. Expected available in 1 second." Three reads at once
+// is over what the account allows, and each refusal costs two calls -- the
+// first token is refused and the second is spent straight after -- so the pass
+// pays the wait rather than the refusal. A read that is refused starts the
+// clock; every read after it waits for its slot.
+//
+// Nothing is spaced until a read is refused, so a batch that the limit is
+// keeping up with reads as fast as it always did.
+const ALPR_THROTTLE_WAIT_MS = 1100;
+
+// Run `worker` over `items`, at most `limit` at a time, and return the results
+// in the order the items were given.
+async function mapWithConcurrency({ items, limit, worker }) {
+  const results = new Array(items.length);
+  let nextIndex = 0;
+
+  const runNext = async () => {
+    const index = nextIndex;
+    nextIndex += 1;
+    if (index >= items.length) {
+      return;
+    }
+    results[index] = await worker(items[index], index);
+    await runNext();
+  };
+
+  await Promise.all(
+    Array.from({ length: Math.min(limit, items.length) }, runNext),
+  );
+
+  return results;
+}
+
+// What names a row, for the merge tick and for the list's own keys: the time it
+// reports, its plate, and the photo it opens with.
+//
+// A batch shot at one kerb gives several rows the same second, so the time
+// alone does not name one. The first photo and the plate do: the photo is what
+// the form follows through a regrouping, and the plate tells two cars read from
+// the same frame apart.
+//
+// A duplicated row agrees with its source on every one of those parts, so it
+// carries a `copyKey` and the key names it.
+function batchViolationIdentity(violation) {
+  const copy =
+    violation.copyKey === undefined ? '' : `-copy-${violation.copyKey}`;
+  return `${violation.createDateMs}-${violation.plate}-${violation.photos[0]?.name}${copy}`;
+}
+
+// What a photo's date read gave, in the field names the grouping uses. A read
+// that failed gives nothing, so its photo sorts and groups on the file's
+// modification time instead.
+function normalizeExtractedDate(extractedDate) {
+  if (!Number.isFinite(extractedDate?.millisecondsSinceEpoch)) {
+    return {};
+  }
+
+  return {
+    createDateMs: extractedDate.millisecondsSinceEpoch,
+    createDateOffset: extractedDate.offset,
+  };
+}
+
+// The row holding `file`, which is how a row is followed from one regrouping of
+// the batch to the next: the readings replace the photo objects, and the files
+// the photos were read from are the same objects throughout.
+function rowHoldingFile(violations, file) {
+  return file
+    ? violations.find(violation =>
+        violation.photos.some(candidate => candidate.file === file),
+      )
+    : undefined;
+}
+
 // What the form says when it holds more attachments of one kind than a
 // submission carries. One copy, so the note above the button and the refusal
 // at submit say the same words.
@@ -924,6 +1029,11 @@ function tooManyAttachments(attachmentData) {
 
   return pictures > 3 || attachmentData.length - pictures > 3;
 }
+
+// How many untouched batches report their grouping data. Corrections alone
+// show the mistakes; an untouched batch is the denominator that says how often
+// the grouping is right.
+const BATCH_GROUPING_SAMPLE_RATE = 0.05;
 
 // The trash that deletes a photo. It sits in the corner of the photo's tile.
 //
@@ -1206,6 +1316,7 @@ class Home extends React.Component {
   // saying so, rather than stacking a toast per character. Reusing one toast
   // id means a second pause refreshes the toast that is already up instead of
   // adding another, the way the geosearch warning does.
+
   debouncedWarnAboutPriorSubmission = debounce(
     ({ priorCount, plate, selectedDateDay }) => {
       const pluralReport = priorCount === 1 ? 'report' : 'reports';
@@ -1240,6 +1351,11 @@ class Home extends React.Component {
       // PLATE_TYPED when the user typed it. Like the address's provenance, it
       // is what says whether the value follows the photos when they change --
       // see `applyPhotosToForm`.
+      //
+      // The name rather than the file: a `File` in this state is one the
+      // submit sends as a file part, and the server takes only the
+      // attachments. A name is also already how a photo is identified wherever
+      // the form talks about one.
       plateProvenance: undefined,
       typeofcomplaint: typeofcomplaintValues[0],
       reportDescription: '',
@@ -1259,6 +1375,12 @@ class Home extends React.Component {
       isReverseGeocodingEnabled: true,
       isLoadPreviousSubmissionsEnabled: false,
       isMapOpen: false,
+      // The row a dragged photo is over, by identity: what tells the user
+      // where the photo will land.
+      dropTargetIdentity: null,
+      // Whether a photo is being dragged: the new-violation target shows only
+      // while one is.
+      photoDragInProgress: false,
       // While this is true, nothing moves the place: see `setCoords`.
       isLocationLocked: false,
       isPreviousSubmissionsOpen: false,
@@ -1274,7 +1396,19 @@ class Home extends React.Component {
       // (getPerSubmissionState keeps only initialStatePerSubmission keys).
       password: '',
 
-      isAlprLoading: false,
+      // Semi-automatic mode: one record per photo the user has picked (in the
+      // order they picked them), the violations those photos group into
+      // (earliest first), the stage the batch is currently working through,
+      // and the index of the violation loaded into the form.
+      batchPhotos: [],
+      batchViolations: [],
+      batchProgress: null,
+      currentViolationIndex: -1,
+      // The identities of the violations ticked for merging: a row's time,
+      // plate, first photo and copy key. Any number can be ticked; the Merge
+      // button appears once two are.
+      batchMergeSelection: [],
+
       isPasswordRevealed: false,
       isUserInfoSaving: false,
       isSubmitting: false,
@@ -1314,20 +1448,64 @@ class Home extends React.Component {
     this.initialStatePersistent = initialStatePersistent;
     this.isDragging = false;
     this.plateLookupCache = new Map();
+    // Addresses already reverse-geocoded for this page's coordinates, so a
+    // second lookup for the same place (revisiting a location, or loading a
+    // violation the batch already geocoded) skips the network call. Per
+    // instance, like plateLookupCache: a shared one would serve this render's
+    // addresses to the next request's.
     this.geosearchAddressCache = createGeosearchAddressCache();
-    // Places with a hint lookup in flight; see `refreshUnlockPlace`.
-    this.unlockAddressLookups = new Set();
+    // Places with an address lookup in flight; see geocodeBatchViolation.
+    this.geosearchesInFlight = new Set();
+    // Places with an address lookup in flight, and the lookup itself, so the
+    // hint and the lock's reminder share one request; see `addressForPlace`.
+    this.unlockAddressLookups = new Map();
+    // The place unchecking the box would have returned the report to when the
+    // box was checked, or the first report that loaded while it was already
+    // on. `undefined` means there is none to compare against; see
+    // `rememberLockedUnlockPlace` and `warnIfLockedAddressMoved`.
+    this.lockedUnlockPlace = undefined;
+    // Serialises batch passes: picks accumulate, and each pass must see the
+    // results of the one before it (see addFilesToBatch).
+    this.batchQueue = Promise.resolve();
+    // The row whose merge box was last clicked: where a shift-click's range
+    // starts. Kept by identity rather than index, because the queue is
+    // re-sorted and rows change as their reads land.
+    this.batchMergeAnchor = null;
+    // The next number a duplicated row takes. A copy agrees with its source on
+    // the time, plate and first photo, so this is what tells them apart. See
+    // `batchViolationIdentity`.
+    this.nextCopyKey = 1;
+    // The rows the user has deleted, by identity. Deleting a row usually takes
+    // its photos out of the batch, and that is what keeps it from coming back;
+    // a row whose photo another row still holds has none to take, so it is
+    // remembered here instead. See `withoutDismissedRows`.
+    this.dismissedRows = new Set();
+    // A submitted row whose report left photos behind is remembered by the
+    // photos it took, not by its identity: the photos it left can form a row
+    // with the same identity (same first photo, same plate). A row made only
+    // of photos the report took is the row that already went.
+    this.submittedRows = new Set();
+    this.submittedPhotos = new Set();
+    this.batchFolderInputRef = React.createRef();
+    this.batchPhotosInputRef = React.createRef();
     // What each attached photo's reads said, keyed by the file, for as long as
     // it is attached. The form's time and place are worked out from these
     // again whenever the photos change -- see applyPhotosToForm.
     this.photoReadings = new Map();
-    // How many plate reads are in flight. The spinner stays up until the last
-    // one answers, so a boolean is not enough: with two photos, the first read
-    // to finish would hide it while the other was still running.
-    this.alprReadsInFlight = 0;
+    // The report the missing-values warning last described, and what it said,
+    // so a re-render of the same report does not show the toast again.
+    this.missingValuesWarning = null;
+    this.missingValuesWarningIndex = -1;
+    // The photo a drag is carrying. A drag's dataTransfer cannot hold a File,
+    // so the page keeps the photo itself for the drop.
+    this.draggedPhoto = null;
+    // The row a drag is carrying, for a row dropped on another: the two are
+    // one violation, the same as ticking both and pressing Merge.
+    this.draggedRow = null;
     this.plateRef = React.createRef();
-    this.attachmentInputRef = React.createRef();
-    this.folderInputRef = React.createRef();
+    // The state field is below the plate field when the two wrap, so a scroll
+    // that aims at the bottom of the pair aims at this one.
+    this.licenseStateRef = React.createRef();
     this.plateLabelRef = React.createRef();
     this.loginEmailRef = React.createRef();
     this.signupEmailRef = React.createRef();
@@ -2347,6 +2525,851 @@ class Home extends React.Component {
       latitude: located.latitude,
       longitude: located.longitude,
       addressProvenance: EXTRACTED_FROM_PHOTOS,
+    });
+  };
+
+  // A picked folder or a set of files: every picture, video and zip goes to
+  // the batch. A folder is what a camera roll is, and it holds things that are
+  // not attachments -- a stray text file, the `.DS_Store` macOS leaves in every
+  // directory -- so the pick is filtered rather than handed on whole.
+  handleBatchFileInput = event => {
+    const attachmentData = [...event.target.files].filter(file => {
+      const ext = fileExtension(file.name);
+      return isImage({ ext }) || isVideo({ ext }) || isZip(file);
+    });
+    // Clear the input, so that picking the same file again still fires a
+    // change event.
+    event.target.value = ''; // eslint-disable-line no-param-reassign
+
+    if (attachmentData.length === 0) {
+      Home.notifyWarning('That folder held no pictures or videos.');
+      return;
+    }
+
+    this.addFilesToBatch(attachmentData);
+  };
+
+  // Add picked or dropped files to the batch. Only the new files go through
+  // extraction; the whole set is then regrouped, so a folder pick followed by
+  // a few stragglers is one batch rather than two.
+  addFilesToBatch = attachmentData => {
+    const files = [...attachmentData];
+
+    if (files.length === 0) {
+      return this.batchQueue;
+    }
+
+    // Chain the passes: two quick picks must not both regroup against the same
+    // starting list of photos. Nothing else writes batchPhotos, so each pass
+    // sees the one before it. A zip is opened out first, so what the pass sees
+    // is the attachments it held.
+    this.batchQueue = this.batchQueue.then(async () => {
+      const { files: expanded, zips } = await expandZipFiles(files);
+      zips.forEach(archive => Home.reportZip(archive));
+
+      if (expanded.length === 0) {
+        return undefined;
+      }
+
+      return this.processBatchFiles(expanded).catch(err => {
+        console.error(err);
+        this.setState({ batchProgress: null });
+      });
+    });
+
+    return this.batchQueue;
+  };
+
+  // The pass over newly picked files: read each one's date and place, publish
+  // every row at once, then read the plates and let those reads merge rows.
+  //
+  // Publishing before any plate is read is what puts the queue on screen while
+  // the plates are still being read. Every photo is a row of its own at that
+  // point; each read that names the same car merges its row with the ones that
+  // already did.
+  //
+  // Only the new files are read on an add, not the whole batch: re-walking
+  // every photo each time the array grows would re-read a whole folder on
+  // every pick.
+  processBatchFiles = async attachmentData => {
+    const newPhotos = attachmentData.map(attachmentFile => ({
+      file: attachmentFile,
+      name: attachmentFile.name,
+    }));
+
+    // Dates and places first, for the whole batch, before a single plate is
+    // read.
+    //
+    // That pass is local -- each file is read for its own metadata and nothing
+    // is sent anywhere -- so it is quick, and it is what puts the batch into
+    // capture order. The plate pass then runs in that order and publishes
+    // violations as they settle, which is sound because every photo still to
+    // come sits at or after the boundary (see batchFrontierTimeMs).
+    //
+    // The order could not come from file modification times. They stand in for
+    // capture time only where the two agree, and on the batch that prompted
+    // this they did not: two photos of one car were read either side of a photo
+    // from a different violation, so the car became two reports.
+    let read = 0;
+    this.setState({
+      batchProgress: {
+        stage: 'metadata',
+        completed: 0,
+        total: newPhotos.length,
+      },
+    });
+
+    const withMetadata = await mapWithConcurrency({
+      items: newPhotos,
+      limit: BATCH_ALPR_CONCURRENCY,
+      worker: async photo => {
+        const result = await this.readBatchPhotoMetadata(photo);
+        read += 1;
+        this.setState({
+          batchProgress: {
+            stage: 'metadata',
+            completed: read,
+            total: newPhotos.length,
+          },
+        });
+        return result;
+      },
+    });
+
+    const inCaptureOrder = [...withMetadata].sort(
+      (a, b) => effectiveTimeMs(a) - effectiveTimeMs(b),
+    );
+
+    let completed = 0;
+    this.setState({
+      batchProgress: { stage: 'alpr', completed, total: inCaptureOrder.length },
+    });
+
+    // When the next read may start. Zero until a read is refused: see
+    // ALPR_THROTTLE_WAIT_MS.
+    let nextReadAt = 0;
+    const waitForReadSlot = async () => {
+      if (!this.plateReadThrottled) {
+        return;
+      }
+      // `performance.now()` rather than `Date.now()`: this is a duration, and
+      // a monotonic clock cannot be moved out from under it.
+      const now = performance.now();
+      // The first read after a refusal waits out the second the API asked
+      // for; each read after it keeps that distance from the one before.
+      const startAt =
+        nextReadAt === 0
+          ? now + ALPR_THROTTLE_WAIT_MS
+          : Math.max(now, nextReadAt);
+      nextReadAt = startAt + ALPR_THROTTLE_WAIT_MS;
+      if (startAt > now) {
+        await new Promise(resolve => setTimeout(resolve, startAt - now));
+      }
+    };
+    this.plateReadThrottled = false;
+
+    // Every row, now, before a single plate is read.
+    //
+    // One photo is one violation until a plate says otherwise, so with the
+    // dates and places in hand the rows are already on screen: each photo has
+    // its time and place, and the plate reads have only to merge the rows that
+    // turn out to name the same car.
+    this.setState({ batchPhotos: inCaptureOrder });
+
+    // The plate reads own the scarce quota, and the grouping and the form need
+    // them before they need an address. They start first; the address lookups
+    // start once the first read is on the wire, so they fill the memo behind
+    // the reads instead of in front of them.
+    let addressesStarted = false;
+    const startAddressLookups = () => {
+      if (addressesStarted) {
+        return;
+      }
+      addressesStarted = true;
+      this.geocodePlaces(inCaptureOrder);
+    };
+
+    await this.publishBatchViolations();
+
+    await mapWithConcurrency({
+      items: inCaptureOrder,
+      limit: BATCH_ALPR_CONCURRENCY,
+      worker: async photo => {
+        // The user can delete a photo while its read waits its turn. The
+        // deleted photo is in no row and in no batch list, and reading it
+        // would spend a call on a report nobody can file. Count the skip as
+        // progress, so the bar still reaches its total.
+        const skipDeletedPhoto = () => {
+          completed += 1;
+          this.setState({
+            batchProgress: {
+              stage: 'alpr',
+              completed,
+              total: inCaptureOrder.length,
+            },
+          });
+        };
+
+        // Checked before the wait as well as after it: a photo already gone
+        // spends no throttle slot, and the wait gives the user another chance
+        // to delete the one that is still queued.
+        if (!this.photoIsInBatch(photo)) {
+          skipDeletedPhoto();
+          return undefined;
+        }
+
+        await waitForReadSlot();
+
+        if (!this.photoIsInBatch(photo)) {
+          skipDeletedPhoto();
+          return undefined;
+        }
+
+        const result = await this.readBatchPhotoPlate(photo, {
+          onFetch: startAddressLookups,
+        });
+        const changes = this.readChangesFormReport({ photo, read: result });
+        completed += 1;
+        this.setState(
+          state => ({
+            ...this.applyPlateRead({ photo, read: result })(state),
+            batchProgress: {
+              stage: 'alpr',
+              completed,
+              total: inCaptureOrder.length,
+            },
+          }),
+          () => this.followReadInForm({ changes }),
+        );
+        return result;
+      },
+    });
+
+    // No read went out -- ALPR is off, every photo is cached, or every photo
+    // was deleted -- so the addresses still have to start.
+    startAddressLookups();
+
+    this.setState({ batchProgress: null }, () => {
+      this.loadFirstViolationIfNoneLoaded();
+
+      // The pass is over, so every read it lost is marked as failed. The row on
+      // screen -- the one that has been waiting -- takes its second chance now
+      // rather than only when it is next opened; the others take theirs then.
+      const violation =
+        this.state.batchViolations[this.state.currentViolationIndex];
+
+      if (violation) {
+        this.plateReread = this.rereadFailedPlates({ violation });
+      }
+    });
+
+    this.setState({ batchProgress: null });
+
+    // A sample of untouched batches is the denominator the corrections need:
+    // how often the grouping was right without a hand.
+    if (Math.random() < BATCH_GROUPING_SAMPLE_RATE) {
+      const data = this.batchGroupingData();
+      captureBatchGroupingEvent({
+        schema: 1,
+        event: 'batch-done',
+        photos: data.photos,
+        rowsBefore: null,
+        rowsAfter: data.rows,
+      });
+    }
+  };
+
+  // Flag each violation with whether it is inside the five boroughs, so the
+  // queue can say so up front rather than letting the user discover it when
+  // Submit is disabled. The module's records are left as they came back;
+  // `setCoords` re-derives the flag when a violation is loaded.
+  withNycFlags = violations => {
+    const lookup = new PolygonLookup(
+      this.props.boroughBoundariesFeatureCollection,
+    );
+
+    return violations.map(violation => ({
+      ...violation,
+      coordsAreInNyc: hasCoordinates(violation)
+        ? isPointInNycMemoized({
+            lookup,
+            end: {
+              latitude: violation.latitude,
+              longitude: violation.longitude,
+            },
+          })
+        : undefined,
+    }));
+  };
+
+  // The rows the batch would hold if `read` were written onto `photo`.
+  //
+  // The whole batch regroups, not the row the photo happens to sit in. The
+  // rows start as one photo each, and every read can merge a row with the ones
+  // that name the same car, whichever rows those are and whatever order the
+  // reads arrive in. Regrouping everything is what lets a late read merge rows
+  // the earlier ones built, and lets a photo leave a row when a later read
+  // shows it belongs to another car.
+  //
+  // A row the user merged by hand is left as one row: that is a report they
+  // have already decided on, and no read is allowed to take it apart again.
+  // Its photos still take the read, and the row is rebuilt around them.
+  //
+  // A row with no photos is a record of its own: there is nothing in it to
+  // regroup, so it is kept as it stands.
+  //
+  // The photos come from the rows rather than from `batchPhotos`, which holds
+  // the photos of the pass in hand: a second pick replaces it, so regrouping
+  // from it would drop every row the earlier picks published.
+  rowsAfterRead = (state, { photo, read }) => {
+    // By file, not by object: the record being written back is not the one the
+    // reading was made from -- a reading is a new record, and a photo whose
+    // reading is under way is a copy of it marked as such.
+    const replace = candidate =>
+      candidate.file === photo.file ? read : candidate;
+
+    // Which photos the user's own rows hold, read off the rows as they stand:
+    // the reading that is being written back is a photo record of its own, and
+    // the rows are what say which photos the batch has.
+    //
+    // An empty row has no photos for the rebuilding below to work with, so it
+    // is carried over as it is rather than merged.
+    const emptyRows = state.batchViolations.filter(
+      violation => violation.photos.length === 0,
+    );
+    const userMadeRows = state.batchViolations.filter(
+      violation => violation.mergedByUser && violation.photos.length > 0,
+    );
+    // A copy is the user's row, but its photo still belongs to the row it was
+    // copied from: the source row is not the user's, and has to stay in the
+    // grouping. Only the rows with no copy key take their photos out of it.
+    const frozenRows = userMadeRows.filter(
+      violation => violation.copyKey === undefined,
+    );
+    const spokenFor = new Set(
+      frozenRows.flatMap(violation =>
+        violation.photos.map(candidate => candidate.file),
+      ),
+    );
+
+    const userMade = this.withNycFlags(
+      userMadeRows.map(violation => ({
+        ...mergeViolations([
+          { ...violation, photos: violation.photos.map(replace) },
+        ]),
+        mergedByUser: true,
+        copyKey: violation.copyKey,
+      })),
+    );
+
+    // Once per photo: a wide shot belongs to every car in it, so the rows
+    // mention it more than once, and grouping is what decides which rows it
+    // ends up in.
+    const photosByFile = new Map();
+    state.batchViolations
+      .flatMap(violation => violation.photos)
+      .filter(candidate => !spokenFor.has(candidate.file))
+      .forEach(candidate => photosByFile.set(candidate.file, candidate));
+
+    const grouped = this.withNycFlags(
+      groupAttachmentsByViolation([...photosByFile.values()].map(replace)),
+    );
+
+    return this.withoutDismissedRows([
+      ...emptyRows,
+      ...userMade,
+      ...grouped,
+    ]).sort((a, b) => a.createDateMs - b.createDateMs);
+  };
+
+  // A plate read landing on the row that holds its photo, as a `setState`
+  // updater.
+  //
+  // The record `readBatchPhotoPlate` hands back replaces the one it read
+  // everywhere that record appears -- the batch's photos and the rows' -- and
+  // the rows then take the reading into account. A read that names the same
+  // car as another row merges the two: the rows start as one photo each, so
+  // merging is what turns a batch of close-together cars into one row per car.
+  // Waiting for the user to press something would leave every photo as its own
+  // row, which is what the plate is read for in the first place.
+  //
+  // The form follows the row that holds the most of the photos it had -- the
+  // report it was already making -- wherever the regrouping put it. A row a
+  // read merges holds photos the form did not have, and a row it divides holds
+  // fewer, so both are followed and reloaded; see `readChangesFormReport`.
+  applyPlateRead =
+    ({ photo, read }) =>
+    state => {
+      const batchViolations = this.rowsAfterRead(state, { photo, read });
+
+      const loaded = state.batchViolations[state.currentViolationIndex];
+
+      // A shared frame is the first photo of every row read from it, so the
+      // row the form is on is not the first row holding the file it opened
+      // with. Keep the row whose identity survives the regrouping; a row that
+      // merges or divides gets a new identity, and the counts below follow
+      // that. Then count the loaded row's photos each rebuilt row holds, then
+      // the form's own attachments, and follow the row those point at.
+      const loadedIdentity = loaded
+        ? batchViolationIdentity(loaded)
+        : undefined;
+      const loadedFiles = new Set(
+        (loaded?.photos || []).map(candidate => candidate.file),
+      );
+      const attachedFiles = new Set(state.attachmentData);
+      const followed =
+        batchViolations.find(
+          row =>
+            loadedIdentity !== undefined &&
+            batchViolationIdentity(row) === loadedIdentity,
+        ) ||
+        batchViolations
+          .map(row => ({
+            row,
+            report: row.photos.filter(candidate =>
+              loadedFiles.has(candidate.file),
+            ).length,
+            attached: row.photos.filter(candidate =>
+              attachedFiles.has(candidate.file),
+            ).length,
+          }))
+          .filter(({ report, attached }) => report > 0 || attached > 0)
+          .sort((a, b) => b.report - a.report || b.attached - a.attached)[0]
+          ?.row ||
+        rowHoldingFile(batchViolations, loaded?.photos[0]?.file) ||
+        // A row with no photos has no file to follow; the rebuilding above
+        // kept that same record.
+        (loaded && batchViolations.includes(loaded) ? loaded : undefined);
+
+      return {
+        batchPhotos: state.batchPhotos.map(candidate =>
+          candidate.file === photo.file ? read : candidate,
+        ),
+        batchViolations,
+        currentViolationIndex: followed
+          ? batchViolations.indexOf(followed)
+          : state.currentViolationIndex,
+      };
+    };
+
+  // Look up every place the batch's photos were taken, once each.
+  //
+  // The memo is what makes this cheap -- a batch shot at one kerb is one
+  // lookup, not one per photo or per row. The lookups run behind the plate
+  // reads, so a row can open before its address is in; the form then asks for
+  // the same place, and its answer fills the memo for the rows after it.
+  geocodePlaces = async photos => {
+    const places = new Map();
+
+    photos.forEach(photo => {
+      if (hasCoordinates(photo)) {
+        places.set(`${photo.latitude},${photo.longitude}`, photo);
+      }
+    });
+
+    for (const photo of places.values()) {
+      // eslint-disable-next-line no-await-in-loop -- sequential on purpose: see geocodeBatchViolation.
+      await this.geocodeBatchViolation(photo);
+    }
+  };
+
+  // Group the photos that no published violation has claimed, and add the
+  // violations to the queue.
+  //
+  // Only unclaimed photos are grouped. A published row is changed by its own
+  // photos' readings and by nothing else (see `applyPlateRead`), and leaving
+  // the claimed photos out is what keeps this from making a second row for
+  // them.
+  //
+  // The batch calls this before a plate is read, so the rows are one photo
+  // each and their labels and merges arrive behind them; the leftovers after a
+  // submit call it with their readings already in.
+  //
+  // The rows are published without waiting for their addresses. The plate
+  // reads own the scarce quota and the grouping needs them; the address
+  // lookups start behind the first read (see `processBatchFiles`) and fill the
+  // memo before most rows open. A row that opens earlier asks for its own
+  // address, and the form's lookup fills the same memo.
+  // `afterPublish` runs once the rows are in state, whether or not any were
+  // added: a caller that opens a row after a submit has to know the queue is
+  // final, and one that was waiting for a row that never came still has a row
+  // to open.
+  publishBatchViolations = async ({ afterPublish = null } = {}) => {
+    const { batchPhotos, batchViolations } = this.state;
+
+    const publishedPhotos = new Set(
+      batchViolations.flatMap(violation =>
+        violation.photos.map(photo => photo.name),
+      ),
+    );
+    const unpublished = batchPhotos.filter(
+      photo => !publishedPhotos.has(photo.name),
+    );
+
+    if (unpublished.length === 0) {
+      if (afterPublish) {
+        afterPublish();
+      }
+      return;
+    }
+
+    const flagged = this.withoutDismissedRows(
+      this.withNycFlags(groupAttachmentsByViolation(unpublished)),
+    );
+
+    this.setState(
+      state => {
+        // By identity rather than by first photo: one frame can read as two cars,
+        // and the row of each of them opens with that same frame.
+        const published = new Set(
+          state.batchViolations.map(batchViolationIdentity),
+        );
+        const added = flagged.filter(
+          violation => !published.has(batchViolationIdentity(violation)),
+        );
+
+        if (added.length === 0) {
+          return null;
+        }
+
+        // Oldest first, the way the batch was shot: the queue is walked in
+        // that order. Appending instead would list violations in whatever
+        // order they were published in.
+        const oldestFirst = state.batchViolations
+          .concat(added)
+          .sort((a, b) => a.createDateMs - b.createDateMs);
+
+        // Sorting moves rows, so an index no longer identifies the loaded
+        // violation. Follow it by identity instead: these are the same objects,
+        // only reordered.
+        const loaded = state.batchViolations[state.currentViolationIndex];
+
+        return {
+          batchViolations: oldestFirst,
+          currentViolationIndex: loaded
+            ? oldestFirst.indexOf(loaded)
+            : state.currentViolationIndex,
+        };
+      },
+      () => {
+        this.loadFirstViolationIfNoneLoaded();
+        if (afterPublish) {
+          afterPublish();
+        }
+      },
+    );
+  };
+
+  // One photo's date and place, from its own metadata. Local work, with no
+  // network, which is what makes it affordable to do for the whole batch before
+  // a single plate is read -- and doing it first is what puts the batch into
+  // capture order.
+  //
+  // Each extraction is allowed to fail on its own: a photo with no EXIF still
+  // has a plate read, and one ALPR cannot read still groups on time and place.
+  // Whatever came back empty shows up as a flag in the queue.
+  readBatchPhotoMetadata = async photo => {
+    const { file: attachmentFile } = photo;
+
+    let attachmentBuffer;
+    let attachmentArrayBuffer;
+    try {
+      ({ attachmentBuffer, attachmentArrayBuffer } = await blobToBuffer({
+        attachmentFile,
+      }));
+    } catch (err) {
+      console.error(err);
+      return photo;
+    }
+
+    const { name: ext } = (await detectFromBuffer(attachmentBuffer)) || {
+      name: 'jpg',
+    };
+
+    const [extractedDate, location] = await Promise.all([
+      extractDate({ attachmentFile, attachmentArrayBuffer, ext }).catch(
+        () => undefined,
+      ),
+      extractLocation({
+        attachmentFile,
+        attachmentArrayBuffer,
+        ext,
+        isReverseGeocodingEnabled: this.state.isReverseGeocodingEnabled,
+      }).catch(() => undefined),
+    ]);
+
+    return {
+      ...photo,
+      ...normalizeExtractedDate(extractedDate),
+      latitude: location?.latitude,
+      longitude: location?.longitude,
+    };
+  };
+
+  // Mark a photo's reading as under way, in every row that holds it.
+  //
+  // The pass's own reads need no marking: a photo waiting its turn has no
+  // `plateRead` at all, and the rows say so while the pass runs. A second
+  // chance is different -- it happens long after the pass, to a photo that
+  // already says `failed` -- and without this the row would look settled while
+  // one of its photos is being read again.
+  markPhotoReading = photo => {
+    this.setState(state => ({
+      batchViolations: state.batchViolations.map(violation => ({
+        ...violation,
+        photos: violation.photos.map(candidate =>
+          candidate.file === photo.file
+            ? { ...candidate, plateRead: 'reading' }
+            : candidate,
+        ),
+      })),
+    }));
+  };
+
+  // Whether the batch still holds a photo. The user can delete one while its
+  // plate read waits its turn; a read for a deleted photo spends a call on a
+  // report nobody can file.
+  photoIsInBatch = photo =>
+    this.state.batchPhotos.some(candidate => candidate.file === photo.file) ||
+    this.state.batchViolations.some(violation =>
+      violation.photos.some(candidate => candidate.file === photo.file),
+    );
+
+  // One photo's plate read: the network call, made once the metadata pass has
+  // settled what order the batch is in. `onFetch` runs once the request is on
+  // the wire; the batch uses it to start the address lookups behind the reads.
+  readBatchPhotoPlate = async (photo, { onFetch } = {}) => {
+    const { file: attachmentFile } = photo;
+
+    let attachmentBuffer;
+    try {
+      ({ attachmentBuffer } = await blobToBuffer({ attachmentFile }));
+    } catch (err) {
+      console.error(err);
+      // A file that cannot be read into a buffer is a read that failed, not
+      // one still to come: the queue says so, and the second chance a loaded
+      // row gives its failed photos can take it up again.
+      return { ...photo, plateRead: 'failed' };
+    }
+
+    const { name: ext } = (await detectFromBuffer(attachmentBuffer)) || {
+      name: 'jpg',
+    };
+
+    const plateResults = await this.batchPlateResults({
+      attachmentFile,
+      attachmentBuffer,
+      ext,
+      onFetch,
+    });
+
+    return {
+      ...photo,
+      plateResults,
+      // Whether the read happened at all. A refusal leaves no `plateResults`,
+      // which is otherwise indistinguishable from a photo still waiting its
+      // turn -- and the queue has to tell those apart to say whether a row is
+      // still being read or read nothing.
+      plateRead: plateResults ? 'read' : 'failed',
+      uploadWidth: plateResults?.uploadWidth,
+      uploadHeight: plateResults?.uploadHeight,
+    };
+  };
+
+  // The full ALPR response, not a single collapsed plate: the grouping needs
+  // every `results[]` entry and the `candidates` that fold OCR variants
+  // together. Collapsing to one plate discards exactly those, and prefers the
+  // medallion, which is a tie-break here rather than a filter.
+  batchPlateResults = async ({
+    attachmentFile,
+    attachmentBuffer,
+    ext,
+    onFetch,
+  }) => {
+    if (this.state.isAlprEnabled === false) {
+      console.info('ALPR is disabled, skipping');
+      return undefined;
+    }
+
+    try {
+      return await fetchPlateResults({
+        attachmentFile,
+        attachmentBuffer,
+        ext,
+        onFetch,
+      });
+    } catch (err) {
+      console.error(err);
+      // A refusal is worth remembering: the reads after it wait out the
+      // second the API asks for, rather than spending themselves on the same
+      // limit. See ALPR_THROTTLE_WAIT_MS.
+      if (err?.response?.status === 429) {
+        this.plateReadThrottled = true;
+      }
+      // A photo ALPR could not read still belongs to the batch: it groups by
+      // time and place, and the queue flags the group for manual entry.
+      return undefined;
+    }
+  };
+
+  // Resolve a violation's coordinates to an address, for the form to show when
+  // the user loads it.
+  geocodeBatchViolation = async violation => {
+    const { latitude, longitude } = violation;
+
+    if (!hasCoordinates(violation) || violation.coordsAreInNyc === false) {
+      return;
+    }
+
+    if (this.geosearchAddressCache.get({ latitude, longitude }) !== undefined) {
+      return;
+    }
+
+    // The memo only knows about lookups that have finished, so two callers
+    // racing for the same place -- the batch warming the memo for every place
+    // and a row geocoding its own, say -- would both send a request. This is
+    // the second, in-flight half of the memo, and it is deliberately not the
+    // same map: a failure must leave nothing behind, in either.
+    const key = `${latitude},${longitude}`;
+
+    if (this.geosearchesInFlight.has(key)) {
+      return;
+    }
+
+    this.geosearchesInFlight.add(key);
+
+    try {
+      // Not debouncedGeosearch: debounce() resolves every pending call with
+      // the last call's response, so two lookups in flight at once -- this
+      // violation's and one the user started by moving the map -- would each
+      // file the other's address under their own coordinates.
+      const data = await fetchGeosearchAddress({ latitude, longitude });
+      const { properties } = data.features[0];
+      // A fallback says the city's address directory was unavailable, so the
+      // address may change once it answers: show it, but do not keep it.
+      if (!data.fellBackToTopResult) {
+        this.geosearchAddressCache.set({
+          latitude,
+          longitude,
+          address: formatGeosearchAddress(properties),
+        });
+      }
+    } catch (err) {
+      // Leave the memo empty rather than caching the failure: setCoords asks
+      // again when the user loads this violation, and geosearch being down
+      // must not stop the batch.
+      console.error(err);
+    } finally {
+      this.geosearchesInFlight.delete(key);
+    }
+  };
+
+  // A violation whose photos could not be read gets its second chance here.
+  //
+  // The batch reads every photo once, three at a time, and Plate Recognizer
+  // rate limits by the second: a read that comes back 429 is repeated by
+  // `plateReadRetry` over about seven seconds and then given up on, and the
+  // photo keeps no `plateResults` at all. That absence used to be final -- the
+  // row said "(no plate read)" and the form opened with an empty License
+  // field, however readable the picture was.
+  //
+  // Only the photos whose read failed are read again, one at a time, because
+  // the burst is what tripped the limit in the first place. `plateRead` is what
+  // says a read failed: a photo it is missing from has simply not had its turn
+  // yet, and the batch's own pass is already reading it -- re-reading those
+  // here would double every read the batch makes. A photo that read cleanly and
+  // found nothing is not worth another call either.
+  //
+  // Each result goes through the same write-back the batch's own reads use, so
+  // a second chance can divide a row exactly as a first read can.
+  rereadFailedPlates = async ({ violation }) => {
+    const failed = violation.photos.filter(
+      photo => photo.plateRead === 'failed',
+    );
+    if (failed.length === 0) {
+      return;
+    }
+
+    await mapWithConcurrency({
+      items: failed,
+      limit: 1,
+      worker: async photo => {
+        // The user has opened another violation, or this row has divided and
+        // the photo is in a group they are not on. Stop reading for one they
+        // have left; a successful read is cached, so coming back costs only
+        // what is still missing.
+        const loaded =
+          this.state.batchViolations[this.state.currentViolationIndex]?.photos;
+
+        if (!loaded?.some(candidate => candidate.file === photo.file)) {
+          return photo;
+        }
+
+        // Said before the call, so the row says it while the call is out:
+        // nothing else about a second chance tells the queue that one of its
+        // rows is being read, and this one can still divide.
+        this.markPhotoReading(photo);
+
+        const read = await this.readBatchPhotoPlate(photo);
+        const changes = this.readChangesFormReport({ photo, read });
+        this.setState(this.applyPlateRead({ photo, read }), () =>
+          this.followReadInForm({ changes }),
+        );
+        return read;
+      },
+    });
+  };
+
+  // The batch as the grouping saw it: every photo it holds, with the raw
+  // metadata and ALPR response, and the rows at this moment. This is what a
+  // grouping correction is recorded with, so the algorithm can be improved
+  // from real batches later.
+  batchGroupingData = () => {
+    const { batchPhotos, batchViolations } = this.state;
+
+    const photosByFile = new Map();
+    batchPhotos.forEach(photo => photosByFile.set(photo.file, photo));
+    batchViolations.forEach(violation =>
+      violation.photos.forEach(photo => photosByFile.set(photo.file, photo)),
+    );
+
+    return {
+      photos: [...photosByFile.values()].map(photo => ({
+        name: photo.name,
+        createDateMs: photo.createDateMs,
+        latitude: photo.latitude,
+        longitude: photo.longitude,
+        plateRead: photo.plateRead,
+        plateResults: photo.plateResults || null,
+        uploadWidth: photo.uploadWidth,
+        uploadHeight: photo.uploadHeight,
+      })),
+      rows: batchViolations.map(violation => ({
+        plate: violation.plate,
+        licenseState: violation.licenseState,
+        createDateMs: violation.createDateMs,
+        latitude: violation.latitude,
+        longitude: violation.longitude,
+        mergedByUser: Boolean(violation.mergedByUser),
+        photos: violation.photos.map(photo => photo.name),
+      })),
+    };
+  };
+
+  // One event per correction: the rows before and after, and the photos behind
+  // both. Raw and complete, so a later grouping change can be tested against
+  // the batches it would have handled. `source` says which control did it.
+  recordBatchGrouping = ({ event, source = null, before }) => {
+    const after = this.batchGroupingData();
+
+    captureBatchGroupingEvent({
+      schema: 1,
+      event,
+      source,
+      // The discard empties the batch, so the photos come from before it.
+      photos: (before || after).photos,
+      rowsBefore: before ? before.rows : null,
+      rowsAfter: after.rows,
     });
   };
 

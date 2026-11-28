@@ -88,7 +88,10 @@ module.exports = {
   // snapshotSerializers: // [array<string>]
   testEnvironment: 'jsdom',
   // testMatch: // [array<string>]
-  // testPathIgnorePatterns: // [array<string>]
+  // Keep Jest out of local Claude Code worktrees under `.claude/`: they are
+  // full checkouts of this repo, so their `src/**/*.test.js` files would run
+  // as duplicate suites.
+  testPathIgnorePatterns: ['/node_modules/', '/.claude/'],
   // testRegex: // [string]
   // testResultsProcessor: // [string]
   // testRunner: // [string]

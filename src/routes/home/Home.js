@@ -1112,8 +1112,8 @@ const TOO_MANY_ATTACHMENTS_MESSAGE =
 const UNKNOWN_PLATE = 'UNKNOWN';
 
 // The id of the toast that thanks the user for a report. A toast with this id
-// stays one at a time: the next report can go through while the last thanks is
-// still on screen, and a second copy of it says nothing new.
+// stays one at a time: in a batch the next violation can be filed while the
+// last thanks is still on screen, and a second copy of it says nothing new.
 const SUBMISSION_TOAST_ID = 'submission-thanks';
 
 // The id of the toast that lists what the loaded report's photos did not give.
@@ -4893,6 +4893,279 @@ class Home extends React.Component {
       // Long enough to notice the mistake and reach the button.
       { autoClose: 8000 },
     );
+  };
+
+  // "Discard the remaining violations": the queue is done with, and its
+  // photos go with it -- the rows and the photos still waiting to be grouped
+  // alike. Nothing is filed. Each report needs a person to check its plate,
+  // type and place, so the way to stop early is to let the rest go, not to
+  // send it. Undo holds the whole batch for a few seconds.
+  discardRemainingViolations = () => {
+    const { batchPhotos, batchViolations } = this.state;
+
+    if (batchViolations.length < 2) {
+      return;
+    }
+
+    const before = this.batchGroupingData();
+    const snapshot = this.batchSnapshot();
+
+    const photos = new Set(batchPhotos);
+    batchViolations.forEach(violation =>
+      violation.photos.forEach(photo => photos.add(photo)),
+    );
+
+    // A read that lands after this must not build the rows again.
+    batchViolations.forEach(violation =>
+      this.dismissedRows.add(batchViolationIdentity(violation)),
+    );
+    snapshot.readings.forEach((reading, file) =>
+      this.photoReadings.delete(file),
+    );
+
+    this.setState(
+      {
+        attachmentData: [],
+        allPlateData: null,
+        batchMergeSelection: [],
+        batchPhotos: [],
+        batchViolations: [],
+        currentViolationIndex: -1,
+        plateDataByAttachmentName: {},
+      },
+      () => {
+        // Nothing on screen shows these photos now: their bytes can go. Undo
+        // makes the object URLs again when the grid next draws the photos.
+        photos.forEach(photo => releaseBlobUrl(photo.file));
+
+        this.recordBatchGrouping({ event: 'discard', before });
+      },
+    );
+
+    const count = snapshot.batchViolations.length;
+
+    Home.notifyInfo(
+      <React.Fragment>
+        <p>{`Discarded ${count} violation${count === 1 ? '' : 's'}.`}</p>
+        <button
+          type="button"
+          onClick={() => this.restoreBatchSnapshot(snapshot)}
+        >
+          Undo
+        </button>
+      </React.Fragment>,
+      // Longer than the default: the rows are the whole batch's work.
+      { autoClose: 8000 },
+    );
+  };
+
+  // Take a violation out of the queue once it has been submitted, and load
+  // whatever took its index: the queue then always shows what is left to
+  // report.
+  //
+  // Only the photos that went into the report leave the batch. A group of more
+  // than three photos cannot attach all of them, and the picker tells the user
+  // the rest stay in the batch -- so the ones left behind stay here, and the
+  // pass below gives them a violation of their own rather than dropping them
+  // without a word.
+  //
+  // Dropping the whole group instead is what the queue did before, and it made
+  // that promise false.
+  // `submittedFiles` arrives as an argument rather than being read from state:
+  // the submit handler clears `attachmentData` before it calls this, so by now
+  // the state no longer knows which photos went into the report.
+  advanceBatchAfterSubmit = submittedFiles => {
+    const { batchPhotos, batchViolations, currentViolationIndex } = this.state;
+    const remainingViolations = batchViolations.filter(
+      (_, index) => index !== currentViolationIndex,
+    );
+    const submitted = new Set(submittedFiles);
+
+    // The report is filed, so the row is done with, and it is remembered as
+    // such. Taking it out of the queue is not enough on its own: regrouping
+    // works from the photos the rows hold, and a photo of this row's can still
+    // be in another row -- one frame, several cars -- so the row would be built
+    // again and a reported violation would be back in the queue. A report that
+    // left photos behind is remembered by the photos it took, since those are
+    // what tell it from the row it leaves. See `withoutDismissedRows`.
+    const reported = batchViolations[currentViolationIndex];
+
+    // What the report leaves behind: the photos of its row that it does not
+    // carry. They are published as a violation of their own, and that one
+    // comes before the rows shot after it -- it is where the queue was. The
+    // user walks the queue in capture order, so this is the row to open; the
+    // one after it would leave the photos it holds to be found on the way
+    // back.
+    const leftBehind = reported
+      ? reported.photos
+          .filter(photo => !submitted.has(photo.file))
+          .map(photo => photo.file)
+      : [];
+
+    // The row that takes the report's place when nothing is left behind. Kept
+    // as the row itself rather than its index: publishing the leftovers
+    // re-sorts the queue, and an index stops naming that row.
+    const following =
+      remainingViolations[
+        Math.min(currentViolationIndex, remainingViolations.length - 1)
+      ];
+    const knownRows = new Set(remainingViolations.map(batchViolationIdentity));
+
+    if (reported) {
+      if (leftBehind.length === 0) {
+        this.dismissedRows.add(batchViolationIdentity(reported));
+      } else {
+        // What it left behind can be a row with this row's own identity, so
+        // dismiss the report by the photos it took rather than by its name.
+        this.submittedRows.add(batchViolationIdentity(reported));
+        submittedFiles.forEach(file => this.submittedPhotos.add(file));
+      }
+    }
+
+    // The report carries these photos now, and the queue no longer shows
+    // them: their readings are only memory now. A photo the report leaves
+    // behind keeps its reading, because the row made of it is next in the
+    // queue -- and a photo shared with another row gets its reading back when
+    // that row is opened.
+    submittedFiles.forEach(file => this.photoReadings.delete(file));
+
+    this.setState(
+      {
+        batchViolations: remainingViolations,
+        batchPhotos: batchPhotos.filter(photo => !submitted.has(photo.file)),
+      },
+      () => {
+        // Group the leftovers now. Publishing otherwise waits for the user to
+        // add another photo, which would leave a violation this one produced
+        // invisible until then -- and nothing on screen would say it was there.
+        this.publishBatchViolations({
+          // Only after the leftover row exists: it is what gets opened. A row
+          // that already held one of these photos -- one frame, several cars
+          // -- is not new, and the queue moves on past it as it always did.
+          afterPublish: () =>
+            this.openAfterSubmit({ leftBehind, following, knownRows }),
+        });
+      },
+    );
+  };
+
+  // The violation to put in the form once a report is filed: the row made of
+  // the photos it left behind, when there is one, and otherwise the row that
+  // follows the report in the queue.
+  openAfterSubmit = ({ leftBehind, following, knownRows }) => {
+    const { batchViolations } = this.state;
+    const leftoverRow = rowHoldingFile(batchViolations, leftBehind[0]);
+    const leftoverRowIsNew =
+      leftoverRow && !knownRows.has(batchViolationIdentity(leftoverRow));
+    const next = leftoverRowIsNew ? leftoverRow : following;
+
+    this.loadBatchViolation(batchViolations.indexOf(next));
+    this.scrollPlateFieldsToBottom();
+
+    // The next violation is in the form now, so put the caret in the plate
+    // field: Enter submits the report from there (the field is inside the
+    // form), and a batch can be walked from the keyboard. It waits for the
+    // render that puts the field back, because filing a report empties the
+    // form, and an empty form has no plate field to focus.
+    //
+    // The focus asks for no scroll of its own: it would cancel the smooth
+    // scroll the field to the bottom of the page, which is still running.
+    if (next) {
+      requestAnimationFrame(() =>
+        this.focusPlateField({ preventScroll: true }),
+      );
+    }
+  };
+
+  // Bring the License/Medallion fields to the bottom of the page. Loading a
+  // violation fills the form above them with its photos, so with the fields at
+  // the bottom edge they fill the screen, which is what the report is checked
+  // against. It waits for a frame: opening a row replaces the photos, and the
+  // fields are rendered again with them.
+  //
+  // The state field, because it is the lower of the two when they wrap onto
+  // separate lines: aligning it leaves the plate field on screen above it.
+  // Not the label: the lookup results render in the label below the fields,
+  // and they land a second or so after they are filled in, which would leave
+  // the fields high on the page.
+  scrollPlateFieldsToBottom = () => {
+    requestAnimationFrame(() =>
+      this.licenseStateRef.current?.scrollIntoView?.({
+        block: 'end',
+        behavior: 'smooth',
+      }),
+    );
+  };
+
+  // Attach or detach one of a loaded violation's photos. A group of more than
+  // three photos is the picker's job: the first three pictures and the first
+  // three videos are attached on load, and this is how the user swaps one in
+  // or out. The cap is enforced here because createSubmission.js enforces it
+  // silently, by dropping whatever comes after the third.
+  toggleBatchPhoto = ({ violation, photo, checked }) => {
+    const { attachmentData } = this.state;
+    const selected = new Set(attachmentData);
+
+    if (checked) {
+      const wantPicture = isImage({ ext: fileExtension(photo.name) });
+      const selectedOfKind = attachmentData.filter(
+        file => isImage({ ext: fileExtension(file.name) }) === wantPicture,
+      );
+
+      if (selectedOfKind.length >= 3) {
+        // A warning rather than a refusal: the photo is attached so that its
+        // thumbnail can be seen and opened, and Submit stays off until the
+        // report is back within its caps; see `tooManyAttachments`.
+        Home.notifyWarning(
+          `A report can include at most 3 ${
+            wantPicture ? 'pictures' : 'videos'
+          }. Uncheck one to swap it in.`,
+        );
+      }
+
+      selected.add(photo.file);
+      // A photo swapped in is one the report may be submitted with, so it needs
+      // the upload the ones loaded with the violation already had. The call is
+      // per file and skips the ones already under way.
+      startBackgroundUploads([photo.file]);
+      // Its reading is what the report's time and place are worked out from,
+      // and a photo the load never attached has none on record: only the ones
+      // attached with the violation are registered there. Without this, a
+      // report built out of picker-ticked photos has nothing to take either
+      // from, and the form falls back to the default place.
+      this.photoReadings.set(photo.file, photo);
+    } else {
+      selected.delete(photo.file);
+    }
+
+    // Keep the attachments in the violation's own (capture) order, so a swap
+    // does not shuffle the report's photos.
+    const attached = violation.photos.filter(({ file }) => selected.has(file));
+    const wasAttached = violation.photos.filter(({ file }) =>
+      attachmentData.includes(file),
+    );
+
+    this.setState({
+      attachmentData: attached.map(({ file }) => file),
+    });
+
+    // The report's time and place come from the photos it holds, so dropping
+    // one moves them onto the photos that are left. Typed or dragged by hand,
+    // they stay where the user put them.
+    this.applyPhotosToForm(
+      attached.map(({ file }) => file),
+      {
+        previousPhotos: wasAttached.map(({ file }) => file),
+      },
+    );
+
+    // A photo the report no longer holds keeps no reading, the way one taken
+    // out with the X loses its: the map is the report's photos, not the
+    // violation's. Unticked here rather than above, because the photos the
+    // report held before this change are what its time is compared against.
+    if (!checked) {
+      this.photoReadings.delete(photo.file);
+    }
   };
 
   // Everything the removal below changes, kept so its toast can put it back.

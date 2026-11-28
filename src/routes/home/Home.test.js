@@ -28,6 +28,8 @@ import Modal from 'react-modal';
 import Dropzone from '@josephfrazier/react-dropzone';
 import { MAP } from 'react-google-maps/lib/constants';
 import App from '../../components/App.js';
+import plateReadRetry from '../../plateReadRetry.js';
+import { setBatchGroupingSender } from '../../batchGroupingEvents.js';
 import Home, { NycAddressAutocomplete } from './Home.js';
 import boroughBoundariesFeatureCollection from '../../boroughBoundaries.js';
 import {
@@ -43,10 +45,11 @@ jest.mock('react-modal', () =>
 );
 
 // exifr reads the metadata out of real image bytes, which no test here has.
-// Mocked rather than spied on: the imported object's properties are getters,
-// so `jest.spyOn` cannot replace them. A test that wants an extraction to
-// succeed gives these implementations; every other test leaves them
-// returning nothing, which fails an extraction exactly as junk bytes do.
+// Mocked rather than spied on: the imported object's properties are getters
+// under Jest (they are writable when the module is required from Node
+// directly), so `jest.spyOn` cannot replace them. A test that wants an
+// extraction to succeed gives these implementations; every other test leaves
+// them returning nothing, which fails an extraction exactly as junk bytes do.
 jest.mock('exifr/dist/full.umd.js', () => ({
   __esModule: true,
   default: { gps: jest.fn(), parse: jest.fn() },
@@ -198,14 +201,13 @@ async function renderAndExtract(files) {
     });
 
   await renderer.act(async () => {
-    await homeRef.current.handleAttachmentData({ attachmentData: files });
+    await homeRef.current.addFilesToBatch(files);
   });
   await settle();
 
   return {
     homeRef,
     settle,
-    consoleError,
     cleanup: () => {
       exifr.gps.mockReset();
       exifr.parse.mockReset();
@@ -279,7 +281,7 @@ async function renderWithPlateReads(files, { platesBySize = {} } = {}) {
     });
 
   await renderer.act(async () => {
-    await homeRef.current.handleAttachmentData({ attachmentData: files });
+    await homeRef.current.addFilesToBatch(files);
   });
   await settle();
 
@@ -393,6 +395,15 @@ function renderedText(node) {
   if (typeof node === 'string') return node;
   if (Array.isArray(node)) return node.map(renderedText).join('');
   return renderedText(node.children);
+}
+
+// The text of a React element that was handed to a toast, read the way
+// renderedText reads a rendered tree.
+function elementText(node) {
+  if (node == null) return '';
+  if (typeof node === 'string') return node;
+  if (Array.isArray(node)) return node.map(elementText).join('');
+  return elementText(node.props?.children);
 }
 
 describe('Home', () => {
@@ -1503,243 +1514,14 @@ describe('Home', () => {
     tree.unmount();
   });
 
-  test("takes the form's place from the newest photo, not the last to answer", async () => {
-    // The older photo is listed last, and each photo is read in the order the
-    // list gives, so the older photo is also the last to answer. That is the
-    // whole point: the form used to take its place from the last answer, and
-    // the newest photo has to win even though it answered first.
-    const older = new File([photoBytes('older')], 'older.jpg', {
-      type: 'image/jpeg',
-    });
-    const newer = new File([photoBytes('newer')], 'newer.jpg', {
-      type: 'image/jpeg',
-    });
 
-    exifr.gps.mockImplementation(async buffer => {
-      const which = Buffer.from(buffer).toString('utf8');
-      return which.includes('older')
-        ? { latitude: 40.7, longitude: -73.98 }
-        : { latitude: 40.73, longitude: -74.01 };
-    });
-    exifr.parse.mockImplementation(async buffer => {
-      const which = Buffer.from(buffer).toString('utf8');
-      return {
-        CreateDate: new Date(
-          which.includes('older')
-            ? Date.UTC(2016, 0, 1, 12, 0, 1)
-            : Date.UTC(2016, 0, 1, 12, 0, 3),
-        ),
-        OffsetTimeDigitized: '+00:00',
-      };
-    });
 
-    const { homeRef, cleanup } = await renderAndExtract([newer, older]);
 
-    expect(homeRef.current.state.latitude).toBe(40.73);
-    expect(homeRef.current.state.longitude).toBe(-74.01);
 
-    cleanup();
-  });
 
-  test("takes the form's time from the earliest photo, not the last to answer", async () => {
-    // Listed earliest first, so it is also the first to answer -- the other way
-    // round from the test above, because this rule runs the other way: the
-    // form used to take its time from the last answer, and the earliest photo
-    // has to win even though it answered first.
-    const earlier = new File([photoBytes('earlier')], 'earlier.jpg', {
-      type: 'image/jpeg',
-    });
-    const later = new File([photoBytes('later')], 'later.jpg', {
-      type: 'image/jpeg',
-    });
 
-    exifr.parse.mockImplementation(async buffer => {
-      const which = Buffer.from(buffer).toString('utf8');
-      return {
-        CreateDate: new Date(
-          which.includes('earlier')
-            ? Date.UTC(2016, 0, 1, 12, 0, 10)
-            : Date.UTC(2016, 0, 1, 12, 0, 40),
-        ),
-        OffsetTimeDigitized: '+00:00',
-      };
-    });
 
-    const { homeRef, cleanup } = await renderAndExtract([earlier, later]);
 
-    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:10');
-
-    cleanup();
-  });
-
-  test("reads a malformed EXIF offset in New York's", async () => {
-    // A camera can write an offset that is not a number. It counts as none,
-    // so the time is read in New York's, the way a picture with no offset is.
-    exifr.parse.mockImplementation(async () => ({
-      CreateDate: new Date(Date.UTC(2016, 0, 1, 12, 0, 10)),
-      OffsetTimeDigitized: 'not-a-number',
-    }));
-
-    const photo = new File([photoBytes('bad-offset')], 'bad-offset.jpg', {
-      type: 'image/jpeg',
-    });
-    const { homeRef, cleanup } = await renderAndExtract([photo]);
-
-    // Noon UTC is 7:00 that morning in New York.
-    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T07:00:10');
-
-    cleanup();
-  });
-
-  test("takes the form's time from a video's own creation time", async () => {
-    // An MP4 records when it was made and no offset, so the video's time is
-    // read the way a picture's is when the picture records none: in New
-    // York's, where the report is filed. The suite pins now to 2016-11-18,
-    // so a 2016 time is in the past and passes the plausibility check.
-    MP4Box.createFile.mockImplementation(() => ({
-      appendBuffer() {},
-      getInfo: () => ({ created: new Date(Date.UTC(2016, 0, 1, 12, 0, 10)) }),
-      moov: {
-        udta: {
-          '©xyz': { data: Buffer.from('+40.7128-074.0060/') },
-        },
-      },
-    }));
-
-    const video = new File([videoBytes()], 'video.mp4', { type: 'video/mp4' });
-    const { homeRef, cleanup } = await renderAndExtract([video]);
-
-    // Noon UTC is 7:00 that morning in New York.
-    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T07:00:10');
-
-    MP4Box.createFile.mockReset();
-    cleanup();
-  });
-
-  test("reads a video's time from a ©day box's own zone", async () => {
-    // A camera that writes true UTC in the header can also record the zone
-    // it was in. Without that zone the header is read as New York wall time;
-    // with it the moment is exact. A winter date keeps the offset at one
-    // value, so this test does not depend on the DST lookup.
-    MP4Box.createFile.mockImplementation(() => ({
-      appendBuffer() {},
-      // mp4box reports a header of 22:40:42Z plus its local 1904 epoch.
-      getInfo: () => ({ created: new Date(Date.UTC(2016, 0, 2, 3, 40, 42)) }),
-      moov: {
-        udta: {
-          '©xyz': { data: Buffer.from('+40.7128-074.0060/') },
-          '©day': { data: Buffer.from('2016-01-01T17:40:42-0500') },
-        },
-      },
-    }));
-
-    const video = new File([videoBytes()], 'utc.mp4', { type: 'video/mp4' });
-    const { homeRef, cleanup } = await renderAndExtract([video]);
-
-    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T17:40:42');
-
-    MP4Box.createFile.mockReset();
-    cleanup();
-  });
-
-  test('ignores a ©day box that records no zone', async () => {
-    // Without a zone, `©day` cannot say whether its clock is UTC or local,
-    // so the header keeps its New York wall clock reading.
-    MP4Box.createFile.mockImplementation(() => ({
-      appendBuffer() {},
-      getInfo: () => ({ created: new Date(Date.UTC(2016, 0, 2, 3, 40, 42)) }),
-      moov: {
-        udta: {
-          '©xyz': { data: Buffer.from('+40.7128-074.0060/') },
-          '©day': { data: Buffer.from('2016-01-01T17:40:42') },
-        },
-      },
-    }));
-
-    const video = new File([videoBytes()], 'no-zone.mp4', {
-      type: 'video/mp4',
-    });
-    const { homeRef, cleanup } = await renderAndExtract([video]);
-
-    // The header's true UTC is read as New York wall time: 22:40:42Z.
-    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T22:40:42');
-
-    MP4Box.createFile.mockReset();
-    cleanup();
-  });
-
-  test("takes a video's place from a track's GPS box", async () => {
-    // The `©xyz` box lives under the movie's `udta` in most files; some
-    // cameras write it under a track's instead. It is the same reading
-    // either way.
-    MP4Box.createFile.mockImplementation(() => ({
-      appendBuffer() {},
-      getInfo: () => ({ created: new Date(Date.UTC(2016, 0, 1, 12, 0, 10)) }),
-      moov: {
-        udta: {},
-        traks: [{ udta: { '©xyz': { data: Buffer.from('+40.73-074.01/') } } }],
-      },
-    }));
-
-    const video = new File([videoBytes()], 'track.mp4', { type: 'video/mp4' });
-    const { homeRef, cleanup } = await renderAndExtract([video]);
-
-    expect(homeRef.current.state.latitude).toBe(40.73);
-    expect(homeRef.current.state.longitude).toBe(-74.01);
-
-    MP4Box.createFile.mockReset();
-    cleanup();
-  });
-
-  test("keeps a summer video's wall clock across the 1904 epoch's DST gap", async () => {
-    // mp4box reads the header's 1904 epoch in local time, so the Date it
-    // reports carries New York's January offset (five hours); the form then
-    // reads the capture date in July's (four). The hour that difference used
-    // to add must not show: the camera's 12:00:10 stays 12:00:10.
-    //
-    MP4Box.createFile.mockImplementation(() => ({
-      appendBuffer() {},
-      getInfo: () => ({ created: new Date(Date.UTC(2016, 6, 1, 17, 0, 10)) }),
-      moov: {
-        udta: {
-          '©xyz': { data: Buffer.from('+40.7128-074.0060/') },
-        },
-      },
-    }));
-
-    const video = new File([videoBytes()], 'summer.mp4', { type: 'video/mp4' });
-    const { homeRef, cleanup } = await renderAndExtract([video]);
-
-    expect(homeRef.current.state.CreateDate).toBe('2016-07-01T12:00:10');
-
-    MP4Box.createFile.mockReset();
-    cleanup();
-  });
-
-  test("takes a video's time even when it records no place", async () => {
-    // A camera can stamp a creation time without writing a GPS box -- the
-    // Panasonic that made the report's own video does. The two answers are
-    // independent: the missing place must not take the time with it, and one
-    // parse answers both reads.
-    MP4Box.createFile.mockImplementation(() => ({
-      appendBuffer() {},
-      getInfo: () => ({ created: new Date(Date.UTC(2016, 0, 1, 12, 0, 10)) }),
-      moov: { udta: {} },
-    }));
-
-    const video = new File([videoBytes()], 'video.mp4', { type: 'video/mp4' });
-    const { homeRef, cleanup } = await renderAndExtract([video]);
-
-    // Noon UTC is 7:00 that morning in New York.
-    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T07:00:10');
-    // Nothing moved the place: the video never said where it was.
-    expect(homeRef.current.state.latitude).toBe(40.7128);
-    expect(homeRef.current.state.longitude).toBe(-74.006);
-    expect(MP4Box.createFile).toHaveBeenCalledTimes(1);
-
-    MP4Box.createFile.mockReset();
-    cleanup();
-  });
 
   test('leaves the form time alone for a video with no creation time', async () => {
     // A broken or copied file can have no usable header time at all. The form
@@ -1840,296 +1622,8 @@ describe('Home', () => {
     cleanup();
   });
 
-  test('shows a photo’s time and place before its plate read answers', async () => {
-    // The time and place come from the photo itself; the plate read is a
-    // network round trip that the report's own session saw take seconds. The
-    // form used to wait for the plate before showing either.
-    const photo = new File([photoBytes('early')], 'early.jpg', {
-      type: 'image/jpeg',
-    });
-
-    exifr.parse.mockImplementation(async () => ({
-      CreateDate: new Date(Date.UTC(2016, 0, 1, 12, 0, 10)),
-      OffsetTimeDigitized: '+00:00',
-    }));
-    exifr.gps.mockImplementation(async () => ({
-      latitude: 40.73,
-      longitude: -74.01,
-    }));
-
-    let answerPlate;
-    const plateAnswered = new Promise(resolve => {
-      answerPlate = resolve;
-    });
-
-    const originalCreateObjectURL = global.URL.createObjectURL;
-    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
-
-    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
-    const axiosPost = jest.spyOn(axios, 'post').mockImplementation(url => {
-      if (url === '/platerecognizer') {
-        return plateAnswered.then(() => ({
-          data: {
-            results: [
-              {
-                plate: 'T123456C',
-                score: 0.9,
-                box: { xmin: 0, ymin: 0, xmax: 10, ymax: 10 },
-                region: { code: 'us-ny' },
-                candidates: [],
-              },
-            ],
-            uploadWidth: 1000,
-            uploadHeight: 1000,
-          },
-        }));
-      }
-      if (url === '/api/geosearch') {
-        return Promise.resolve({ data: { features: [] } });
-      }
-      if (url === '/api/uploadAttachment') {
-        return Promise.resolve({ data: { id: 'a'.repeat(64) } });
-      }
-      return Promise.resolve({ data: {} });
-    });
-    const consoleError = jest
-      .spyOn(console, 'error')
-      .mockImplementation(() => {});
-
-    let tree;
-    const homeRef = React.createRef();
-    renderer.act(() => {
-      tree = renderHome({
-        initialState: { email: 'test@example.com', loginSuccessful: true },
-        homeRef,
-      });
-    });
-
-    const settle = () =>
-      renderer.act(async () => {
-        await new Promise(resolve => setTimeout(resolve, 700));
-      });
-
-    await renderer.act(async () => {
-      homeRef.current.handleAttachmentData({ attachmentData: [photo] });
-    });
-    await settle();
-
-    // The photo's own reads have landed; the plate read has not.
-    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:10');
-    expect(homeRef.current.state.latitude).toBe(40.73);
-    expect(homeRef.current.state.longitude).toBe(-74.01);
-    expect(homeRef.current.state.plate).toBe('');
-
-    // It still fills the field when it answers.
-    renderer.act(() => {
-      answerPlate();
-    });
-    await settle();
-    expect(homeRef.current.state.plate).toBe('T123456C');
-
-    exifr.gps.mockReset();
-    exifr.parse.mockReset();
-    axiosGet.mockRestore();
-    axiosPost.mockRestore();
-    consoleError.mockRestore();
-    global.URL.createObjectURL = originalCreateObjectURL;
-    tree.unmount();
-  });
-
-  test('keeps a failed read handled when a file stops the pass', async () => {
-    // The pass takes every read's rejection with Promise.allSettled, but only
-    // once it has read every photo's bytes. A file the browser cannot read
-    // stops the pass before then, leaving the reads it had already started
-    // unhandled -- the refusals Sentry filed as issues REPORTED-WEB-G, -H
-    // and -J. Jest fails a test that leaves a rejection unhandled, so the
-    // failure this guards against is the test failing outright.
-    const early = new File([photoBytes('early')], 'early.jpg', {
-      type: 'image/jpeg',
-    });
-    const unreadable = new File([photoBytes('unreadable')], 'unreadable.jpg', {
-      type: 'image/jpeg',
-    });
-
-    // The early photo's bytes arrive at once, so its reads refuse while the
-    // unreadable photo is still being read. That read then fails and stops
-    // the pass -- late enough that the early photo's reads exist by then.
-    const readError = new ProgressEvent('error');
-    const readBlob = blobUtil.blobToArrayBuffer;
-    const blobToArrayBuffer = jest
-      .spyOn(blobUtil, 'blobToArrayBuffer')
-      .mockImplementation(attachmentFile => {
-        if (attachmentFile.name === 'unreadable.jpg') {
-          return new Promise((resolve, reject) => {
-            setTimeout(() => reject(readError), 50);
-          });
-        }
-        return readBlob(attachmentFile);
-      });
-
-    // The early photo records no usable time or place.
-    exifr.parse.mockImplementation(async buffer => {
-      if (Buffer.from(buffer).toString('utf8').includes('early')) {
-        throw new Error('no EXIF time');
-      }
-      return {
-        CreateDate: new Date(Date.UTC(2016, 0, 1, 12, 0, 10)),
-        OffsetTimeDigitized: '+00:00',
-      };
-    });
-    exifr.gps.mockImplementation(async buffer =>
-      Buffer.from(buffer).toString('utf8').includes('early')
-        ? { latitude: NaN, longitude: NaN }
-        : { latitude: 40.7, longitude: -73.98 },
-    );
-
-    const { consoleError, cleanup } = await renderAndExtract([
-      early,
-      unreadable,
-    ]);
-
-    // The pass's own failure is reported rather than thrown away.
-    expect(consoleError).toHaveBeenCalledWith(
-      'Could not read the attached files:',
-      readError,
-    );
-
-    blobToArrayBuffer.mockRestore();
-    cleanup();
-  });
-
-  test('keeps a file the browser cannot read from failing the pass unhandled', async () => {
-    // FileReader refuses a read it cannot finish with its error event, which
-    // is what blob-util hands back. React ignores what a setState callback
-    // returns, so the pass's own failure used to surface as an unhandled
-    // rejection (Sentry issue REPORTED-WEB-E) instead of being reported as
-    // an error.
-    const readError = new ProgressEvent('error');
-    const blobToArrayBuffer = jest
-      .spyOn(blobUtil, 'blobToArrayBuffer')
-      .mockRejectedValue(readError);
-
-    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
-    const axiosPost = jest.spyOn(axios, 'post').mockResolvedValue({ data: {} });
-    const consoleError = jest
-      .spyOn(console, 'error')
-      .mockImplementation(() => {});
-
-    let tree;
-    const homeRef = React.createRef();
-    renderer.act(() => {
-      tree = renderHome({ homeRef });
-    });
-    renderer.act(() => {
-      homeRef.current.setState({ isAlprEnabled: false });
-    });
-
-    const photo = new File([photoBytes('unreadable')], 'unreadable.jpg', {
-      type: 'image/jpeg',
-    });
-
-    await renderer.act(async () => {
-      await homeRef.current.handleAttachmentData({ attachmentData: [photo] });
-    });
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-    expect(consoleError).toHaveBeenCalledWith(
-      'Could not read the attached files:',
-      readError,
-    );
-
-    blobToArrayBuffer.mockRestore();
-    axiosGet.mockRestore();
-    axiosPost.mockRestore();
-    consoleError.mockRestore();
-    tree.unmount();
-  });
 
 
-  test("does not take a removed photo's plate reading", async () => {
-    // A plate read can answer after the photo it belongs to has been
-    // removed. The form has let that reading go, so its answer must not
-    // arrive as if the report still held the photo.
-    const photo = new File([photoBytes('removed')], 'removed.jpg', {
-      type: 'image/jpeg',
-    });
-
-    let answerPlate;
-    const plateAnswered = new Promise(resolve => {
-      answerPlate = resolve;
-    });
-
-    const originalCreateObjectURL = global.URL.createObjectURL;
-    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
-
-    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
-    const axiosPost = jest.spyOn(axios, 'post').mockImplementation(url => {
-      if (url === '/platerecognizer') {
-        return plateAnswered.then(() => ({
-          data: {
-            results: [
-              {
-                plate: 'T123456C',
-                score: 0.9,
-                box: { xmin: 0, ymin: 0, xmax: 10, ymax: 10 },
-                region: { code: 'us-ny' },
-                candidates: [],
-              },
-            ],
-            uploadWidth: 1000,
-            uploadHeight: 1000,
-          },
-        }));
-      }
-      return Promise.resolve({ data: {} });
-    });
-    const consoleError = jest
-      .spyOn(console, 'error')
-      .mockImplementation(() => {});
-
-    let tree;
-    const homeRef = React.createRef();
-    renderer.act(() => {
-      tree = renderHome({
-        initialState: { email: 'test@example.com', loginSuccessful: true },
-        homeRef,
-      });
-    });
-
-    const settle = () =>
-      renderer.act(async () => {
-        await new Promise(resolve => setTimeout(resolve, 700));
-      });
-
-    await renderer.act(async () => {
-      homeRef.current.handleAttachmentData({ attachmentData: [photo] });
-    });
-    await settle();
-    expect(homeRef.current.state.plate).toBe('');
-
-    // The photo goes before its reading answers.
-    await renderer.act(async () => {
-      homeRef.current.removeAttachment('removed.jpg');
-    });
-    await settle();
-
-    renderer.act(() => {
-      answerPlate();
-    });
-    await settle();
-
-    expect(homeRef.current.state.plate).toBe('');
-    expect(homeRef.current.state.allPlateData).toBeNull();
-    expect(
-      homeRef.current.state.plateDataByAttachmentName['removed.jpg'],
-    ).toBeUndefined();
-
-    axiosGet.mockRestore();
-    axiosPost.mockRestore();
-    consoleError.mockRestore();
-    global.URL.createObjectURL = originalCreateObjectURL;
-    tree.unmount();
-  });
 
   // Three photos, each taken ten seconds and a little way from the last, so a
   // submission's time and place land on different photos: the earliest for the
@@ -2170,73 +1664,8 @@ describe('Home', () => {
     await settle();
   };
 
-  test('moves the time and place onto the photos left when one is dropped', async () => {
-    const { homeRef, settle, cleanup } =
-      await renderAndExtract(threePhotosApart());
 
-    // The submission is as old as its earliest photo, and sits where the last
-    // photo that knows where it was was taken.
-    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:10');
-    expect(homeRef.current.state.latitude).toBe(40.74);
 
-    // Drop the earliest: the time moves onto the one that is left, and the
-    // place was already the last photo's.
-    await dropPhoto(homeRef, settle, 'early.jpg');
-    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:20');
-    expect(homeRef.current.state.latitude).toBe(40.74);
-
-    // Drop the last: now the place has to move too.
-    await dropPhoto(homeRef, settle, 'late.jpg');
-    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:20');
-    expect(homeRef.current.state.latitude).toBe(40.72);
-
-    cleanup();
-  });
-
-  test('leaves a place the user set alone when a photo is dropped', async () => {
-    const { homeRef, settle, cleanup } =
-      await renderAndExtract(threePhotosApart());
-
-    // The user moves the pin. Every photo in the set can be wrong about where
-    // the car was -- a camera that has just woken up reports its last fix --
-    // and the correction is theirs to keep.
-    renderer.act(() => {
-      homeRef.current.setCoords({
-        latitude: 40.9,
-        longitude: -73.9,
-        addressProvenance: '(manually set)',
-      });
-    });
-
-    await dropPhoto(homeRef, settle, 'early.jpg');
-
-    expect(homeRef.current.state.latitude).toBe(40.9);
-    expect(homeRef.current.state.longitude).toBe(-73.9);
-    // The time was still the photos', so it followed them.
-    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:20');
-
-    cleanup();
-  });
-
-  test('leaves a time the user typed alone when a photo is dropped', async () => {
-    const { homeRef, settle, cleanup } =
-      await renderAndExtract(threePhotosApart());
-
-    renderer.act(() => {
-      homeRef.current.setCreateDate({
-        millisecondsSinceEpoch: Date.UTC(2024, 5, 1, 9, 0, 0),
-        offset: 0,
-      });
-    });
-
-    await dropPhoto(homeRef, settle, 'late.jpg');
-
-    expect(homeRef.current.state.CreateDate).toBe('2024-06-01T09:00:00');
-    // The place was still the photos', so it followed them.
-    expect(homeRef.current.state.latitude).toBe(40.72);
-
-    cleanup();
-  });
 
   // A photo's object URL is what holds its bytes in memory: the browser keeps
   // them until the page revokes the URL. A photo that leaves gives its URL
@@ -2287,167 +1716,11 @@ describe('Home', () => {
 
   // The X on a photo takes it out of the report, and the toast holds the whole
   // form -- attachments, time and place -- for a few seconds.
-  test('takes back a deleted photo', async () => {
-    const toastInfo = jest.spyOn(toast, 'info').mockImplementation(() => null);
-    const { homeRef, settle, cleanup } =
-      await renderAndExtract(threePhotosApart());
 
-    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:10');
-    expect(homeRef.current.state.latitude).toBe(40.74);
 
-    // The submission is as old as its earliest photo, so the time moves with
-    // it; the undo has to put both the file and the form back.
-    await dropPhoto(homeRef, settle, 'early.jpg');
-    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:20');
 
-    const undo = findToastButton(toastInfo.mock.calls[0][0], 'Undo');
-    expect(undo).not.toBeNull();
-    renderer.act(() => undo.props.onClick());
 
-    expect(homeRef.current.state.attachmentData.map(file => file.name)).toEqual(
-      ['early.jpg', 'middle.jpg', 'late.jpg'],
-    );
-    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:10');
-    expect(homeRef.current.state.latitude).toBe(40.74);
 
-    toastInfo.mockRestore();
-    cleanup();
-  });
-
-  test('takes back the last photo, and the form it reset', async () => {
-    const toastInfo = jest.spyOn(toast, 'info').mockImplementation(() => null);
-    const [only] = threePhotosApart();
-    const { homeRef, settle, cleanup } = await renderAndExtract([only]);
-
-    expect(homeRef.current.state.latitude).toBe(40.7);
-    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:10');
-
-    await dropPhoto(homeRef, settle, 'early.jpg');
-
-    // Nothing is left to take a time or a place from, so the form resets.
-    expect(homeRef.current.state.attachmentData).toEqual([]);
-    expect(homeRef.current.state.plate).toBe('');
-
-    const undo = findToastButton(toastInfo.mock.calls[0][0], 'Undo');
-    expect(undo).not.toBeNull();
-    renderer.act(() => undo.props.onClick());
-
-    expect(homeRef.current.state.attachmentData.map(file => file.name)).toEqual(
-      ['early.jpg'],
-    );
-    expect(homeRef.current.state.latitude).toBe(40.7);
-    expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:10');
-
-    toastInfo.mockRestore();
-    cleanup();
-  });
-
-  test('takes the plate with the photo that read it', async () => {
-    // One photo whose read named the car, and one that read nothing at all.
-    const named = labelledPhoto('named');
-    const silent = labelledPhoto('silent');
-
-    const { homeRef, settle, cleanup } = await renderWithPlateReads(
-      [named, silent],
-      { platesBySize: { [photoBytes('named').length]: 'T696817C' } },
-    );
-
-    expect(homeRef.current.state.plate).toBe('T696817C');
-
-    // What is left says nothing about a plate, so the field goes back to
-    // empty rather than keeping one from a picture the report no longer holds.
-    await dropPhoto(homeRef, settle, 'named.jpg');
-
-    expect(homeRef.current.state.plate).toBe('');
-
-    cleanup();
-  });
-
-  test('keeps a plate the photos left still read', async () => {
-    const first = labelledPhoto('first');
-    const second = labelledPhoto('second');
-
-    const { homeRef, settle, cleanup } = await renderWithPlateReads(
-      [first, second],
-      {
-        platesBySize: {
-          [photoBytes('first').length]: 'T696817C',
-          [photoBytes('second').length]: 'T696817C',
-        },
-      },
-    );
-
-    await dropPhoto(homeRef, settle, 'first.jpg');
-
-    // The photo that read it is gone, and the one left read the same plate:
-    // the report says the same thing it did.
-    expect(homeRef.current.state.plate).toBe('T696817C');
-
-    cleanup();
-  });
-
-  test('leaves a plate the user typed alone when a photo is dropped', async () => {
-    const named = labelledPhoto('named');
-    const silent = labelledPhoto('silent');
-
-    const { homeRef, tree, settle, cleanup } = await renderWithPlateReads(
-      [named, silent],
-      { platesBySize: { [photoBytes('named').length]: 'T696817C' } },
-    );
-
-    // Typing over the reading, as the field reports it.
-    renderer.act(() => {
-      tree.root.findByProps({ name: 'plate' }).props.onChange({
-        target: createFakeInput({ value: 'ABC1234', caret: 7 }),
-      });
-    });
-    expect(homeRef.current.state.plate).toBe('ABC1234');
-
-    await dropPhoto(homeRef, settle, 'named.jpg');
-
-    // A plate the user typed is theirs: no photo has to be attached for it to
-    // be right, and the app cannot read it again from anywhere.
-    expect(homeRef.current.state.plate).toBe('ABC1234');
-
-    cleanup();
-  });
-
-  test('posts no file but the attachments', async () => {
-    const taxi = labelledPhoto('taxi');
-    const behind = labelledPhoto('behind');
-
-    const { homeRef, tree, cleanup } = await renderWithPlateReads(
-      [taxi, behind],
-      {
-        platesBySize: {
-          [photoBytes('taxi').length]: 'T696817C',
-          [photoBytes('behind').length]: '8YJ1234',
-        },
-      },
-    );
-
-    // A plate picked off a picture: what the provenance is there to remember.
-    renderer.act(() => {
-      tree.root
-        .findByProps({ 'aria-label': 'Select license plate 8YJ1234' })
-        .props.onClick();
-    });
-
-    const posted = homeRef.current.getPerSubmissionState();
-    const files = Object.entries(posted)
-      .filter(([, value]) => value instanceof File)
-      .map(([key]) => key);
-
-    // The submit posts this state, and axios sends every `File` in a body as a
-    // multipart file part. The attachments go in their own field, added where
-    // the request is made, so nothing in here may be a File: the server's
-    // multer takes files only in that field, and a File anywhere else fails
-    // the submission outright -- MulterError: Unexpected file field -- so the
-    // report cannot be sent at all.
-    expect(files).toEqual([]);
-
-    cleanup();
-  });
 
   test('getPerSubmissionState keeps only per-submission keys', () => {
     const homeRef = React.createRef();
@@ -2467,38 +1740,6 @@ describe('Home', () => {
     renderer.act(() => tree.unmount());
   });
 
-  test('drops a plate picked off a photo that is then dropped', async () => {
-    // Two cars in one report: one photo read the taxi's medallion, the other
-    // read the car behind it, and the user picks the second plate off the
-    // picture it was read from.
-    const taxi = labelledPhoto('taxi');
-    const behind = labelledPhoto('behind');
-
-    const { homeRef, tree, settle, cleanup } = await renderWithPlateReads(
-      [taxi, behind],
-      {
-        platesBySize: {
-          [photoBytes('taxi').length]: 'T696817C',
-          [photoBytes('behind').length]: '8YJ1234',
-        },
-      },
-    );
-
-    renderer.act(() => {
-      tree.root
-        .findByProps({ 'aria-label': 'Select license plate 8YJ1234' })
-        .props.onClick();
-    });
-    expect(homeRef.current.state.plate).toBe('8YJ1234');
-
-    // The photo it was picked from goes. The choice was evidence from that
-    // picture, so the field falls back to what the photos left read.
-    await dropPhoto(homeRef, settle, 'behind.jpg');
-
-    expect(homeRef.current.state.plate).toBe('T696817C');
-
-    cleanup();
-  });
 
   test('resets to the default place when the last photo is dropped', async () => {
     const [early] = threePhotosApart();
@@ -2690,6 +1931,7 @@ describe('Home', () => {
     });
 
     const coordinates = { latitude: 40.7129, longitude: -74.0061 };
+    const elsewhere = { latitude: 40.73, longitude: -74.01 };
     const searches = () =>
       axiosPost.mock.calls.filter(([url]) => url === '/api/geosearch');
 
@@ -2705,6 +1947,16 @@ describe('Home', () => {
     );
     expect(searches()).toHaveLength(1);
 
+    // Somewhere else is a different address, so that lookup still goes out:
+    // the memo answers for coordinates it has seen, not for every pair.
+    renderer.act(() => {
+      homeRef.current.setCoords(elsewhere);
+    });
+    await renderer.act(async () => {
+      jest.advanceTimersByTime(500);
+    });
+    expect(searches()).toHaveLength(2);
+
     // The same coordinates again, as moving the map off a curb and back gives.
     // The address is a function of them alone, so this is answered from what
     // was already looked up rather than asked again.
@@ -2719,7 +1971,7 @@ describe('Home', () => {
     expect(homeRef.current.state.formatted_address).toBe(
       '123 Main St, Manhattan',
     );
-    expect(searches()).toHaveLength(1);
+    expect(searches()).toHaveLength(2);
 
     jest.useRealTimers();
     axiosGet.mockRestore();
@@ -4282,14 +3534,26 @@ describe('Home', () => {
         });
       });
 
-      // Add the files through the same path the file <input> uses, so the
-      // background uploads start exactly as they do in the browser.
+      // Add the files through the batch, the way the picker does. The row
+      // uploads its photos when it opens, which is where these tests'
+      // background uploads come from.
       await renderer.act(async () => {
-        await homeRef.current.handleAttachmentData({ attachmentData: files });
+        await homeRef.current.addFilesToBatch(files);
         // Let the extraction pipeline settle so it doesn't touch state after
         // the tree is unmounted.
         await new Promise(resolve => setImmediate(resolve));
         await new Promise(resolve => setImmediate(resolve));
+      });
+
+      // The test photos carry no GPS data, so opening the row puts the form
+      // back on the default place. These tests need a place the submit guard
+      // accepts.
+      renderer.act(() => {
+        homeRef.current.setState({
+          latitude: 40.7129,
+          longitude: -74.0061,
+          coordsAreInNyc: true,
+        });
       });
 
       return {
@@ -4327,65 +3591,9 @@ describe('Home', () => {
       };
     }
 
-    test('uploads files to /api/uploadAttachment in the background when files are added', async () => {
-      const photo = new File(['photo'], 'photo.jpg', { type: 'image/jpeg' });
-      const video = new File(['video'], 'video.mp4', { type: 'video/mp4' });
-      const { axiosPost, cleanup } = await renderWithFiles({
-        files: [photo, video],
-      });
-
-      const uploadCalls = axiosPost.mock.calls.filter(
-        ([url]) => url === '/api/uploadAttachment',
-      );
-      expect(uploadCalls).toHaveLength(2);
-      uploadCalls.forEach(([, body], index) => {
-        const original = index === 0 ? photo : video;
-        const uploaded = body.get('attachmentData');
-        // No credentials in the body: the route authenticates from the
-        // session cookie the browser sends.
-        expect(body.get('email')).toBeNull();
-        expect(body.get('password')).toBeNull();
-        // The upload carries a copy of the file's bytes, not the File from
-        // the file input: the network is handed a File whose contents are
-        // already in memory, since some browsers send an empty body for the
-        // original (see the "Unexpected end of form" section of the README).
-        expect(uploaded).not.toBe(original);
-        expect(uploaded.name).toBe(original.name);
-        expect(uploaded.type).toBe(original.type);
-        expect(uploaded.size).toBe(original.size);
-      });
-      const [, firstUpload] = uploadCalls[0];
-      const uploadedBytes = await blobUtil.blobToArrayBuffer(
-        firstUpload.get('attachmentData'),
-      );
-      expect(Buffer.from(uploadedBytes)).toEqual(Buffer.from('photo'));
-
-      // Nothing has been submitted yet: the uploads happen before the user
-      // clicks Submit.
-      expect(
-        axiosPost.mock.calls.filter(([url]) => url === '/submit'),
-      ).toHaveLength(0);
-
-      cleanup();
-    });
 
     // The readings are keyed by the photo itself, so a reported photo left in
     // the map holds its bytes and its plate readings for the life of the page.
-    test("lets go of a submitted photo's reading", async () => {
-      const photo = new File(['photo'], 'photo.jpg', { type: 'image/jpeg' });
-      const { homeRef, submit, cleanup } = await renderWithFiles({
-        files: [photo],
-      });
-
-      expect(homeRef.current.photoReadings.has(photo)).toBe(true);
-
-      await submit();
-
-      // The report has the photo now, and nothing on the page shows it.
-      expect(homeRef.current.photoReadings.has(photo)).toBe(false);
-
-      cleanup();
-    });
 
     // Waits out the extraction pass -- real FileReader I/O through the
     // stubs above -- so a test can see the time a photo gave the form.
@@ -4398,32 +3606,6 @@ describe('Home', () => {
     // own until its photos give one, so it starts at now -- the time a
     // reloaded page shows. The form used to keep the filed report's time,
     // and a photo that read no time of its own then left it there.
-    test('starts the next report at now, not at the filed report’s time', async () => {
-      const photo = new File([photoBytes('taken')], 'taken.jpg', {
-        type: 'image/jpeg',
-      });
-      exifr.parse.mockImplementation(async () => ({
-        CreateDate: new Date(Date.UTC(2016, 0, 1, 12, 0, 10)),
-        OffsetTimeDigitized: '+00:00',
-      }));
-
-      const { homeRef, submit, cleanup } = await renderWithFiles({
-        files: [photo],
-      });
-      await settleExtractions();
-
-      // The photo gave the form its time, and the report filed with it.
-      expect(homeRef.current.state.CreateDate).toBe('2016-01-01T12:00:10');
-
-      await submit();
-
-      // The suite pins now to 2016-11-18 00:00 UTC, which is 19:00 the
-      // evening before in New York.
-      expect(homeRef.current.state.CreateDate).toBe('2016-11-17T19:00:00');
-
-      exifr.parse.mockReset();
-      cleanup();
-    });
 
     // A photo exported without EXIF has no time to give, so the form keeps
     // the time it has -- which, after a submission, has to be now rather
@@ -4450,9 +3632,7 @@ describe('Home', () => {
         type: 'image/jpeg',
       });
       await renderer.act(async () => {
-        await homeRef.current.handleAttachmentData({
-          attachmentData: [undated],
-        });
+        await homeRef.current.addFilesToBatch([undated]);
       });
       await settleExtractions();
 
@@ -4464,145 +3644,16 @@ describe('Home', () => {
 
     // The reset is only the start: a photo that carries a time still gives
     // the next report that time.
-    test('takes the next report’s time from its own photo', async () => {
-      const first = new File([photoBytes('first')], 'first.jpg', {
-        type: 'image/jpeg',
-      });
-      exifr.parse.mockImplementation(async () => ({
-        CreateDate: new Date(Date.UTC(2016, 0, 1, 12, 0, 10)),
-        OffsetTimeDigitized: '+00:00',
-      }));
 
-      const { homeRef, submit, cleanup } = await renderWithFiles({
-        files: [first],
-      });
-      await settleExtractions();
-      await submit();
-
-      exifr.parse.mockImplementation(async () => ({
-        CreateDate: new Date(Date.UTC(2016, 0, 1, 13, 0, 0)),
-        OffsetTimeDigitized: '+00:00',
-      }));
-      const second = new File([photoBytes('second')], 'second.jpg', {
-        type: 'image/jpeg',
-      });
-      await renderer.act(async () => {
-        await homeRef.current.handleAttachmentData({
-          attachmentData: [second],
-        });
-      });
-      await settleExtractions();
-
-      expect(homeRef.current.state.CreateDate).toBe('2016-01-01T13:00:00');
-
-      exifr.parse.mockReset();
-      cleanup();
-    });
-
-    test('submits the pre-uploaded attachment IDs instead of re-sending the files', async () => {
-      const photo = new File(['photo'], 'photo.jpg', { type: 'image/jpeg' });
-      const { homeRef, axiosPost, submit, cleanup } = await renderWithFiles({
-        files: [photo],
-      });
-      await submit();
-
-      const submitCall = axiosPost.mock.calls.find(
-        ([url]) => url === '/submit',
-      );
-      expect(submitCall).toBeDefined();
-      const [, submitBody] = submitCall;
-      expect(JSON.parse(submitBody.get('attachmentIds'))).toEqual([
-        'uploaded-photo.jpg',
-      ]);
-      expect(submitBody.get('attachmentData')).toBeNull();
-      // The withhold and email-updates flags are sent alongside the rest of
-      // the per-submission state, so the server can store them (sparsely)
-      // when true.
-      expect(submitBody.get('withhold_contact_info_from_nypd')).toBe('false');
-      expect(submitBody.get('receive_nypd_sr_updates_by_email')).toBe('false');
-
-      // The upload must have started before the submit request went out,
-      // i.e. in the background rather than as part of submitting.
-      const uploadCallIndex = axiosPost.mock.calls.findIndex(
-        ([url]) => url === '/api/uploadAttachment',
-      );
-      const submitCallIndex = axiosPost.mock.calls.findIndex(
-        ([url]) => url === '/submit',
-      );
-      expect(uploadCallIndex).toBeLessThan(submitCallIndex);
-
-      // The success path cleared the submitted files.
-      expect(homeRef.current.state.attachmentData).toEqual([]);
-
-      cleanup();
-    });
 
     // A second report can go through while the last thanks is still on
     // screen. One thanks at a time is enough.
-    test('shows one thanks toast at a time', async () => {
-      const photo = new File(['photo'], 'photo.jpg', { type: 'image/jpeg' });
-      const { homeRef, submit, toastSuccess, cleanup } = await renderWithFiles({
-        files: [photo],
-      });
-      const toastIsActive = jest
-        .spyOn(toast, 'isActive')
-        .mockReturnValue(false);
 
-      const submitAnother = async name => {
-        renderer.act(() => {
-          homeRef.current.setState({
-            attachmentData: [new File(['photo'], name, { type: 'image/jpeg' })],
-            latitude: 40.7129,
-            longitude: -74.0061,
-          });
-        });
-        await submit();
-      };
 
-      await submit();
-      expect(toastSuccess).toHaveBeenCalledTimes(1);
+    // The server holds a pre-uploaded attachment for an hour and loses every
+    // one of them to a restart, so an id the page still holds can name a file
+    // that is no longer there. The page has the bytes, so it sends them.
 
-      // The next report goes through while that toast is still open.
-      toastIsActive.mockReturnValue(true);
-      await submitAnother('photo2.jpg');
-      expect(toastSuccess).toHaveBeenCalledTimes(1);
-
-      // Once it closes, the next report gets its own.
-      toastIsActive.mockReturnValue(false);
-      await submitAnother('photo3.jpg');
-      expect(toastSuccess).toHaveBeenCalledTimes(2);
-
-      toastIsActive.mockRestore();
-      cleanup();
-    });
-
-    test('falls back to submitting the files themselves when a background upload failed', async () => {
-      const photo = new File(['photo'], 'photo.jpg', { type: 'image/jpeg' });
-      const { homeRef, axiosPost, submit, cleanup } = await renderWithFiles({
-        files: [photo],
-        uploadError: new Error('upload failed'),
-      });
-      await submit();
-
-      const submitCall = axiosPost.mock.calls.find(
-        ([url]) => url === '/submit',
-      );
-      expect(submitCall).toBeDefined();
-      const [, submitBody] = submitCall;
-      expect(submitBody.get('attachmentIds')).toBeNull();
-      // object-to-formdata serializes array items under `<name>[]`, which is
-      // the field name the server's multer `upload.array` expects.
-      const submitted = submitBody.get('attachmentData[]');
-      expect(submitted).not.toBe(photo);
-      expect(submitted.name).toBe(photo.name);
-      expect(submitted.type).toBe(photo.type);
-      const submittedBytes = await blobUtil.blobToArrayBuffer(submitted);
-      expect(Buffer.from(submittedBytes)).toEqual(Buffer.from('photo'));
-
-      expect(homeRef.current.state.attachmentData).toEqual([]);
-
-      cleanup();
-    });
 
     // The server requires a plate, and the field may be empty: the report
     // still goes, and files as UNKNOWN. That is what the field's placeholder
@@ -4646,127 +3697,8 @@ describe('Home', () => {
       cleanup();
     });
 
-    // The server holds a pre-uploaded attachment for an hour and loses every
-    // one of them to a restart, so an id the page still holds can name a file
-    // that is no longer there. The page has the bytes, so it sends them.
-    test('sends the files when the server no longer has the attachments it was given', async () => {
-      const photo = new File(['photo'], 'photo.jpg', { type: 'image/jpeg' });
-      const { homeRef, axiosPost, submit, toastError, cleanup } =
-        await renderWithFiles({
-          files: [photo],
-          submitErrors: [
-            {
-              response: {
-                data: {
-                  error: {
-                    message:
-                      'Attachment not found; please re-add your files and try again',
-                  },
-                },
-              },
-            },
-          ],
-        });
-
-      await submit();
-
-      // The failure and the second read of the files are two more turns of the
-      // chain, so let it finish before the tree goes away.
-      await renderer.act(async () => {
-        for (let i = 0; i < 4; i += 1) {
-          // eslint-disable-next-line no-await-in-loop -- one round per pending promise chain.
-          await new Promise(resolve => setImmediate(resolve));
-        }
-      });
-
-      const submitCalls = axiosPost.mock.calls.filter(
-        ([url]) => url === '/submit',
-      );
-      expect(submitCalls).toHaveLength(2);
-
-      // The first attempt is the ids one, and the retry carries the files
-      // instead: the ids are what the server has lost.
-      const [, firstBody] = submitCalls[0];
-      expect(JSON.parse(firstBody.get('attachmentIds'))).toEqual([
-        'uploaded-photo.jpg',
-      ]);
-      expect(firstBody.get('attachmentData[]')).toBeNull();
-
-      const [, secondBody] = submitCalls[1];
-      expect(secondBody.get('attachmentIds')).toBeNull();
-      const submitted = secondBody.get('attachmentData[]');
-      expect(submitted).not.toBe(photo);
-      const submittedBytes = await blobUtil.blobToArrayBuffer(submitted);
-      expect(Buffer.from(submittedBytes)).toEqual(Buffer.from('photo'));
-
-      // The retry succeeded, so nothing was reported to the user and the
-      // report left the form.
-      expect(toastError).not.toHaveBeenCalled();
-      expect(homeRef.current.state.attachmentData).toEqual([]);
-
-      cleanup();
-    });
-
-    test('reports a submit failure that sending the files cannot fix', async () => {
-      const photo = new File(['photo'], 'photo.jpg', { type: 'image/jpeg' });
-      const { axiosPost, submit, toastError, cleanup } = await renderWithFiles({
-        files: [photo],
-        submitErrors: [
-          {
-            response: {
-              data: { error: { message: 'Something else went wrong' } },
-            },
-          },
-        ],
-      });
-
-      await submit();
-
-      await renderer.act(async () => {
-        for (let i = 0; i < 4; i += 1) {
-          // eslint-disable-next-line no-await-in-loop -- one round per pending promise chain.
-          await new Promise(resolve => setImmediate(resolve));
-        }
-      });
-
-      // One attempt: there is nothing to try again with.
-      expect(
-        axiosPost.mock.calls.filter(([url]) => url === '/submit'),
-      ).toHaveLength(1);
-      expect(toastError.mock.calls[0][0]).toBe(
-        'Error: Something else went wrong ',
-      );
-
-      cleanup();
-    });
-
     // The 3-a-report cap: the photos over it are in the grid, so the sentence
     // that explains the held Submit sits there as well.
-    test('says where the extra photos are why Submit is held', async () => {
-      const message =
-        'A report can include at most 3 pictures and 3 videos. Remove the extra ones to submit it.';
-      const pictures = count =>
-        Array.from(
-          { length: count },
-          (_, index) =>
-            new File([`photo${index}`], `photo${index}.jpg`, {
-              type: 'image/jpeg',
-            }),
-        );
-
-      const tooMany = await renderWithFiles({ files: pictures(4) });
-      const sentences = node =>
-        node.children.length === 1 && node.children[0] === message;
-
-      // One beside the photos, one beside Submit.
-      expect(tooMany.tree.root.findAll(sentences)).toHaveLength(2);
-      expect(tooMany.submitButton().props.disabled).toBe(true);
-      tooMany.cleanup();
-
-      const withinCap = await renderWithFiles({ files: pictures(3) });
-      expect(withinCap.tree.root.findAll(sentences)).toHaveLength(0);
-      withinCap.cleanup();
-    });
 
     test('caches the new submission so it survives into the next page load', async () => {
       localStorage.clear();
@@ -4820,43 +3752,6 @@ describe('Home', () => {
       cleanup();
     });
 
-    test('holds Submit while there are more than 3 pictures or 3 videos', async () => {
-      const pictures = ['p1', 'p2', 'p3', 'p4'].map(
-        name => new File(['picture'], `${name}.jpg`, { type: 'image/jpeg' }),
-      );
-
-      const { homeRef, submit, submitButton, toastError, cleanup } =
-        await renderWithFiles({ files: pictures });
-
-      // All four are attached: nothing here drops one, which is the point.
-      expect(homeRef.current.state.attachmentData).toHaveLength(4);
-
-      // The location is set rather than looked up, so that the refusal this
-      // test is about is the one that comes back.
-      renderer.act(() => {
-        homeRef.current.setState({ latitude: 40.7129, longitude: -74.0061 });
-      });
-
-      expect(submitButton().props.disabled).toBe(true);
-
-      // `createSubmission.js` keeps only the first three of each kind, so
-      // without this the fourth would vanish between the form and the report.
-      await submit();
-      expect(toastError.mock.calls[0][0]).toBe(
-        'A report can include at most 3 pictures and 3 videos. Remove the extra ones to submit it.',
-      );
-
-      // Three is a report, and Submit comes back.
-      renderer.act(() => {
-        const [first] = homeRef.current.state.attachmentData;
-        homeRef.current.setState(state => ({
-          attachmentData: state.attachmentData.filter(file => file !== first),
-        }));
-      });
-      expect(submitButton().props.disabled).toBe(false);
-
-      cleanup();
-    });
   });
 
   test('asks for the previous submissions without posting anything', async () => {
@@ -4890,6 +3785,558 @@ describe('Home', () => {
     tree.unmount();
     axiosPost.mockRestore();
     consoleError.mockRestore();
+  });
+
+  describe('semi-automatic mode', () => {
+    // A JPEG `size` bytes long. The header is what mime-bytes'
+    // detectFromBuffer() reads to call the file an image, and the length is
+    // what identifies the photo further in: the ALPR request carries the
+    // bytes, not the file name, so the mocked route tells them apart by size.
+    const jpeg = ({ name, size }) =>
+      new File(
+        [
+          new Uint8Array([
+            0xff,
+            0xd8,
+            0xff,
+            0xe0,
+            ...new Array(size - 4).fill(0),
+          ]),
+        ],
+        name,
+        { type: 'image/jpeg' },
+      );
+
+    const plateResult = ({ plate, candidates = [], box }) => ({
+      plate,
+      score: 0.9,
+      candidates,
+      box: box ?? { xmin: 400, ymin: 400, xmax: 500, ymax: 500 },
+      // The overlay's box is in the pixel space of the uploaded image, so the
+      // frame's own dimensions come back with the results.
+      region: { code: 'us-ny' },
+      vehicle: { box: { xmin: 300, ymin: 300, xmax: 600, ymax: 600 } },
+    });
+
+    // One ALPR response per photo, keyed by its byte length: what it read, and
+    // the size of the frame the box is in. Two photos of one medallion plate
+    // (the candidates are what fold them together), a different car at the same
+    // curb, and one more a minute later.
+    const plateResultsForSize = size => {
+      const resultsBySize = {
+        4: [
+          plateResult({
+            plate: 't696817c',
+            candidates: [{ plate: 't6968i7c', score: 0.4 }],
+          }),
+        ],
+        5: [
+          plateResult({
+            plate: 't6968i7c',
+            candidates: [{ plate: 't696817c', score: 0.6 }],
+          }),
+        ],
+        6: [plateResult({ plate: 'lda8765' })],
+        7: [plateResult({ plate: 'k73jau' })],
+        // A third photo of the first car and a second of the second, so that a
+        // car's photos can have another car's reading land between them.
+        8: [
+          plateResult({
+            plate: 't696817c',
+            candidates: [{ plate: 't6968i7c', score: 0.4 }],
+          }),
+        ],
+        9: [plateResult({ plate: 'lda8765' })],
+        // Two cars in one frame. The first result is the corner box; a box in
+        // the middle of the frame read the other car. The first result is the
+        // photo's own plate, and the row and the form have to agree on it.
+        10: [
+          plateResult({ plate: 'aaa111' }),
+          plateResult({ plate: 'bbb222' }),
+        ],
+        11: [
+          plateResult({
+            plate: 'lhm4874',
+            box: { xmin: 0, ymin: 0, xmax: 100, ymax: 50 },
+          }),
+          plateResult({
+            plate: '16778nh',
+            box: { xmin: 450, ymin: 450, xmax: 550, ymax: 550 },
+          }),
+        ],
+      };
+
+      return {
+        results: resultsBySize[size],
+        uploadWidth: 1000,
+        uploadHeight: 1000,
+      };
+    };
+
+    // When each photo was shot, keyed by byte length: a second apart, a second
+    // apart again, then a minute later — far enough that the last one groups on
+    // its own.
+    const createDatesBySize = {
+      4: '2016-01-01T12:00:00.000Z',
+      5: '2016-01-01T12:00:01.000Z',
+      6: '2016-01-01T12:00:02.000Z',
+      7: '2016-01-01T12:01:00.000Z',
+      8: '2016-01-01T12:00:03.000Z',
+      9: '2016-01-01T12:00:04.000Z',
+      10: '2016-01-01T12:02:00.000Z',
+      11: '2016-01-01T12:00:05.000Z',
+    };
+
+    // Renders the form as a logged-in user with semi-automatic mode on, adds
+    // the given files through the same entry point the folder and loose-file
+    // inputs (and the drop and paste handlers) use, and lets the batch pass
+    // finish. Returns the spied axios so the tests can count ALPR and geosearch
+    // requests, and helpers that drive the rendered batch UI.
+    async function renderBatchWithFiles(
+      files,
+      {
+        // Answers a coordinate with its own address. The default mock answers
+        // every coordinate the same way, which cannot show a stale address:
+        // whichever one is on screen looks right.
+        addressAt = () => ({ housenumber: '123', street: 'Main St' }),
+        // Holds an ALPR response back by photo size, so a test can make a
+        // photo finish before one that was started earlier. Three concurrent
+        // requests do that on their own.
+        alprDelayMsBySize = {},
+        // Answers the plate reads with these call numbers (counting from
+        // one) the way a rate limit does: a rejection carrying a 429, which
+        // leaves that photo with no `plateResults` at all. The reads run in
+        // capture order, so call 1 belongs to the earliest photo. Failing
+        // only the batch's calls, and not the later ones, is what makes a
+        // second chance testable.
+        failAlprCalls = [],
+        // Answers every geosearch request the way the server does when the
+        // city's address directory was down: with the top result and a flag
+        // saying it fell back.
+        geosearchFellBack = false,
+      } = {},
+    ) {
+      const initialState = {
+        email: 'test@example.com',
+        password: 'test-password',
+        loginSuccessful: true,
+      };
+
+      const originalCreateObjectURL = global.URL.createObjectURL;
+      global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+      // The submit success path scrolls to the top of the page; the rendered
+      // tree isn't attached to the jsdom document, so provide a stand-in.
+      const originalQuerySelector = document.querySelector;
+      document.querySelector = jest.fn(() => ({ scrollTo: jest.fn() }));
+
+      const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+      let alprCalls = 0;
+      // When each read was asked for, on a clock the tests do not mock: `Date`
+      // is frozen for this file, and a spacing test needs real elapsed time.
+      const alprCallTimes = [];
+      const axiosPost = jest
+        .spyOn(axios, 'post')
+        .mockImplementation((url, body) => {
+          if (url === '/platerecognizer') {
+            alprCalls += 1;
+            alprCallTimes.push(Number(process.hrtime.bigint()) / 1e6);
+            if (failAlprCalls.includes(alprCalls)) {
+              return Promise.reject(
+                Object.assign(
+                  new Error('Request failed with status code 429'),
+                  { response: { status: 429 } },
+                ),
+              );
+            }
+
+            const { size } = body.get('attachmentFile');
+            const delayMs = alprDelayMsBySize[size] || 0;
+
+            return new Promise(resolve => {
+              setTimeout(
+                () => resolve({ data: plateResultsForSize(size) }),
+                delayMs,
+              );
+            });
+          }
+          if (url === '/api/geosearch') {
+            return Promise.resolve({
+              data: {
+                features: [
+                  {
+                    properties: {
+                      ...addressAt(body),
+                      borough: 'Manhattan',
+                    },
+                  },
+                ],
+                fellBackToTopResult: geosearchFellBack,
+              },
+            });
+          }
+          if (url === '/api/uploadAttachment') {
+            return Promise.resolve({
+              data: { id: `uploaded-${body.get('attachmentData').name}` },
+            });
+          }
+          return Promise.resolve({
+            data: {
+              submission: {
+                objectId: 'objectId123',
+                timeofreport: '2020-01-01T00:00:00.000Z',
+                timeofreported: '2020-01-01T00:00:00.000Z',
+              },
+            },
+          });
+        });
+      const toastSuccess = jest
+        .spyOn(toast, 'success')
+        .mockImplementation(() => null);
+      const toastWarn = jest
+        .spyOn(toast, 'warn')
+        .mockImplementation(() => null);
+      const toastError = jest
+        .spyOn(toast, 'error')
+        .mockImplementation(() => null);
+      const toastInfo = jest
+        .spyOn(toast, 'info')
+        .mockImplementation(() => null);
+      const consoleError = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
+
+      let tree;
+      const homeRef = React.createRef();
+      renderer.act(() => {
+        tree = renderHome({ initialState, homeRef });
+      });
+
+      // The grouping data the batch would send, captured instead.
+      const batchGroupingEvents = jest.fn();
+      setBatchGroupingSender(batchGroupingEvents);
+
+      if (files.length > 0) {
+        await renderer.act(async () => {
+          await homeRef.current.addFilesToBatch(files);
+          // Let the extraction pipeline settle so it doesn't touch state after
+          // the tree is unmounted.
+          await new Promise(resolve => setImmediate(resolve));
+          await new Promise(resolve => setImmediate(resolve));
+        });
+      }
+
+      const findButton = text =>
+        tree.root
+          .findAllByType('button')
+          .find(({ children }) => children.includes(text));
+
+      // Whether a node tree names `plate`: as text, or in the alt text of a
+      // crop standing in for the text.
+      const namesPlate = (node, plate) => {
+        if (node == null) {
+          return false;
+        }
+        if (typeof node === 'string') {
+          return node.includes(plate);
+        }
+        if (Array.isArray(node)) {
+          return node.some(child => namesPlate(child, plate));
+        }
+        return node.props?.alt === plate || namesPlate(node.children, plate);
+      };
+
+      // A queue row's description -- the control that loads it.
+      const rowDescription = plate =>
+        tree.root
+          .findAllByType('button')
+          .find(({ children }) => namesPlate(children, plate));
+
+      // A queue row's merge checkbox, found by the plate its label names.
+      const mergeBox = text =>
+        tree.root.findAllByType('input').find(({ props }) => {
+          const label = props['aria-label'];
+          return (
+            typeof label === 'string' &&
+            label.startsWith('Merge ') &&
+            label.includes(text)
+          );
+        });
+
+      // Whether a queue row's merge box is ticked.
+      const isMergeTicked = text => mergeBox(text).props.checked;
+
+      return {
+        homeRef,
+        tree,
+        axiosPost,
+        toastSuccess,
+        toastWarn,
+        toastError,
+        toastInfo,
+        batchGroupingEvents,
+        platerecognizerCalls: () =>
+          axiosPost.mock.calls.filter(([url]) => url === '/platerecognizer'),
+        // When each read was asked for, in milliseconds since an arbitrary
+        // start, so a test can measure the spacing between them.
+        platerecognizerCallTimes: () => [...alprCallTimes],
+        // Loading a violation reads its unread plates in the background, and
+        // nothing in the form waits for that. The promise it left on the
+        // instance is what to wait for here: it resolves when the last of a
+        // violation's photos has been read again.
+        settle: async () =>
+          renderer.act(async () => {
+            await (homeRef.current.plateReread || Promise.resolve());
+          }),
+        geosearchCalls: () =>
+          axiosPost.mock.calls.filter(([url]) => url === '/api/geosearch'),
+        // Every request the batch made, in the order it made them.
+        requestOrder: () => axiosPost.mock.calls.map(([url]) => url),
+        uploadAttachmentCalls: () =>
+          axiosPost.mock.calls.filter(
+            ([url]) => url === '/api/uploadAttachment',
+          ),
+        clickButton: text =>
+          renderer.act(() => {
+            findButton(text).props.onClick();
+          }),
+        // The merge button on the heading's line. It is always rendered, and
+        // disabled until two rows are ticked.
+        mergeButton: () => findButton('Merge'),
+        // Press the trash on a photo's tile: the control that deletes the
+        // photo, rather than the tick, which only leaves it out of the report.
+        clickAttachmentDelete: name =>
+          renderer.act(() => {
+            tree.root
+              .findAllByType('button')
+              .find(({ props }) => props['aria-label'] === `Delete ${name}`)
+              .props.onClick();
+          }),
+        // What the CreateDate field is given. It has to stay minute-precision
+        // even though the state behind it carries seconds, because iOS Safari
+        // rejects a `datetime-local` value that has them.
+        createDateInputValue: () =>
+          tree.root.findByProps({ name: 'CreateDate' }).props.value,
+        // Put a queue row in the merge selection. A row opened with nothing
+        // ticked is in already, so this ticks what is not ticked rather than
+        // flipping it: it says the row is in, whatever the selection held
+        // before.
+        tickMerge: text =>
+          renderer.act(() => {
+            const box = mergeBox(text);
+            if (!box.props.checked) {
+              box.props.onChange();
+            }
+          }),
+        // Shift-click a queue row's merge box: tick the row and everything
+        // between it and the row whose box was clicked last.
+        shiftTickMerge: text =>
+          renderer.act(() => {
+            mergeBox(text).props.onChange({
+              nativeEvent: { shiftKey: true },
+            });
+          }),
+        isMergeTicked,
+        // Take a queue row out of the merge selection, which is how a test
+        // gets back to the empty selection the queue ticks a row on.
+        untickMerge: text =>
+          renderer.act(() => {
+            const box = mergeBox(text);
+            if (box.props.checked) {
+              box.props.onChange();
+            }
+          }),
+        // Load a violation the way the queue does: click the row's own text.
+        // The description is the control, and the Delete and merge buttons are
+        // separate buttons that do not carry the plate. A row whose plate is
+        // the read's own shows a crop of the photo in place of the text, so
+        // the plate is in that image's alt text there.
+        clickQueueLoad: plate =>
+          renderer.act(() => {
+            rowDescription(plate).props.onClick();
+          }),
+        // Shift-click a row's description: tick a range rather than load the
+        // row, the same as shift-clicking its merge box.
+        shiftClickRow: plate =>
+          renderer.act(() => {
+            rowDescription(plate).props.onClick({ shiftKey: true });
+          }),
+        // Press the X on the queue row whose description carries `plate`. The
+        // control shows an emoji rather than a word, so it is found by the
+        // label it announces.
+        clickRowDelete: plate =>
+          renderer.act(() => {
+            tree.root
+              .findAllByType('button')
+              .find(({ props }) => {
+                const label = props['aria-label'];
+                return (
+                  typeof label === 'string' &&
+                  label.startsWith('Delete ') &&
+                  label.includes(plate)
+                );
+              })
+              .props.onClick();
+          }),
+        // Tick or untick one photo in a loaded group's attachment picker, by
+        // the name its checkbox announces: the label is the photo itself, so
+        // the name is not in its text.
+        toggleAttachment: (name, checked) => {
+          const input = tree.root
+            .findAllByType('input')
+            .find(({ props }) => props['aria-label'] === `Attach ${name}`);
+          renderer.act(() => {
+            input.props.onChange({ target: { checked } });
+          });
+        },
+        submit: () => {
+          const form = tree.root
+            .findAllByType('form')
+            .find(formEl => typeof formEl.props.onSubmit === 'function');
+          return renderer.act(async () => {
+            await form.props.onSubmit({ preventDefault() {} });
+          });
+        },
+        // The report's own Submit button, for its disabled state.
+        submitButton: () => {
+          const form = tree.root
+            .findAllByType('form')
+            .find(formEl => typeof formEl.props.onSubmit === 'function');
+          return form.findByProps({ type: 'submit' });
+        },
+        cleanup: () => {
+          tree.unmount();
+          axiosGet.mockRestore();
+          axiosPost.mockRestore();
+          toastSuccess.mockRestore();
+          toastWarn.mockRestore();
+          toastError.mockRestore();
+          toastInfo.mockRestore();
+          setBatchGroupingSender(null);
+          consoleError.mockRestore();
+          document.querySelector = originalQuerySelector;
+          global.URL.createObjectURL = originalCreateObjectURL;
+        },
+      };
+    }
+
+
+
+    // The row and the form must name the same plate. The read's first result
+    // is the photo's own plate; a box nearer the middle of the frame does not
+    // make the other car the subject.
+
+    // The plate reads own the scarce quota, and the grouping needs them; the
+    // free address lookups start behind the first read.
+
+    test('does not keep an address that a fallback geosearch gave', async () => {
+      const { homeRef, geosearchCalls, cleanup } = await renderBatchWithFiles(
+        [],
+        { geosearchFellBack: true },
+      );
+
+      const violation = {
+        latitude: 40.7129,
+        longitude: -74.0061,
+        coordsAreInNyc: true,
+      };
+
+      await renderer.act(async () => {
+        await homeRef.current.geocodeBatchViolation(violation);
+      });
+
+      // The fallback answered the lookup, but it is not the address the
+      // directory stood behind, so the memo does not keep it.
+      expect(
+        homeRef.current.geosearchAddressCache.get(violation),
+      ).toBeUndefined();
+
+      // A second row at the same place asks again rather than reusing it.
+      await renderer.act(async () => {
+        await homeRef.current.geocodeBatchViolation(violation);
+      });
+      expect(geosearchCalls()).toHaveLength(2);
+
+      cleanup();
+    });
+
+
+
+
+
+    // The prior-submission check reads the report's day. Loading a row sets
+    // the plate before the form takes the row's time, so the check used the
+    // day of the row before it and missed a report from this row's day.
+
+    // The License/Medallion field is what the report sends, so the row of the
+    // violation in the form follows it: a plate typed over a wrong reading is
+    // the plate the report will name, and the row says so. The rows that are
+    // not in the form keep their own plates, because the field says nothing
+    // about them.
+
+
+
+    // A photo can be deleted while its read waits for a concurrency slot. The
+    // read is skipped rather than spent on a report nobody can file.
+
+
+
+
+    test('follows the report when rows at the top share its first photo', async () => {
+      const { homeRef, cleanup } = await renderBatchWithFiles([]);
+
+      const photo = name => ({
+        file: new File(['picture'], name, { type: 'image/jpeg' }),
+        name,
+      });
+      const shared = photo('frame.jpg');
+      const mine = photo('mine.jpg');
+      const other = photo('other.jpg');
+      const row = (photos, plate) => ({
+        photos,
+        plate,
+        licenseState: 'NY',
+        createDateMs: 1704110400000,
+        latitude: 40.7129,
+        longitude: -74.0061,
+      });
+      const first = row([shared, other], 'AAA111');
+      const second = row([shared, mine], 'BBB222');
+
+      // The frame is the first photo of both rows, so following the first row
+      // holding it lands on the wrong one. The form was on the second row, and
+      // only that row holds the rest of its report.
+      const rowsAfterRead = jest
+        .spyOn(homeRef.current, 'rowsAfterRead')
+        .mockReturnValue([first, second]);
+
+      const next = homeRef.current.applyPlateRead({
+        photo: mine,
+        read: mine,
+      })({
+        batchViolations: [first, second],
+        currentViolationIndex: 1,
+        attachmentData: [shared.file, mine.file],
+        batchPhotos: [],
+      });
+
+      expect(next.currentViolationIndex).toBe(1);
+
+      rowsAfterRead.mockRestore();
+      cleanup();
+    });
+
+
+
+
+    // A row is one violation until a read names the car, and the reads land
+    // one at a time. The queue shows each photo as its own row until then, and
+    // folds them together as the readings arrive.
+
+
+    // A folder of photos arrives from a phone or a share sheet as a zip, so a
+    // zip is a way of picking a batch rather than a file the batch could use:
+    // it is opened out, and its photos are the batch.
   });
 
   // A folder is how a camera roll arrives, and the form wants the pictures
@@ -4927,7 +4374,7 @@ describe('Home', () => {
     });
 
     await renderer.act(async () => {
-      await homeRef.current.handleFolderInput({
+      await homeRef.current.handleBatchFileInput({
         target: { files: folder, value: '' },
       });
     });
@@ -4938,10 +4385,13 @@ describe('Home', () => {
     });
 
     // The pictures, as the folder named them; the text file and the macOS
-    // entry are not attachments and are not here.
-    expect(homeRef.current.state.attachmentData.map(file => file.name)).toEqual(
-      ['album/older.jpg', 'album/newer.jpg'],
-    );
+    // entry are not attachments and are not here. Each picture starts a
+    // violation of its own, so the batch holds both even though the form
+    // shows the first.
+    expect(homeRef.current.state.batchPhotos.map(photo => photo.name)).toEqual([
+      'album/older.jpg',
+      'album/newer.jpg',
+    ]);
 
     tree.unmount();
     exifr.gps.mockReset();
@@ -4990,7 +4440,7 @@ describe('Home', () => {
     });
 
     await renderer.act(async () => {
-      await homeRef.current.handleAttachmentFileInput({
+      await homeRef.current.handleBatchFileInput({
         target: { files: [zip], value: '' },
       });
     });
@@ -5001,10 +4451,13 @@ describe('Home', () => {
     });
 
     // The photos, named as the zip had them with the folder they shared
-    // dropped; the text file and the macOS entry are not attachments.
-    expect(homeRef.current.state.attachmentData.map(file => file.name)).toEqual(
-      ['older.jpg', 'newer.jpg'],
-    );
+    // dropped; the text file and the macOS entry are not attachments. Each
+    // starts a violation of its own, so the batch holds both even though the
+    // form shows the first.
+    expect(homeRef.current.state.batchPhotos.map(photo => photo.name)).toEqual([
+      'older.jpg',
+      'newer.jpg',
+    ]);
     expect(toastSuccess.mock.calls[0][0]).toBe('2 pictures from photos.zip');
 
     tree.unmount();
@@ -5019,65 +4472,6 @@ describe('Home', () => {
   // A zip dragged onto the page is the same batch as one picked from the file
   // input, so it opens out the same way instead of joining the list as a
   // single attachment the grid cannot show.
-  test('opens a dropped zip into the attachments it holds', async () => {
-    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
-    const axiosPost = jest.spyOn(axios, 'post').mockResolvedValue({ data: {} });
-    const toastSuccess = jest
-      .spyOn(toast, 'success')
-      .mockImplementation(() => null);
-    const consoleError = jest
-      .spyOn(console, 'error')
-      .mockImplementation(() => {});
-
-    const zip = new File(
-      [
-        zipSync({
-          'photos/older.jpg': photoBytes('older'),
-          'photos/newer.jpg': photoBytes('newer'),
-          'photos/notes.txt': Buffer.from('not a photo'),
-          '__MACOSX/._older.jpg': Buffer.from('resource fork'),
-        }),
-      ],
-      'photos.zip',
-      { type: 'application/zip' },
-    );
-
-    exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
-    exifr.parse.mockImplementation(async () => ({
-      CreateDate: new Date(Date.UTC(2016, 0, 1, 12, 0, 0)),
-      OffsetTimeDigitized: '+00:00',
-    }));
-
-    let tree;
-    const homeRef = React.createRef();
-    renderer.act(() => {
-      tree = renderHome({ homeRef });
-    });
-
-    await renderer.act(async () => {
-      await tree.root.findByType(Dropzone).props.onDrop([zip]);
-    });
-    // The extraction pass runs from a setState callback through jsdom's
-    // FileReader, so it needs real time rather than a microtask.
-    await renderer.act(async () => {
-      await new Promise(resolve => setTimeout(resolve, 700));
-    });
-
-    // The photos took the zip's place; the archive itself is not an
-    // attachment, and neither is the text file or the macOS entry.
-    expect(homeRef.current.state.attachmentData.map(file => file.name)).toEqual(
-      ['older.jpg', 'newer.jpg'],
-    );
-    expect(toastSuccess.mock.calls[0][0]).toBe('2 pictures from photos.zip');
-
-    tree.unmount();
-    exifr.gps.mockReset();
-    exifr.parse.mockReset();
-    axiosGet.mockRestore();
-    axiosPost.mockRestore();
-    toastSuccess.mockRestore();
-    consoleError.mockRestore();
-  });
   describe('session handling', () => {
     test('does not send stored credentials on mount', async () => {
       // A legacy cookie may still hold email+password; the client must not

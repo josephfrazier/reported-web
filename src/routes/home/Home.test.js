@@ -1374,6 +1374,86 @@ describe('Home', () => {
     global.URL.createObjectURL = originalCreateObjectURL;
   });
 
+  test('treats a stored plate with whitespace as the already-selected plate', () => {
+    jest.useFakeTimers();
+
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+    };
+
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+    const axiosGet = jest.spyOn(axios, 'get').mockResolvedValue({ data: {} });
+    const axiosPost = jest
+      .spyOn(axios, 'post')
+      .mockResolvedValue({ data: { features: [{ properties: {} }] } });
+    const toastWarn = jest.spyOn(toast, 'warn').mockImplementation(() => null);
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ initialState, homeRef });
+    });
+    renderer.act(() => {
+      homeRef.current.setState({
+        // Stored before the field removed whitespace.
+        plate: 'AB C 123',
+        licenseState: 'NY',
+        submissions: [
+          {
+            license: 'ABC123',
+            timeofreport: new Date().toISOString(),
+          },
+        ],
+        attachmentData: [
+          new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }),
+        ],
+        plateDataByAttachmentName: {
+          'photo.jpg': {
+            results: [
+              {
+                plate: 'abc123',
+                region: { code: 'us-ny' },
+                box: { xmin: 100, ymin: 200, xmax: 300, ymax: 250 },
+              },
+            ],
+            image_width: 1000,
+            image_height: 500,
+          },
+        },
+      });
+    });
+    axiosGet.mockClear();
+    axiosPost.mockClear();
+    toastWarn.mockClear();
+
+    const overlay = tree.root.findByProps({
+      'aria-label': 'Select license plate ABC123',
+    });
+    renderer.act(() => {
+      overlay.props.onClick();
+    });
+
+    // The same plate, so the click warns about nothing and looks nothing up;
+    // it only compacts the stored value.
+    expect(toastWarn).not.toHaveBeenCalled();
+    expect(homeRef.current.state.plate).toBe('ABC123');
+
+    renderer.act(() => {
+      jest.advanceTimersByTime(1500);
+    });
+    expect(axiosGet).not.toHaveBeenCalled();
+
+    jest.useRealTimers();
+    axiosGet.mockRestore();
+    axiosPost.mockRestore();
+    toastWarn.mockRestore();
+    tree.unmount();
+    global.URL.createObjectURL = originalCreateObjectURL;
+  });
+
   test('moves the form to the place the newest located photo gave', async () => {
     jest.useFakeTimers();
 
@@ -5781,6 +5861,36 @@ describe('license state', () => {
     }
 
     // Nothing while the reader is still typing.
+    expect(warn).not.toHaveBeenCalled();
+
+    await renderer.act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    });
+
+    expect(warn).toHaveBeenCalledTimes(1);
+
+    cleanup();
+    warn.mockRestore();
+  });
+
+  // A submission stored before the plate field removed whitespace still names
+  // the same plate, so the warning fires for its compact form too.
+  test('warns about a prior submission whose plate was stored with whitespace', async () => {
+    const warn = jest.spyOn(toast, 'warn').mockImplementation(() => {});
+    const day = '2016-11-17T20:00:00';
+    const { plateInput, cleanup } = renderForm({
+      plate: '',
+      CreateDate: day,
+      submissions: [{ license: 'AB C 123', timeofreport: day }],
+    });
+
+    for (const value of ['A', 'AB', 'ABC', 'ABC1', 'ABC12', 'ABC123']) {
+      const input = createFakeInput({ value, caret: value.length });
+      renderer.act(() => {
+        plateInput.props.onChange({ target: input });
+      });
+    }
+
     expect(warn).not.toHaveBeenCalled();
 
     await renderer.act(async () => {

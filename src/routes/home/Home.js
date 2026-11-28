@@ -1898,6 +1898,11 @@ class Home extends React.Component {
   };
 
   setLicensePlate = ({ plate, licenseState, provenance = undefined }) => {
+    // A plate means the same thing with or without whitespace. Normalize here
+    // too, so a plate stored before the field removed whitespace still matches
+    // the plate a read or the user names.
+    plate = normalizePlate(plate); // eslint-disable-line no-param-reassign
+
     // Both a read that found no state (null) and a caller that left the key
     // off (undefined) leave the current state alone; an empty string is a
     // cleared field and is kept.
@@ -1912,13 +1917,22 @@ class Home extends React.Component {
     // photo the user clicked is that photo's to lose -- so the provenance is
     // recorded either way.
     if (
-      plate === this.state.plate &&
+      plate === normalizePlate(this.state.plate) &&
       licenseState === this.state.licenseState
     ) {
       console.info('ignoring unchanged plate:', plate);
 
-      if (provenance !== this.state.plateProvenance) {
-        this.setState({ plateProvenance: provenance });
+      // Record where the value came from, and compact a value stored before
+      // the field removed whitespace, without re-running the lookups for a
+      // plate that has not actually changed.
+      if (
+        plate !== this.state.plate ||
+        provenance !== this.state.plateProvenance
+      ) {
+        this.setState({
+          plate,
+          plateProvenance: provenance,
+        });
       }
       return;
     }
@@ -1979,7 +1993,13 @@ class Home extends React.Component {
         return false;
       }
 
-      return submission.license === plate || submission.medallionNo === plate;
+      // A submission stored before the field removed whitespace still names
+      // the same plate as the compact one the field holds now.
+      return (
+        Boolean(plate) &&
+        (normalizePlate(submission.license) === plate ||
+          normalizePlate(submission.medallionNo) === plate)
+      );
     });
 
     // The warning is about the plate, and the state is deliberately not part of

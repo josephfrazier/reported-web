@@ -1058,6 +1058,125 @@ describe('Home', () => {
     global.URL.createObjectURL = originalCreateObjectURL;
   });
 
+  test('matches an overlay to a plate typed with whitespace', () => {
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+    };
+
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ initialState, homeRef });
+    });
+    renderer.act(() => {
+      homeRef.current.setState({
+        attachmentData: [
+          new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }),
+        ],
+        plateDataByAttachmentName: {
+          'photo.jpg': {
+            results: [
+              {
+                plate: 'ab c123',
+                region: { code: 'us-ny' },
+                box: { xmin: 100, ymin: 200, xmax: 300, ymax: 250 },
+              },
+            ],
+            uploadWidth: 1000,
+            uploadHeight: 500,
+          },
+        },
+      });
+    });
+
+    const overlayFor = () =>
+      tree.root.findByProps({
+        'aria-label': 'Select license plate ABC123',
+      });
+
+    // Neither the reader's spacing nor the user's is part of the plate: the
+    // overlay is labeled with the compact plate, and typing the plate with
+    // spaces selects it.
+    expect(overlayFor().props.children.props.children).toBe('ABC123 (NY)');
+
+    renderer.act(() => {
+      tree.root.findByProps({ name: 'plate' }).props.onChange({
+        target: createFakeInput({ value: 'AB C 123', caret: 8 }),
+      });
+    });
+
+    expect(homeRef.current.state.plate).toBe('ABC123');
+    expect(overlayFor().props.className).toBe(
+      'plate-overlay plate-overlay-selected',
+    );
+
+    tree.unmount();
+    global.URL.createObjectURL = originalCreateObjectURL;
+  });
+
+  test('uses another read of the same plate for the state an overlay selects', () => {
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+    };
+
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ initialState, homeRef });
+    });
+    renderer.act(() => {
+      homeRef.current.setState({
+        attachmentData: [
+          new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }),
+        ],
+        plateDataByAttachmentName: {
+          'photo.jpg': {
+            results: [
+              {
+                // The first read of the plate saw no region...
+                plate: 'ab c123',
+                region: {},
+                box: { xmin: 100, ymin: 200, xmax: 300, ymax: 250 },
+              },
+              {
+                // ...but the second read of the same plate did.
+                plate: 'ABC123',
+                region: { code: 'us-nj' },
+                box: { xmin: 400, ymin: 200, xmax: 600, ymax: 250 },
+              },
+            ],
+            uploadWidth: 1000,
+            uploadHeight: 500,
+          },
+        },
+      });
+    });
+
+    const overlays = tree.root.findAllByProps({
+      'aria-label': 'Select license plate ABC123',
+    });
+    expect(overlays).toHaveLength(2);
+    expect(overlays[0].props.children.props.children).toBe('ABC123 (NJ)');
+
+    renderer.act(() => {
+      overlays[0].props.onClick();
+    });
+
+    expect(homeRef.current.state.plate).toBe('ABC123');
+    expect(homeRef.current.state.licenseState).toBe('NJ');
+
+    tree.unmount();
+    global.URL.createObjectURL = originalCreateObjectURL;
+  });
+
   test('renders plate overlays on uploaded videos and selects plate on click', () => {
     const initialState = {
       email: 'test@example.com',
@@ -3326,6 +3445,50 @@ describe('Home', () => {
     global.URL.createObjectURL = originalCreateObjectURL;
   });
 
+  test('finds the crop for a plate typed with whitespace', () => {
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+      plate: 'AB C 123',
+    };
+
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ initialState, homeRef });
+    });
+    renderer.act(() => {
+      homeRef.current.setState({
+        attachmentData: [
+          new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }),
+        ],
+        plateDataByAttachmentName: {
+          'photo.jpg': {
+            results: [
+              {
+                plate: 'ab c123',
+                score: 0.9,
+                box: { xmin: 100, ymin: 100, xmax: 200, ymax: 110 },
+                plateCropDataUrl: 'data:image/jpeg;base64,spaced',
+              },
+            ],
+          },
+        },
+      });
+    });
+
+    const thumbnail = tree.root.findByProps({
+      alt: 'Detected license plate',
+    });
+    expect(thumbnail.props.src).toBe('data:image/jpeg;base64,spaced');
+
+    tree.unmount();
+    global.URL.createObjectURL = originalCreateObjectURL;
+  });
+
   test('renders Edit Profile UI', () => {
     const initialState = {
       email: 'test@example.com',
@@ -3885,6 +4048,27 @@ describe('Home', () => {
 
     expect(homeRef.current.state.plate).toBe('ASSZ');
     expect(input.value).toBe('ASSZ');
+    expect(input.selectionStart).toBe(3);
+    expect(input.selectionEnd).toBe(3);
+
+    cleanup();
+  });
+
+  test('removes whitespace from the plate as it is typed', () => {
+    const { homeRef, plateInput, cleanup } = renderPlateInput();
+
+    // The user typed a plate with spaces in it. 311 ignores the spaces, so the
+    // field does too.
+    const input = createFakeInput({ value: 'ab c 123', caret: 4 });
+    renderer.act(() => {
+      plateInput.props.onChange({ target: input });
+    });
+    reRenderControlledInput(input, homeRef.current.state.plate);
+
+    expect(homeRef.current.state.plate).toBe('ABC123');
+    expect(input.value).toBe('ABC123');
+    // The caret stays after the "C", with the space before it gone rather than
+    // moving to the end of the field.
     expect(input.selectionStart).toBe(3);
     expect(input.selectionEnd).toBe(3);
 
@@ -5390,6 +5574,35 @@ describe('license state', () => {
     });
     cleanup();
     axiosGet.mockRestore();
+  });
+
+  // A plate can appear more than once in the reader's results, and only some
+  // of those reads carry a region. The state comes from the read that saw one,
+  // rather than being lost because the first matching read did not.
+  test('takes the state from another read of the typed plate', () => {
+    const { homeRef, plateInput, cleanup } = renderForm();
+
+    renderer.act(() => {
+      homeRef.current.setState({
+        allPlateData: {
+          results: [
+            { plate: 'ab c123', region: {} },
+            { plate: 'ABC 123', region: { code: 'us-nj' } },
+          ],
+        },
+      });
+    });
+
+    renderer.act(() => {
+      plateInput.props.onChange({
+        target: createFakeInput({ value: 'ABC123', caret: 6 }),
+      });
+    });
+
+    expect(homeRef.current.state.plate).toBe('ABC123');
+    expect(homeRef.current.state.licenseState).toBe('NJ');
+
+    cleanup();
   });
 
   // A plate read carries whichever region code the reader saw, and the state

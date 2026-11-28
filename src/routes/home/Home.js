@@ -551,6 +551,12 @@ async function getVideoScreenshot({ attachmentFile }) {
 // adapted from https://www.bignerdranch.com/blog/dont-over-react/
 const attachmentPlateCache = new WeakMap();
 
+// A plate means the same thing however it is spaced: NYC 311 ignores
+// whitespace in one, and the reader's strings come back compact. Remove all of
+// it, not just the ends, so "ab c 123" and "ABC123" name the same plate.
+const normalizePlate = plate =>
+  typeof plate === 'string' ? plate.replace(/\s+/g, '').toUpperCase() : '';
+
 function getLicenseStateFromPlateResult(result) {
   // ALPR results may not always include a parseable region code. Report that
   // as null rather than an empty string: setLicensePlate leaves the current
@@ -560,6 +566,30 @@ function getLicenseStateFromPlateResult(result) {
   } catch {
     return null;
   }
+}
+
+// The state a plate's reads give: the first of them that names the plate and
+// carries a parseable region. A plate can be read more than once -- another
+// frame of a video, another photo, another result from the reader -- and a
+// read whose region is missing should not hide the state one of the others
+// saw.
+function licenseStateForPlate(results, plate) {
+  if (!plate) {
+    return null;
+  }
+
+  for (const result of results || []) {
+    const licenseState =
+      normalizePlate(result.plate) === plate
+        ? getLicenseStateFromPlateResult(result)
+        : null;
+
+    if (licenseState) {
+      return licenseState;
+    }
+  }
+
+  return null;
 }
 
 const urlRegex = /(https?:\/\/\S+)/;
@@ -582,37 +612,49 @@ function linkifyText(text) {
   );
 }
 
-// Uppercase what the user typed into a controlled <input>, without letting the
+// Write `transform(value)` back into a controlled <input>, without letting the
 // caret jump to the end of the field.
 //
 // React only writes to a DOM input's `value` when it differs from the value it
-// is rendering, and writing to `value` puts the caret at the end. Uppercasing
-// in an onChange handler causes exactly that: typing "b" into "A|Z" leaves the
-// DOM at "AbZ" while React renders "ABZ", so React rewrites the value and the
-// caret lands after the "Z". Digits are unaffected by toUpperCase(), which is
-// why they seem to behave.
+// is rendering, and writing to `value` puts the caret at the end. Changing the
+// value in an onChange handler causes exactly that: typing "b" into "A|Z"
+// leaves the DOM at "AbZ" while React renders "ABZ", so React rewrites the
+// value and the caret lands after the "Z". Digits are unaffected by
+// toUpperCase(), which is why they seem to behave.
 //
-// Writing the uppercased value back here — with the caret where the user left
+// Writing the transformed value back here — with the caret where the user left
 // it — means React finds the value it's about to render already in place, so it
 // leaves both the value and the caret alone.
-function upperCaseInputValueInPlace(input) {
+function transformInputValueInPlace(input, transform) {
   const { value, selectionStart, selectionEnd } = input;
-  const upperCased = value.toUpperCase();
+  const transformed = transform(value);
 
-  if (upperCased !== value) {
-    input.value = upperCased; // eslint-disable-line no-param-reassign
+  if (transformed !== value) {
+    input.value = transformed; // eslint-disable-line no-param-reassign
 
     if (selectionStart !== null && selectionEnd !== null) {
-      // Uppercasing can change a character's length (e.g. "ß" -> "SS"), so map
-      // each offset through toUpperCase() instead of reusing it as-is.
+      // A transform can change the text's length (e.g. "ß" -> "SS", removing a
+      // space), so map each offset through the transform as if it were the
+      // text before the caret, instead of reusing it as-is.
       input.setSelectionRange(
-        value.slice(0, selectionStart).toUpperCase().length,
-        value.slice(0, selectionEnd).toUpperCase().length,
+        transform(value.slice(0, selectionStart)).length,
+        transform(value.slice(0, selectionEnd)).length,
       );
     }
   }
 
-  return upperCased;
+  return transformed;
+}
+
+function upperCaseInputValueInPlace(input) {
+  return transformInputValueInPlace(input, value => value.toUpperCase());
+}
+
+// The plate field keeps no whitespace: 311 ignores it, and the reader's strings
+// have none, so a space typed into the middle of a plate is not part of it. The
+// caret still maps through the removal, so typing does not jump.
+function normalizePlateInputValueInPlace(input) {
+  return transformInputValueInPlace(input, normalizePlate);
 }
 
 // Attached to the shared axios instance, which is what installs the
@@ -704,18 +746,16 @@ async function extractPlate({
 
     // Choose first result with T######C plate if it exists, see https://github.com/josephfrazier/reported-web/issues/584
     let result = results.filter(r =>
-      r.plate?.toUpperCase().match(/^T\d\d\d\d\d\dC$/),
+      normalizePlate(r.plate).match(/^T\d\d\d\d\d\dC$/),
     )[0];
     if (!result) {
       result = results[0];
     }
 
-    try {
-      result.licenseState = result.region.code.split('-')[1].toUpperCase();
-    } catch {
-      result.licenseState = null;
-    }
-    result.plate = result.plate?.toUpperCase();
+    result.plate = normalizePlate(result.plate);
+    result.licenseState =
+      getLicenseStateFromPlateResult(result) ||
+      licenseStateForPlate(results, result.plate);
     result.allPlateData = data;
 
     return result;
@@ -1769,7 +1809,7 @@ class Home extends React.Component {
   renderPlateOverlays = ({ attachmentPlateData, attachmentFile }) =>
     attachmentPlateData?.results?.map(result => {
       const { box } = result;
-      const plate = result.plate?.toUpperCase();
+      const plate = normalizePlate(result.plate);
       // `box` is in pixels of the image src/alpr.js uploaded to Plate
       // Recognizer, so `uploadWidth`/`uploadHeight` are the denominators that
       // turn it into a fraction of the picture. Percentages are
@@ -1793,13 +1833,15 @@ class Home extends React.Component {
       if (!box || !plate || !boxWidth || !boxHeight) {
         return null;
       }
-      const licenseState = getLicenseStateFromPlateResult(result);
+      const licenseState =
+        getLicenseStateFromPlateResult(result) ||
+        licenseStateForPlate(attachmentPlateData.results, plate);
 
       // The overlay for the plate in the License/Medallion field is marked as
       // selected, whether it was typed or clicked. The state is left out of
       // the comparison: it can be hard to tell apart in a photo, and the user
       // chose the plate.
-      const isSelected = plate === this.state.plate?.toUpperCase();
+      const isSelected = plate === normalizePlate(this.state.plate);
       const className = isSelected
         ? `${homeStyles['plate-overlay']} ${homeStyles['plate-overlay-selected']}`
         : homeStyles['plate-overlay'];
@@ -2154,14 +2196,17 @@ class Home extends React.Component {
       const results =
         this.state.plateDataByAttachmentName[file.name]?.results || [];
       const preferred = results.find(result =>
-        result.plate?.toUpperCase().match(/^T\d{6}C$/),
+        normalizePlate(result.plate).match(/^T\d{6}C$/),
       );
       const result = preferred || results[0];
+      const plate = normalizePlate(result?.plate);
 
-      if (result?.plate) {
+      if (plate) {
         return {
-          plate: result.plate.toUpperCase(),
-          licenseState: getLicenseStateFromPlateResult(result),
+          plate,
+          licenseState:
+            getLicenseStateFromPlateResult(result) ||
+            licenseStateForPlate(results, plate),
         };
       }
     }
@@ -3096,14 +3141,17 @@ class Home extends React.Component {
   };
 
   findMatchingPlateThumbnail() {
+    const plate = normalizePlate(this.state.plate);
+
+    if (!plate) {
+      return null;
+    }
+
     let bestPlateCropDataUrl = null;
     let bestConfidence = -1;
     for (const data of Object.values(this.state.plateDataByAttachmentName)) {
       for (const result of data.results || []) {
-        if (
-          result.plate?.toUpperCase() === this.state.plate?.toUpperCase() &&
-          result.plateCropDataUrl
-        ) {
+        if (normalizePlate(result.plate) === plate && result.plateCropDataUrl) {
           // The same plate can be detected in multiple photos (or multiple
           // times in one photo). Show the crop beside the plate input that
           // Plate Recognizer read with the most confidence, since that is the
@@ -4240,17 +4288,22 @@ class Home extends React.Component {
                                   // what that value is.
                                   placeholder={UNKNOWN_PLATE}
                                   onChange={event => {
-                                    const plate = upperCaseInputValueInPlace(
-                                      event.target,
-                                    );
+                                    const plate =
+                                      normalizePlateInputValueInPlace(
+                                        event.target,
+                                      );
+                                    const results =
+                                      this.state.allPlateData?.results;
                                     const matchedResult =
-                                      this.state.allPlateData?.results?.find(
-                                        r => r.plate?.toUpperCase() === plate,
+                                      plate &&
+                                      results?.find(
+                                        r => normalizePlate(r.plate) === plate,
                                       );
                                     const licenseState = matchedResult
                                       ? getLicenseStateFromPlateResult(
                                           matchedResult,
-                                        )
+                                        ) ||
+                                        licenseStateForPlate(results, plate)
                                       : null;
                                     this.setLicensePlate({
                                       plate,
@@ -4263,7 +4316,7 @@ class Home extends React.Component {
                                   {this.state.allPlateData?.results?.map(
                                     result => (
                                       <option
-                                        value={result.plate?.toUpperCase()}
+                                        value={normalizePlate(result.plate)}
                                       />
                                     ),
                                   )}

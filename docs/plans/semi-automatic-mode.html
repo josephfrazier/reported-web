@@ -513,9 +513,8 @@
     <p class="eyebrow">Implementation plan · reported-web</p>
     <h1>Semi-Automatic Mode</h1>
     <p class="standfirst">
-      The plan for a batch flow. The commits on this branch add the sections below as they
-      implement them; the design decisions are settled from the start, and a section appears
-      with the code it describes.
+      The grouping module and its tests are in place. The pipeline, queue and form wiring
+      follow; their sections arrive with their commits.
     </p>
 
     <dl class="meta">
@@ -580,8 +579,249 @@
       </div>
     </section>
 
+    <!-- ============================ GROUPING ============================ -->
+    <section id="grouping">
+      <h2>Grouping algorithm</h2>
+      <p>
+        A new pure module, <code>src/groupAttachmentsByViolation.js</code>, so the whole
+        algorithm is unit-testable without React. In goes one record per processed photo;
+        out comes one record per violation.
+      </p>
+
+      <pre class="scroll"><code>in:  [{ file, name, createDateMs, latitude, longitude,
+        plateResults, uploadWidth, uploadHeight }]
+out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</code></pre>
+
+      <h3 id="the-five-passes">The five passes</h3>
+      <ol class="sequence">
+        <li>
+          <strong>Sort</strong> photos by capture time, so the queue walks the batch in the order
+          it was shot. Missing timestamps fall back to file last-modified and sort last.
+        </li>
+        <li>
+          <strong>Fold the plate strings.</strong> Plate Recognizer ranks its own alternatives in
+          <code>candidates</code>, so the four ways it reads one medallion are one plate. Folding
+          is a union-find over strings, with an edge for every pair a single result offers.
+        </li>
+        <li>
+          <strong>Give each photo its own plate.</strong> A photo can read several plates — a
+          closeup of one car with another parked behind it. Its own plate is the result the read
+          named: a medallion result if the read offered one, and the first result otherwise. That
+          is the rule the form applies to the same read, so the queue row and the field agree. The
+          folded group of that result is the photo's plate group.
+        </li>
+        <li>
+          <strong>Merge photos that name the same plate.</strong> Every photo starts as a
+          violation of its own. A photo joins the row of every other photo whose folded plate
+          group it names, unless it reads another plate that a different photo also reads. That
+          photo is evidence for two cars, and giving it to one row would take it from the other,
+          so it stays a row of its own.
+        </li>
+        <li>
+          <strong>Split on the report's cap.</strong> A report carries three pictures and three
+          videos at most, so a violation over either count becomes consecutive groups, in capture
+          order, that fit. Every photo of a violation reads the plate it reports, so each part
+          keeps that plate. A row the user merged by hand is not split. Finally, sort the
+          violations earliest-first.
+        </li>
+      </ol>
+      <p>
+        A photo ALPR read nothing in is a violation of its own, flagged for manual entry. The user
+        can merge it with its car by hand, or a second-chance read can merge it later.
+      </p>
+
+      <h3 id="why-time-and-place-went">Why time and place went</h3>
+      <p>
+        Capture time and place were the first grouping signals. The reports themselves show that
+        neither can tell two cars apart.
+      </p>
+      <p>
+        The ordinary case is two cars at one kerb: <strong>0 m and a few seconds apart</strong>. Of
+        385 gaps between two photos of one violation, <strong>328 were at identical
+        coordinates</strong>, because a phone reuses one location fix for shots taken seconds
+        apart. The rest cannot be told from GPS error. The photos are taken from a bike, so long
+        distances inside one violation are real: 713&nbsp;m over 180&nbsp;s is 14&nbsp;km/h, and
+        1,130&nbsp;m over 96&nbsp;s is 42&nbsp;km/h on an e-bike. But the same population holds
+        4,739&nbsp;m in 2&nbsp;s and 1,798&nbsp;m in 2&nbsp;s, which no bike covers. A threshold
+        low enough to separate two violations splits the real ones. One high enough to keep them
+        together separates nothing.
+      </p>
+      <p>
+        Time fails the same way. Across 399 gaps inside one violation, a
+        <span class="mono">5 s</span> window split 33 and a <span class="mono">60 s</span> window
+        split 2. The largest real gap inside one violation was 180&nbsp;s. A window short enough
+        to keep two cars apart splits the photos of one car; a window long enough to keep one car
+        together pulls two cars in. The plate is the only signal that names the car, so it is the
+        only signal that groups.
+      </p>
+
+      <h3>Choosing the plate</h3>
+      <p>
+        The tie-breaks below choose the spelling a row prints inside its plate group, and which
+        group wins when more than one is offered. Each is applied only if the one before it is
+        still tied:
+      </p>
+      <ol class="chain">
+        <li>Most photos</li>
+        <li>Most central</li>
+        <li><span class="mono">^T\d{6}C$</span></li>
+        <li>Highest score</li>
+        <li>The group the earliest photo voted for</li>
+        <li>Alphabetically first, so the same batch always groups the same way</li>
+      </ol>
+      <p>
+        The photo's own group is not chosen by this list: the read's result order decides it, with
+        a medallion result first. The list chooses the string within that group. The spelling read
+        by more photos comes first, then the spelling whose boxes are most central, then the clean
+        medallion read, then the highest score.
+      </p>
+      <p>
+        <em>Most central</em> means the smallest mean normalised distance between the plate's box
+        centre and the frame centre, across the photos it appears in. Boxes arrive in the uploaded
+        image's pixel space, and <code>alpr.js</code> already attaches <code>uploadWidth</code> and
+        <code>uploadHeight</code> to the response — normalising against those lets a 4096-wide and a
+        2048-wide photo be compared fairly. The medallion pattern survives as an extra tie-break,
+        preserving the intent of <a href="https://github.com/josephfrazier/reported-web/issues/584">issue&nbsp;#584</a>.
+      </p>
+
+      <div class="note">
+        <span class="note__label">Why variants must be folded</span>
+        <p>
+          The checked-in ALPR snapshot reads one medallion four different ways in a single image.
+          Counting exact strings, that is four plates with one photo each — so two photos of the
+          car would never name the same plate, and each would stay a row of its own.
+        </p>
+        <p style="margin-top:0.6rem">
+          <span class="plate plate--win">t696817c</span>
+          <span class="plate plate--var">t6968i7c</span>
+          <span class="plate plate--var">t696b17c</span>
+          <span class="plate plate--var">t696bi7c</span>
+        </p>
+        <p style="margin-top:0.6rem">
+          Plate Recognizer hands back its own ranked alternatives in <code>candidates</code>, so
+          folding is a union-find over plate strings whose edges come from one result's own
+          candidate set — no invented edit distance. Note only the clean read matches
+          <span class="mono">^T\d{6}C$</span>, which is exactly why that pattern cannot be the
+          primary signal.
+        </p>
+      </div>
+
+      <h3>Worked example</h3>
+      <p>
+        Six photos from one walk down a block. Photos&nbsp;1–3 are the same medallion read three
+        ways; 4–5 are a second car; 6 is a shot where ALPR failed. Photo&nbsp;1 also catches the
+        second car, which is why its row stands alone.
+      </p>
+
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr>
+              <th class="num">#</th>
+              <th class="num">EXIF time</th>
+              <th class="num">Δt</th>
+              <th class="num">From prev.</th>
+              <th>Plate read</th>
+              <th>Violation</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr data-v="1">
+              <td class="num">1</td><td class="num">08:14:02</td><td class="num">—</td><td class="num">—</td>
+              <td><span class="plate plate--win">t696817c</span></td>
+              <td><span class="chip chip--1">V1</span></td>
+            </tr>
+            <tr data-v="2">
+              <td class="num">2</td><td class="num">08:14:06</td><td class="num">4 s</td><td class="num">3 m</td>
+              <td><span class="plate plate--var">t6968i7c</span></td>
+              <td><span class="chip chip--2">V2</span></td>
+            </tr>
+            <tr data-v="2">
+              <td class="num">3</td><td class="num">08:14:11</td><td class="num">5 s</td><td class="num">2 m</td>
+              <td><span class="plate plate--win">t696817c</span></td>
+              <td><span class="chip chip--2">V2</span></td>
+            </tr>
+            <tr data-v="3">
+              <td class="num">4</td><td class="num">08:14:29</td><td class="num">18 s</td><td class="num">144 m</td>
+              <td><span class="plate plate--win">lda8765</span></td>
+              <td><span class="chip chip--3">V3</span></td>
+            </tr>
+            <tr data-v="3">
+              <td class="num">5</td><td class="num">08:14:33</td><td class="num">4 s</td><td class="num">2 m</td>
+              <td><span class="plate plate--win">lda8765</span></td>
+              <td><span class="chip chip--3">V3</span></td>
+            </tr>
+            <tr data-v="4">
+              <td class="num">6</td><td class="num">08:16:40</td><td class="num">127 s</td><td class="num">154 m</td>
+              <td><span class="chip chip--none">none</span></td>
+              <td><span class="chip chip--4">V4</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>
+        Photo&nbsp;1 reads the medallion, the <span class="mono">lda8765</span> car and a third
+        car. Its own plate is the medallion — the read's medallion result — but the
+        <span class="mono">lda8765</span> read is shared with photos&nbsp;4–5, so the frame is
+        evidence for two cars and stays a row of its own. Photos&nbsp;2–3 name the same folded
+        medallion group, and the spelling their row prints is
+        <span class="mono">t696817c</span>, the clean read and the only one matching the medallion
+        pattern. Photos&nbsp;4–5 name the second car. Photo&nbsp;6 reads nothing, so it is a row
+        of its own with no plate, flagged for manual entry.
+      </p>
+
+      <div class="note">
+        <span class="note__label">One photo starts one row</span>
+        <p>
+          Photo&nbsp;1's frame reads three cars, but a photo is one violation until a plate joins
+          it to another. When two of its plates have closeups of their own, as here, the frame
+          belongs to neither row: it is evidence for both, so it stays a row of its own. The user
+          can merge it into either car's report by hand.
+        </p>
+      </div>
+
+      <div class="note note--warn">
+        <span class="note__label">One shared plate per photo</span>
+        <p>
+          A photo merges only when its own plate — the read's first result, or its medallion
+          result — is the one plate it shares with another photo. A second shared plate means the
+          photo shows two cars, and giving it to one row would take it from the other. That guard
+          is what keeps a wide shot from chaining two cars into one report. The plate both defines
+          the row and labels it, and the guard is what makes that safe.
+        </p>
+      </div>
+
+    </section>
 
 
+    <!-- ============================ MODULE ============================ -->
+    <section id="module">
+      <h2>Module &amp; state</h2>
+
+      <h3>New file</h3>
+      <p>
+        <code>src/groupAttachmentsByViolation.js</code> plus a colocated
+        <code>src/groupAttachmentsByViolation.test.js</code>, following the repo's habit of
+        extracting logic into small pure modules with direct tests.
+      </p>
+      <!-- Provenance: 1a242f97 (module and normalizedCenterDistance), 665bfe0f (plateForPhotos), 29d5640d (plateCropFor), adb926fc (mergeViolations) -->
+      <p>It exports the grouping itself and four helpers:</p>
+      <ul>
+        <li><code>normalizedCenterDistance(box, uploadWidth, uploadHeight)</code> — how far a plate sits from the frame centre</li>
+        <li><code>plateForPhotos(photos, { foldFrom })</code> — the plate a set of photos reports; the queue row and the form both call it</li>
+        <li><code>plateCropFor({ photos, plate })</code> — the photo, box and frame size the queue draws the plate crop from</li>
+        <li><code>mergeViolations(violations)</code> — the hand merge the queue's Merge button performs</li>
+      </ul>
+      <p>
+        Capture order, and the two rules that read it, live in
+        <code>src/latestLocatedPhoto.js</code>: <code>effectiveTimeMs</code>,
+        <code>compareByCaptureTime</code> and <code>hasCoordinates</code>, and the place a set of
+        photos gives. The time is <code>src/earliestTakenPhoto.js</code>. The grouping imports them
+        and so does the form, so both sort and read a set of photos the same way.
+      </p>
+
+    </section>
 
 
 

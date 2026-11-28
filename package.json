@@ -188,7 +188,7 @@
     "fix": "yarn run fix-js && yarn run fix-css",
     "test": "node --experimental-vm-modules -r dotenv/config node_modules/.bin/jest",
     "test:flaky": "yarn run test src/alpr.test.js src/getVehicleType.test.js",
-    "test:no-flaky": "yarn run test --testPathIgnorePatterns='src/alpr.test.js|src/getVehicleType.test.js'",
+    "test:no-flaky": "yarn run test --testPathIgnorePatterns='src/alpr.test.js|src/getVehicleType.test.js|/.claude/'",
     "test:ssr-css": "babel-node tools/test-ssr-css.js",
     "test:client-smoke": "babel-node tools/test-client-smoke.js",
     "test:dev-server-smoke": "babel-node tools/test-dev-server-smoke.js",

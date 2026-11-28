@@ -2266,19 +2266,6 @@ class Home extends React.Component {
     this.plateRef.current?.focus?.({ preventScroll });
   };
 
-  // Scroll the License/Medallion fields into view when a row opens: the
-  // violation fills the form above them, and the fields at the bottom edge
-  // leave the report they describe on screen. Wait for a frame, because
-  // opening a row replaces the photos and re-renders the fields with them.
-  scrollPlateFieldsToBottom = () => {
-    requestAnimationFrame(() =>
-      this.licenseStateRef.current?.scrollIntoView?.({
-        block: 'end',
-        behavior: 'smooth',
-      }),
-    );
-  };
-
   setLicensePlate = ({
     plate,
     licenseState,

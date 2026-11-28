@@ -1055,6 +1055,25 @@ function batchSelectionFor({ photos, selectedFiles = [] }) {
   return photos.filter(photo => chosen.has(photo.file));
 }
 
+// The report's attachments after a photo is removed from its violation.
+//
+// A report with no photos ticked cannot be submitted, and removing one is not
+// the user asking for an empty report: when the removal leaves the violation
+// on screen with nothing ticked, its first photo is ticked instead.
+function attachmentsAfterPhotoRemoval({ violation, attachmentData }) {
+  if (
+    !violation ||
+    violation.photos.length === 0 ||
+    violation.photos.some(photo => attachmentData.includes(photo.file))
+  ) {
+    return attachmentData;
+  }
+
+  const [first] = violation.photos;
+
+  return attachmentData.concat(first.file);
+}
+
 // The ALPR responses the plate overlays and the plate suggestions are drawn
 // from, keyed by the name of the photo each came from. A photo whose read
 // failed, or whose read found nothing, contributes nothing.
@@ -2276,6 +2295,19 @@ class Home extends React.Component {
     this.plateRef.current?.focus?.({ preventScroll });
   };
 
+  // Scroll the License/Medallion fields into view when a row opens: the
+  // violation fills the form above them, and the fields at the bottom edge
+  // leave the report they describe on screen. Wait for a frame, because
+  // opening a row replaces the photos and re-renders the fields with them.
+  scrollPlateFieldsToBottom = () => {
+    requestAnimationFrame(() =>
+      this.licenseStateRef.current?.scrollIntoView?.({
+        block: 'end',
+        behavior: 'smooth',
+      }),
+    );
+  };
+
   setLicensePlate = ({
     plate,
     licenseState,
@@ -2763,6 +2795,552 @@ class Home extends React.Component {
       longitude: located.longitude,
       addressProvenance: EXTRACTED_FROM_PHOTOS,
     });
+  };
+
+  // Delete a photo: out of the report, out of every row that holds it, and
+  // out of the batch, so that nothing which puts photos together again can
+  // find it -- a later reading's regrouping, or the leftovers a submit
+  // publishes. A row the deletion empties goes with it: a violation is its
+  // photos.
+  //
+  // The report's time and place are asked again once it is gone: they came
+  // from the photos, and the photos have changed.
+  // A photo tile starts a drag: keep the photo itself, because a dataTransfer
+  // cannot carry a File. `text/plain` is set because a drag with no data at
+  // all does not start in every browser.
+  startPhotoDrag = ({ photo, event }) => {
+    this.draggedPhoto = photo;
+    // The row the tile is drawn for. A photo can name more than one row, so
+    // the drop must act on the row it was dragged from, not on the first row
+    // that happens to hold the file.
+    this.draggedPhotoRow =
+      this.state.batchViolations[this.state.currentViolationIndex] || null;
+    this.setState({ photoDragInProgress: true });
+    // A tile sits inside a row, and the row is draggable too: without this,
+    // the row would take the photo's drag for its own.
+    event.stopPropagation();
+    const { dataTransfer } = event;
+    dataTransfer?.setData('text/plain', photo.name);
+    if (dataTransfer) {
+      dataTransfer.effectAllowed = 'move';
+    }
+  };
+
+  startRowDrag = ({ violation, event }) => {
+    this.draggedRow = violation;
+    const { dataTransfer } = event;
+    dataTransfer?.setData(
+      'text/plain',
+      formatBatchViolationTime(violation.createDateMs),
+    );
+    if (dataTransfer) {
+      dataTransfer.effectAllowed = 'move';
+    }
+  };
+
+  endDrag = () => {
+    this.draggedPhoto = null;
+    this.draggedPhotoRow = null;
+    this.draggedRow = null;
+    this.setState({
+      dropTargetIdentity: null,
+      photoDragInProgress: false,
+    });
+  };
+
+  dragInProgress = () => Boolean(this.draggedPhoto || this.draggedRow);
+
+  // The row under the drag says so, so the user can see where the photo will
+  // land.
+  enterRowWithDrag = identity => {
+    if (this.dragInProgress() && identity !== this.state.dropTargetIdentity) {
+      this.setState({ dropTargetIdentity: identity });
+    }
+  };
+
+  leaveRowWithDrag = identity => {
+    if (this.state.dropTargetIdentity === identity) {
+      this.setState({ dropTargetIdentity: null });
+    }
+  };
+
+  rowAllowsDrop = event => {
+    if (!this.dragInProgress()) {
+      return;
+    }
+
+    // A drop is allowed only when this page started the drag; a file dragged
+    // in from the desktop is the dropzone's business.
+    event.preventDefault();
+    event.stopPropagation();
+    const { dataTransfer } = event;
+    if (dataTransfer) {
+      dataTransfer.dropEffect = 'move';
+    }
+  };
+
+  dropOnRow = ({ event, violation }) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const photo = this.draggedPhoto;
+    const row = this.draggedRow;
+    const photoRow = this.draggedPhotoRow;
+    this.endDrag();
+
+    if (row) {
+      this.mergeDraggedRows({ row, violation });
+    } else if (photo) {
+      this.movePhotoToViolation({
+        photo,
+        violation,
+        control: 'drag',
+        source: photoRow,
+      });
+    }
+  };
+
+  // A moved photo can change its old row's identity: the row is named by its
+  // first photo, and that may be the one that moved. The tick that named the
+  // row follows it, the way it follows the form -- unless two or more rows
+  // are ticked, which is a merge the user is building.
+  selectionAfterMove = ({ source, sourceAfter }) => {
+    const { batchMergeSelection } = this.state;
+    const namesTheSource =
+      batchMergeSelection.length < 2 &&
+      batchMergeSelection.includes(batchViolationIdentity(source));
+
+    if (!namesTheSource || !sourceAfter) {
+      return batchMergeSelection;
+    }
+
+    return [batchViolationIdentity(sourceAfter)];
+  };
+
+  // A photo dropped on the new-violation target gets a row of its own: the
+  // user is saying it does not belong to the violation it was in. The row is
+  // built from the photo itself -- its time, its place, the plate it read --
+  // and marked as the user's own, so a later read does not fold it back.
+  //
+  // When the photo is the only one of its row, the target duplicates the row
+  // instead: one frame can be the evidence for more than one report, and
+  // taking it out of the row would take it out of the report it already
+  // makes. See `movePhotoToNewViolation`.
+  dropOnNewViolation = event => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const photo = this.draggedPhoto;
+    const row = this.draggedPhotoRow;
+    this.endDrag();
+    if (!photo) {
+      return;
+    }
+
+    this.movePhotoToNewViolation(photo, 'drag', row);
+  };
+
+  // Move a photo to a new violation, or copy it when it is the only photo of
+  // its row.
+  //
+  // A row is named by its photos, so a drop on the target normally takes the
+  // photo out of its old row and builds a row from it. A row of one photo has
+  // no other photo to be named by: taking the photo out would delete the
+  // report. The target then makes a copy of the row and leaves the source as
+  // it was. The copy carries a `copyKey`, because it agrees with its source on
+  // the time, plate and first photo.
+  movePhotoToNewViolation = (photo, control = 'drag', draggedFrom = null) => {
+    const { attachmentData, batchViolations, currentViolationIndex } =
+      this.state;
+
+    // The row the photo was dragged from comes first: a duplicated photo names
+    // more than one row, and the drop is about the one on screen.
+    const source = [draggedFrom, ...batchViolations].find(
+      row => row && row.photos.some(candidate => candidate.file === photo.file),
+    );
+
+    if (!source) {
+      return;
+    }
+
+    const before = this.batchGroupingData();
+
+    const previousPhotos = attachmentData;
+    const loaded = batchViolations[currentViolationIndex];
+
+    if (source.photos.length === 1) {
+      const created = {
+        ...source,
+        copyKey: this.nextCopyKey,
+        mergedByUser: true,
+      };
+      this.nextCopyKey += 1;
+
+      // Oldest first, the way the queue is kept. The copy has the source's
+      // time, so it sits next to it.
+      const rows = batchViolations
+        .concat(created)
+        .sort((a, b) => a.createDateMs - b.createDateMs);
+
+      this.setState(
+        {
+          batchViolations: rows,
+          currentViolationIndex: loaded
+            ? rows.indexOf(loaded)
+            : currentViolationIndex,
+        },
+        () => {
+          this.recordBatchGrouping({
+            event: 'duplicate',
+            source: control,
+            before,
+          });
+        },
+      );
+
+      return;
+    }
+
+    const sourceIndex = batchViolations.indexOf(source);
+
+    const [built] = this.withNycFlags(groupAttachmentsByViolation([photo]));
+    const created = { ...built, mergedByUser: true };
+
+    let loadedAfter = null;
+    let sourceAfter = null;
+    const kept = [];
+    batchViolations.forEach(row => {
+      const next =
+        row === source
+          ? {
+              ...row,
+              photos: row.photos.filter(
+                candidate => candidate.file !== photo.file,
+              ),
+            }
+          : row;
+
+      if (next.photos.length === 0) {
+        return;
+      }
+
+      if (row === loaded) {
+        loadedAfter = next;
+      }
+      if (row === source) {
+        sourceAfter = next;
+      }
+
+      kept.push(next);
+    });
+
+    // Oldest first, the way the queue is kept: the new row sits where its
+    // photo's time says, not at the end.
+    const rows = kept
+      .concat(created)
+      .sort((a, b) => a.createDateMs - b.createDateMs);
+
+    const nextIndex = loadedAfter
+      ? rows.indexOf(loadedAfter)
+      : Math.min(sourceIndex, rows.length - 1);
+
+    this.setState(
+      {
+        batchViolations: rows,
+        currentViolationIndex: nextIndex,
+        batchMergeSelection: this.selectionAfterMove({ source, sourceAfter }),
+        attachmentData: attachmentData.filter(
+          candidate => candidate !== photo.file,
+        ),
+      },
+      () => {
+        if (loadedAfter) {
+          // The row on screen is still there, with one photo less.
+          this.applyPhotosToForm(this.state.attachmentData, {
+            previousPhotos,
+          });
+        } else {
+          // The row went with its last photo: show what is next.
+          this.loadBatchViolation(this.state.currentViolationIndex);
+        }
+
+        this.recordBatchGrouping({ event: 'split', source: control, before });
+      },
+    );
+  };
+
+  // The row dropped on another: the two are one violation. The merge is the
+  // one the tick and the Merge button do, so a read leaves the result whole
+  // -- see `mergeSelectedBatchViolations`. The row dropped on goes first in
+  // the selection, which is what keeps its plate when the two hold as many
+  // photos as each other.
+  mergeDraggedRows = ({ row, violation }) => {
+    if (!row || row === violation) {
+      return;
+    }
+
+    this.setState(
+      {
+        batchMergeSelection: [
+          batchViolationIdentity(violation),
+          batchViolationIdentity(row),
+        ],
+      },
+      () => this.mergeSelectedBatchViolations({ source: 'drag' }),
+    );
+  };
+
+  // Move a photo from the row that holds it into another row. The user is
+  // saying which violation the photo belongs to, so the row it lands in is
+  // marked as the user's own, and no later read takes it apart again (see
+  // `rowsAfterRead`). The photo leaves the report with its old row: the form
+  // holds the photos of the violation it shows.
+  //
+  // `source` is the row the photo was dragged from or the menu was opened on.
+  // A duplicated photo names more than one row, so the caller names the one
+  // the user meant; without it, the first row holding the file is used.
+  movePhotoToViolation = ({
+    photo,
+    violation: target,
+    control = 'drag',
+    source: draggedFrom = null,
+  }) => {
+    const { attachmentData, batchViolations, currentViolationIndex } =
+      this.state;
+
+    const source = [draggedFrom, ...batchViolations].find(
+      row => row && row.photos.some(candidate => candidate.file === photo.file),
+    );
+
+    if (!source || source === target) {
+      return;
+    }
+
+    const before = this.batchGroupingData();
+
+    const previousPhotos = attachmentData;
+    const loaded = batchViolations[currentViolationIndex];
+
+    let loadedAfter = null;
+    let sourceAfter = null;
+    const rows = [];
+    batchViolations.forEach(row => {
+      const next =
+        row === source
+          ? {
+              ...row,
+              photos: row.photos.filter(
+                candidate => candidate.file !== photo.file,
+              ),
+            }
+          : row === target
+            ? {
+                ...row,
+                photos: row.photos.concat(photo),
+                mergedByUser: true,
+              }
+            : row;
+
+      if (next.photos.length === 0) {
+        return;
+      }
+
+      if (row === loaded) {
+        loadedAfter = next;
+      }
+      if (row === source) {
+        sourceAfter = next;
+      }
+
+      rows.push(next);
+    });
+
+    const sourceIndex = batchViolations.indexOf(source);
+    const nextIndex = loadedAfter
+      ? rows.indexOf(loadedAfter)
+      : Math.min(sourceIndex, rows.length - 1);
+
+    // The moved photo leaves the report, and a report left with no photos is
+    // one the user cannot mean to submit: the row on screen ticks its first
+    // photo in the moved one's place.
+    const attachmentsAfter = attachmentsAfterPhotoRemoval({
+      violation: loadedAfter,
+      attachmentData: attachmentData.filter(
+        candidate => candidate !== photo.file,
+      ),
+    });
+
+    this.setState(
+      {
+        batchViolations: rows,
+        currentViolationIndex: nextIndex,
+        batchMergeSelection: this.selectionAfterMove({ source, sourceAfter }),
+        attachmentData: attachmentsAfter,
+      },
+      () => {
+        if (loadedAfter) {
+          // The photo ticked in place of the moved one gets what a tick gives
+          // any photo: its reading on record, and its upload under way.
+          const tickedIn = loadedAfter.photos.find(
+            candidate =>
+              this.state.attachmentData.includes(candidate.file) &&
+              !previousPhotos.includes(candidate.file),
+          );
+
+          if (tickedIn) {
+            startBackgroundUploads([tickedIn.file]);
+            this.photoReadings.set(tickedIn.file, tickedIn);
+          }
+
+          // The row on screen is still there, with one photo less.
+          this.applyPhotosToForm(this.state.attachmentData, {
+            previousPhotos,
+          });
+        } else {
+          // The row went with its last photo: show what is next.
+          this.loadBatchViolation(this.state.currentViolationIndex);
+        }
+
+        this.recordBatchGrouping({ event: 'move', source: control, before });
+      },
+    );
+  };
+
+  deletePhoto = photo => {
+    const { file, name } = photo;
+    const snapshot = this.batchSnapshot();
+    const previousPhotos = this.state.attachmentData;
+    const loadedBefore =
+      this.state.batchViolations[this.state.currentViolationIndex];
+
+    this.setState(
+      state => {
+        const survives = violation =>
+          violation.photos.some(candidate => candidate.file !== file);
+        const { currentViolationIndex: loadedIndex } = state;
+        const loadedWas = state.batchViolations[loadedIndex];
+
+        const batchViolations = state.batchViolations
+          .map(violation =>
+            violation.photos.some(candidate => candidate.file === file)
+              ? {
+                  ...violation,
+                  photos: violation.photos.filter(
+                    candidate => candidate.file !== file,
+                  ),
+                }
+              : violation,
+          )
+          .filter(violation => violation.photos.length > 0);
+
+        // Where the loaded row ended up. Rows the deletion emptied before it
+        // are gone from under the index, and the row itself goes when the
+        // photo was its last.
+        const loadedSurvives = loadedWas && survives(loadedWas);
+        let currentViolationIndex = loadedIndex;
+        if (loadedWas) {
+          const survivedBefore = state.batchViolations
+            .slice(0, loadedIndex)
+            .filter(survives).length;
+          currentViolationIndex = loadedSurvives
+            ? survivedBefore
+            : Math.min(survivedBefore, batchViolations.length - 1);
+        }
+
+        // The row on screen after the deletion, when it is still there.
+        const loadedAfter = loadedSurvives
+          ? batchViolations[currentViolationIndex]
+          : null;
+
+        // Removing the last ticked photo must not leave the report with none:
+        // its violation's first photo is ticked in its place, so Submit is
+        // never one tap from a report with no photos.
+        const attachmentData = attachmentsAfterPhotoRemoval({
+          violation: loadedAfter,
+          attachmentData: state.attachmentData.filter(
+            candidate => candidate !== file,
+          ),
+        });
+
+        const change = {
+          attachmentData,
+          batchPhotos: state.batchPhotos.filter(
+            candidate => candidate.file !== file,
+          ),
+          batchViolations,
+          currentViolationIndex,
+          plateDataByAttachmentName: omit(
+            state.plateDataByAttachmentName,
+            name,
+          ),
+        };
+
+        if (attachmentData.length === 0) {
+          // Nothing is left to take a time or a place from.
+          this.setCoords({
+            latitude: defaultLatitude,
+            longitude: defaultLongitude,
+          });
+          this.setCreateDate({ millisecondsSinceEpoch: Date.now() });
+          return {
+            ...change,
+            plate: '',
+            licenseState: 'NY',
+            allPlateData: null,
+            vehicleInfoComponent: null,
+            violationSummaryComponent: null,
+          };
+        }
+
+        return change;
+      },
+      () => {
+        // The row on screen went with its last photo: show what is next, the
+        // way deleting a row from the queue does.
+        const rowWent =
+          loadedBefore &&
+          loadedBefore.photos.every(candidate => candidate.file === file);
+
+        if (rowWent) {
+          this.loadBatchViolation(this.state.currentViolationIndex);
+        } else {
+          // The photo ticked in place of the last one attached gets what a
+          // tick gives any photo: its reading on record, and its upload
+          // under way.
+          const loadedNow =
+            this.state.batchViolations[this.state.currentViolationIndex];
+          const tickedIn = loadedNow?.photos.find(
+            candidate =>
+              this.state.attachmentData.includes(candidate.file) &&
+              !previousPhotos.includes(candidate.file),
+          );
+
+          if (tickedIn) {
+            startBackgroundUploads([tickedIn.file]);
+            this.photoReadings.set(tickedIn.file, tickedIn);
+          }
+        }
+
+        // The photos that were attached when the user made the change are
+        // still the ones on record, so the time and place they gave can be
+        // told from the ones the user set. The reading goes once that is
+        // settled, not before.
+        this.applyPhotosToForm(this.state.attachmentData, {
+          previousPhotos,
+        });
+
+        previousPhotos
+          .filter(removed => !this.state.attachmentData.includes(removed))
+          .forEach(removed => {
+            // The photo is off the page now, so its bytes do not need to be
+            // held for it.
+            releaseBlobUrl(removed);
+            this.photoReadings.delete(removed);
+          });
+      },
+    );
+
+    this.notifyBatchUndo({ message: 'Photo removed.', snapshot });
   };
 
   // A picked folder or a set of files: every picture, video and zip goes to
@@ -3958,6 +4536,211 @@ class Home extends React.Component {
     this.scrollPlateFieldsToBottom();
   };
 
+  // Tick or untick a violation for merging. Any number can be ticked; the
+  // button appears once there are two, because one is not a merge.
+  //
+  // A shift-click ticks this row and every row between it and the one whose
+  // box was clicked last, the way a list selects a range -- and only adds to
+  // what is ticked, so a click next to the last row ticks that row alone.
+  toggleBatchMergeSelection = (identity, { extend = false } = {}) => {
+    const { batchViolations } = this.state;
+    const clickedIndex = batchViolations.findIndex(
+      violation => batchViolationIdentity(violation) === identity,
+    );
+
+    if (clickedIndex === -1) {
+      return;
+    }
+
+    const anchorIndex = batchViolations.findIndex(
+      violation => batchViolationIdentity(violation) === this.batchMergeAnchor,
+    );
+    this.batchMergeAnchor = identity;
+
+    if (extend) {
+      // The range runs both ways from the anchor. No anchor -- nothing
+      // clicked yet, or the row it named has gone -- leaves just this row.
+      const range =
+        anchorIndex === -1
+          ? [identity]
+          : batchViolations
+              .slice(
+                Math.min(anchorIndex, clickedIndex),
+                Math.max(anchorIndex, clickedIndex) + 1,
+              )
+              .map(batchViolationIdentity);
+
+      this.setState(state => ({
+        batchMergeSelection: [
+          ...new Set([...state.batchMergeSelection, ...range]),
+        ],
+      }));
+      return;
+    }
+
+    this.setState(state => ({
+      batchMergeSelection: state.batchMergeSelection.includes(identity)
+        ? state.batchMergeSelection.filter(entry => entry !== identity)
+        : state.batchMergeSelection.concat(identity),
+    }));
+  };
+
+  // Combine the ticked violations into one report.
+  //
+  // The grouping merges only what the plates agree on. A far shot taken to
+  // establish where a car is can read no plate, and a read can fail, so one
+  // car can stand as two violations. Only the user knows the two are one
+  // report, which is why this does what they say instead of re-running the
+  // grouping: it has no signal that says these belong together.
+  mergeSelectedBatchViolations = ({ source = 'tick' } = {}) => {
+    const { batchMergeSelection, batchViolations, currentViolationIndex } =
+      this.state;
+
+    // What a tick names, and what survives the queue being re-sorted: see
+    // `batchViolationIdentity`.
+    const identityOf = batchViolationIdentity;
+    const chosen = batchMergeSelection
+      .map(identity => batchViolations.find(v => identityOf(v) === identity))
+      .filter(Boolean);
+
+    if (chosen.length < 2) {
+      return;
+    }
+
+    const before = this.batchGroupingData();
+    const chosenIdentities = new Set(chosen.map(identityOf));
+    const loaded = batchViolations[currentViolationIndex];
+    const loadedWasMerged = loaded && chosenIdentities.has(identityOf(loaded));
+
+    // Marked as the user's own work: rowsAfterRead keeps a merged row whole,
+    // whatever the reads say about the cars in it. A copy among the chosen
+    // rows keeps its key, so the merged row does not share its source's
+    // identity.
+    const [merged] = this.withNycFlags([
+      {
+        ...mergeViolations(chosen),
+        mergedByUser: true,
+        copyKey: chosen.find(violation => violation.copyKey !== undefined)
+          ?.copyKey,
+      },
+    ]);
+    const remaining = batchViolations.filter(
+      violation => !chosenIdentities.has(identityOf(violation)),
+    );
+
+    // The merged violation reports the earliest of the times, so sorting puts
+    // it where that time belongs rather than where either of them sat.
+    const sorted = remaining
+      .concat(merged)
+      .sort((a, b) => a.createDateMs - b.createDateMs);
+
+    this.setState(
+      {
+        batchViolations: sorted,
+        batchMergeSelection: [],
+        currentViolationIndex: loadedWasMerged
+          ? sorted.indexOf(merged)
+          : loaded
+            ? sorted.indexOf(loaded)
+            : currentViolationIndex,
+      },
+      () => {
+        if (loadedWasMerged) {
+          // The form is holding one of the two, so show it the merged report
+          // rather than leaving it on a violation that no longer exists. It
+          // is the same report the user was editing, so the times and places
+          // they set stay.
+          this.loadBatchViolation(this.state.currentViolationIndex, {
+            sameReport: true,
+          });
+        }
+
+        this.recordBatchGrouping({ event: 'merge', source, before });
+      },
+    );
+  };
+
+  // The rows the user has not deleted, and the rows built only from photos a
+  // report already took.
+  //
+  // A row is kept out of the queue by remembering what names it rather than
+  // by its photos: the photos can be regrouped, and the row the regrouping
+  // builds would otherwise be new. For a submitted row that is not enough on
+  // its own -- the photos the report left behind can build a row with the same
+  // identity -- so a row made entirely of the photos the report took is the
+  // one that already went. See `withoutDismissedRows`.
+  withoutDismissedRows = violations =>
+    violations.filter(violation => {
+      const identity = batchViolationIdentity(violation);
+
+      if (this.dismissedRows.has(identity)) {
+        return false;
+      }
+
+      if (!this.submittedRows.has(identity)) {
+        return true;
+      }
+
+      return !violation.photos.every(photo =>
+        this.submittedPhotos.has(photo.file),
+      );
+    });
+
+  // Drop a group from the batch. The row is remembered as deleted, and its
+  // photos go with it -- regrouping the batch (the next pick does) must not
+  // bring back a violation the user deleted.
+  deleteBatchViolation = index => {
+    const { batchPhotos, batchViolations, currentViolationIndex } = this.state;
+    const violation = batchViolations[index];
+
+    if (!violation) {
+      return;
+    }
+
+    const before = this.batchGroupingData();
+    const snapshot = this.batchSnapshot();
+    this.dismissedRows.add(batchViolationIdentity(violation));
+
+    const remainingViolations = batchViolations.filter((_, i) => i !== index);
+
+    // The row's photos go with it, except the ones another row still holds: a
+    // photo can name more than one row, and deleting one of those rows says
+    // nothing about the report the other one makes from it.
+    const keptElsewhere = new Set(
+      remainingViolations.flatMap(each => each.photos),
+    );
+    const removedPhotos = new Set(
+      violation.photos.filter(photo => !keptElsewhere.has(photo)),
+    );
+
+    this.setState(
+      {
+        batchViolations: remainingViolations,
+        batchPhotos: batchPhotos.filter(photo => !removedPhotos.has(photo)),
+        currentViolationIndex:
+          index < currentViolationIndex
+            ? currentViolationIndex - 1
+            : currentViolationIndex,
+      },
+      () => {
+        if (index === currentViolationIndex) {
+          this.loadBatchViolation(
+            Math.min(index, remainingViolations.length - 1),
+          );
+        }
+
+        // The photos this row held and no other does are out of the batch for
+        // good, so nothing will show them again: their bytes can go. It waits
+        // for the load above, which takes them off the page.
+        removedPhotos.forEach(photo => releaseBlobUrl(photo.file));
+
+        this.recordBatchGrouping({ event: 'delete-row', before });
+      },
+    );
+
+    this.notifyBatchUndo({ message: 'Violation removed.', snapshot });
+  };
+
   // The batch as the grouping saw it: every photo it holds, with the raw
   // metadata and ALPR response, and the rows at this moment. This is what a
   // grouping correction is recorded with, so the algorithm can be improved
@@ -4009,6 +4792,107 @@ class Home extends React.Component {
       rowsBefore: before ? before.rows : null,
       rowsAfter: after.rows,
     });
+  };
+
+  // Everything a removal can change, kept so its toast can put it back. The
+  // form fields are here because a delete that empties the report resets them,
+  // and a row delete can move the form to another row.
+  batchSnapshot = () => {
+    const {
+      allPlateData,
+      attachmentData,
+      batchMergeSelection,
+      batchPhotos,
+      batchViolations,
+      CreateDate,
+      currentViolationIndex,
+      addressProvenance,
+      latitude,
+      longitude,
+      plate,
+      licenseState,
+      plateDataByAttachmentName,
+      plateProvenance,
+      vehicleInfoComponent,
+      violationSummaryComponent,
+    } = this.state;
+
+    const photos = new Set(batchPhotos);
+    batchViolations.forEach(violation =>
+      violation.photos.forEach(photo => photos.add(photo)),
+    );
+
+    return {
+      allPlateData,
+      attachmentData,
+      batchMergeSelection,
+      batchPhotos,
+      batchViolations,
+      CreateDate,
+      currentViolationIndex,
+      addressProvenance,
+      formatted_address: this.state.formatted_address,
+      latitude,
+      longitude,
+      plate,
+      licenseState,
+      plateDataByAttachmentName,
+      plateProvenance,
+      vehicleInfoComponent,
+      violationSummaryComponent,
+      dismissed: [...this.dismissedRows],
+      readings: new Map(
+        [...photos]
+          .filter(photo => this.photoReadings.has(photo.file))
+          .map(photo => [photo.file, this.photoReadings.get(photo.file)]),
+      ),
+    };
+  };
+
+  restoreBatchSnapshot = snapshot => {
+    this.dismissedRows.clear();
+    snapshot.dismissed.forEach(identity => this.dismissedRows.add(identity));
+    snapshot.readings.forEach((reading, file) =>
+      this.photoReadings.set(file, reading),
+    );
+
+    this.setState({
+      allPlateData: snapshot.allPlateData,
+      attachmentData: snapshot.attachmentData,
+      batchMergeSelection: snapshot.batchMergeSelection,
+      batchPhotos: snapshot.batchPhotos,
+      batchViolations: snapshot.batchViolations,
+      CreateDate: snapshot.CreateDate,
+      currentViolationIndex: snapshot.currentViolationIndex,
+      addressProvenance: snapshot.addressProvenance,
+      formatted_address: snapshot.formatted_address,
+      latitude: snapshot.latitude,
+      longitude: snapshot.longitude,
+      plate: snapshot.plate,
+      licenseState: snapshot.licenseState,
+      plateDataByAttachmentName: snapshot.plateDataByAttachmentName,
+      plateProvenance: snapshot.plateProvenance,
+      vehicleInfoComponent: snapshot.vehicleInfoComponent,
+      violationSummaryComponent: snapshot.violationSummaryComponent,
+    });
+  };
+
+  // A removal can be taken back: the toast holds the batch as it was, rather
+  // than a confirm dialog asking before every delete.
+  notifyBatchUndo = ({ message, snapshot }) => {
+    Home.notifyInfo(
+      <React.Fragment>
+        <p>{message}</p>
+        <button
+          type="button"
+          onClick={() => this.restoreBatchSnapshot(snapshot)}
+        >
+          Undo
+        </button>
+      </React.Fragment>,
+      // Long enough to notice the mistake and reach the button.
+      { autoClose: 8000 },
+    );
   };
 
   // Everything the removal below changes, kept so its toast can put it back.
@@ -4664,6 +5548,16 @@ class Home extends React.Component {
   handleDocumentKeyDown = event => {
     if (event.key === 'Escape' && this.state.isMapOpen) {
       this.setState({ isMapOpen: false });
+      return;
+    }
+
+    if (event.key === 'Delete' || event.key === 'Backspace') {
+      const photo = this.photoForDeleteKey(event);
+
+      if (photo) {
+        event.preventDefault();
+        this.deletePhoto(photo);
+      }
     }
 
     // `Command-Enter` does what the Submit button does. The button reports
@@ -4675,6 +5569,32 @@ class Home extends React.Component {
         submitButton.click();
       }
     }
+  };
+
+  // The photo a Delete or Backspace press means: the only photo of the
+  // violation loaded into the form. A row with several leaves the key alone,
+  // because there is no telling which photo it means -- each tile carries its
+  // own trash -- and a key press belongs to whatever has focus when that is a
+  // field being typed in.
+  photoForDeleteKey = event => {
+    if (
+      event.repeat ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.altKey ||
+      this.state.isMapOpen ||
+      this.state.isAuthModalOpen ||
+      event.target?.closest?.(
+        'input, textarea, select, [contenteditable="true"]',
+      )
+    ) {
+      return null;
+    }
+
+    const { batchViolations, currentViolationIndex } = this.state;
+    const loaded = batchViolations[currentViolationIndex];
+
+    return loaded?.photos.length === 1 ? loaded.photos[0] : null;
   };
 
   switchAuthTab = tab => {

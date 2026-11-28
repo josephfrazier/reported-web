@@ -513,8 +513,8 @@
     <p class="eyebrow">Implementation plan · reported-web</p>
     <h1>Semi-Automatic Mode</h1>
     <p class="standfirst">
-      The queue and its photo inputs are on screen. The controls for merging, moving,
-      splitting and deleting rows follow.
+      The queue's rows can be merged, moved, split, deleted and undone, and grouping
+      corrections are recorded. Submit and the 3 + 3 picker follow.
     </p>
 
     <dl class="meta">
@@ -977,6 +977,21 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
       </div>
 
       <!-- Provenance: 46527fe3 "feat: report grouping corrections to Sentry"; eeedf207 (duplicate event) -->
+      <h3>Grouping telemetry</h3>
+      <p>
+        The batch records what the user corrects: a hand merge, a deleted row, a photo split into a
+        new violation, a photo moved to another row, a discarded queue, a duplicated row, and a
+        sampled batch-done event. Each event carries the raw photo records and the rows before and
+        after.
+      </p>
+      <p>
+        <code>src/batchGroupingEvents.js</code> is the seam. The browser entry registers a Sentry
+        sender, and <code>Home</code> reaches it through <code>captureBatchGroupingEvent</code>.
+        The module imports no Sentry code, so the server bundle can import it too; with no sender —
+        the server, tests, or a build without a DSN — the calls do nothing. The sender attaches the
+        payload as <code>batch.json</code>, because the event's own field limits would trim it.
+      </p>
+
     </section>
 
     <!-- ============================ UI ============================ -->
@@ -995,6 +1010,67 @@ out: [{ photos[], plate, licenseState, latitude, longitude, createDateMs }]</cod
         plate reads start as soon as the rows are published; the batch's places are geocoded behind
         them, so a row can open before its address is in. The bar's second pass is the plate labels
         filling in and the rows merging.
+      </p>
+
+      <h3>The queue</h3>
+      <p>
+        The rows appear as soon as the batch's dates and places are in — before a single plate is
+        read (see <a href="#when-the-rows-appear"><em>When the rows appear</em></a>) — so reporting can start while the rest of the
+        photos are still being read. Each row shows its time, its plate or whether it is still
+        being read, its photo count and flags, and clicking a
+        row's own text opens that violation; <strong>Delete</strong> drops a row, and a row's
+        checkbox ticks it for a merge. The plate a row names is the plate the form opens with, and
+        the overlay selected in the photo is that same plate. There is no button to walk the queue
+        in order, because Submit already advances to the next violation and any row is one click
+        away.
+      </p>
+      <p>
+        Deleting a row takes its photos out of the batch with it, except a photo another row still
+        holds: a copied row shares its photo with its source, so deleting one leaves the photo for
+        the other. The deleted row itself is remembered, so a later regrouping cannot make it
+        again.
+      </p>
+      <!-- Provenance: adb926fc "feat: merge queue violations the user says are one report"; carried through a49077b7 -->
+      <p>
+        The <strong>Merge</strong> button sits on the queue's heading whenever two or more rows are
+        shown, and is enabled once two of them are ticked. It makes one report of them, which the
+        grouping cannot do for itself: it merges only what the plates agree on, and a far shot
+        taken to establish where a car is can read no plate, while a read can fail. One car can
+        therefore stand as two rows. Only the user knows the two are one report, and merging takes
+        their word rather than re-running the grouping, which has no signal that says so. The
+        merged report keeps the plate of the row with the most photos among those that read a
+        plate, and takes its time and place from all of the photos it now holds.
+      </p>
+      <p>
+        Opening a row with nothing ticked ticks that row, so putting it together with the row
+        beside it is one tick rather than two. While fewer than two rows are ticked, the tick
+        follows the row the form shows: opening another row moves it. Once two or more are ticked —
+        a merge the user is building — opening another row leaves the selection as it is.
+      </p>
+      <p>
+        A row's identity — what a tick names, and what the list's own keys are made of — is its
+        time, its plate and the photo it opens with. A batch shot at one kerb gives several rows
+        the same second, so the time alone does not name one; the first photo and the plate do. A
+        copy agrees with its source on all three, so it carries a copy key as well, and the key is
+        what names it.
+      </p>
+      <p>
+        A photo dragged to the <strong>New violation</strong> target normally leaves its old row
+        and becomes a violation of its own. A row of one photo has no other photo to be named by,
+        so the target copies the row instead and leaves the source as it was: the same photo then
+        backs two reports. The copy is marked as the user's own, so a later read leaves it whole,
+        and both rows show the <em>shares a photo</em> badge.
+      </p>
+      <!-- Provenance: 48609466 "feat: show the report's photos as one grid of tiles"; 6da2f656 "refactor: give the photo trash its own button" -->
+      <p>
+        The first violation loads itself, so the form is ready to submit without a click. Loading
+        one puts its photos in the form as thumbnails with the usual plate overlays, and fills the
+        fields from what the batch already extracted; Submit then advances automatically. Loading
+        the violation already loaded is a no-op rather than a reload, because loading resets the
+        attachment selection to the group's default and would discard a swap made with the picker.
+        Only the photos that went into the report leave the batch when it is submitted: a group's
+        leftovers appear at once as a row of their own, so a photo left out of the picker is not
+        lost. The X on a thumbnail is the other action: it deletes the photo from the batch.
       </p>
 
     </section>

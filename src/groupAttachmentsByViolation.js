@@ -93,8 +93,12 @@ export function normalizedCenterDistance(box, uploadWidth, uploadHeight) {
 
 // Every plate string a single result could be read as: the winner ALPR picked
 // plus the ranked alternatives it offered alongside it.
+//
+// A plate means the same thing however it is spaced: NYC 311 ignores
+// whitespace, and the reader's strings come back compact. Remove all of it,
+// not just the ends, so "ab c 123" and "ABC123" name the same plate.
 const normalizePlate = plate =>
-  typeof plate === 'string' ? plate.trim().toUpperCase() : '';
+  typeof plate === 'string' ? plate.replace(/\s+/g, '').toUpperCase() : '';
 
 function candidatePlateStrings(result) {
   const plates = [

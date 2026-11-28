@@ -539,6 +539,9 @@ async function getVideoScreenshot({ attachmentFile }) {
 // adapted from https://www.bignerdranch.com/blog/dont-over-react/
 const attachmentPlateCache = new WeakMap();
 
+const normalizePlate = plate =>
+  typeof plate === 'string' ? plate.trim().toUpperCase() : '';
+
 function getLicenseStateFromPlateResult(result) {
   // ALPR results may not always include a parseable region code. Report that
   // as null rather than an empty string: setLicensePlate leaves the current
@@ -2136,7 +2139,7 @@ class Home extends React.Component {
   renderPlateOverlays = ({ attachmentPlateData, attachmentFile }) =>
     attachmentPlateData?.results?.map(result => {
       const { box } = result;
-      const plate = result.plate?.toUpperCase();
+      const plate = normalizePlate(result.plate);
       // `box` is in pixels of the image src/alpr.js uploaded to Plate
       // Recognizer, so `uploadWidth`/`uploadHeight` are the denominators that
       // turn it into a fraction of the picture. Percentages are
@@ -2163,10 +2166,15 @@ class Home extends React.Component {
       const licenseState = getLicenseStateFromPlateResult(result);
 
       // The overlay for the plate in the License/Medallion field is marked as
-      // selected, whether it was typed or clicked. The state is left out of
-      // the comparison: it can be hard to tell apart in a photo, and the user
+      // selected, whether it was typed or clicked. The comparison is against
+      // the string the overlay shows, not the candidates ALPR offered with
+      // it: a candidate is another value this box may have read, and marking
+      // the overlay selected would claim the field holds what the box shows
+      // when it holds a different plate. The state is left out of the
+      // comparison: it can be hard to tell apart in a photo, and the user
       // chose the plate.
-      const isSelected = plate === this.state.plate?.toUpperCase();
+      const selectedPlate = normalizePlate(this.state.plate);
+      const isSelected = plate === selectedPlate;
       const className = isSelected
         ? `${homeStyles['plate-overlay']} ${homeStyles['plate-overlay-selected']}`
         : homeStyles['plate-overlay'];
@@ -5651,7 +5659,7 @@ class Home extends React.Component {
     for (const data of Object.values(this.state.plateDataByAttachmentName)) {
       for (const result of data.results || []) {
         if (
-          result.plate?.toUpperCase() === this.state.plate?.toUpperCase() &&
+          normalizePlate(result.plate) === normalizePlate(this.state.plate) &&
           result.plateCropDataUrl
         ) {
           // The same plate can be detected in multiple photos (or multiple
@@ -7253,7 +7261,9 @@ class Home extends React.Component {
                                     );
                                     const matchedResult =
                                       this.state.allPlateData?.results?.find(
-                                        r => r.plate?.toUpperCase() === plate,
+                                        r =>
+                                          normalizePlate(r.plate) ===
+                                          normalizePlate(plate),
                                       );
                                     const licenseState = matchedResult
                                       ? getLicenseStateFromPlateResult(
@@ -7271,7 +7281,7 @@ class Home extends React.Component {
                                   {this.state.allPlateData?.results?.map(
                                     result => (
                                       <option
-                                        value={result.plate?.toUpperCase()}
+                                        value={normalizePlate(result.plate)}
                                       />
                                     ),
                                   )}

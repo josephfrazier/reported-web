@@ -1034,6 +1034,17 @@ describe('Home', () => {
       'XYZ789 (NJ)',
     );
 
+    // A plate typed with surrounding whitespace still selects its overlay:
+    // both sides are normalized before the comparison.
+    renderer.act(() => {
+      homeRef.current.setState({ plate: ' ABC123 ' });
+    });
+
+    expect(overlayFor('ABC123').props.className).toBe(
+      'plate-overlay plate-overlay-selected',
+    );
+    expect(overlayFor('XYZ789').props.className).toBe('plate-overlay');
+
     // Clicking another overlay moves the highlight to that plate, and puts the
     // caret in the field, where the plate can be corrected or the report
     // filed with Enter. The label was already scrolled into view, so the
@@ -1050,6 +1061,73 @@ describe('Home', () => {
       'plate-overlay plate-overlay-selected',
     );
     expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+
+    tree.unmount();
+    global.URL.createObjectURL = originalCreateObjectURL;
+  });
+
+  // A candidate is another string the box may have read, not the one it
+  // shows. Matching it would mark a box selected while its label names a
+  // different plate -- a TZ77581C box lit up while the field holds T777581C.
+  test('does not highlight an overlay that only read the selected plate as a candidate', () => {
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+    };
+
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ initialState, homeRef });
+    });
+    renderer.act(() => {
+      homeRef.current.setState({
+        attachmentData: [
+          new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }),
+        ],
+        plateDataByAttachmentName: {
+          'photo.jpg': {
+            results: [
+              {
+                plate: 'tz77581c',
+                candidates: [{ plate: 't777581c', score: 0.6 }],
+                region: { code: 'us-ny' },
+                box: { xmin: 100, ymin: 200, xmax: 300, ymax: 250 },
+              },
+              {
+                plate: 't777581c',
+                region: { code: 'us-ny' },
+                box: { xmin: 400, ymin: 200, xmax: 600, ymax: 250 },
+              },
+            ],
+            uploadWidth: 1000,
+            uploadHeight: 500,
+          },
+        },
+      });
+    });
+
+    const overlayFor = plate =>
+      tree.root.findByProps({
+        'aria-label': `Select license plate ${plate}`,
+      });
+
+    renderer.act(() => {
+      tree.root.findByProps({ name: 'plate' }).props.onChange({
+        target: createFakeInput({ value: 'T777581C', caret: 7 }),
+      });
+    });
+
+    expect(overlayFor('T777581C').props.className).toBe(
+      'plate-overlay plate-overlay-selected',
+    );
+    expect(overlayFor('TZ77581C').props.className).toBe('plate-overlay');
+    expect(overlayFor('TZ77581C').props.children.props.children).toBe(
+      'TZ77581C (NY)',
+    );
 
     tree.unmount();
     global.URL.createObjectURL = originalCreateObjectURL;
@@ -3188,7 +3266,9 @@ describe('Home', () => {
     const initialState = {
       email: 'test@example.com',
       loginSuccessful: true,
-      plate: 'ABC123',
+      // The field's plate has surrounding whitespace; the crop lookup still
+      // has to find the read.
+      plate: ' ABC123 ',
     };
 
     const originalCreateObjectURL = global.URL.createObjectURL;
@@ -3243,6 +3323,50 @@ describe('Home', () => {
       alt: 'Detected license plate',
     });
     expect(thumbnail.props.src).toBe('data:image/jpeg;base64,confident');
+
+    tree.unmount();
+    global.URL.createObjectURL = originalCreateObjectURL;
+  });
+
+  test('normalizes padded plates when matching a typed plate to a suggestion', () => {
+    const initialState = {
+      email: 'test@example.com',
+      loginSuccessful: true,
+    };
+
+    const originalCreateObjectURL = global.URL.createObjectURL;
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+
+    let tree;
+    const homeRef = React.createRef();
+    renderer.act(() => {
+      tree = renderHome({ initialState, homeRef });
+    });
+    renderer.act(() => {
+      homeRef.current.setState({
+        attachmentData: [
+          new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }),
+        ],
+        allPlateData: {
+          results: [
+            {
+              plate: ' abc123 ',
+              region: { code: 'us-nj' },
+              box: { xmin: 0, ymin: 0, xmax: 10, ymax: 10 },
+            },
+          ],
+        },
+      });
+    });
+
+    renderer.act(() => {
+      tree.root.findByProps({ name: 'plate' }).props.onChange({
+        target: createFakeInput({ value: 'ABC123', caret: 6 }),
+      });
+    });
+
+    expect(homeRef.current.state.plate).toBe('ABC123');
+    expect(homeRef.current.state.licenseState).toBe('NJ');
 
     tree.unmount();
     global.URL.createObjectURL = originalCreateObjectURL;

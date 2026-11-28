@@ -6265,6 +6265,162 @@ describe('Home', () => {
       cleanup();
     });
 
+    test('lists the queue oldest first when photos arrive in more than one pick', async () => {
+      const early = jpeg({ name: 'early.jpg', size: 4 });
+      const late = jpeg({ name: 'late.jpg', size: 7 });
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      // `late.jpg` is shot a minute after `early.jpg` and is added first, so it
+      // is the violation published first. The queue still has to read oldest
+      // first, which means the later pick has to sort in front of it.
+      const { homeRef, cleanup } = await renderBatchWithFiles([late]);
+
+      expect(homeRef.current.state.plate).toBe('K73JAU');
+
+      await renderer.act(async () => {
+        await homeRef.current.addFilesToBatch([early]);
+        await new Promise(resolve => setImmediate(resolve));
+      });
+
+      expect(homeRef.current.state.batchViolations.map(v => v.plate)).toEqual([
+        'T696817C',
+        'K73JAU',
+      ]);
+
+      // The loaded violation is followed by identity, so the re-sort does not
+      // leave the form pointing at whichever violation took its index.
+      expect(homeRef.current.state.currentViolationIndex).toBe(1);
+      expect(homeRef.current.state.plate).toBe('K73JAU');
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    // A batch shot inside the linking window is one time-cluster, and the
+    // readings are what tell the cars in it apart. They arrive one at a time,
+    // in whatever order the pass gets through them, and a car's photos can
+    // have another car's reading land between them. Every read has to be
+    // weighed against the whole batch: a read that only re-groups the row it
+    // lands in leaves the rows the earlier reads broke apart to stand, so a
+    // cluster of two cars settles as one row per photo read.
+    test('settles a time-cluster into one row per car, whatever order the reads arrive in', async () => {
+      // Three photos of one car and two of another, all inside the linking
+      // window, listed here in capture order.
+      const photos = [
+        jpeg({ name: 'first.jpg', size: 4 }),
+        jpeg({ name: 'second.jpg', size: 5 }),
+        jpeg({ name: 'other-car.jpg', size: 6 }),
+        jpeg({ name: 'third.jpg', size: 8 }),
+        jpeg({ name: 'other-car-again.jpg', size: 9 }),
+      ];
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, cleanup } = await renderBatchWithFiles(photos, {
+        // These answers come back 4, 6, 5, 9, 8: the other car's reading lands
+        // between the first car's first and second, and the first car's third
+        // photo is answered last of all. Three reads run at once, so the
+        // second and third photos start together and the fourth and fifth take
+        // the slots the first two leave.
+        alprDelayMsBySize: { 4: 0, 5: 200, 6: 100, 8: 800, 9: 400 },
+      });
+
+      const { batchViolations } = homeRef.current.state;
+      expect(
+        batchViolations.map(violation => [
+          violation.plate,
+          violation.photos.map(photo => photo.name),
+        ]),
+      ).toEqual([
+        ['T696817C', ['first.jpg', 'second.jpg', 'third.jpg']],
+        ['LDA8765', ['other-car.jpg', 'other-car-again.jpg']],
+      ]);
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
+    test('puts the rows on screen before a plate is read', async () => {
+      const photos = [
+        jpeg({ name: 'a.jpg', size: 4 }),
+        jpeg({ name: 'b.jpg', size: 5 }),
+        jpeg({ name: 'c.jpg', size: 6 }),
+        jpeg({ name: 'd.jpg', size: 7 }),
+      ];
+
+      exifr.gps.mockResolvedValue({ latitude: 40.7129, longitude: -74.0061 });
+      exifr.parse.mockImplementation(async arrayBuffer => ({
+        CreateDate: new Date(createDatesBySize[arrayBuffer.byteLength]),
+        OffsetTimeDigitized: '-05:00',
+      }));
+
+      const { homeRef, cleanup } = await renderBatchWithFiles([]);
+
+      // What the queue looked like when it was published. The batch's dates and
+      // places are local work and the plates are not, so this is the moment the
+      // rows can first be on screen -- and the whole point of publishing here
+      // is that it is not after the last read, which for a batch shot inside
+      // the linking window was the only moment the old rule allowed.
+      const original = homeRef.current.publishBatchViolations;
+      const passes = [];
+      jest
+        .spyOn(homeRef.current, 'publishBatchViolations')
+        .mockImplementation(async options => {
+          const result = await original.call(homeRef.current, options);
+          const { batchPhotos, batchViolations } = homeRef.current.state;
+          passes.push({
+            reads: batchPhotos.filter(photo => photo.plateRead).length,
+            violations: batchViolations.length,
+          });
+          return result;
+        });
+
+      await renderer.act(async () => {
+        await homeRef.current.addFilesToBatch(photos);
+        // The per-photo passes are not awaited by the worker that starts them,
+        // so let anything still settling finish before asserting on it.
+        for (let i = 0; i < 5; i += 1) {
+          // eslint-disable-next-line no-await-in-loop -- one round per pending promise chain; the rounds are the point.
+          await new Promise(resolve => setImmediate(resolve));
+        }
+      });
+
+      // One publish, of the whole batch, with every row in it and no plate read
+      // yet. Every photo is a row of its own until a read names its car, so
+      // the four photos are four rows.
+      expect(passes).toEqual([{ reads: 0, violations: 4 }]);
+
+      // And it is still the grouping that decides, once the plates are in: the
+      // rows merged as the reads arrived, so the queue ends up with one row
+      // per car.
+      expect(
+        homeRef.current.state.batchViolations.map(v => [
+          v.plate,
+          v.photos.length,
+        ]),
+      ).toEqual([
+        ['T696817C', 2],
+        ['LDA8765', 1],
+        ['K73JAU', 1],
+      ]);
+      expect(homeRef.current.state.batchProgress).toBeNull();
+
+      exifr.gps.mockReset();
+      exifr.parse.mockReset();
+      cleanup();
+    });
+
     test('keeps a row the user merged when a read lands on it afterwards', async () => {
       // Two cars at one kerb, read apart by the grouping and put together by
       // the user: their report, for whatever reason they have.

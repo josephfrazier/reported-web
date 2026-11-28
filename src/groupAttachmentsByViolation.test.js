@@ -752,6 +752,25 @@ describe('groupAttachmentsByViolation', () => {
     expect(violation.plate).toBe('T696817C');
   });
 
+  test('prefers a medallion result with whitespace inside the plate', () => {
+    const photo = buildPhoto({
+      name: 'spaced-medallion.jpg',
+      createDateMs: 1000,
+      ...SQUARE,
+      plateResults: alprResponse({
+        ...SQUARE,
+        results: [
+          alprResult({ plate: 'aaa111', box: CENTRED_BOX }),
+          alprResult({ plate: ' t 6 9 6 8 1 7 c ', box: CORNER_BOX }),
+        ],
+      }),
+    });
+
+    const [violation] = groupAttachmentsByViolation([photo]);
+
+    expect(violation.plate).toBe('T696817C');
+  });
+
   test('takes the license state from a later reading of the plate', () => {
     const photo = buildPhoto({
       name: 'state.jpg',
@@ -1119,6 +1138,45 @@ describe('groupAttachmentsByViolation', () => {
     expect(violations).toHaveLength(1);
     // Without trimming, the padded `ZZZ999` readings lose their scores and
     // `AAA111` wins on its candidate's 0.2; with trimming, `ZZZ999`'s 0.9 wins.
+    expect(violations[0].plate).toBe('ZZZ999');
+  });
+
+  test('removes whitespace inside plate strings before the score tie-break', () => {
+    const photo = buildPhoto({
+      name: 'spaced.jpg',
+      createDateMs: 1000,
+      plateResults: alprResponse({
+        ...SQUARE,
+        results: [
+          alprResult({
+            plate: ' z z z 9 9 9 ',
+            score: 0.1,
+            candidates: [
+              { plate: 'zzz 999', score: 0.9 },
+              { plate: 'aaa111', score: 0.2 },
+            ],
+            box: CORNER_BOX,
+          }),
+          // The same two readings from a different box, so both spellings tie
+          // on photos and centrality and the score is the deciding tie-break.
+          alprResult({
+            plate: ' z z z 9 9 9 ',
+            score: 0.1,
+            candidates: [
+              { plate: 'zzz 999', score: 0.9 },
+              { plate: 'aaa111', score: 0.2 },
+            ],
+            box: CENTRED_BOX,
+          }),
+        ],
+      }),
+    });
+
+    const violations = groupAttachmentsByViolation([photo]);
+
+    expect(violations).toHaveLength(1);
+    // Without removing the inner spaces, the `ZZZ999` readings lose their
+    // scores and `AAA111` wins on its candidate's 0.2.
     expect(violations[0].plate).toBe('ZZZ999');
   });
 

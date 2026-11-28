@@ -1092,7 +1092,9 @@ const formatBatchViolationTime = createDateMs =>
     ? new Date(createDateMs).toLocaleString()
     : 'unknown time';
 
-// The trash that deletes a photo. It sits in the corner of the photo's tile.
+// The trash that deletes a photo. It sits in the corner of the photo's tile,
+// and every flow that shows the report's photos has it: the button is the
+// same here and on main, which carries the tile grid on its own.
 //
 // The caller positions it and says what it deletes. The label is on the button
 // rather than on the glyph, so that the button is the thing with a name and a
